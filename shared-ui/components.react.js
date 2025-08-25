@@ -44,6 +44,8 @@
       setDocumentSource: () => {},
       lastError: null,
       setLastError: () => {},
+      approvalsSummary: null,
+      approvalsRevision: 0,
     });
 
     function ThemeProvider(props) {
@@ -70,6 +72,8 @@
       const [logs, setLogs] = React.useState([]);
       const [documentSource, setDocumentSource] = React.useState(null);
       const [lastError, setLastError] = React.useState(null);
+      const [approvalsSummary, setApprovalsSummary] = React.useState(null);
+      const [approvalsRevision, setApprovalsRevision] = React.useState(0);
       const API_BASE = getApiBase();
 
       const addLog = React.useCallback((m) => {
@@ -109,6 +113,7 @@
             const j = await r.json();
             setConfig(j.config || null);
             if (typeof j.revision === 'number') setRevision(j.revision);
+            try { const sum = j?.config?.approvals?.summary || null; setApprovalsSummary(sum); } catch {}
           }
         } catch {}
       }, [API_BASE, userId, loadedVersion]);
@@ -142,6 +147,10 @@
               if (p && p.ts) setLastTs(p.ts);
               const nextRev = (typeof p.revision === 'number') ? p.revision : null;
               if (nextRev !== null) setRevision(nextRev);
+              if (p && p.type === 'approvals:update') {
+                if (typeof p.revision === 'number') setApprovalsRevision(p.revision);
+                if (p.summary) setApprovalsSummary(p.summary);
+              }
               // Do not auto-refresh document on save/revert; show banner via state-matrix
               refresh();
             } catch {}
@@ -278,7 +287,7 @@
         setUser: (nextUserId, nextRole) => { try { setUserId(nextUserId); if (nextRole) setRole(nextRole); addLog(`user set to ${nextUserId}`); } catch {} },
       }), [API_BASE, refresh, userId, addLog]);
 
-      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion } }, props.children);
+      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision } }, props.children);
     }
 
     function BannerStack() {
@@ -690,11 +699,120 @@
       );
     }
 
+    function ApprovalsPill() {
+      const { approvalsSummary } = React.useContext(StateContext);
+      if (!approvalsSummary) return null;
+      const text = `${approvalsSummary.approved || 0}/${approvalsSummary.total || 0} approved`;
+      const style = { background: '#e0e7ff', color: '#1e3a8a', border: '1px solid #c7d2fe', borderRadius: '999px', padding: '2px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' };
+      const open = () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'approvals' } })); } catch {} };
+      return React.createElement('span', { style, onClick: open, title: 'Approvals' }, text);
+    }
+
+    function ApprovalsModal(props) {
+      const { onClose } = props || {};
+      const { currentUser, currentRole, approvalsRevision } = React.useContext(StateContext);
+      const API_BASE = getApiBase();
+      const [rows, setRows] = React.useState(null);
+      const [hdr, setHdr] = React.useState({ approved: 0, total: 0 });
+      const [busy, setBusy] = React.useState(false);
+      const [error, setError] = React.useState('');
+      const [prompt, setPrompt] = React.useState(null);
+      const load = React.useCallback(async () => {
+        try {
+          const r = await fetch(`${API_BASE}/api/v1/approvals`);
+          if (!r.ok) throw new Error('load');
+          const j = await r.json();
+          setRows(Array.isArray(j.approvers) ? j.approvers : []);
+          setHdr(j.summary || { approved: 0, total: 0 });
+        } catch { setError('Failed to load approvals'); }
+      }, [API_BASE]);
+      React.useEffect(() => { load(); }, [load]);
+      React.useEffect(() => { if (approvalsRevision) load(); }, [approvalsRevision, load]);
+      const setSelf = async (targetUserId, approved, notes) => {
+        setBusy(true); setError('');
+        try {
+          const body = { documentId: 'default', actorUserId: currentUser, targetUserId, approved: !!approved };
+          if (notes !== undefined) body.notes = String(notes);
+          const r = await fetch(`${API_BASE}/api/v1/approvals/set`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          if (!r.ok) throw new Error('set');
+          const j = await r.json();
+          setRows(Array.isArray(j.approvers) ? j.approvers : []);
+          setHdr(j.summary || { approved: 0, total: 0 });
+        } catch { setError('Failed to update'); }
+        finally { setBusy(false); }
+      };
+      const doNotify = async () => {
+        setBusy(true); setError('');
+        try {
+          const r = await fetch(`${API_BASE}/api/v1/approvals/notify`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ documentId: 'default', actorUserId: currentUser }) });
+          if (!r.ok) throw new Error('notify');
+        } catch { setError('Failed to notify'); }
+        finally { setBusy(false); }
+      };
+      const confirmReset = () => {
+        setPrompt({ title: 'Factory reset?', message: 'Reset approvals and working overlays?', onConfirm: async () => {
+          setBusy(true); setError('');
+          try {
+            const r = await fetch(`${API_BASE}/api/v1/factory-reset`, { method: 'POST' });
+            if (!r.ok) throw new Error('reset');
+            await load();
+          } catch { setError('Failed to reset'); }
+          finally { setBusy(false); }
+        }});
+      };
+      const headerStyle = { padding: '10px 12px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff' };
+      const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 };
+      const panelStyle = { width: '780px', maxWidth: '95vw', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
+      const btn = (label, onClick, variant) => React.createElement('button', { className: 'ms-Button', disabled: !!busy, onClick, style: variant==='primary' ? { background: '#111827', color: '#fff', border: '1px solid #111827', marginLeft: '8px' } : { marginLeft: '8px' } }, React.createElement('span', { className: 'ms-Button-label' }, label));
+      const canOverride = (String(currentRole || '').toLowerCase() === 'editor');
+      const onToggle = async (row, next) => {
+        if (row.userId !== currentUser && canOverride) {
+          setPrompt({ title: 'Override approval?', message: `Override approval for ${row.name}?`, onConfirm: async () => { await setSelf(row.userId, next); } });
+          return;
+        }
+        await setSelf(row.userId, next);
+      };
+      return React.createElement('div', { style: overlayStyle, onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
+        React.createElement('div', { style: panelStyle }, [
+          React.createElement('div', { key: 'h', style: headerStyle }, [
+            React.createElement('div', { key: 't', style: { fontWeight: 700 } }, `Approvals (${hdr.approved}/${hdr.total} approved)`),
+            React.createElement('div', { key: 'tb' }, [
+              btn('Refresh', load),
+              btn('Request review', doNotify, 'primary'),
+              btn('Factory reset', confirmReset),
+              btn('Close', onClose),
+            ])
+          ]),
+          error ? React.createElement('div', { key: 'e', style: { color: '#7f1d1d', background: '#fee2e2', padding: '8px 12px', borderTop: '1px solid #fecaca', borderBottom: '1px solid #fecaca' } }, error) : null,
+          React.createElement('div', { key: 'b', style: { padding: '12px' } }, [
+            !rows ? React.createElement('div', null, 'Loading...') :
+              React.createElement('table', { style: { width: '100%', borderCollapse: 'collapse' } }, [
+                React.createElement('thead', { key: 'th' }, React.createElement('tr', null, [
+                  React.createElement('th', { key: 'o', style: { textAlign: 'left', padding: '6px' } }, '#'),
+                  React.createElement('th', { key: 'n', style: { textAlign: 'left', padding: '6px' } }, 'Human'),
+                  React.createElement('th', { key: 'a', style: { textAlign: 'left', padding: '6px' } }, 'Approved'),
+                  React.createElement('th', { key: 'm', style: { textAlign: 'left', padding: '6px' } }, 'Message'),
+                  React.createElement('th', { key: 't', style: { textAlign: 'left', padding: '6px' } }, 'Notes'),
+                ])),
+                React.createElement('tbody', { key: 'tb' }, (rows||[]).map((r, i) => React.createElement('tr', { key: r.userId || i, style: { borderTop: '1px solid #eee' } }, [
+                  React.createElement('td', { key: 'o', style: { padding: '6px' } }, String(r.order || i+1)),
+                  React.createElement('td', { key: 'n', style: { padding: '6px' } }, r.name || r.userId),
+                  React.createElement('td', { key: 'a', style: { padding: '6px' } }, React.createElement('input', { type: 'checkbox', disabled: !!busy, checked: !!r.approved, onChange: (e) => onToggle(r, !!e.target.checked) })),
+                  React.createElement('td', { key: 'm', style: { padding: '6px' } }, React.createElement('button', { className: 'ms-Button', onClick: async () => { try { await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'approvals:message', payload: { to: r.userId }, userId: currentUser }) }); } catch {} } }, React.createElement('span', { className: 'ms-Button-label' }, 'Message'))),
+                  React.createElement('td', { key: 't', style: { padding: '6px' } }, React.createElement('input', { type: 'text', defaultValue: r.notes || '', onBlur: (e) => setSelf(r.userId, r.approved, e.target.value), style: { width: '100%' } })),
+                ])))
+              ])
+          ]),
+          prompt ? React.createElement(ConfirmModal, { title: prompt.title, message: prompt.message, onConfirm: async () => { try { await prompt.onConfirm?.(); } finally { setPrompt(null); } }, onClose: () => setPrompt(null) }) : null,
+        ])
+      );
+    }
+
     function App() {
       const [modal, setModal] = React.useState(null);
       const { documentSource } = React.useContext(StateContext);
       React.useEffect(() => {
-        function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); } catch {} }
+        function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); } catch {} }
         window.addEventListener('react:open-modal', onOpen);
         return () => window.removeEventListener('react:open-modal', onOpen);
       }, []);
@@ -713,6 +831,7 @@
             (typeof Office === 'undefined' ? React.createElement(SuperDocHost, { key: 'host', src: documentSource }) : null),
             React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' } }, [
               React.createElement(UserCard, { key: 'u' }),
+              React.createElement(ApprovalsPill, { key: 'ap' }),
               React.createElement(ConnectionBadge, { key: 'c' }),
             ]),
             React.createElement(BannerStack, { key: 'b' }),
@@ -721,7 +840,7 @@
             React.createElement(ExhibitsList, null),
             React.createElement(NotificationsPanel, null),
             React.createElement(ChatConsole, null),
-            modal ? React.createElement(SendVendorModal, { userId: modal.userId, onClose: () => setModal(null) }) : null,
+            modal ? (modal.id === 'send-vendor' ? React.createElement(SendVendorModal, { userId: modal.userId, onClose: () => setModal(null) }) : (modal.id === 'approvals' ? React.createElement(ApprovalsModal, { onClose: () => setModal(null) }) : null)) : null,
             confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
           )
         )
