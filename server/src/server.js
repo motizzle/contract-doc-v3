@@ -29,6 +29,7 @@ const canonicalDocumentsDir = path.join(dataAppDir, 'documents');
 const canonicalExhibitsDir = path.join(dataAppDir, 'exhibits');
 const workingDocumentsDir = path.join(dataWorkingDir, 'documents');
 const workingExhibitsDir = path.join(dataWorkingDir, 'exhibits');
+const approvalsFilePath = path.join(dataAppDir, 'approvals.json');
 
 // Ensure working directories exist
 for (const dir of [dataWorkingDir, workingDocumentsDir, workingExhibitsDir]) {
@@ -42,6 +43,11 @@ const serverState = {
   checkedOutBy: null,
   lastUpdated: new Date().toISOString(),
   revision: 1,
+  // Document update tracking (prototype)
+  documentVersion: 1,
+  updatedBy: null, // { userId, label }
+  updatedPlatform: null, // 'web' | 'word' | null
+  approvalsRevision: 1,
 };
 
 // Load persisted state if available
@@ -53,18 +59,41 @@ try {
     if (saved.checkedOutBy === null || typeof saved.checkedOutBy === 'string') serverState.checkedOutBy = saved.checkedOutBy;
     if (typeof saved.lastUpdated === 'string') serverState.lastUpdated = saved.lastUpdated;
     if (typeof saved.revision === 'number') serverState.revision = saved.revision;
+    if (typeof saved.documentVersion === 'number') serverState.documentVersion = saved.documentVersion;
+    if (saved.updatedBy && typeof saved.updatedBy === 'object') serverState.updatedBy = saved.updatedBy;
+    if (typeof saved.updatedPlatform === 'string') serverState.updatedPlatform = saved.updatedPlatform;
+    if (typeof saved.approvalsRevision === 'number') serverState.approvalsRevision = saved.approvalsRevision;
   }
 } catch {}
 
 function persistState() {
   try {
-    fs.writeFileSync(stateFilePath, JSON.stringify({ isFinal: serverState.isFinal, checkedOutBy: serverState.checkedOutBy, lastUpdated: serverState.lastUpdated, revision: serverState.revision }, null, 2));
+    fs.writeFileSync(stateFilePath, JSON.stringify({ isFinal: serverState.isFinal, checkedOutBy: serverState.checkedOutBy, lastUpdated: serverState.lastUpdated, revision: serverState.revision, documentVersion: serverState.documentVersion, updatedBy: serverState.updatedBy, updatedPlatform: serverState.updatedPlatform, approvalsRevision: serverState.approvalsRevision }, null, 2));
   } catch {}
 }
 
 function bumpRevision() {
   serverState.revision = (Number(serverState.revision) || 0) + 1;
   serverState.lastUpdated = new Date().toISOString();
+  persistState();
+}
+
+function bumpDocumentVersion(updatedByUserId, platform) {
+  serverState.documentVersion = (Number(serverState.documentVersion) || 0) + 1;
+  const users = loadUsers();
+  let label = updatedByUserId || 'user1';
+  try {
+    const u = users.find(u => (u?.id || u?.label) === updatedByUserId);
+    if (u) label = u.label || u.id || updatedByUserId;
+  } catch {}
+  serverState.updatedBy = { userId: updatedByUserId || 'user1', label };
+  serverState.updatedPlatform = (platform === 'word' || platform === 'web') ? platform : null;
+  serverState.lastUpdated = new Date().toISOString();
+  persistState();
+}
+
+function bumpApprovalsRevision() {
+  serverState.approvalsRevision = (Number(serverState.approvalsRevision) || 0) + 1;
   persistState();
 }
 
@@ -107,6 +136,37 @@ function buildBanner({ isFinal, isCheckedOut, isOwner, checkedOutBy }) {
   return { state: 'available', title: 'Available to check out', message: 'Redline it up baby!' };
 }
 
+// Approvals helpers
+function loadApprovals() {
+  try {
+    if (fs.existsSync(approvalsFilePath)) {
+      const j = JSON.parse(fs.readFileSync(approvalsFilePath, 'utf8'));
+      if (j && Array.isArray(j.approvers)) return { approvers: j.approvers, revision: Number(j.revision) || serverState.approvalsRevision };
+    }
+  } catch {}
+  const users = loadUsers();
+  const approvers = users.map((u, i) => {
+    const id = u && (u.id || u.label) || String(i + 1);
+    const name = u && (u.label || u.id) || id;
+    return { userId: id, name, order: i + 1, approved: false, notes: '' };
+  });
+  return { approvers, revision: serverState.approvalsRevision };
+}
+
+function saveApprovals(list) {
+  try {
+    const data = { approvers: Array.isArray(list) ? list : [], revision: serverState.approvalsRevision };
+    fs.writeFileSync(approvalsFilePath, JSON.stringify(data, null, 2));
+    return true;
+  } catch { return false; }
+}
+
+function computeApprovalsSummary(list) {
+  const total = Array.isArray(list) ? list.length : 0;
+  const approved = Array.isArray(list) ? list.filter(a => !!a.approved).length : 0;
+  return { approved, total };
+}
+
 // SSE clients
 const sseClients = new Set();
 function broadcast(event) {
@@ -147,8 +207,7 @@ app.use((req, res, next) => {
 app.use('/vendor', express.static(path.join(publicDir, 'vendor'), { fallthrough: true }));
 // Serve shared UI under /ui
 app.use('/ui', express.static(sharedUiDir, { fallthrough: true }));
-// Keep legacy /static/vendor path for any hard-coded references (optional, can be removed later)
-app.use('/static/vendor', express.static(path.join(publicDir, 'vendor'), { fallthrough: true }));
+// Legacy /static/vendor path removed; use /vendor/* instead
 // Serve web static assets (helper scripts) under /web
 app.use('/web', express.static(webDir, { fallthrough: true }));
 
@@ -210,15 +269,6 @@ function listExhibits() {
   }
   return items;
 }
-
-// Serve default document bytes
-app.get('/documents/default.docx', (req, res) => {
-  const p = resolveDefaultDocPath();
-  if (!fs.existsSync(p)) return res.status(404).send('default.docx not found');
-  res.setHeader('Cache-Control', 'no-store');
-  res.setHeader('Content-Disposition', 'inline; filename="default.docx"');
-  res.sendFile(p);
-});
 
 // Explicit canonical/working document endpoints
 app.get('/documents/canonical/default.docx', (req, res) => {
@@ -295,17 +345,21 @@ app.get('/api/v1/state-matrix', (req, res) => {
   // Derive role from users.json
   const derivedRole = getUserRole(userId);
   const roleMap = loadRoleMap();
+  const defaultPerms = { finalize: true, unfinalize: true, checkout: true, checkin: true, override: true, sendVendor: true };
   const isCheckedOut = !!serverState.checkedOutBy;
   const isOwner = serverState.checkedOutBy === userId;
   const canWrite = !isCheckedOut || isOwner;
-  const rolePerm = roleMap[derivedRole] || {};
+  const rolePerm = roleMap[derivedRole] || defaultPerms;
   const banner = buildBanner({ isFinal: serverState.isFinal, isCheckedOut, isOwner, checkedOutBy: serverState.checkedOutBy });
+  const approvals = loadApprovals();
+  const approvalsSummary = computeApprovalsSummary(approvals.approvers);
   const config = {
     documentId: DOCUMENT_ID,
+    documentVersion: serverState.documentVersion,
+    lastUpdated: serverState.lastUpdated,
+    updatedBy: serverState.updatedBy,
     buttons: {
       replaceDefaultBtn: true,
-      compileBtn: true,
-      approvalsBtn: true,
       finalizeBtn: !!rolePerm.finalize && !serverState.isFinal && canWrite,
       unfinalizeBtn: !!rolePerm.unfinalize && serverState.isFinal && canWrite,
       checkoutBtn: !!rolePerm.checkout && !isCheckedOut && !serverState.isFinal,
@@ -325,6 +379,18 @@ app.get('/api/v1/state-matrix', (req, res) => {
     // Ordered banners for rendering in sequence on the client
     banners: (() => {
       const list = [banner];
+      // Update-notification banner (server compose; client only renders)
+      try {
+        const clientLoaded = Number(req.query?.clientVersion || 0);
+        const clientPlatform = String(req.query?.platform || 'web').toLowerCase();
+        const lastPlatform = String(serverState.updatedPlatform || '').toLowerCase();
+        // Only notify opposite platform from where the last update was made
+        const shouldNotify = serverState.documentVersion > clientLoaded && (!lastPlatform || clientPlatform !== lastPlatform);
+        if (shouldNotify) {
+          const by = serverState.updatedBy && (serverState.updatedBy.label || serverState.updatedBy.userId) || 'someone';
+          list.unshift({ state: 'update_available', title: 'Update available', message: `${by} updated this document.` });
+        }
+      } catch {}
       if (String(derivedRole).toLowerCase() === 'viewer') {
         list.push({ state: 'view_only', title: 'View Only', message: 'You can look but do not touch!' });
       }
@@ -334,6 +400,7 @@ app.get('/api/v1/state-matrix', (req, res) => {
     viewerMessage: isCheckedOut
       ? { type: isOwner ? 'info' : 'warning', text: isOwner ? `Checked out by you` : `Checked out by ${serverState.checkedOutBy}` }
       : { type: 'success', text: 'Available for editing' },
+    approvals: { enabled: true, summary: approvalsSummary },
   };
   res.json({ config, revision: serverState.revision });
 });
@@ -349,6 +416,7 @@ app.get('/api/v1/theme', (req, res) => {
   } catch {}
   return res.json({
     banner: {
+      update_available: { bg: 'linear-gradient(180deg,#0ea5e9,#38bdf8)', fg: '#0f172a', pillBg: '#0ea5e9', pillFg: '#0f172a' },
       final: { bg: 'linear-gradient(180deg,#b91c1c,#ef4444)', fg: '#ffffff', pillBg: '#7f1d1d', pillFg: '#ffffff' },
       checked_out_self: { bg: 'linear-gradient(180deg,#2563eb,#60a5fa)', fg: '#ffffff', pillBg: '#1e3a8a', pillFg: '#ffffff' },
       checked_out_other: { bg: 'linear-gradient(180deg,#b45309,#f59e0b)', fg: '#111827', pillBg: '#92400e', pillFg: '#ffffff' },
@@ -395,8 +463,8 @@ app.post('/api/v1/document/upload', upload.single('file'), (req, res) => {
   const dest = path.join(workingDocumentsDir, 'default.docx');
   try {
     fs.copyFileSync(uploaded, dest);
-    serverState.lastUpdated = new Date().toISOString();
-    persistState();
+    bumpRevision();
+    bumpDocumentVersion(req.body?.userId || 'user1', req.query?.platform || req.body?.platform || null);
     broadcast({ type: 'documentUpload', name: 'default.docx' });
     res.json({ ok: true });
   } catch (e) {
@@ -407,8 +475,8 @@ app.post('/api/v1/document/upload', upload.single('file'), (req, res) => {
 app.post('/api/v1/document/revert', (req, res) => {
   const working = path.join(workingDocumentsDir, 'default.docx');
   if (fs.existsSync(working)) fs.rmSync(working);
-  serverState.lastUpdated = new Date().toISOString();
-  persistState();
+  bumpRevision();
+  bumpDocumentVersion(req.body?.userId || 'system', req.query?.platform || req.body?.platform || null);
   broadcast({ type: 'documentRevert' });
   res.json({ ok: true });
 });
@@ -417,6 +485,7 @@ app.post('/api/v1/document/revert', (req, res) => {
 app.post('/api/v1/save-progress', (req, res) => {
   try {
     const userId = req.body?.userId || 'user1';
+    const platform = (req.body?.platform || req.query?.platform || '').toLowerCase();
     const base64 = req.body?.base64 || '';
     if (serverState.isFinal) return res.status(409).json({ error: 'Finalized' });
     if (!serverState.checkedOutBy) return res.status(409).json({ error: 'Not checked out' });
@@ -430,10 +499,75 @@ app.post('/api/v1/save-progress', (req, res) => {
     const dest = path.join(workingDocumentsDir, 'default.docx');
     try { fs.writeFileSync(dest, bytes); } catch { return res.status(500).json({ error: 'write_failed' }); }
     bumpRevision();
+    bumpDocumentVersion(userId, platform || 'word');
     broadcast({ type: 'saveProgress', userId, size: bytes.length });
     return res.json({ ok: true, revision: serverState.revision });
   } catch (e) {
     return res.status(500).json({ error: 'save_progress_failed' });
+  }
+});
+
+// Approvals API
+app.get('/api/v1/approvals', (req, res) => {
+  const { approvers, revision } = loadApprovals();
+  const summary = computeApprovalsSummary(approvers);
+  res.json({ approvers, summary, revision });
+});
+
+app.post('/api/v1/approvals/set', (req, res) => {
+  try {
+    const documentId = req.body?.documentId || DOCUMENT_ID;
+    const actorUserId = req.body?.actorUserId || 'user1';
+    const targetUserId = req.body?.targetUserId || '';
+    const approved = !!req.body?.approved;
+    const notes = (req.body?.notes !== undefined) ? String(req.body.notes) : undefined;
+    if (documentId !== DOCUMENT_ID) return res.status(400).json({ error: 'invalid_document' });
+    const role = getUserRole(actorUserId);
+    const canOverride = !!(loadRoleMap()[role] && loadRoleMap()[role].override);
+    if (actorUserId !== targetUserId && !canOverride) return res.status(403).json({ error: 'forbidden' });
+    const data = loadApprovals();
+    const list = data.approvers.map(a => {
+      if (a.userId === targetUserId) {
+        return { ...a, approved, notes: (notes !== undefined ? notes : a.notes) };
+      }
+      return a;
+    });
+    // Normalize order to 1..N
+    for (let i = 0; i < list.length; i++) list[i].order = i + 1;
+    bumpApprovalsRevision();
+    saveApprovals(list);
+    const summary = computeApprovalsSummary(list);
+    broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary });
+    res.json({ approvers: list, summary, revision: serverState.approvalsRevision });
+  } catch (e) {
+    res.status(500).json({ error: 'approvals_set_failed' });
+  }
+});
+
+app.post('/api/v1/approvals/reset', (req, res) => {
+  try {
+    const actorUserId = req.body?.actorUserId || 'system';
+    const data = loadApprovals();
+    const list = (data.approvers || []).map((a, i) => ({ userId: a.userId, name: a.name, order: i + 1, approved: false, notes: '' }));
+    bumpApprovalsRevision();
+    saveApprovals(list);
+    const summary = computeApprovalsSummary(list);
+    broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary, notice: { type: 'reset', by: actorUserId } });
+    res.json({ approvers: list, summary, revision: serverState.approvalsRevision });
+  } catch (e) {
+    res.status(500).json({ error: 'approvals_reset_failed' });
+  }
+});
+
+app.post('/api/v1/approvals/notify', (req, res) => {
+  try {
+    const actorUserId = req.body?.actorUserId || 'user1';
+    const data = loadApprovals();
+    const summary = computeApprovalsSummary(data.approvers);
+    broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary, notice: { type: 'request_review', by: actorUserId } });
+    res.json({ approvers: data.approvers, summary, revision: serverState.approvalsRevision });
+  } catch (e) {
+    res.status(500).json({ error: 'approvals_notify_failed' });
   }
 });
 
@@ -467,6 +601,9 @@ app.post('/api/v1/factory-reset', (req, res) => {
         try { if (fs.statSync(p).isFile()) fs.rmSync(p); } catch {}
       }
     }
+    // Also clear approvals data
+    try { if (fs.existsSync(approvalsFilePath)) fs.rmSync(approvalsFilePath); } catch {}
+    bumpApprovalsRevision();
     // Remove snapshots entirely
     const snapDir = path.join(dataWorkingDir, 'snapshots');
     if (fs.existsSync(snapDir)) {
@@ -476,9 +613,11 @@ app.post('/api/v1/factory-reset', (req, res) => {
     serverState.isFinal = false;
     serverState.checkedOutBy = null;
     bumpRevision();
+    bumpDocumentVersion('system');
     broadcast({ type: 'factoryReset' });
-    // Also emit documentRevert to trigger existing client handlers
     broadcast({ type: 'documentRevert' });
+    const approvals = loadApprovals();
+    broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary: computeApprovalsSummary(approvals.approvers) });
     return res.json({ ok: true });
   } catch (e) {
     return res.status(500).json({ error: 'Factory reset failed' });

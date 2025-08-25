@@ -44,6 +44,8 @@
       setDocumentSource: () => {},
       lastError: null,
       setLastError: () => {},
+      approvalsSummary: null,
+      approvalsRevision: 0,
     });
 
     function ThemeProvider(props) {
@@ -60,6 +62,8 @@
     function StateProvider(props) {
       const [config, setConfig] = React.useState(null);
       const [revision, setRevision] = React.useState(0);
+      const [loadedVersion, setLoadedVersion] = React.useState(1);
+      const [dismissedVersion, setDismissedVersion] = React.useState(0);
       const [isConnected, setIsConnected] = React.useState(false);
       const [lastTs, setLastTs] = React.useState(0);
       const [userId, setUserId] = React.useState('user1');
@@ -68,6 +72,8 @@
       const [logs, setLogs] = React.useState([]);
       const [documentSource, setDocumentSource] = React.useState(null);
       const [lastError, setLastError] = React.useState(null);
+      const [approvalsSummary, setApprovalsSummary] = React.useState(null);
+      const [approvalsRevision, setApprovalsRevision] = React.useState(0);
       const API_BASE = getApiBase();
 
       const addLog = React.useCallback((m) => {
@@ -99,8 +105,18 @@
       }, [API_BASE, addLog]);
 
       const refresh = React.useCallback(async () => {
-        try { const r = await fetch(`${API_BASE}/api/v1/state-matrix?platform=web&userId=${encodeURIComponent(userId)}`); if (r.ok) { const j = await r.json(); setConfig(j.config || null); if (typeof j.revision === 'number') setRevision(j.revision); } } catch {}
-      }, [API_BASE, userId]);
+        const plat = (typeof Office !== 'undefined') ? 'word' : 'web';
+        const qs = `platform=${encodeURIComponent(plat)}&userId=${encodeURIComponent(userId)}&clientVersion=${encodeURIComponent(loadedVersion||0)}`;
+        try {
+          const r = await fetch(`${API_BASE}/api/v1/state-matrix?${qs}`);
+          if (r.ok) {
+            const j = await r.json();
+            setConfig(j.config || null);
+            if (typeof j.revision === 'number') setRevision(j.revision);
+            try { const sum = j?.config?.approvals?.summary || null; setApprovalsSummary(sum); } catch {}
+          }
+        } catch {}
+      }, [API_BASE, userId, loadedVersion]);
 
       React.useEffect(() => {
         // Load users for selector (role comes from users.json)
@@ -131,13 +147,11 @@
               if (p && p.ts) setLastTs(p.ts);
               const nextRev = (typeof p.revision === 'number') ? p.revision : null;
               if (nextRev !== null) setRevision(nextRev);
-              if (p && (p.type === 'saveProgress' || p.type === 'factoryReset' || p.type === 'documentRevert')) {
-                (async () => {
-                  const preferred = await choosePreferredDocUrl(nextRev ?? Date.now());
-                  setDocumentSource(preferred);
-                  addLog(`doc src sse ${p.type} -> ${preferred}`);
-                })();
+              if (p && p.type === 'approvals:update') {
+                if (typeof p.revision === 'number') setApprovalsRevision(p.revision);
+                if (p.summary) setApprovalsSummary(p.summary);
               }
+              // Do not auto-refresh document on save/revert; show banner via state-matrix
               refresh();
             } catch {}
           };
@@ -158,22 +172,20 @@
             const src = await choosePreferredDocUrl(Date.now());
             setDocumentSource(src);
             addLog(`doc src set ${src}`);
+            // Initialize version from first matrix load
+            try {
+              const r = await fetch(`${API_BASE}/api/v1/state-matrix?platform=web&userId=${encodeURIComponent(userId)}`);
+              if (r.ok) {
+                const j = await r.json();
+                const v = Number(j?.config?.documentVersion || 1);
+                setLoadedVersion(Number.isFinite(v) && v > 0 ? v : 1);
+              }
+            } catch {}
           } catch (e) { addError({ kind: 'doc_init', message: 'Failed to choose initial document', cause: String(e) }); }
         })();
       }, [API_BASE, addLog, addError, choosePreferredDocUrl]);
 
-      // Update rev param when revision changes (web)
-      React.useEffect(() => {
-        if (typeof Office !== 'undefined') return;
-        if (!documentSource) return;
-        try {
-          const base = documentSource.split('?')[0];
-          if (base.includes('/documents/working/') || base.includes('/documents/canonical/')) {
-            const next = `${base}?rev=${revision}`;
-            if (next !== documentSource) setDocumentSource(next);
-          }
-        } catch {}
-      }, [revision]);
+      // Do NOT auto-update document on revision changes. The banner/CTA controls refresh.
 
       async function exportWordDocumentAsBase64() {
         function u8ToB64(u8) { let bin=''; for (let i=0;i<u8.length;i++) bin+=String.fromCharCode(u8[i]); return btoa(bin); }
@@ -230,7 +242,7 @@
       async function saveProgressWord() {
         const b64 = await exportWordDocumentAsBase64();
         if (!b64 || b64.length < 1024) throw new Error(`word_export_small ${b64 ? b64.length : 0}`);
-        const r = await fetch(`${API_BASE}/api/v1/save-progress`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, base64: b64 }) });
+        const r = await fetch(`${API_BASE}/api/v1/save-progress`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, base64: b64, platform: 'word' }) });
         if (!r.ok) {
           let msg = '';
           try { const j = await r.json(); msg = j && (j.error || j.message) || ''; } catch { try { msg = await r.text(); } catch {} }
@@ -252,7 +264,7 @@
           addLog('web_save ERR export_invalid');
           throw new Error('export_invalid');
         }
-        const r = await fetch(`${API_BASE}/api/v1/save-progress`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, base64: b64 }) });
+        const r = await fetch(`${API_BASE}/api/v1/save-progress`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, base64: b64, platform: 'web' }) });
         if (!r.ok) {
           let msg = '';
           try { const j = await r.json(); msg = j && (j.error || j.message) || ''; } catch { try { msg = await r.text(); } catch {} }
@@ -275,15 +287,49 @@
         setUser: (nextUserId, nextRole) => { try { setUserId(nextUserId); if (nextRole) setRole(nextRole); addLog(`user set to ${nextUserId}`); } catch {} },
       }), [API_BASE, refresh, userId, addLog]);
 
-      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, documentSource, setDocumentSource, lastError, setLastError: addError } }, props.children);
+      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision } }, props.children);
     }
 
     function BannerStack() {
       const { tokens } = React.useContext(ThemeContext);
-      const { config } = React.useContext(StateContext);
+      const { config, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, revision, addLog, setDocumentSource } = React.useContext(StateContext);
       const banners = Array.isArray(config?.banners) ? config.banners : [];
+      const API_BASE = getApiBase();
+      const show = (b) => {
+        if (!b || b.state !== 'update_available') return true;
+        const serverVersion = Number(config?.documentVersion || 0);
+        if (dismissedVersion && dismissedVersion >= serverVersion) return false;
+        if (loadedVersion && loadedVersion >= serverVersion) return false;
+        return true;
+      };
+      const refreshNow = async () => {
+        try {
+          const w = `${API_BASE}/documents/working/default.docx`;
+          const c = `${API_BASE}/documents/canonical/default.docx`;
+          let url = c;
+          try {
+            const h = await fetch(w, { method: 'HEAD' });
+            if (h.ok) {
+              const len = Number(h.headers.get('content-length') || '0');
+              if (Number.isFinite(len) && len > MIN_DOCX_SIZE) url = w;
+            }
+          } catch {}
+          const withRev = `${url}?rev=${revision || Date.now()}`;
+          if (typeof Office !== 'undefined') {
+            const res = await fetch(withRev, { cache: 'no-store' }); if (!res.ok) throw new Error('download');
+            const buf = await res.arrayBuffer();
+            const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
+            await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
+          } else {
+            setDocumentSource(withRev);
+            addLog(`doc src refreshNow -> ${withRev}`);
+          }
+          const serverVersion = Number(config?.documentVersion || 0);
+          if (Number.isFinite(serverVersion) && serverVersion > 0) setLoadedVersion(serverVersion);
+        } catch {}
+      };
       return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' } },
-        banners.map((b, i) => {
+        banners.filter(show).map((b, i) => {
           const t = (tokens && tokens.banner && b && b.state) ? tokens.banner[b.state] : null;
           const style = {
             marginTop: '0px', background: (t && t.pillBg) || '#eef2ff', color: (t && t.pillFg) || '#1e3a8a',
@@ -392,7 +438,7 @@
 
     function DocumentControls() {
       const API_BASE = getApiBase();
-      const { revision, setDocumentSource, addLog } = React.useContext(StateContext);
+      const { revision, setDocumentSource, addLog, setLoadedVersion } = React.useContext(StateContext);
       const isWord = typeof Office !== 'undefined';
       const openNew = async () => {
         if (isWord) {
@@ -427,6 +473,14 @@
             const buf = await res.arrayBuffer();
             const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
             await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
+            try {
+              const plat = 'word';
+              const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent('user1')}`;
+              const r = await fetch(u);
+              const j = await r.json();
+              const v = Number(j?.config?.documentVersion || 0);
+              if (v > 0) setLoadedVersion(v);
+            } catch {}
           } catch {}
         } else {
           try {
@@ -441,6 +495,14 @@
             const finalUrl = `${url}?rev=${revision || Date.now()}`;
             setDocumentSource(finalUrl);
             addLog(`doc src viewLatest -> ${finalUrl}`);
+            try {
+              const plat = 'web';
+              const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent('user1')}`;
+              const r = await fetch(u);
+              const j = await r.json();
+              const v = Number(j?.config?.documentVersion || 0);
+              if (v > 0) setLoadedVersion(v);
+            } catch {}
           } catch {}
         }
       };
@@ -637,11 +699,120 @@
       );
     }
 
+    function ApprovalsPill() {
+      const { approvalsSummary } = React.useContext(StateContext);
+      if (!approvalsSummary) return null;
+      const text = `${approvalsSummary.approved || 0}/${approvalsSummary.total || 0} approved`;
+      const style = { background: '#e0e7ff', color: '#1e3a8a', border: '1px solid #c7d2fe', borderRadius: '999px', padding: '2px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' };
+      const open = () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'approvals' } })); } catch {} };
+      return React.createElement('span', { style, onClick: open, title: 'Approvals' }, text);
+    }
+
+    function ApprovalsModal(props) {
+      const { onClose } = props || {};
+      const { currentUser, currentRole, approvalsRevision } = React.useContext(StateContext);
+      const API_BASE = getApiBase();
+      const [rows, setRows] = React.useState(null);
+      const [hdr, setHdr] = React.useState({ approved: 0, total: 0 });
+      const [busy, setBusy] = React.useState(false);
+      const [error, setError] = React.useState('');
+      const [prompt, setPrompt] = React.useState(null);
+      const load = React.useCallback(async () => {
+        try {
+          const r = await fetch(`${API_BASE}/api/v1/approvals`);
+          if (!r.ok) throw new Error('load');
+          const j = await r.json();
+          setRows(Array.isArray(j.approvers) ? j.approvers : []);
+          setHdr(j.summary || { approved: 0, total: 0 });
+        } catch { setError('Failed to load approvals'); }
+      }, [API_BASE]);
+      React.useEffect(() => { load(); }, [load]);
+      React.useEffect(() => { if (approvalsRevision) load(); }, [approvalsRevision, load]);
+      const setSelf = async (targetUserId, approved, notes) => {
+        setBusy(true); setError('');
+        try {
+          const body = { documentId: 'default', actorUserId: currentUser, targetUserId, approved: !!approved };
+          if (notes !== undefined) body.notes = String(notes);
+          const r = await fetch(`${API_BASE}/api/v1/approvals/set`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          if (!r.ok) throw new Error('set');
+          const j = await r.json();
+          setRows(Array.isArray(j.approvers) ? j.approvers : []);
+          setHdr(j.summary || { approved: 0, total: 0 });
+        } catch { setError('Failed to update'); }
+        finally { setBusy(false); }
+      };
+      const doNotify = async () => {
+        setBusy(true); setError('');
+        try {
+          const r = await fetch(`${API_BASE}/api/v1/approvals/notify`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ documentId: 'default', actorUserId: currentUser }) });
+          if (!r.ok) throw new Error('notify');
+        } catch { setError('Failed to notify'); }
+        finally { setBusy(false); }
+      };
+      const confirmReset = () => {
+        setPrompt({ title: 'Factory reset?', message: 'Reset approvals and working overlays?', onConfirm: async () => {
+          setBusy(true); setError('');
+          try {
+            const r = await fetch(`${API_BASE}/api/v1/factory-reset`, { method: 'POST' });
+            if (!r.ok) throw new Error('reset');
+            await load();
+          } catch { setError('Failed to reset'); }
+          finally { setBusy(false); }
+        }});
+      };
+      const headerStyle = { padding: '10px 12px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff' };
+      const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 };
+      const panelStyle = { width: '780px', maxWidth: '95vw', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
+      const btn = (label, onClick, variant) => React.createElement('button', { className: 'ms-Button', disabled: !!busy, onClick, style: variant==='primary' ? { background: '#111827', color: '#fff', border: '1px solid #111827', marginLeft: '8px' } : { marginLeft: '8px' } }, React.createElement('span', { className: 'ms-Button-label' }, label));
+      const canOverride = (String(currentRole || '').toLowerCase() === 'editor');
+      const onToggle = async (row, next) => {
+        if (row.userId !== currentUser && canOverride) {
+          setPrompt({ title: 'Override approval?', message: `Override approval for ${row.name}?`, onConfirm: async () => { await setSelf(row.userId, next); } });
+          return;
+        }
+        await setSelf(row.userId, next);
+      };
+      return React.createElement('div', { style: overlayStyle, onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
+        React.createElement('div', { style: panelStyle }, [
+          React.createElement('div', { key: 'h', style: headerStyle }, [
+            React.createElement('div', { key: 't', style: { fontWeight: 700 } }, `Approvals (${hdr.approved}/${hdr.total} approved)`),
+            React.createElement('div', { key: 'tb' }, [
+              btn('Refresh', load),
+              btn('Request review', doNotify, 'primary'),
+              btn('Factory reset', confirmReset),
+              btn('Close', onClose),
+            ])
+          ]),
+          error ? React.createElement('div', { key: 'e', style: { color: '#7f1d1d', background: '#fee2e2', padding: '8px 12px', borderTop: '1px solid #fecaca', borderBottom: '1px solid #fecaca' } }, error) : null,
+          React.createElement('div', { key: 'b', style: { padding: '12px' } }, [
+            !rows ? React.createElement('div', null, 'Loading...') :
+              React.createElement('table', { style: { width: '100%', borderCollapse: 'collapse' } }, [
+                React.createElement('thead', { key: 'th' }, React.createElement('tr', null, [
+                  React.createElement('th', { key: 'o', style: { textAlign: 'left', padding: '6px' } }, '#'),
+                  React.createElement('th', { key: 'n', style: { textAlign: 'left', padding: '6px' } }, 'Human'),
+                  React.createElement('th', { key: 'a', style: { textAlign: 'left', padding: '6px' } }, 'Approved'),
+                  React.createElement('th', { key: 'm', style: { textAlign: 'left', padding: '6px' } }, 'Message'),
+                  React.createElement('th', { key: 't', style: { textAlign: 'left', padding: '6px' } }, 'Notes'),
+                ])),
+                React.createElement('tbody', { key: 'tb' }, (rows||[]).map((r, i) => React.createElement('tr', { key: r.userId || i, style: { borderTop: '1px solid #eee' } }, [
+                  React.createElement('td', { key: 'o', style: { padding: '6px' } }, String(r.order || i+1)),
+                  React.createElement('td', { key: 'n', style: { padding: '6px' } }, r.name || r.userId),
+                  React.createElement('td', { key: 'a', style: { padding: '6px' } }, React.createElement('input', { type: 'checkbox', disabled: !!busy, checked: !!r.approved, onChange: (e) => onToggle(r, !!e.target.checked) })),
+                  React.createElement('td', { key: 'm', style: { padding: '6px' } }, React.createElement('button', { className: 'ms-Button', onClick: async () => { try { await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'approvals:message', payload: { to: r.userId }, userId: currentUser }) }); } catch {} } }, React.createElement('span', { className: 'ms-Button-label' }, 'Message'))),
+                  React.createElement('td', { key: 't', style: { padding: '6px' } }, React.createElement('input', { type: 'text', defaultValue: r.notes || '', onBlur: (e) => setSelf(r.userId, r.approved, e.target.value), style: { width: '100%' } })),
+                ])))
+              ])
+          ]),
+          prompt ? React.createElement(ConfirmModal, { title: prompt.title, message: prompt.message, onConfirm: async () => { try { await prompt.onConfirm?.(); } finally { setPrompt(null); } }, onClose: () => setPrompt(null) }) : null,
+        ])
+      );
+    }
+
     function App() {
       const [modal, setModal] = React.useState(null);
       const { documentSource } = React.useContext(StateContext);
       React.useEffect(() => {
-        function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); } catch {} }
+        function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); } catch {} }
         window.addEventListener('react:open-modal', onOpen);
         return () => window.removeEventListener('react:open-modal', onOpen);
       }, []);
@@ -660,6 +831,7 @@
             (typeof Office === 'undefined' ? React.createElement(SuperDocHost, { key: 'host', src: documentSource }) : null),
             React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' } }, [
               React.createElement(UserCard, { key: 'u' }),
+              React.createElement(ApprovalsPill, { key: 'ap' }),
               React.createElement(ConnectionBadge, { key: 'c' }),
             ]),
             React.createElement(BannerStack, { key: 'b' }),
@@ -668,7 +840,7 @@
             React.createElement(ExhibitsList, null),
             React.createElement(NotificationsPanel, null),
             React.createElement(ChatConsole, null),
-            modal ? React.createElement(SendVendorModal, { userId: modal.userId, onClose: () => setModal(null) }) : null,
+            modal ? (modal.id === 'send-vendor' ? React.createElement(SendVendorModal, { userId: modal.userId, onClose: () => setModal(null) }) : (modal.id === 'approvals' ? React.createElement(ApprovalsModal, { onClose: () => setModal(null) }) : null)) : null,
             confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
           )
         )

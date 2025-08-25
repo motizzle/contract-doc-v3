@@ -48,13 +48,14 @@
     - `Word.run(ctx => ctx.document.body.insertFileFromBase64(base64, Word.InsertLocation.replace))`
   - Update `client.loadedVersion = server.documentVersion` after success.
 - Web:
-  - Dispatch `superdoc:open-url` with the resolved latest URL (canonical/working) to remount SuperDoc.
+  - Remount SuperDoc with the resolved latest URL (canonical/working).
   - Update `client.loadedVersion` in memory to the server version.
 
 ## Endpoints
 - Read:
   - `GET /api/v1/state-matrix` → now includes `documentVersion`, `lastUpdated`, `updatedBy`, and `buttons.refreshLatestBtn`.
-  - `GET /documents/default.docx` (overlay resolver) and/or explicit canonical/working endpoints used on refresh.
+  - `GET /documents/canonical/default.docx`
+  - `GET /documents/working/default.docx`
 - Events:
   - `GET /api/v1/events` for `state:update` (and optional `document:changed`).
 
@@ -64,7 +65,7 @@
   - On `state:update`, compare versions and toggle `updateAvailable` state; render a standard banner component.
   - Render “Refresh” button when `config.buttons.refreshLatestBtn` is true.
 - Web host (`server/public/view.html`):
-  - Listen for a custom event (e.g., `superdoc:refresh-latest`) from the shared UI to remount the editor with the latest URL.
+  - Remount the editor with the chosen URL on refresh.
 - Word add‑in (taskpane):
   - Wire the “Refresh document” CTA to the Office.js replace flow. Show a lightweight confirm if editing.
 
