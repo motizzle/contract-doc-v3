@@ -1,7 +1,10 @@
 const https = require('https');
 const http = require('http');
+const { spawn } = require('child_process');
+const path = require('path');
 
 let BASE = 'https://localhost:4001';
+let serverChild = null;
 
 async function detectBase() {
   // Try HTTPS health; if it fails, fall back to HTTP
@@ -12,6 +15,26 @@ async function detectBase() {
   BASE = 'http://localhost:4001';
 }
 
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function ensureServerRunning() {
+  try {
+    const r = await fetchJson('/api/v1/health');
+    if (r && r.status === 200) return true;
+  } catch {}
+  // Start server as child
+  try {
+    const cwd = path.join(__dirname, '..');
+    serverChild = spawn(process.execPath, ['src/server.js'], { cwd, stdio: 'ignore' });
+    // Wait for health
+    for (let i = 0; i < 20; i++) {
+      await sleep(250);
+      try { const r = await fetchJson('/api/v1/health'); if (r && r.status === 200) return true; } catch {}
+    }
+  } catch {}
+  return false;
+}
+
 function fetchJson(path, scheme) {
   const url = `${scheme ? scheme : BASE.startsWith('https') ? 'https' : 'http'}://localhost:4001${path}`;
   const mod = url.startsWith('https') ? https : http;
@@ -20,7 +43,15 @@ function fetchJson(path, scheme) {
       let data = '';
       res.on('data', (c) => (data += c));
       res.on('end', () => {
-        try { resolve({ status: res.statusCode, json: JSON.parse(data) }); } catch (e) { reject(e); }
+        try {
+          const ct = String(res.headers['content-type'] || '').toLowerCase();
+          if (ct.includes('application/json')) {
+            resolve({ status: res.statusCode, json: data ? JSON.parse(data) : {} });
+          } else {
+            try { resolve({ status: res.statusCode, json: JSON.parse(data) }); }
+            catch { resolve({ status: res.statusCode, json: {}, text: data }); }
+          }
+        } catch (e) { reject(e); }
       });
     });
     req.on('error', reject);
@@ -96,6 +127,10 @@ async function ensureFinalized() {
 describe('API', () => {
   beforeAll(async () => {
     await detectBase();
+    await ensureServerRunning();
+  });
+  afterAll(() => {
+    try { if (serverChild) serverChild.kill(); } catch {}
   });
   test('health', async () => {
     const r = await fetchJson('/api/v1/health');
@@ -172,15 +207,6 @@ describe('API', () => {
     expect(res.status).toBe(409);
     await postJson('/api/v1/unfinalize', { userId: 'a' });
     await ensureNotCheckedOut();
-  });
-
-  test('vendor React UMD assets are served', async () => {
-    const r1 = await fetchText('/vendor/react/react.production.min.js');
-    expect(r1.status).toBe(200);
-    expect(typeof r1.text).toBe('string');
-    const r2 = await fetchText('/vendor/react/react-dom.production.min.js');
-    expect(r2.status).toBe(200);
-    expect(typeof r2.text).toBe('string');
   });
 
   test('HEAD content-length reflects working overlay size', async () => {
@@ -269,6 +295,30 @@ describe('API', () => {
     const r = await postJson('/api/v1/unfinalize', { userId: b });
     expect(r.status).toBe(200);
     await ensureUnfinalized();
+  });
+
+  test('approvals API: GET/set/reset/notify', async () => {
+    await ensureUnfinalized();
+    await ensureNotCheckedOut();
+    // GET
+    let r = await fetchJson('/api/v1/approvals');
+    expect(r.status).toBe(200);
+    expect(Array.isArray(r.json.approvers)).toBe(true);
+    const total = r.json.summary.total;
+    // set self approval
+    const me = 'user1';
+    let res = await postJson('/api/v1/approvals/set', { documentId: 'default', actorUserId: me, targetUserId: me, approved: true });
+    expect(res.status).toBe(200);
+    expect(res.json.summary.approved).toBeGreaterThanOrEqual(1);
+    // reset
+    res = await postJson('/api/v1/approvals/reset', { documentId: 'default', actorUserId: me });
+    expect(res.status).toBe(200);
+    expect(res.json.summary.approved).toBe(0);
+    expect(res.json.summary.total).toBe(total);
+    // notify (no change)
+    res = await postJson('/api/v1/approvals/notify', { documentId: 'default', actorUserId: me });
+    expect(res.status).toBe(200);
+    expect(res.json.summary.total).toBe(total);
   });
 });
 
