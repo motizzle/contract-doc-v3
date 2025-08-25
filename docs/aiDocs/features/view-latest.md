@@ -11,7 +11,6 @@ State-machine
 Endpoints
 - Canonical document: `GET /documents/canonical/default.docx`
 - Working document (for parity/testing): `GET /documents/working/default.docx`
-- Overlay resolver (used elsewhere): `GET /documents/default.docx` (prefers working when present)
 
 Web behavior
 - The shared UI dispatches a custom event; the host page remounts SuperDoc with the canonical URL.
@@ -25,7 +24,7 @@ Word add‑in behavior
 Files of record
 - UI (React right‑pane): `/ui/components.react.js` (web dispatch + Word insert)
 - Web host remount: `server/public/view.html`
-- Server routes for canonical/working/default: `server/src/server.js`
+- Server routes for canonical/working: `server/src/server.js`
 
 Notes
 - This feature does not change `serverState` nor emit state events. It is a view operation only.

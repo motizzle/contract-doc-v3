@@ -41,7 +41,8 @@
 - POST `/api/finalize` | `/api/unfinalize` -> update in-memory state; emit SSE
 - SSE `/api/events` -> server-sent events for parity
 - Files
-  - GET `/documents/default.docx`
+  - GET `/documents/canonical/default.docx`
+  - GET `/documents/working/default.docx`
   - GET `/exhibits/*`
   - POST `/api/document/upload` (replace working copy; keep canonical)
   - POST `/api/document/revert` (restore canonical)
@@ -51,12 +52,12 @@
 Include in each client HTML:
 - `<link href="https://cdn.jsdelivr.net/npm/@harbour-enterprises/superdoc/dist/style.css" rel="stylesheet">`
 - `<script src="https://cdn.jsdelivr.net/npm/@harbour-enterprises/superdoc/dist/superdoc.es.js" type="module"></script>`
-Both clients import `https://localhost:4001/static/superdoc-init.js` and call:
+Both clients import `/web/superdoc-init.js` and call:
 ```
 mountSuperdoc({
   selector: '#superdoc',
   toolbar: '#superdoc-toolbar',
-  document: '/documents/default.docx',
+  document: '/documents/canonical/default.docx',
   documentMode: 'editing',
   pagination: true,
   rulers: true
@@ -75,7 +76,7 @@ Then import and mount our shared module:
 
 ## Phased tasks
 1) Server scaffolding
-- Minimal Node server with `/static/*`, `/documents/*`, `/exhibits/*`, `/api/health` over HTTPS
+- Minimal Node server with `/documents/*`, `/exhibits/*`, `/api/health` over HTTPS
 - In-memory store + optional JSON persistence helpers under `data/`
 - Implement uploads (multipart), revert, and exhibits list/upload
 - Stub state matrix and approvals; add SSE stream

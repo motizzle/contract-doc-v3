@@ -231,15 +231,6 @@ function listExhibits() {
   return items;
 }
 
-// Serve default document bytes
-app.get('/documents/default.docx', (req, res) => {
-  const p = resolveDefaultDocPath();
-  if (!fs.existsSync(p)) return res.status(404).send('default.docx not found');
-  res.setHeader('Cache-Control', 'no-store');
-  res.setHeader('Content-Disposition', 'inline; filename="default.docx"');
-  res.sendFile(p);
-});
-
 // Explicit canonical/working document endpoints
 app.get('/documents/canonical/default.docx', (req, res) => {
   const p = path.join(canonicalDocumentsDir, 'default.docx');
