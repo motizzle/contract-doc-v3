@@ -168,8 +168,7 @@ app.use((req, res, next) => {
 app.use('/vendor', express.static(path.join(publicDir, 'vendor'), { fallthrough: true }));
 // Serve shared UI under /ui
 app.use('/ui', express.static(sharedUiDir, { fallthrough: true }));
-// Keep legacy /static/vendor path for any hard-coded references (optional, can be removed later)
-app.use('/static/vendor', express.static(path.join(publicDir, 'vendor'), { fallthrough: true }));
+// Legacy /static/vendor path removed; use /vendor/* instead
 // Serve web static assets (helper scripts) under /web
 app.use('/web', express.static(webDir, { fallthrough: true }));
 

@@ -93,7 +93,7 @@ Then import and mount our shared module:
 4) Word add-in (Yeoman)
 - Use Yeoman to scaffold under `clients/addin-yo`; set dev server to 4000
 - Manifest points to `https://localhost:4000/*`; server allows CORS from 4000
-- Taskpane loads SuperDoc CSS/UMD from `https://localhost:4001/static/vendor/superdoc/*` and imports `/static/superdoc-init.js`
+- Taskpane loads SuperDoc CSS/UMD from `https://localhost:4001/vendor/superdoc/*` and imports `/web/superdoc-init.js`
 
 5) File flows
 - Validate upload new default, revert to canonical, exhibits upload/list
