@@ -5,6 +5,7 @@ sse*.txt
 data/working/
 clients/addin/dist/
 clients/web/dist/
+addin/dist/
 *.log
 
 node_modules/
@@ -12,6 +13,7 @@ server/node_modules/
 data/working/
 clients/addin/dist/
 clients/web/dist/
+addin/dist/
 *.log
 
 # Guard against accidental nested server sandbox
