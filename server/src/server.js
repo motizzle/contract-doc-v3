@@ -168,8 +168,7 @@ app.use((req, res, next) => {
 app.use('/vendor', express.static(path.join(publicDir, 'vendor'), { fallthrough: true }));
 // Serve shared UI under /ui
 app.use('/ui', express.static(sharedUiDir, { fallthrough: true }));
-// Keep legacy /static/vendor path for any hard-coded references (optional, can be removed later)
-app.use('/static/vendor', express.static(path.join(publicDir, 'vendor'), { fallthrough: true }));
+// Legacy /static/vendor path removed; use /vendor/* instead
 // Serve web static assets (helper scripts) under /web
 app.use('/web', express.static(webDir, { fallthrough: true }));
 
@@ -231,15 +230,6 @@ function listExhibits() {
   }
   return items;
 }
-
-// Serve default document bytes
-app.get('/documents/default.docx', (req, res) => {
-  const p = resolveDefaultDocPath();
-  if (!fs.existsSync(p)) return res.status(404).send('default.docx not found');
-  res.setHeader('Cache-Control', 'no-store');
-  res.setHeader('Content-Disposition', 'inline; filename="default.docx"');
-  res.sendFile(p);
-});
 
 // Explicit canonical/working document endpoints
 app.get('/documents/canonical/default.docx', (req, res) => {
@@ -328,8 +318,6 @@ app.get('/api/v1/state-matrix', (req, res) => {
     updatedBy: serverState.updatedBy,
     buttons: {
       replaceDefaultBtn: true,
-      compileBtn: true,
-      approvalsBtn: true,
       finalizeBtn: !!rolePerm.finalize && !serverState.isFinal && canWrite,
       unfinalizeBtn: !!rolePerm.unfinalize && serverState.isFinal && canWrite,
       checkoutBtn: !!rolePerm.checkout && !isCheckedOut && !serverState.isFinal,

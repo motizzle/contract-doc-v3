@@ -14,8 +14,8 @@ This page documents the end‑to‑end data flow for saving a document from the 
    - https URL: SuperDoc opens a same‑origin `https://...docx` → fetch the URL to get bytes (requires CORS if cross‑origin).
 4. Convert captured bytes to base64.
 5. POST `{ userId, base64 }` to `/api/v1/save-progress`.
-6. Server validates (`PK` + min size), writes `data/working/documents/default.docx`, bumps revision, and broadcasts SSE.
-7. Web UI refreshes; Word add‑in receives SSE and pulls the latest working DOCX, opening it with `insertFileFromBase64`.
+6. Server validates (`PK` + min size), writes `/data/working/documents/default.docx`, bumps revision, and broadcasts SSE.
+7. Web UI refreshes; Word add‑in receives SSE and pulls the latest working DOCX (`GET /documents/working/default.docx?rev=...`), opening it with `insertFileFromBase64`.
 
 ### Sequence diagram
 
