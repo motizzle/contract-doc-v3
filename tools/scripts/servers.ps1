@@ -23,7 +23,7 @@ function Start-Backend() {
 
 function Start-Dev() {
   $root = Split-Path -Parent $PSCommandPath | Split-Path -Parent | Split-Path -Parent
-  Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","cd '$root\\addin'; npm run dev-server" -WindowStyle Minimized -PassThru
+  Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","cd '$root\addin'; npm run dev-server" -WindowStyle Minimized -PassThru
 }
 
 function Start-Collab() {
@@ -34,12 +34,12 @@ function Start-Collab() {
 function Start-AddinSideload() {
   $root = Split-Path -Parent $PSCommandPath | Split-Path -Parent | Split-Path -Parent
   # Launch Office sideload (opens Word and loads the add-in)
-  Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","cd '$root\\addin'; npm start" -WindowStyle Normal -PassThru
+  Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","cd '$root\addin'; npm start" -WindowStyle Normal -PassThru
 }
 
 function Show-Status() {
   $conns = Get-NetTCPConnection -LocalPort 4000,4001,4002 -State Listen -ErrorAction SilentlyContinue | Select-Object LocalAddress,LocalPort,OwningProcess,State
-  if ($conns) { $conns | Format-Table -AutoSize | Out-Host } else { Write-Host "No listeners on 4000/4001" }
+  if ($conns) { $conns | Format-Table -AutoSize | Out-Host } else { Write-Host "No listeners on 4000/4001/4002" }
 }
 
 switch ($Action) {
@@ -48,7 +48,7 @@ switch ($Action) {
     Stop-Port 4000; Stop-Port 4001; Stop-Port 4002;
     try {
       $root = Split-Path -Parent $PSCommandPath | Split-Path -Parent | Split-Path -Parent
-      Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","cd '$root\\addin'; npm run stop" -WindowStyle Minimized | Out-Null
+      Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","cd '$root\addin'; npm run stop" -WindowStyle Minimized | Out-Null
     } catch {}
     Show-Status
   }
