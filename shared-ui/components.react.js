@@ -388,7 +388,7 @@
       const [confirm, setConfirm] = React.useState(null);
       const { tokens } = React.useContext(ThemeContext);
       const btns = (config && config.buttons) ? config.buttons : {};
-      const add = (label, onClick, show, variant = 'secondary', opts = {}) => show ? React.createElement(UIButton, Object.assign({ key: label, label, onClick, variant }, opts)) : null;
+      const add = (label, onClick, show, variant, opts = {}) => show ? React.createElement(UIButton, Object.assign({ key: label, label, onClick, variant: variant || 'primary' }, opts)) : null;
       const ask = (title, message, onConfirm) => setConfirm({ title, message, onConfirm });
       return React.createElement(React.Fragment, null,
         React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '8px' } }, [
@@ -454,7 +454,7 @@
       const footerStyle = { padding: '12px 16px', borderTop: `1px solid ${t.border || '#e5e7eb'}`, display: 'flex', justifyContent: 'flex-end', gap: '8px' };
       const copy = async () => { try { const text = (logs || []).slice().reverse().join('\n'); if (navigator?.clipboard?.writeText) await navigator.clipboard.writeText(text); } catch {} };
       const list = React.createElement('div', { style: { fontFamily: 'Consolas, monospace', whiteSpace: 'pre-wrap', background: '#f9fafb', padding: '8px', border: `1px solid ${t.border || '#e5e7eb'}`, borderRadius: '6px', maxHeight: '420px', overflow: 'auto' } }, (logs || []).slice().reverse().join('\n'));
-      const button = (label, variant, onclick) => React.createElement('button', { className: 'ms-Button', onClick: onclick, style: variant==='primary' ? { background: t.primary || '#111827', color: '#fff', border: `1px solid ${t.primary || '#111827'}` } : {} }, label);
+      const button = (label, variant, onclick) => React.createElement(UIButton, { label, onClick: onclick, variant: variant || 'primary' });
       React.useEffect(() => { try { markNotificationsSeen?.(); } catch {} }, [markNotificationsSeen]);
 
       return React.createElement('div', { style: overlayStyle, onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
@@ -846,7 +846,7 @@
       const headerStyle = { padding: '14px 16px', borderBottom: `1px solid ${t.border || '#e5e7eb'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: t.headerBg || '#fff', color: t.headerFg || '#111827' };
       const bodyStyle = { padding: '16px' };
       const footerStyle = { padding: '12px 16px', borderTop: `1px solid ${t.border || '#e5e7eb'}`, display: 'flex', justifyContent: 'flex-end', gap: '8px' };
-      const btn = (label, variant, onclick) => React.createElement('button', { className: 'ms-Button', onClick: onclick, style: variant==='primary' ? { background: t.primary || '#111827', color: '#fff', border: `1px solid ${t.primary || '#111827'}` } : {} }, label);
+      const btn = (label, variant, onclick) => React.createElement(UIButton, { label, onClick: onclick, variant: variant || 'primary' });
       return React.createElement('div', { style: overlayStyle, onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
         React.createElement('div', { style: panelStyle }, [
           React.createElement('div', { key: 'h', style: headerStyle }, [
@@ -926,7 +926,7 @@
       const headerStyle = { padding: '10px 12px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff' };
       const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 };
       const panelStyle = { width: '780px', maxWidth: '95vw', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
-      const btn = (label, onClick, variant) => React.createElement('button', { className: 'ms-Button', disabled: !!busy, onClick, style: variant==='primary' ? { background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-fg)', border: `1px solid var(--btn-border)`, marginLeft: '8px' } : { marginLeft: '8px)', background: 'var(--btn-secondary-bg)', color: 'var(--btn-secondary-fg)', border: `1px solid var(--btn-border)` } }, React.createElement('span', { className: 'ms-Button-label' }, label));
+      const btn = (label, onClick, variant) => React.createElement(UIButton, { label, onClick, variant: variant || 'primary' });
       const canOverride = (String(currentRole || '').toLowerCase() === 'editor');
       const canToggle = (row) => canOverride || String(row.userId) === String(currentUser);
       const onToggle = async (row, next) => {
@@ -963,7 +963,7 @@
                   React.createElement('td', { key: 'o', style: { padding: '6px' } }, String(r.order || i+1)),
                   React.createElement('td', { key: 'n', style: { padding: '6px' } }, r.name || r.userId),
                   React.createElement('td', { key: 'a', style: { padding: '6px' } }, React.createElement('input', { type: 'checkbox', disabled: (!!busy) || (!canToggle(r)), checked: !!r.approved, title: (!canToggle(r) ? 'Only editors can override others' : undefined), onChange: (e) => onToggle(r, !!e.target.checked) })),
-                  React.createElement('td', { key: 'm', style: { padding: '6px' } }, React.createElement('button', { className: 'ms-Button', onClick: async () => { try { await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'approvals:message', payload: { to: r.userId }, userId: currentUser }) }); } catch {} } }, React.createElement('span', { className: 'ms-Button-label' }, 'Message'))),
+                  React.createElement('td', { key: 'm', style: { padding: '6px' } }, React.createElement(UIButton, { label: 'Message', onClick: async () => { try { await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'approvals:message', payload: { to: r.userId }, userId: currentUser }) }); } catch {} } })),
                   React.createElement('td', { key: 't', style: { padding: '6px' } }, React.createElement('input', { type: 'text', defaultValue: r.notes || '', onBlur: (e) => setSelf(r.userId, r.approved, e.target.value), style: { width: '100%' } })),
                 ])))
               ])
