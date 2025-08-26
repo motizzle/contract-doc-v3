@@ -10,12 +10,17 @@
   <!-- Preload local React UMD -->
   <link rel="preload" as="script" href="/vendor/react/react.production.min.js" />
   <link rel="preload" as="script" href="/vendor/react/react-dom.production.min.js" />
+  <!-- Shared branding styles -->
+  <link href="/web/branding.css?v=brand-m1" rel="stylesheet" />
   <style>
+    .brand-logo { position: fixed; top: 8px; left: 12px; z-index: 10000; display: inline-flex; align-items: center; }
+    .brand-logo img { height: 30px; width: auto; display: block; }
+    @media (max-width: 640px) { .brand-logo img { height: 22px; } }
     :root { --banner-h: 140px; }
     body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; height: 100vh; }
-    #banner { min-height: var(--banner-h); display: flex; align-items: center; justify-content: center; padding: 12px; background: linear-gradient(180deg, #9aa0b4 0%, #98a0ad 100%); color: #fff; box-shadow: 0 2px 12px rgba(0,0,0,0.12) inset, 0 2px 6px rgba(0,0,0,0.08); border-bottom: 1px solid rgba(255,255,255,0.25); }
+    /* Background now comes from .brand-header-bg in /web/branding.css */
+    #banner { min-height: var(--banner-h); display: flex; align-items: center; justify-content: center; padding: 12px; color: #fff; }
     .banner-inner { position: relative; width: 100%; max-width: 1024px; display: flex; flex-direction: column; align-items: center; gap: 12px; border-radius: 12px; }
-    .pill-left { position: absolute; left: 0; top: 0; transform: translate(12px, -6px); background: #2563eb; color: #fff; padding: 6px 12px; border-radius: 999px; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
     .banner-title { font-size: 28px; font-weight: 800; text-align: center; text-shadow: 0 1px 1px rgba(0,0,0,0.25); }
     #layout { position: relative; display: flex; height: calc(100vh - var(--banner-h)); }
     #editor-col { position: relative; z-index: 1; display: flex; flex-direction: column; flex: 1; min-width: 0; }
@@ -37,9 +42,10 @@
   </script>
 </head>
 <body>
-  <div id="banner">
+  <a class="brand-logo" href="/" aria-label="OpenGov Home"><img src="/web/assets/opengov-logo.png" alt="OpenGov" /></a>
+  <div id="banner" class="brand-header-bg">
+    <span class="pill-right">Coming 2026</span>
     <div class="banner-inner">
-      <span class="pill-left">Coming 2026</span>
       <div class="banner-title">Redline Like You Mean It: The Future of Contracting</div>
     </div>
   </div>
