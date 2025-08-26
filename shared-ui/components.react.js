@@ -994,18 +994,22 @@
             React.createElement(ErrorBanner, null),
             // SuperDoc host only on web
             (typeof Office === 'undefined' ? React.createElement(SuperDocHost, { key: 'host', src: documentSource }) : null),
-            React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' } }, [
-              React.createElement(UserCard, { key: 'u' }),
-              React.createElement(ApprovalsPill, { key: 'ap' }),
-              React.createElement(ConnectionBadge, { key: 'c' }),
-              React.createElement(NotificationsBell, { key: 'nb' }),
+            // 2 - Banners (top)
+            React.createElement(BannerStack, { key: 'banners' }),
+            // 1 - User selection + role pill + status
+            React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '8px' } }, [
+              React.createElement(UserCard, { key: 'user' }),
+              React.createElement(ApprovalsPill, { key: 'role' }),
+              React.createElement(ConnectionBadge, { key: 'conn' }),
+              React.createElement(NotificationsBell, { key: 'bell' }),
             ]),
-            React.createElement(BannerStack, { key: 'b' }),
-            React.createElement(ActionButtons, null),
-            React.createElement(DocumentControls, null),
-            React.createElement(ExhibitsList, null),
-            // Notifications are now accessed via the bell modal
-            React.createElement(ChatConsole, null),
+            // 3 - Buttons (actions)
+            React.createElement('div', { style: { marginTop: '10px' } }, [
+              React.createElement(ActionButtons, { key: 'actions' }),
+              React.createElement(DocumentControls, { key: 'doc' }),
+            ]),
+            // 4 - Chatbot (OG Assist)
+            React.createElement('div', { style: { marginTop: '12px' } }, React.createElement(ChatConsole, null)),
             modal ? (modal.id === 'send-vendor' ? React.createElement(SendVendorModal, { userId: modal.userId, onClose: () => setModal(null) }) : (modal.id === 'approvals' ? React.createElement(ApprovalsModal, { onClose: () => setModal(null) }) : (modal.id === 'compile' ? React.createElement(CompileModal, { onClose: () => setModal(null) }) : (modal.id === 'notifications' ? React.createElement(NotificationsModal, { onClose: () => setModal(null) }) : null)))) : null,
             confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
           )
