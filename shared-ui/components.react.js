@@ -1001,7 +1001,6 @@
               React.createElement('div', { key: 'hdr1', style: { fontSize: '11px', fontWeight: 700, letterSpacing: '0.02em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' } }, 'User & Role'),
               React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' } }, [
               React.createElement(UserCard, { key: 'user' }),
-              React.createElement(ApprovalsPill, { key: 'role' }),
               React.createElement(ConnectionBadge, { key: 'conn' }),
               React.createElement(NotificationsBell, { key: 'bell' }),
               ])
@@ -1009,6 +1008,7 @@
             // 3 - Buttons (actions)
             React.createElement('div', { style: { marginTop: '10px', borderTop: '1px solid #e5e7eb', paddingTop: '8px' } }, [
               React.createElement('div', { key: 'hdr2', style: { fontSize: '11px', fontWeight: 700, letterSpacing: '0.02em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' } }, 'Actions'),
+              React.createElement(ApprovalsPill, { key: 'approvals-pill' }),
               React.createElement(ActionButtons, { key: 'actions' }),
               React.createElement(DocumentControls, { key: 'doc' }),
             ]),
