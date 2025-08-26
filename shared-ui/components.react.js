@@ -415,13 +415,51 @@
       const { logs } = React.useContext(StateContext);
       const copy = async () => {
         try {
-          const text = (logs || []).join('\n');
+          const text = (logs || []).slice().reverse().join('\n');
           if (navigator?.clipboard?.writeText) await navigator.clipboard.writeText(text);
         } catch {}
       };
       const btn = React.createElement(UIButton, { label: 'Copy', onClick: copy, style: { alignSelf: 'flex-end', marginBottom: '4px' } });
-      const box = React.createElement('div', { style: { fontFamily: 'Consolas, monospace', whiteSpace: 'pre-wrap', background: '#f5f5f5', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', maxHeight: '160px', overflow: 'auto' } }, (logs || []).join('\n'));
+      const box = React.createElement('div', { style: { fontFamily: 'Consolas, monospace', whiteSpace: 'pre-wrap', background: '#f5f5f5', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', maxHeight: '320px', overflow: 'auto' } }, (logs || []).slice().reverse().join('\n'));
       return React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } }, [btn, box]);
+    }
+
+    // Notifications bell (standard icon) that opens a modal
+    function NotificationsBell() {
+      const { logs } = React.useContext(StateContext);
+      const count = (logs || []).length;
+      const open = () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'notifications' } })); } catch {} };
+      const style = { position: 'relative', cursor: 'pointer', padding: '4px 8px', border: '1px solid #ddd', borderRadius: '999px', background: '#fff' };
+      const badge = count ? React.createElement('span', { style: { position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: '#fff', borderRadius: '999px', fontSize: '10px', padding: '0 6px', lineHeight: '16px', height: '16px', minWidth: '16px', textAlign: 'center' } }, String(count)) : null;
+      return React.createElement('span', { style, onClick: open, title: 'Notifications' }, ['🔔', badge]);
+    }
+
+    function NotificationsModal(props) {
+      const { onClose } = props || {};
+      const { tokens } = React.useContext(ThemeContext);
+      const { logs } = React.useContext(StateContext);
+      const t = tokens && tokens.modal ? tokens.modal : {};
+      const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 };
+      const panelStyle = { width: '640px', maxWidth: '95vw', background: t.background || '#fff', border: `1px solid ${t.border || '#e5e7eb'}`, borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
+      const headerStyle = { padding: '14px 16px', borderBottom: `1px solid ${t.border || '#e5e7eb'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: t.headerBg || '#fff', color: t.headerFg || '#111827' };
+      const bodyStyle = { padding: '16px' };
+      const footerStyle = { padding: '12px 16px', borderTop: `1px solid ${t.border || '#e5e7eb'}`, display: 'flex', justifyContent: 'flex-end', gap: '8px' };
+      const copy = async () => { try { const text = (logs || []).slice().reverse().join('\n'); if (navigator?.clipboard?.writeText) await navigator.clipboard.writeText(text); } catch {} };
+      const list = React.createElement('div', { style: { fontFamily: 'Consolas, monospace', whiteSpace: 'pre-wrap', background: '#f9fafb', padding: '8px', border: `1px solid ${t.border || '#e5e7eb'}`, borderRadius: '6px', maxHeight: '420px', overflow: 'auto' } }, (logs || []).slice().reverse().join('\n'));
+      const button = (label, variant, onclick) => React.createElement('button', { className: 'ms-Button', onClick: onclick, style: variant==='primary' ? { background: t.primary || '#111827', color: '#fff', border: `1px solid ${t.primary || '#111827'}` } : {} }, label);
+      return React.createElement('div', { style: overlayStyle, onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
+        React.createElement('div', { style: panelStyle }, [
+          React.createElement('div', { key: 'h', style: headerStyle }, [
+            React.createElement('div', { key: 't', style: { fontWeight: 700 } }, 'Notifications'),
+            React.createElement('button', { key: 'x', onClick: onClose, style: { border: 'none', background: 'transparent' } }, '✕')
+          ]),
+          React.createElement('div', { key: 'b', style: bodyStyle }, list),
+          React.createElement('div', { key: 'f', style: footerStyle }, [
+            button('Copy', 'secondary', copy),
+            button('Close', 'primary', onClose),
+          ])
+        ])
+      );
     }
 
     function ChatConsole() {
@@ -927,7 +965,7 @@
       const [modal, setModal] = React.useState(null);
       const { documentSource } = React.useContext(StateContext);
       React.useEffect(() => {
-        function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); } catch {} }
+        function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); if (d && d.id === 'notifications') setModal({ id: 'notifications' }); } catch {} }
         window.addEventListener('react:open-modal', onOpen);
         return () => window.removeEventListener('react:open-modal', onOpen);
       }, []);
@@ -948,14 +986,15 @@
               React.createElement(UserCard, { key: 'u' }),
               React.createElement(ApprovalsPill, { key: 'ap' }),
               React.createElement(ConnectionBadge, { key: 'c' }),
+              React.createElement(NotificationsBell, { key: 'nb' }),
             ]),
             React.createElement(BannerStack, { key: 'b' }),
             React.createElement(ActionButtons, null),
             React.createElement(DocumentControls, null),
             React.createElement(ExhibitsList, null),
-            React.createElement(NotificationsPanel, null),
+            // Notifications are now accessed via the bell modal
             React.createElement(ChatConsole, null),
-            modal ? (modal.id === 'send-vendor' ? React.createElement(SendVendorModal, { userId: modal.userId, onClose: () => setModal(null) }) : (modal.id === 'approvals' ? React.createElement(ApprovalsModal, { onClose: () => setModal(null) }) : (modal.id === 'compile' ? React.createElement(CompileModal, { onClose: () => setModal(null) }) : null))) : null,
+            modal ? (modal.id === 'send-vendor' ? React.createElement(SendVendorModal, { userId: modal.userId, onClose: () => setModal(null) }) : (modal.id === 'approvals' ? React.createElement(ApprovalsModal, { onClose: () => setModal(null) }) : (modal.id === 'compile' ? React.createElement(CompileModal, { onClose: () => setModal(null) }) : (modal.id === 'notifications' ? React.createElement(NotificationsModal, { onClose: () => setModal(null) }) : null)))) : null,
             confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
           )
         )
