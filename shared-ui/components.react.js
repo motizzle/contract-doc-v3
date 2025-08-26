@@ -928,7 +928,9 @@
       const panelStyle = { width: '780px', maxWidth: '95vw', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
       const btn = (label, onClick, variant) => React.createElement('button', { className: 'ms-Button', disabled: !!busy, onClick, style: variant==='primary' ? { background: '#111827', color: '#fff', border: '1px solid #111827', marginLeft: '8px' } : { marginLeft: '8px' } }, React.createElement('span', { className: 'ms-Button-label' }, label));
       const canOverride = (String(currentRole || '').toLowerCase() === 'editor');
+      const canToggle = (row) => canOverride || String(row.userId) === String(currentUser);
       const onToggle = async (row, next) => {
+        if (!canToggle(row)) return; // Non-editors cannot toggle others
         if (row.userId !== currentUser && canOverride) {
           setPrompt({ title: 'Override approval?', message: `Override approval for ${row.name}?`, onConfirm: async () => { await setSelf(row.userId, next); } });
           return;
@@ -960,7 +962,7 @@
                 React.createElement('tbody', { key: 'tb' }, (rows||[]).map((r, i) => React.createElement('tr', { key: r.userId || i, style: { borderTop: '1px solid #eee' } }, [
                   React.createElement('td', { key: 'o', style: { padding: '6px' } }, String(r.order || i+1)),
                   React.createElement('td', { key: 'n', style: { padding: '6px' } }, r.name || r.userId),
-                  React.createElement('td', { key: 'a', style: { padding: '6px' } }, React.createElement('input', { type: 'checkbox', disabled: !!busy, checked: !!r.approved, onChange: (e) => onToggle(r, !!e.target.checked) })),
+                  React.createElement('td', { key: 'a', style: { padding: '6px' } }, React.createElement('input', { type: 'checkbox', disabled: (!!busy) || (!canToggle(r)), checked: !!r.approved, title: (!canToggle(r) ? 'Only editors can override others' : undefined), onChange: (e) => onToggle(r, !!e.target.checked) })),
                   React.createElement('td', { key: 'm', style: { padding: '6px' } }, React.createElement('button', { className: 'ms-Button', onClick: async () => { try { await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'approvals:message', payload: { to: r.userId }, userId: currentUser }) }); } catch {} } }, React.createElement('span', { className: 'ms-Button-label' }, 'Message'))),
                   React.createElement('td', { key: 't', style: { padding: '6px' } }, React.createElement('input', { type: 'text', defaultValue: r.notes || '', onBlur: (e) => setSelf(r.userId, r.approved, e.target.value), style: { width: '100%' } })),
                 ])))
