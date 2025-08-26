@@ -32,6 +32,11 @@
     #superdoc-toolbar .superdoc-toolbar-group-side { min-width: auto !important; }
     #superdoc-toolbar .overflow-icon, 
     #superdoc-toolbar .superdoc-toolbar-overflow { display: none !important; }
+    /* Flatten group sizing and remove spacers so all items participate in wrapping */
+    #superdoc-toolbar .superdoc-toolbar > * { flex: 0 1 auto !important; min-width: 0 !important; }
+    #superdoc-toolbar .superdoc-toolbar-group-side { flex: 0 0 auto !important; min-width: 0 !important; }
+    #superdoc-toolbar .sd-toolbar-spacer,
+    #superdoc-toolbar .superdoc-toolbar .spacer { display: none !important; }
     #superdoc { position: relative; z-index: 1; flex: 1; min-height: 0; }
     #pane { position: relative; z-index: 5; width: 360px; max-width: 420px; border-left: 1px solid #eee; display: flex; flex-direction: column; padding-top: 20px; background: #fff; box-shadow: -2px 0 8px rgba(0,0,0,0.08); }
     #app-root { padding: 8px 12px; overflow: auto; background: #fff; }
