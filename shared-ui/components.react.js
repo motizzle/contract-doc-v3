@@ -735,7 +735,7 @@
             )
           ]),
           React.createElement('div', { key: 'f2', style: footerStyle },
-            (Array.isArray(schema.actions) ? schema.actions : []).map((a, i) => React.createElement('button', { key: `a-${i}`, onClick: () => onAction(a.id), style: (a.variant === 'primary') ? { background: t.primary || '#111827', color: '#fff', border: `1px solid ${t.primary || '#111827'}` } : {} }, a.label || a.id))
+            (Array.isArray(schema.actions) ? schema.actions : []).map((a, i) => React.createElement(UIButton, { key: `a-${i}`, label: a.label || a.id, onClick: () => onAction(a.id), variant: a.variant || 'primary' }))
           )
         ])
       );
