@@ -119,7 +119,9 @@
    without reserving right-side space or overflow menus.
 ------------------------------------------------------- */
 #layout { overflow-x: auto; }
-#editor-col { padding-right: 380px; box-sizing: border-box; }
+/* Reserve space for right pane without expanding editor width */
+#editor-col { padding-right: 0; box-sizing: border-box; }
+#superdoc-toolbar, #superdoc { margin-right: 380px; }
 #superdoc-toolbar {
   position: relative;
   z-index: 100;
