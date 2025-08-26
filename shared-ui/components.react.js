@@ -59,6 +59,34 @@
       return React.createElement(ThemeContext.Provider, { value: { tokens } }, props.children);
     }
 
+    // Reusable button with pressed and loading states
+    function UIButton(props) {
+      const { tokens } = React.useContext(ThemeContext);
+      const { label, onClick, variant = 'secondary', disabled = false, isLoading = false, style = {} } = props || {};
+      const [pressed, setPressed] = React.useState(false);
+      const [loading, setLoading] = React.useState(false);
+      const themed = (() => {
+        const t = tokens && tokens.buttons && tokens.buttons[variant];
+        return t ? { background: t.bg, color: t.fg, border: `1px solid ${t.border}` } : {};
+      })();
+      const busy = !!isLoading || loading;
+      const visual = Object.assign({ margin: '4px', opacity: disabled ? 0.6 : 1, transform: pressed ? 'scale(0.98)' : 'scale(1)', transition: 'transform 80ms ease' }, themed, style);
+      const handleClick = async (e) => {
+        if (disabled || busy) return;
+        setPressed(true);
+        setTimeout(() => { try { setPressed(false); } catch {} }, 150);
+        try {
+          const ret = onClick?.(e);
+          if (ret && typeof ret.then === 'function') {
+            setLoading(true);
+            try { await ret; } finally { setLoading(false); }
+          }
+        } catch {}
+      };
+      const text = busy ? (typeof props.loadingLabel === 'string' ? props.loadingLabel : `${label}…`) : label;
+      return React.createElement('button', { className: 'ms-Button', onClick: handleClick, disabled: disabled || busy, style: visual }, React.createElement('span', { className: 'ms-Button-label' }, text));
+    }
+
     function StateProvider(props) {
       const [config, setConfig] = React.useState(null);
       const [revision, setRevision] = React.useState(0);
@@ -353,11 +381,7 @@
       const [confirm, setConfirm] = React.useState(null);
       const { tokens } = React.useContext(ThemeContext);
       const btns = (config && config.buttons) ? config.buttons : {};
-      const themed = (variant) => {
-        const t = tokens && tokens.buttons && tokens.buttons[variant];
-        return t ? { background: t.bg, color: t.fg, border: `1px solid ${t.border}` } : {};
-      };
-      const add = (label, onClick, show, variant = 'secondary') => show ? React.createElement('button', { key: label, className: 'ms-Button', onClick: onClick, style: Object.assign({ margin: '4px' }, themed(variant)) }, React.createElement('span', { className: 'ms-Button-label' }, label)) : null;
+      const add = (label, onClick, show, variant = 'secondary', opts = {}) => show ? React.createElement(UIButton, Object.assign({ key: label, label, onClick, variant }, opts)) : null;
       const ask = (title, message, onConfirm) => setConfirm({ title, message, onConfirm });
       return React.createElement(React.Fragment, null,
         React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '8px' } }, [
@@ -368,7 +392,8 @@
           add('Finalize', () => ask('Finalize?', 'This will lock the document.', actions.finalize), !!btns.finalizeBtn, 'primary'),
           add('Unfinalize', () => ask('Unlock?', 'This will unlock the document.', actions.unfinalize), !!btns.unfinalizeBtn),
           add('Override Checkout', actions.override, !!btns.overrideBtn),
-          add('Send to Vendor', () => actions.sendVendor({}), !!btns.sendVendorBtn),
+          add('Send to Vendor', () => { try { setTimeout(() => { try { actions.sendVendor({}); } catch {} }, 130); } catch {} }, !!btns.sendVendorBtn),
+          add('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true, 'primary'),
           add('Factory Reset', () => ask('Factory reset?', 'This will clear working data.', actions.factoryReset), true),
         ].filter(Boolean)),
         confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
@@ -394,7 +419,7 @@
           if (navigator?.clipboard?.writeText) await navigator.clipboard.writeText(text);
         } catch {}
       };
-      const btn = React.createElement('button', { className: 'ms-Button', onClick: copy, style: { alignSelf: 'flex-end', marginBottom: '4px' } }, React.createElement('span', { className: 'ms-Button-label' }, 'Copy'));
+      const btn = React.createElement(UIButton, { label: 'Copy', onClick: copy, style: { alignSelf: 'flex-end', marginBottom: '4px' } });
       const box = React.createElement('div', { style: { fontFamily: 'Consolas, monospace', whiteSpace: 'pre-wrap', background: '#f5f5f5', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', maxHeight: '160px', overflow: 'auto' } }, (logs || []).join('\n'));
       return React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } }, [btn, box]);
     }
@@ -415,7 +440,7 @@
       };
       const box = React.createElement('div', { style: { border: '1px solid #ddd', borderRadius: '6px', padding: '8px', height: '120px', overflow: 'auto', background: '#fff' } }, messages.map((m, i) => React.createElement('div', { key: i, style: { marginTop: i ? '6px' : 0 } }, m)));
       const input = React.createElement('input', { type: 'text', value: text, onChange: (e) => setText(e.target.value), placeholder: 'Type a message...', style: { flex: 1, padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' } });
-      const btn = React.createElement('button', { className: 'ms-Button', onClick: send }, React.createElement('span', { className: 'ms-Button-label' }, 'Send'));
+      const btn = React.createElement(UIButton, { label: 'Send', onClick: send });
       const row = React.createElement('div', { style: { display: 'flex', gap: '8px' } }, [input, btn]);
       const wrap = React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } }, [box, row]);
       return React.createElement('div', null, [React.createElement('div', { key: 'hdr', style: { fontWeight: 600 } }, 'Assistant'), wrap]);
@@ -506,7 +531,7 @@
           } catch {}
         }
       };
-      const btn = (label, onClick) => React.createElement('button', { className: 'ms-Button', onClick, style: { margin: '4px' } }, React.createElement('span', { className: 'ms-Button-label' }, label));
+      const btn = (label, onClick, variant) => React.createElement(UIButton, { label, onClick, variant: variant || 'secondary' });
       return React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '8px' } }, [btn('Open New Document', openNew), btn('View Latest', viewLatest)]);
     }
 
@@ -674,6 +699,96 @@
       );
     }
 
+    function CompileModal(props) {
+      const { onClose } = props || {};
+      const API_BASE = getApiBase();
+      const [items, setItems] = React.useState([]);
+      const [selected, setSelected] = React.useState(new Set());
+      const [busy, setBusy] = React.useState(false);
+      const [error, setError] = React.useState('');
+      const [resultUrl, setResultUrl] = React.useState('');
+      React.useEffect(() => { (async () => { try { const r = await fetch(`${API_BASE}/api/v1/exhibits`); if (r.ok) { const j = await r.json(); setItems(Array.isArray(j.items) ? j.items.filter(it=>/\.pdf$/i.test(it.name)) : []); } } catch {} })(); }, [API_BASE]);
+      const toggle = (name) => setSelected(prev => { const n = new Set(prev); if (n.has(name)) n.delete(name); else n.add(name); return n; });
+      const refresh = async () => { try { const r = await fetch(`${API_BASE}/api/v1/exhibits`); if (r.ok) { const j = await r.json(); setItems(Array.isArray(j.items) ? j.items.filter(it=>/\.pdf$/i.test(it.name)) : []); } } catch {} };
+      const upload = () => {
+        try {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = 'application/pdf,.pdf';
+          input.onchange = async (e) => {
+            const file = e.target.files && e.target.files[0]; if (!file) return;
+            const fd = new FormData();
+            fd.append('file', file, file.name);
+            setBusy(true); setError('');
+            try {
+              const r = await fetch(`${API_BASE}/api/v1/exhibits/upload`, { method: 'POST', body: fd });
+              if (!r.ok) throw new Error('upload');
+              await refresh();
+            } catch { setError('Failed to upload'); }
+            finally { setBusy(false); }
+          };
+          input.click();
+        } catch {}
+      };
+      const compile = async () => {
+        setBusy(true); setError(''); setResultUrl('');
+        try {
+          const exhibits = Array.from(selected.values());
+          const r = await fetch(`${API_BASE}/api/v1/compile`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ exhibits }) });
+          if (!r.ok) throw new Error('compile');
+          const j = await r.json();
+          if (j && j.url) setResultUrl(j.url);
+        } catch { setError('Failed to compile'); }
+        finally { setBusy(false); }
+      };
+      React.useEffect(() => {
+        if (!resultUrl) return;
+        try {
+          const href = (/^https?:/i.test(resultUrl)) ? resultUrl : `${API_BASE}${resultUrl.startsWith('/') ? resultUrl : ('/' + resultUrl)}`;
+          const a = document.createElement('a');
+          a.href = href;
+          a.download = 'packet.pdf';
+          a.target = '_blank';
+          a.rel = 'noopener';
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => { try { document.body.removeChild(a); } catch {} }, 0);
+        } catch {}
+      }, [resultUrl, API_BASE]);
+      const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 };
+      const panelStyle = { width: '720px', maxWidth: '95vw', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
+      const headerStyle = { padding: '14px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', color: '#111827' };
+      const bodyStyle = { padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' };
+      const footerStyle = { padding: '12px 16px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '8px' };
+      return React.createElement('div', { style: overlayStyle, onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
+        React.createElement('div', { style: panelStyle }, [
+          React.createElement('div', { key: 'h', style: headerStyle }, [
+            React.createElement('div', { key: 't', style: { fontWeight: 700 } }, 'Compile'),
+            React.createElement('button', { key: 'x', onClick: onClose, style: { border: 'none', background: 'transparent' } }, '✕')
+          ]),
+          error ? React.createElement('div', { key: 'e', style: { color: '#7f1d1d', background: '#fee2e2', padding: '8px 12px', borderTop: '1px solid #fecaca', borderBottom: '1px solid #fecaca' } }, error) : null,
+          React.createElement('div', { key: 'b', style: bodyStyle }, [
+            React.createElement('div', { key: 'lbl', style: { fontWeight: 600 } }, 'Exhibits'),
+            React.createElement('div', { key: 'list', style: { border: '1px solid #e5e7eb', borderRadius: '6px', padding: '8px', maxHeight: '200px', overflow: 'auto' } },
+              (items.length ? items.map((it, i) => React.createElement('label', { key: i, style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 6px' } }, [
+                React.createElement('input', { type: 'checkbox', checked: selected.has(it.name), onChange: () => toggle(it.name) }),
+                React.createElement('span', null, it.name)
+              ])) : React.createElement('div', null, '(none)'))
+            ),
+            resultUrl ? React.createElement('div', { key: 'ok' }, [
+              React.createElement('a', { href: resultUrl, target: '_blank', rel: 'noreferrer' }, 'Open compiled PDF')
+            ]) : null
+          ]),
+          React.createElement('div', { key: 'f', style: footerStyle }, [
+            React.createElement(UIButton, { key: 'upload', label: 'Upload PDF', onClick: upload, disabled: !!busy }),
+            React.createElement(UIButton, { key: 'cancel', label: 'Cancel', onClick: onClose, disabled: !!busy }),
+            React.createElement(UIButton, { key: 'go', label: 'Compile', onClick: compile, variant: 'primary', isLoading: !!busy, loadingLabel: 'Compiling…' }),
+          ])
+        ])
+      );
+    }
+
     function ConfirmModal(props) {
       const { title, message, onConfirm, onClose } = props || {};
       const { tokens } = React.useContext(ThemeContext);
@@ -704,7 +819,7 @@
       if (!approvalsSummary) return null;
       const text = `${approvalsSummary.approved || 0}/${approvalsSummary.total || 0} approved`;
       const style = { background: '#e0e7ff', color: '#1e3a8a', border: '1px solid #c7d2fe', borderRadius: '999px', padding: '2px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' };
-      const open = () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'approvals' } })); } catch {} };
+      const open = () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'approvals' } })); } catch {} }, 200); } catch {} };
       return React.createElement('span', { style, onClick: open, title: 'Approvals' }, text);
     }
 
@@ -812,7 +927,7 @@
       const [modal, setModal] = React.useState(null);
       const { documentSource } = React.useContext(StateContext);
       React.useEffect(() => {
-        function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); } catch {} }
+        function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); } catch {} }
         window.addEventListener('react:open-modal', onOpen);
         return () => window.removeEventListener('react:open-modal', onOpen);
       }, []);
@@ -840,7 +955,7 @@
             React.createElement(ExhibitsList, null),
             React.createElement(NotificationsPanel, null),
             React.createElement(ChatConsole, null),
-            modal ? (modal.id === 'send-vendor' ? React.createElement(SendVendorModal, { userId: modal.userId, onClose: () => setModal(null) }) : (modal.id === 'approvals' ? React.createElement(ApprovalsModal, { onClose: () => setModal(null) }) : null)) : null,
+            modal ? (modal.id === 'send-vendor' ? React.createElement(SendVendorModal, { userId: modal.userId, onClose: () => setModal(null) }) : (modal.id === 'approvals' ? React.createElement(ApprovalsModal, { onClose: () => setModal(null) }) : (modal.id === 'compile' ? React.createElement(CompileModal, { onClose: () => setModal(null) }) : null))) : null,
             confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
           )
         )

@@ -29,10 +29,11 @@ const canonicalDocumentsDir = path.join(dataAppDir, 'documents');
 const canonicalExhibitsDir = path.join(dataAppDir, 'exhibits');
 const workingDocumentsDir = path.join(dataWorkingDir, 'documents');
 const workingExhibitsDir = path.join(dataWorkingDir, 'exhibits');
+const compiledDir = path.join(dataWorkingDir, 'compiled');
 const approvalsFilePath = path.join(dataAppDir, 'approvals.json');
 
 // Ensure working directories exist
-for (const dir of [dataWorkingDir, workingDocumentsDir, workingExhibitsDir]) {
+for (const dir of [dataWorkingDir, workingDocumentsDir, workingExhibitsDir, compiledDir]) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
@@ -210,6 +211,8 @@ app.use('/ui', express.static(sharedUiDir, { fallthrough: true }));
 // Legacy /static/vendor path removed; use /vendor/* instead
 // Serve web static assets (helper scripts) under /web
 app.use('/web', express.static(webDir, { fallthrough: true }));
+// Serve compiled outputs (PDFs)
+app.use('/compiled', express.static(compiledDir, { fallthrough: true }));
 
 // Prevent caches on JSON APIs to avoid stale state
 app.use('/api', (req, res, next) => {
@@ -709,6 +712,110 @@ app.post('/api/v1/exhibits/upload', upload.single('file'), (req, res) => {
   broadcast({ type: 'exhibitUpload', name: path.basename(uploaded) });
   res.json({ ok: true });
 });
+
+// Compile: convert current DOCX to PDF (LibreOffice), then merge selected exhibits (PDF)
+app.post('/api/v1/compile', async (req, res) => {
+  try {
+    const names = Array.isArray(req.body?.exhibits) ? req.body.exhibits.filter(Boolean) : [];
+    const outName = `packet-${Date.now()}.pdf`;
+    const outPath = path.join(compiledDir, outName);
+    // 1) Resolve current document path (DOCX)
+    const docPath = resolveDefaultDocPath();
+    if (!fs.existsSync(docPath)) return res.status(404).json({ error: 'no_default_doc' });
+    // 2) Convert to PDF using LibreOffice (soffice)
+    const tempDocPdf = path.join(compiledDir, `doc-${Date.now()}.pdf`);
+    const convertedPath = await convertDocxToPdf(docPath, tempDocPdf);
+    if (!convertedPath || !fs.existsSync(convertedPath)) return res.status(500).json({ error: 'convert_failed' });
+    // 3) Collect exhibit PDFs
+    const exhibitPaths = [];
+    for (const n of names) {
+      const w = path.join(workingExhibitsDir, n);
+      const c = path.join(canonicalExhibitsDir, n);
+      const p = fs.existsSync(w) ? w : c;
+      if (p && fs.existsSync(p) && /\.pdf$/i.test(p)) exhibitPaths.push(p);
+    }
+    // 4) Merge into packet
+    const buffers = [];
+    buffers.push(fs.readFileSync(convertedPath));
+    for (const p of exhibitPaths) {
+      try { buffers.push(fs.readFileSync(p)); } catch {}
+    }
+    const merged = await mergePdfs(buffers);
+    if (!merged) return res.status(500).json({ error: 'merge_failed' });
+    fs.writeFileSync(outPath, merged);
+    try { if (convertedPath && fs.existsSync(convertedPath)) fs.rmSync(convertedPath); } catch {}
+    broadcast({ type: 'compile', name: outName });
+    return res.json({ ok: true, url: `/compiled/${encodeURIComponent(outName)}` });
+  } catch (e) {
+    return res.status(500).json({ error: 'compile_failed' });
+  }
+});
+
+// Helpers: LibreOffice conversion and PDF merge
+async function convertDocxToPdf(inputPath, desiredOutPath) {
+  try {
+    const { execFile } = require('child_process');
+    const baseOutDir = path.dirname(desiredOutPath);
+    if (!fs.existsSync(baseOutDir)) fs.mkdirSync(baseOutDir, { recursive: true });
+
+    // Candidates for Windows and general installs
+    const exeCandidates = [];
+    if (process.env.SOFFICE_PATH) exeCandidates.push(process.env.SOFFICE_PATH);
+    exeCandidates.push('soffice');
+    // Common Windows locations
+    exeCandidates.push('C:/Program Files/LibreOffice/program/soffice.exe');
+    exeCandidates.push('C:/Program Files (x86)/LibreOffice/program/soffice.exe');
+    // soffice.com sometimes behaves better in headless mode on Windows
+    exeCandidates.push('C:/Program Files/LibreOffice/program/soffice.com');
+    exeCandidates.push('C:/Program Files (x86)/LibreOffice/program/soffice.com');
+
+    // Try multiple arg variants
+    const argVariants = [
+      ['--headless', '--norestore', '--nolockcheck', '--convert-to', 'pdf', '--outdir', baseOutDir, inputPath],
+      ['--headless', '--norestore', '--nolockcheck', '--convert-to', 'pdf:writer_pdf_Export', '--outdir', baseOutDir, inputPath],
+    ];
+
+    let success = false;
+    let lastErr = null;
+    for (const exe of exeCandidates) {
+      for (const args of argVariants) {
+        // eslint-disable-next-line no-await-in-loop
+        const ok = await new Promise((resolve) => {
+          try {
+            execFile(exe, args, { windowsHide: true }, (err, _stdout, _stderr) => {
+              lastErr = err || null;
+              resolve(!err);
+            });
+          } catch (e) { lastErr = e; resolve(false); }
+        });
+        if (ok) { success = true; break; }
+      }
+      if (success) break;
+    }
+    if (!success) return null;
+
+    // LibreOffice writes output to outdir with same base name
+    const produced = path.join(baseOutDir, path.basename(inputPath).replace(/\.[^.]+$/, '.pdf'));
+    if (!fs.existsSync(produced)) return null;
+    try { fs.renameSync(produced, desiredOutPath); } catch { try { fs.copyFileSync(produced, desiredOutPath); } catch { return null; } }
+    return desiredOutPath;
+  } catch { return null; }
+}
+
+async function mergePdfs(pdfBuffers) {
+  try {
+    const { PDFDocument } = require('pdf-lib');
+    const out = await PDFDocument.create();
+    for (const buf of pdfBuffers) {
+      if (!buf || !buf.length) continue;
+      const src = await PDFDocument.load(buf);
+      const pages = await out.copyPages(src, src.getPageIndices());
+      for (const p of pages) out.addPage(p);
+    }
+    const bytes = await out.save();
+    return Buffer.from(bytes);
+  } catch { return null; }
+}
 
 // Send to Vendor (prototype): no-op with SSE echo
 app.post('/api/v1/send-vendor', (req, res) => {
