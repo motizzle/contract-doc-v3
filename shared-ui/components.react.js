@@ -40,6 +40,8 @@
       setUser: () => {},
       logs: [],
       addLog: () => {},
+      lastSeenLogCount: 0,
+      markNotificationsSeen: () => {},
       documentSource: null,
       setDocumentSource: () => {},
       lastError: null,
@@ -61,20 +63,14 @@
 
     // Reusable button with pressed and loading states
     function UIButton(props) {
-      const { tokens } = React.useContext(ThemeContext);
-      const { label, onClick, variant = 'secondary', disabled = false, isLoading = false, style = {} } = props || {};
+      const { label, onClick, variant = 'primary', disabled = false, isLoading = false, style = {} } = props || {};
       const [pressed, setPressed] = React.useState(false);
       const [loading, setLoading] = React.useState(false);
-      const themed = (() => {
-        const t = tokens && tokens.buttons && tokens.buttons[variant];
-        return t ? { background: t.bg, color: t.fg, border: `1px solid ${t.border}` } : {};
-      })();
       const busy = !!isLoading || loading;
-      const visual = Object.assign({ margin: '4px', opacity: disabled ? 0.6 : 1, transform: pressed ? 'scale(0.98)' : 'scale(1)', transition: 'transform 80ms ease' }, themed, style);
+      const className = `btn btn--${variant}`;
+      const visual = Object.assign({ margin: '4px', opacity: disabled ? 0.6 : 1 }, style);
       const handleClick = async (e) => {
         if (disabled || busy) return;
-        setPressed(true);
-        setTimeout(() => { try { setPressed(false); } catch {} }, 150);
         try {
           const ret = onClick?.(e);
           if (ret && typeof ret.then === 'function') {
@@ -84,7 +80,7 @@
         } catch {}
       };
       const text = busy ? (typeof props.loadingLabel === 'string' ? props.loadingLabel : `${label}…`) : label;
-      return React.createElement('button', { className: 'ms-Button', onClick: handleClick, disabled: disabled || busy, style: visual }, React.createElement('span', { className: 'ms-Button-label' }, text));
+      return React.createElement('button', { className, onClick: handleClick, disabled: disabled || busy, style: visual }, React.createElement('span', null, text));
     }
 
     function StateProvider(props) {
@@ -98,6 +94,7 @@
       const [role, setRole] = React.useState('editor');
       const [users, setUsers] = React.useState([]);
       const [logs, setLogs] = React.useState([]);
+      const [lastSeenLogCount, setLastSeenLogCount] = React.useState(0);
       const [documentSource, setDocumentSource] = React.useState(null);
       const [lastError, setLastError] = React.useState(null);
       const [approvalsSummary, setApprovalsSummary] = React.useState(null);
@@ -110,6 +107,10 @@
           setLogs((prev) => prev.concat(`[${ts}] ${m}`));
         } catch {}
       }, []);
+
+      const markNotificationsSeen = React.useCallback(() => {
+        try { setLastSeenLogCount((logs || []).length); } catch {}
+      }, [logs]);
 
       // Prefer working default if present, else canonical. Append a revision hint.
       const choosePreferredDocUrl = React.useCallback(async (revHint) => {
@@ -315,7 +316,7 @@
         setUser: (nextUserId, nextRole) => { try { setUserId(nextUserId); if (nextRole) setRole(nextRole); addLog(`user set to ${nextUserId}`); } catch {} },
       }), [API_BASE, refresh, userId, addLog]);
 
-      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision } }, props.children);
+      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision } }, props.children);
     }
 
     function BannerStack() {
@@ -360,10 +361,13 @@
         banners.filter(show).map((b, i) => {
           const t = (tokens && tokens.banner && b && b.state) ? tokens.banner[b.state] : null;
           const style = {
-            marginTop: '0px', background: (t && t.pillBg) || '#eef2ff', color: (t && t.pillFg) || '#1e3a8a',
-            border: `1px solid ${(t && t.pillBg) || '#c7d2fe'}`, borderRadius: '6px', padding: '3px 8px', fontWeight: 600, width: '90%', textAlign: 'center'
+            marginTop: '0px',
+            background: (t && (t.pillBg || t.bg)) || '#eef2ff',
+            color: (t && (t.pillFg || t.fg)) || '#1e3a8a',
+            border: `1px solid ${((t && (t.pillBg || t.bg)) || '#c7d2fe')}`,
+            borderRadius: '6px', padding: '3px 8px', fontWeight: 600, width: '90%', textAlign: 'center'
           };
-          const text = (b.title && b.message) ? `${b.title}: ${b.message}` : (b.title || '');
+          const text = (b && b.title && b.message) ? `${b.title}: ${b.message}` : (b?.title || '');
           return React.createElement('div', { key: `b-${i}`, style }, text);
         })
       );
@@ -372,7 +376,7 @@
     function ConnectionBadge() {
       const { isConnected, lastTs } = React.useContext(StateContext);
       const when = lastTs ? new Date(lastTs).toLocaleTimeString() : '—';
-      const style = { marginLeft: '8px', padding: '2px 6px', border: '1px solid #ddd', borderRadius: '10px', fontSize: '12px', background: isConnected ? '#e6ffed' : '#fff5f5' };
+      const style = { marginLeft: '8px', padding: '2px 6px', border: '1px solid #ddd', borderRadius: '10px', fontSize: '12px', background: isConnected ? '#f86a0b' : '#fff5f5' };
       return React.createElement('div', { style }, isConnected ? `connected • last: ${when}` : 'disconnected');
     }
 
@@ -381,18 +385,19 @@
       const [confirm, setConfirm] = React.useState(null);
       const { tokens } = React.useContext(ThemeContext);
       const btns = (config && config.buttons) ? config.buttons : {};
-      const add = (label, onClick, show, variant = 'secondary', opts = {}) => show ? React.createElement(UIButton, Object.assign({ key: label, label, onClick, variant }, opts)) : null;
+      const add = (label, onClick, show, variant, opts = {}) => show ? React.createElement(UIButton, Object.assign({ key: label, label, onClick, variant: variant || (label && /^(Check\-in|Save Progress|Cancel Checkout|Override Checkout)/i.test(label) ? 'secondary' : 'primary') }, opts)) : null;
       const ask = (title, message, onConfirm) => setConfirm({ title, message, onConfirm });
       return React.createElement(React.Fragment, null,
         React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '8px' } }, [
           add('Checkout', actions.checkout, !!btns.checkoutBtn),
-          add('Check-in and Save', async () => { try { const ok = await actions.saveProgress(); if (ok) { await actions.checkin(); } } catch {} }, !!btns.checkinBtn, 'primary'),
+          add('Check-in and Save', async () => { try { const ok = await actions.saveProgress(); if (ok) { await actions.checkin(); } } catch {} }, !!btns.checkinBtn),
           add('Cancel Checkout', actions.cancel, !!btns.cancelBtn),
-          add('Save Progress', actions.saveProgress, !!btns.saveProgressBtn, 'primary'),
+          add('Save Progress', actions.saveProgress, !!btns.saveProgressBtn),
           add('Finalize', () => ask('Finalize?', 'This will lock the document.', actions.finalize), !!btns.finalizeBtn, 'primary'),
           add('Unfinalize', () => ask('Unlock?', 'This will unlock the document.', actions.unfinalize), !!btns.unfinalizeBtn),
           add('Override Checkout', actions.override, !!btns.overrideBtn),
           add('Send to Vendor', () => { try { setTimeout(() => { try { actions.sendVendor({}); } catch {} }, 130); } catch {} }, !!btns.sendVendorBtn),
+          add('Request review', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'request-review' } })); } catch {} }, true, 'primary'),
           add('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true, 'primary'),
           add('Factory Reset', () => ask('Factory reset?', 'This will clear working data.', actions.factoryReset), true),
         ].filter(Boolean)),
@@ -415,13 +420,54 @@
       const { logs } = React.useContext(StateContext);
       const copy = async () => {
         try {
-          const text = (logs || []).join('\n');
+          const text = (logs || []).slice().reverse().join('\n');
           if (navigator?.clipboard?.writeText) await navigator.clipboard.writeText(text);
         } catch {}
       };
       const btn = React.createElement(UIButton, { label: 'Copy', onClick: copy, style: { alignSelf: 'flex-end', marginBottom: '4px' } });
-      const box = React.createElement('div', { style: { fontFamily: 'Consolas, monospace', whiteSpace: 'pre-wrap', background: '#f5f5f5', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', maxHeight: '160px', overflow: 'auto' } }, (logs || []).join('\n'));
+      const box = React.createElement('div', { style: { fontFamily: 'Consolas, monospace', whiteSpace: 'pre-wrap', background: '#f5f5f5', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', maxHeight: '320px', overflow: 'auto' } }, (logs || []).slice().reverse().join('\n'));
       return React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } }, [btn, box]);
+    }
+
+    // Notifications bell (standard icon) that opens a modal
+    function NotificationsBell() {
+      const { logs, lastSeenLogCount } = React.useContext(StateContext);
+      const total = (logs || []).length;
+      const unseen = Math.max(0, total - (lastSeenLogCount || 0));
+      const open = () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'notifications' } })); } catch {} };
+      const style = { position: 'relative', cursor: 'pointer', padding: '4px 8px', border: '1px solid #ddd', borderRadius: '999px', background: '#fff' };
+      const badge = unseen ? React.createElement('span', { style: { position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: '#fff', borderRadius: '999px', fontSize: '10px', padding: '0 6px', lineHeight: '16px', height: '16px', minWidth: '16px', textAlign: 'center' } }, String(unseen)) : null;
+      return React.createElement('span', { style, onClick: open, title: 'Notifications' }, ['🔔', badge]);
+    }
+
+    function NotificationsModal(props) {
+      const { onClose } = props || {};
+      const { tokens } = React.useContext(ThemeContext);
+      const { logs, markNotificationsSeen } = React.useContext(StateContext);
+      const t = tokens && tokens.modal ? tokens.modal : {};
+      const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 };
+      const panelStyle = { width: '640px', maxWidth: '95vw', background: t.background || '#fff', border: `1px solid ${t.border || '#e5e7eb'}`, borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
+      const headerStyle = { padding: '14px 16px', borderBottom: `1px solid ${t.border || '#e5e7eb'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: t.headerBg || '#fff', color: t.headerFg || '#111827' };
+      const bodyStyle = { padding: '16px' };
+      const footerStyle = { padding: '12px 16px', borderTop: `1px solid ${t.border || '#e5e7eb'}`, display: 'flex', justifyContent: 'flex-end', gap: '8px' };
+      const copy = async () => { try { const text = (logs || []).slice().reverse().join('\n'); if (navigator?.clipboard?.writeText) await navigator.clipboard.writeText(text); } catch {} };
+      const list = React.createElement('div', { style: { fontFamily: 'Consolas, monospace', whiteSpace: 'pre-wrap', background: '#f9fafb', padding: '8px', border: `1px solid ${t.border || '#e5e7eb'}`, borderRadius: '6px', maxHeight: '420px', overflow: 'auto' } }, (logs || []).slice().reverse().join('\n'));
+      const button = (label, variant, onclick) => React.createElement(UIButton, { label, onClick: onclick, variant: variant || 'primary' });
+      React.useEffect(() => { try { markNotificationsSeen?.(); } catch {} }, [markNotificationsSeen]);
+
+      return React.createElement('div', { style: overlayStyle, onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
+        React.createElement('div', { style: panelStyle }, [
+          React.createElement('div', { key: 'h', style: headerStyle }, [
+            React.createElement('div', { key: 't', style: { fontWeight: 700 } }, 'Notifications'),
+            React.createElement('button', { key: 'x', onClick: onClose, style: { border: 'none', background: 'transparent' } }, '✕')
+          ]),
+          React.createElement('div', { key: 'b', style: bodyStyle }, list),
+          React.createElement('div', { key: 'f', style: footerStyle }, [
+            button('Copy', 'secondary', copy),
+            button('Close', 'primary', () => { try { markNotificationsSeen?.(); } finally { onClose?.(); } }),
+          ])
+        ])
+      );
     }
 
     function ChatConsole() {
@@ -456,7 +502,7 @@
         try { actions.setUser(nextId, u.role || 'editor'); } catch {}
         setSelected(nextId);
       };
-      const pill = React.createElement('span', { style: { background: '#fde68a', color: '#92400e', border: '1px solid #fbbf24', borderRadius: '999px', padding: '2px 8px', fontSize: '11px', fontWeight: 700 } }, (currentRole || 'editor').toUpperCase());
+      const pill = React.createElement('span', { className: 'ui-pill' }, (currentRole || 'editor').toUpperCase());
       const select = React.createElement('select', { value: selected || '', onChange, style: { marginLeft: '8px' } }, (users || []).map((u, i) => React.createElement('option', { key: i, value: u.id || u.label }, u.label || u.id)));
       return React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } }, [pill, select]);
     }
@@ -531,7 +577,7 @@
           } catch {}
         }
       };
-      const btn = (label, onClick, variant) => React.createElement(UIButton, { label, onClick, variant: variant || 'secondary' });
+      const btn = (label, onClick, variant) => React.createElement(UIButton, { label, onClick, variant: variant || 'primary' });
       return React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '8px' } }, [btn('Open New Document', openNew), btn('View Latest', viewLatest)]);
     }
 
@@ -693,8 +739,74 @@
             )
           ]),
           React.createElement('div', { key: 'f2', style: footerStyle },
-            (Array.isArray(schema.actions) ? schema.actions : []).map((a, i) => React.createElement('button', { key: `a-${i}`, onClick: () => onAction(a.id), style: (a.variant === 'primary') ? { background: t.primary || '#111827', color: '#fff', border: `1px solid ${t.primary || '#111827'}` } : {} }, a.label || a.id))
+            (Array.isArray(schema.actions) ? schema.actions : []).map((a, i) => React.createElement(UIButton, { key: `a-${i}`, label: a.label || a.id, onClick: () => onAction(a.id), variant: a.variant || 'primary' }))
           )
+        ])
+      );
+    }
+
+    function MessageModal(props) {
+      const { onClose, toUserId, toUserName } = props || {};
+      const API_BASE = getApiBase();
+      const { currentUser } = React.useContext(StateContext);
+      const [text, setText] = React.useState('');
+      const [busy, setBusy] = React.useState(false);
+      const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 };
+      const panelStyle = { width: '520px', maxWidth: '95vw', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
+      const headerStyle = { padding: '14px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', color: '#111827' };
+      const bodyStyle = { padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' };
+      const footerStyle = { padding: '12px 16px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '8px' };
+      const send = async () => {
+        setBusy(true);
+        try {
+          await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'approvals:message', payload: { to: toUserId, text }, userId: currentUser }) });
+        } catch {}
+        finally { setBusy(false); onClose?.(); }
+      };
+      return React.createElement('div', { style: overlayStyle, onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
+        React.createElement('div', { style: panelStyle }, [
+          React.createElement('div', { key: 'h', style: headerStyle }, [
+            React.createElement('div', { key: 't', style: { fontWeight: 700 } }, 'Message'),
+            React.createElement('button', { key: 'x', onClick: onClose, style: { border: 'none', background: 'transparent' } }, '✕')
+          ]),
+          React.createElement('div', { key: 'b', style: bodyStyle }, [
+            React.createElement('div', { key: 'to', style: { fontSize: '12px', color: '#6b7280' } }, `To: ${toUserName || toUserId}`),
+            React.createElement('textarea', { key: 'm', rows: 4, placeholder: 'Write a message…', value: text, onChange: (e) => setText(e.target.value), style: { padding: '8px', border: '1px solid #e5e7eb', borderRadius: '6px' } })
+          ]),
+          React.createElement('div', { key: 'f', style: footerStyle }, [
+            React.createElement(UIButton, { key: 'cancel', label: 'Cancel', onClick: onClose, disabled: !!busy }),
+            React.createElement(UIButton, { key: 'send', label: 'Send', onClick: send, variant: 'primary', disabled: !!busy })
+          ])
+        ])
+      );
+    }
+
+    function RequestReviewModal(props) {
+      const { onClose } = props || {};
+      const API_BASE = getApiBase();
+      const { currentUser } = React.useContext(StateContext);
+      const [busy, setBusy] = React.useState(false);
+      const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 };
+      const panelStyle = { width: '520px', maxWidth: '95vw', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
+      const headerStyle = { padding: '14px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', color: '#111827' };
+      const bodyStyle = { padding: '16px' };
+      const footerStyle = { padding: '12px 16px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '8px' };
+      const notify = async () => {
+        setBusy(true);
+        try { await fetch(`${API_BASE}/api/v1/approvals/notify`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ documentId: 'default', actorUserId: currentUser }) }); } catch {}
+        finally { setBusy(false); onClose?.(); }
+      };
+      return React.createElement('div', { style: overlayStyle, onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
+        React.createElement('div', { style: panelStyle }, [
+          React.createElement('div', { key: 'h', style: headerStyle }, [
+            React.createElement('div', { key: 't', style: { fontWeight: 700 } }, 'Request review'),
+            React.createElement('button', { key: 'x', onClick: onClose, style: { border: 'none', background: 'transparent' } }, '✕')
+          ]),
+          React.createElement('div', { key: 'b', style: bodyStyle }, 'Notify approvers that the document is ready for review?'),
+          React.createElement('div', { key: 'f', style: footerStyle }, [
+            React.createElement(UIButton, { key: 'cancel', label: 'Cancel', onClick: onClose, disabled: !!busy }),
+            React.createElement(UIButton, { key: 'notify', label: 'Notify', onClick: notify, variant: 'primary', disabled: !!busy })
+          ])
         ])
       );
     }
@@ -798,7 +910,7 @@
       const headerStyle = { padding: '14px 16px', borderBottom: `1px solid ${t.border || '#e5e7eb'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: t.headerBg || '#fff', color: t.headerFg || '#111827' };
       const bodyStyle = { padding: '16px' };
       const footerStyle = { padding: '12px 16px', borderTop: `1px solid ${t.border || '#e5e7eb'}`, display: 'flex', justifyContent: 'flex-end', gap: '8px' };
-      const btn = (label, variant, onclick) => React.createElement('button', { className: 'ms-Button', onClick: onclick, style: variant==='primary' ? { background: t.primary || '#111827', color: '#fff', border: `1px solid ${t.primary || '#111827'}` } : {} }, label);
+      const btn = (label, variant, onclick) => React.createElement(UIButton, { label, onClick: onclick, variant: variant || 'primary' });
       return React.createElement('div', { style: overlayStyle, onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
         React.createElement('div', { style: panelStyle }, [
           React.createElement('div', { key: 'h', style: headerStyle }, [
@@ -878,9 +990,11 @@
       const headerStyle = { padding: '10px 12px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff' };
       const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 };
       const panelStyle = { width: '780px', maxWidth: '95vw', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
-      const btn = (label, onClick, variant) => React.createElement('button', { className: 'ms-Button', disabled: !!busy, onClick, style: variant==='primary' ? { background: '#111827', color: '#fff', border: '1px solid #111827', marginLeft: '8px' } : { marginLeft: '8px' } }, React.createElement('span', { className: 'ms-Button-label' }, label));
+      const btn = (label, onClick, variant) => React.createElement(UIButton, { label, onClick, variant: variant || 'primary' });
       const canOverride = (String(currentRole || '').toLowerCase() === 'editor');
+      const canToggle = (row) => canOverride || String(row.userId) === String(currentUser);
       const onToggle = async (row, next) => {
+        if (!canToggle(row)) return; // Non-editors cannot toggle others
         if (row.userId !== currentUser && canOverride) {
           setPrompt({ title: 'Override approval?', message: `Override approval for ${row.name}?`, onConfirm: async () => { await setSelf(row.userId, next); } });
           return;
@@ -893,7 +1007,6 @@
             React.createElement('div', { key: 't', style: { fontWeight: 700 } }, `Approvals (${hdr.approved}/${hdr.total} approved)`),
             React.createElement('div', { key: 'tb' }, [
               btn('Refresh', load),
-              btn('Request review', doNotify, 'primary'),
               btn('Factory reset', confirmReset),
               btn('Close', onClose),
             ])
@@ -912,8 +1025,8 @@
                 React.createElement('tbody', { key: 'tb' }, (rows||[]).map((r, i) => React.createElement('tr', { key: r.userId || i, style: { borderTop: '1px solid #eee' } }, [
                   React.createElement('td', { key: 'o', style: { padding: '6px' } }, String(r.order || i+1)),
                   React.createElement('td', { key: 'n', style: { padding: '6px' } }, r.name || r.userId),
-                  React.createElement('td', { key: 'a', style: { padding: '6px' } }, React.createElement('input', { type: 'checkbox', disabled: !!busy, checked: !!r.approved, onChange: (e) => onToggle(r, !!e.target.checked) })),
-                  React.createElement('td', { key: 'm', style: { padding: '6px' } }, React.createElement('button', { className: 'ms-Button', onClick: async () => { try { await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'approvals:message', payload: { to: r.userId }, userId: currentUser }) }); } catch {} } }, React.createElement('span', { className: 'ms-Button-label' }, 'Message'))),
+                  React.createElement('td', { key: 'a', style: { padding: '6px' } }, React.createElement('input', { type: 'checkbox', disabled: (!!busy) || (!canToggle(r)), checked: !!r.approved, title: (!canToggle(r) ? 'Only editors can override others' : undefined), onChange: (e) => onToggle(r, !!e.target.checked) })),
+                  React.createElement('td', { key: 'm', style: { padding: '6px' } }, React.createElement(UIButton, { label: 'Message', onClick: () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'message', options: { toUserId: r.userId, toUserName: r.name || r.userId } } })); } catch {} } })),
                   React.createElement('td', { key: 't', style: { padding: '6px' } }, React.createElement('input', { type: 'text', defaultValue: r.notes || '', onBlur: (e) => setSelf(r.userId, r.approved, e.target.value), style: { width: '100%' } })),
                 ])))
               ])
@@ -927,7 +1040,7 @@
       const [modal, setModal] = React.useState(null);
       const { documentSource } = React.useContext(StateContext);
       React.useEffect(() => {
-        function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); } catch {} }
+        function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); if (d && d.id === 'notifications') setModal({ id: 'notifications' }); if (d && d.id === 'request-review') setModal({ id: 'request-review' }); if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); } catch {} }
         window.addEventListener('react:open-modal', onOpen);
         return () => window.removeEventListener('react:open-modal', onOpen);
       }, []);
@@ -944,18 +1057,30 @@
             React.createElement(ErrorBanner, null),
             // SuperDoc host only on web
             (typeof Office === 'undefined' ? React.createElement(SuperDocHost, { key: 'host', src: documentSource }) : null),
-            React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' } }, [
-              React.createElement(UserCard, { key: 'u' }),
-              React.createElement(ApprovalsPill, { key: 'ap' }),
-              React.createElement(ConnectionBadge, { key: 'c' }),
+            // 2 - Banners (top)
+            React.createElement(BannerStack, { key: 'banners' }),
+            // 1 - User selection + role pill + status
+            React.createElement('div', { style: { marginTop: '8px', borderTop: '1px solid #e5e7eb', paddingTop: '8px' } }, [
+              React.createElement('div', { key: 'hdr1', style: { fontSize: '11px', fontWeight: 700, letterSpacing: '0.02em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' } }, 'User & Role'),
+              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' } }, [
+              React.createElement(UserCard, { key: 'user' }),
+              React.createElement(ConnectionBadge, { key: 'conn' }),
+              React.createElement(NotificationsBell, { key: 'bell' }),
+              ])
             ]),
-            React.createElement(BannerStack, { key: 'b' }),
-            React.createElement(ActionButtons, null),
-            React.createElement(DocumentControls, null),
-            React.createElement(ExhibitsList, null),
-            React.createElement(NotificationsPanel, null),
-            React.createElement(ChatConsole, null),
-            modal ? (modal.id === 'send-vendor' ? React.createElement(SendVendorModal, { userId: modal.userId, onClose: () => setModal(null) }) : (modal.id === 'approvals' ? React.createElement(ApprovalsModal, { onClose: () => setModal(null) }) : (modal.id === 'compile' ? React.createElement(CompileModal, { onClose: () => setModal(null) }) : null))) : null,
+            // 3 - Buttons (actions)
+            React.createElement('div', { style: { marginTop: '10px', borderTop: '1px solid #e5e7eb', paddingTop: '8px' } }, [
+              React.createElement('div', { key: 'hdr2', style: { fontSize: '11px', fontWeight: 700, letterSpacing: '0.02em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' } }, 'Actions'),
+              React.createElement(ApprovalsPill, { key: 'approvals-pill' }),
+              React.createElement(ActionButtons, { key: 'actions' }),
+              React.createElement(DocumentControls, { key: 'doc' }),
+            ]),
+            // 4 - Chatbot (OG Assist)
+            React.createElement('div', { style: { marginTop: '12px', borderTop: '1px solid #e5e7eb', paddingTop: '8px' } }, [
+              React.createElement('div', { key: 'hdr3', style: { fontSize: '11px', fontWeight: 700, letterSpacing: '0.02em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' } }, 'Assistant'),
+              React.createElement(ChatConsole, { key: 'chat' }),
+            ]),
+            modal ? (modal.id === 'send-vendor' ? React.createElement(SendVendorModal, { userId: modal.userId, onClose: () => setModal(null) }) : (modal.id === 'approvals' ? React.createElement(ApprovalsModal, { onClose: () => setModal(null) }) : (modal.id === 'compile' ? React.createElement(CompileModal, { onClose: () => setModal(null) }) : (modal.id === 'notifications' ? React.createElement(NotificationsModal, { onClose: () => setModal(null) }) : (modal.id === 'request-review' ? React.createElement(RequestReviewModal, { onClose: () => setModal(null) }) : (modal.id === 'message' ? React.createElement(MessageModal, { toUserId: modal.toUserId, toUserName: modal.toUserName, onClose: () => setModal(null) }) : null)))))) : null,
             confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
           )
         )

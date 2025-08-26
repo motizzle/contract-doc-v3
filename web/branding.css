@@ -33,6 +33,39 @@
   --brand-subtitle-line-height: 20px;
   --brand-subtitle-font-weight: 500;
   --brand-subtitle-color: rgba(255,255,255,0.85);
+
+  /* Spacing scale */
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-24: 24px;
+
+  /* Buttons */
+  --btn-height: 32px;
+  --btn-radius: 6px;
+  --btn-font-size: 13px;
+  --btn-primary-bg: #5069ff;
+  --btn-primary-fg: #ffffff;
+  --btn-secondary-bg: #dce6f4;
+  --btn-secondary-fg: #111827;
+  --btn-border: #111827;
+  --btn-disabled-opacity: 0.6;
+
+  /* Pills */
+  --pill-font-size: 11px;
+  --pill-radius: 999px;
+  --pill-bg: #e0e7ff;
+  --pill-fg: #dce6f4;
+  --pill-border: #c7d2fe;
+
+  /* Banners */
+  --banner-info-bg: #eef2ff;
+  --banner-info-fg: #ffb636;
+  --banner-info-border: #c7d2fe;
+  --banner-error-bg: #fee2e2;
+  --banner-error-fg: #7f1d1d;
+  --banner-error-border: #fecaca;
 }
 
 /* Add-in header (Word taskpane) */
@@ -40,7 +73,8 @@
   position: relative;
   min-height: 48px;
   color: var(--brand-header-fg);
-  padding: var(--brand-header-pt: 8px) var(--brand-header-pr) var(--brand-header-pb) var(--brand-header-pl);
+  /* Use CSS var fallbacks for robustness */
+  padding: var(--brand-header-pt, 8px) var(--brand-header-pr, 12px) var(--brand-header-pb, 8px) var(--brand-header-pl, 12px);
 }
 
 .addin-header .brand-img {
@@ -71,6 +105,93 @@
   margin-top: 1px;
 }
 
+/* Generic pulse animation (respects reduced motion)
+   Configurable tokens:
+   - --pulse-duration: e.g., 1200ms, 3s
+   - --pulse-glow-color: e.g., rgba(75,63,255,0.35) */
+@keyframes brand-pulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 var(--pulse-glow-color, rgba(255,255,255,0.45)); }
+  70% { transform: scale(1.04); box-shadow: 0 0 0 8px rgba(255,255,255,0.45); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,0.45); }
+}
+.pulse {
+  animation: brand-pulse var(--pulse-duration, 1200ms) ease-in-out infinite;
+  transform-origin: center;
+  position: relative;
+  overflow: hidden;
+}
+/* Moving sheen to create partial fade-out/in during pulse */
+@keyframes brand-sheen {
+  0% { opacity: 0; transform: translateX(-25%); }
+  30% { opacity: 0.5; transform: translateX(-10%); }
+  70% { opacity: 0.5; transform: translateX(10%); }
+  100% { opacity: 0; transform: translateX(25%); }
+}
+.pulse::after {
+  content: "";
+  position: absolute;
+  left: -25%; right: -25%; top: -20%; bottom: -20%;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.7), rgba(255,255,255,0) 60%);
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: brand-sheen var(--pulse-duration, 1200ms) ease-in-out infinite;
+}
+/* Allow JS to pause animation during rest interval */
+.pulse.is-resting { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .pulse { animation: none !important; }
+  .pulse::after { animation: none !important; }
+}
+
+/* ------------------------------------------------------
+   Simple modal (shared: Web + Add-in)
+------------------------------------------------------- */
+.ui-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(17,24,39,0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+.ui-modal-backdrop.is-open { display: flex; }
+.ui-modal {
+  background: #ffffff;
+  color: #111827;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.12);
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: hidden;
+}
+.ui-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  font-weight: 700;
+}
+.ui-modal__body { padding: 12px 16px; overflow: auto; }
+.ui-modal__close {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ui-table { width: 100%; border-collapse: collapse; }
+.ui-table th, .ui-table td { padding: 10px 8px; border-top: 1px solid #f3f4f6; text-align: left; }
+.ui-table th { font-size: 12px; color: #6b7280; font-weight: 700; text-transform: uppercase; }
+.ui-badge { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.ui-badge.gray { background: #e5e7eb; color: #111827; }
+.ui-badge.indigo { background: #e0e7ff; color: #3730a3; }
+.ui-badge.green { background: #dcfce7; color: #166534; }
+
 /* Shared brand header background (use for both web banner and add-in header) */
 .brand-header-bg {
   background: var(--brand-header-bg);
@@ -86,10 +207,12 @@
   right: 2px; /* offset from right edge */
   background: #000000;
   color: #fff;
+  border: 1px solid #000000;
   padding: 2px 6px; /* internal padding (top/bottom, left/right) */
   border-radius: 999px;
   font-size: 9px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  transition: background-color 400ms ease, color 400ms ease, box-shadow 300ms ease;
 }
 
 /* Web: top-right pill (matches add-in) */
@@ -99,10 +222,31 @@
   right: 4px;
   background: #4B3FFF;
   color: #fff;
+  border: 1px solid #000000;
   padding: 2px 6px;
   border-radius: 999px;
   font-size: 12px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  transition: background-color 400ms ease, color 400ms ease, box-shadow 300ms ease;
+}
+
+/* Button-like behavior for the pill (shared) */
+.pill-right {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  outline: 0;
+  transition: background-color 200ms ease, color 200ms ease, box-shadow 150ms ease, transform 80ms ease, filter 120ms ease;
+}
+.pill-right:hover { filter: brightness(1.06) saturate(1.02); transform: translateY(-1px); }
+.pill-right:active { transform: scale(0.98); filter: brightness(0.98) saturate(0.98); }
+.pill-right[aria-expanded="true"] { transform: scale(0.98); filter: brightness(0.98) saturate(0.98); }
+.pill-right:focus-visible {
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.9), 0 0 0 4px rgba(37,99,235,0.7);
 }
 
 /* Add-in pill override */
@@ -111,3 +255,102 @@
     right: 1px;
     padding: 4px 8px; /* your values */
   }
+
+/* ------------------------------------------------------
+   SuperDoc toolbar overrides (scoped to web viewer only)
+   Ensures toolbar wraps cleanly within the editor column
+   without reserving right-side space or overflow menus.
+------------------------------------------------------- */
+#layout { display: grid; grid-template-columns: 1fr 380px; overflow-x: hidden; height: calc(100vh - var(--banner-h)); }
+#editor-col { min-width: 0; padding: 0 16px; box-sizing: border-box; overflow-x: auto; }
+#superdoc-toolbar, #superdoc { min-width: 1100px; }
+#pane { width: 380px; max-width: 380px; }
+#superdoc-toolbar {
+  position: relative;
+  z-index: 100;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 10px;
+  width: 100%;
+}
+
+/* Standardize buttons inside right pane */
+#app-root .ms-Button, .btn {
+  height: var(--btn-height);
+  padding: 0 var(--space-8);
+  border-radius: var(--btn-radius);
+  font-size: var(--btn-font-size);
+  border: 1px solid var(--btn-border);
+  transition: transform 80ms ease;
+}
+#app-root .ms-Button[disabled], .btn[disabled] { opacity: var(--btn-disabled-opacity); }
+.btn:active { transform: scale(0.98); }
+
+/* Button variants driven by CSS tokens */
+.btn--primary { background: var(--btn-primary-bg); color: var(--btn-primary-fg); }
+.btn--secondary { background: var(--btn-secondary-bg); color: var(--btn-secondary-fg); }
+
+/* Generic section header helper */
+.ui-section-header {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #6b7280;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+/* Pill base */
+.ui-pill {
+  background: var(--pill-bg);
+  color: var(--pill-fg);
+  border: 1px solid var(--pill-border);
+  border-radius: var(--pill-radius);
+  padding: 2px var(--space-8);
+  font-size: var(--pill-font-size);
+  font-weight: 700;
+}
+
+/* Banners (info/error) */
+.ui-banner.info { background: var(--banner-info-bg); color: var(--banner-info-fg); border-top: 1px solid var(--banner-info-border); border-bottom: 1px solid var(--banner-info-border); padding: var(--space-8) var(--space-12); }
+.ui-banner.error { background: var(--banner-error-bg); color: var(--banner-error-fg); border-top: 1px solid var(--banner-error-border); border-bottom: 1px solid var(--banner-error-border); padding: var(--space-8) var(--space-12); }
+
+/* Banner pills driven by CSS (replaces token inline styles) */
+/* Banner pills are now server-driven via theme tokens; only structure retained here */
+.ui-banner-pill {
+  border-radius: 6px;
+  padding: 3px var(--space-8);
+  font-weight: 600;
+  width: 90%;
+  text-align: center;
+}
+
+#superdoc-toolbar .superdoc-toolbar {
+  display: flex;
+  flex-wrap: wrap !important;
+  gap: 6px;
+  justify-content: flex-start !important;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* Allow groups and items to wrap; undo vendor nowrap/overflow */
+#superdoc-toolbar .superdoc-toolbar * { white-space: normal !important; }
+#superdoc-toolbar .superdoc-toolbar-group-side { min-width: auto !important; }
+
+/* Flatten group sizing and remove spacers so all items participate in wrapping */
+#superdoc-toolbar .superdoc-toolbar > * { flex: 0 1 auto !important; min-width: 0 !important; }
+#superdoc-toolbar .superdoc-toolbar-group-side { flex: 0 0 auto !important; min-width: 0 !important; }
+#superdoc-toolbar .sd-toolbar-spacer,
+#superdoc-toolbar .superdoc-toolbar .spacer { display: none !important; }
+
+/* Cap overly wide controls so more items fit before overflowing */
+#superdoc-toolbar .superdoc-toolbar select,
+#superdoc-toolbar .superdoc-toolbar input[type="text"],
+#superdoc-toolbar .superdoc-toolbar input[type="number"] {
+  max-width: 140px;
+  flex: 0 1 140px;
+  min-width: 0;
+}

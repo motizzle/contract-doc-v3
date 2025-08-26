@@ -60,9 +60,18 @@ export async function ensureSuperDocLoaded() {
 export function mountSuperdoc(options) {
   const Ctor = detectCtor();
   if (!Ctor) throw new Error('SuperDoc UMD not loaded');
+  // SuperDoc expects toolbar to be a selector string; customization goes under modules.toolbar
+  const toolbarSelector = (typeof options.toolbar === 'string') ? options.toolbar : '#superdoc-toolbar';
+  const toolbarModuleCfg = (function(){
+    try {
+      const t = (typeof options.toolbar === 'object' && options.toolbar) ? options.toolbar : {};
+      return Object.assign({ selector: toolbarSelector, hideButtons: false, responsiveToContainer: true }, t);
+    } catch { return { selector: toolbarSelector, hideButtons: false, responsiveToContainer: true }; }
+  })();
   const superdoc = new Ctor({
     selector: options.selector,
-    toolbar: options.toolbar,
+    toolbar: toolbarSelector,
+    modules: { toolbar: toolbarModuleCfg },
     document: options.document,
     documentMode: options.documentMode ?? 'editing',
     pagination: options.pagination ?? true,

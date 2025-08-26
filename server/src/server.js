@@ -419,11 +419,28 @@ app.get('/api/v1/theme', (req, res) => {
   } catch {}
   return res.json({
     banner: {
-      update_available: { bg: 'linear-gradient(180deg,#0ea5e9,#38bdf8)', fg: '#0f172a', pillBg: '#0ea5e9', pillFg: '#0f172a' },
-      final: { bg: 'linear-gradient(180deg,#b91c1c,#ef4444)', fg: '#ffffff', pillBg: '#7f1d1d', pillFg: '#ffffff' },
-      checked_out_self: { bg: 'linear-gradient(180deg,#2563eb,#60a5fa)', fg: '#ffffff', pillBg: '#1e3a8a', pillFg: '#ffffff' },
-      checked_out_other: { bg: 'linear-gradient(180deg,#b45309,#f59e0b)', fg: '#111827', pillBg: '#92400e', pillFg: '#ffffff' },
-      available: { bg: 'linear-gradient(180deg,#16a34a,#4ade80)', fg: '#ffffff', pillBg: '#166534', pillFg: '#ffffff' }
+      update_available: { bg: '#de3423', fg: '#0f172a', pillBg: '#de3423', pillFg: '#0f172a' },
+      final:            { bg: '#7f8ca0', fg: '#ffffff', pillBg: '#7f8ca0', pillFg: '#ffffff' },
+      checked_out_self: { bg: '#dce6f4', fg: '#111827', pillBg: '#dce6f4', pillFg: '#111827' },
+      checked_out_other:{ bg: '#c6c8ca', fg: '#111827', pillBg: '#c6c8ca', pillFg: '#111827' },
+      available:        { bg: '#16a34a', fg: '#ffffff', pillBg: '#166534', pillFg: '#ffffff' },
+      // Viewer-only banner (no edit permission)
+      view_only: { bg: '#e5e7eb', fg: '#111827', pillBg: '#d1d5db', pillFg: '#111827' }
+    },
+    pulse: {
+      palette: [
+        { bg: '#4B3FFF', fg: '#ffffff' },
+        { bg: '#FFB636', fg: '#111827' },
+        { bg: '#22C55E', fg: '#ffffff' },
+        { bg: '#EF4444', fg: '#ffffff' },
+        { bg: '#06B6D4', fg: '#0f172a' }
+      ],
+      minSeconds: 3,
+      maxSeconds: 10,
+      activeSeconds: 1.5,
+      restMinSeconds: 3,
+      restMaxSeconds: 10,
+      glowAlpha: 0.35
     }
   });
 });
@@ -490,15 +507,16 @@ app.post('/api/v1/save-progress', (req, res) => {
     const userId = req.body?.userId || 'user1';
     const platform = (req.body?.platform || req.query?.platform || '').toLowerCase();
     const base64 = req.body?.base64 || '';
-    if (serverState.isFinal) return res.status(409).json({ error: 'Finalized' });
-    if (!serverState.checkedOutBy) return res.status(409).json({ error: 'Not checked out' });
-    if (serverState.checkedOutBy !== userId) return res.status(409).json({ error: `Checked out by ${serverState.checkedOutBy}` });
+    // First validate payload shape to provide precise 4xx on bad input
     let bytes;
     try { bytes = Buffer.from(String(base64), 'base64'); } catch { return res.status(400).json({ error: 'invalid_base64' }); }
     if (!bytes || bytes.length < 4) return res.status(400).json({ error: 'invalid_payload' });
-    // Minimal DOCX check (ZIP magic): must start with 'PK' and be a reasonable size (>1KB)
     if (!(bytes[0] === 0x50 && bytes[1] === 0x4b)) return res.status(400).json({ error: 'invalid_docx_magic' });
     if (bytes.length < 1024) return res.status(400).json({ error: 'invalid_docx_small', size: bytes.length });
+    // Then enforce document state
+    if (serverState.isFinal) return res.status(409).json({ error: 'Finalized' });
+    if (!serverState.checkedOutBy) return res.status(409).json({ error: 'Not checked out' });
+    if (serverState.checkedOutBy !== userId) return res.status(409).json({ error: `Checked out by ${serverState.checkedOutBy}` });
     const dest = path.join(workingDocumentsDir, 'default.docx');
     try { fs.writeFileSync(dest, bytes); } catch { return res.status(500).json({ error: 'write_failed' }); }
     bumpRevision();

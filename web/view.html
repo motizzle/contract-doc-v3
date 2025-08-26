@@ -11,7 +11,7 @@
   <link rel="preload" as="script" href="/vendor/react/react.production.min.js" />
   <link rel="preload" as="script" href="/vendor/react/react-dom.production.min.js" />
   <!-- Shared branding styles -->
-  <link href="/web/branding.css?v=brand-m1" rel="stylesheet" />
+  <link href="/web/branding.css?v=brand-m3" rel="stylesheet" />
   <style>
     .brand-logo { position: fixed; top: 8px; left: 12px; z-index: 10000; display: inline-flex; align-items: center; }
     .brand-logo img { height: 30px; width: auto; display: block; }
@@ -22,11 +22,11 @@
     #banner { min-height: var(--banner-h); display: flex; align-items: center; justify-content: center; padding: 12px; color: #fff; }
     .banner-inner { position: relative; width: 100%; max-width: 1024px; display: flex; flex-direction: column; align-items: center; gap: 12px; border-radius: 12px; }
     .banner-title { font-size: 28px; font-weight: 800; text-align: center; text-shadow: 0 1px 1px rgba(0,0,0,0.25); }
-    #layout { position: relative; display: flex; height: calc(100vh - var(--banner-h)); }
-    #editor-col { position: relative; z-index: 1; display: flex; flex-direction: column; flex: 1; min-width: 0; }
-    #superdoc-toolbar { position: relative; z-index: 1; border-bottom: 1px solid #ddd; display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 10px; max-width: 980px; margin: 0 auto; }
+    /* Layout moved to Grid; keep minimal structural rules here */
+    #layout { position: relative; }
+    #editor-col { position: relative; z-index: 1; display: flex; flex-direction: column; min-width: 0; }
     #superdoc { position: relative; z-index: 1; flex: 1; min-height: 0; }
-    #pane { position: relative; z-index: 10; width: 360px; max-width: 420px; border-left: 1px solid #eee; display: flex; flex-direction: column; padding-top: 20px; background: #fff; box-shadow: -2px 0 8px rgba(0,0,0,0.08); }
+    #pane { position: relative; z-index: 5; width: 360px; max-width: 420px; border-left: 1px solid #eee; display: flex; flex-direction: column; padding-top: 20px; background: #fff; box-shadow: -2px 0 8px rgba(0,0,0,0.08); }
     #app-root { padding: 8px 12px; overflow: auto; background: #fff; }
   </style>
   <!-- React UMD (local) and React entry (shared) -->
@@ -44,9 +44,51 @@
 <body>
   <a class="brand-logo" href="/" aria-label="OpenGov Home"><img src="/web/assets/opengov-logo.png" alt="OpenGov" /></a>
   <div id="banner" class="brand-header-bg">
-    <span class="pill-right">Coming 2026</span>
+    <span class="pill-right pulse" id="coming-pill" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="coming-modal" aria-expanded="false">Coming 2026</span>
     <div class="banner-inner">
       <div class="banner-title">Redline Like You Mean It: The Future of Contracting</div>
+    </div>
+  </div>
+  <!-- Always-present modal -->
+  <div class="ui-modal-backdrop" id="coming-modal" aria-hidden="true">
+    <div class="ui-modal" role="dialog" aria-modal="true" aria-labelledby="coming-modal-title">
+      <div class="ui-modal__header">
+        <div id="coming-modal-title">The Future is Coming</div>
+        <button type="button" class="ui-modal__close" aria-label="Close">×</button>
+      </div>
+      <div class="ui-modal__body">
+        <div style="font-size:14px;color:#6b7280;margin-bottom:8px">Preview and toggle upcoming features</div>
+        <table class="ui-table" aria-label="Upcoming features">
+          <thead>
+            <tr>
+              <th style="width:45%">Feature</th>
+              <th style="width:20%">Status</th>
+              <th style="width:20%">Release</th>
+              <th style="width:15%">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Contracts Landing Page</td>
+              <td><span class="ui-badge gray">pending release</span></td>
+              <td>2025-09-16</td>
+              <td><input type="checkbox" checked aria-label="Enable Contracts Landing Page"/></td>
+            </tr>
+            <tr>
+              <td>Evaluations, Awards, and Notices V2</td>
+              <td><span class="ui-badge indigo">in development</span></td>
+              <td>Q4 2025</td>
+              <td><input type="checkbox" checked aria-label="Enable Evaluations, Awards, and Notices V2"/></td>
+            </tr>
+            <tr>
+              <td>Contract authoring in Word</td>
+              <td><span class="ui-badge green">vision</span></td>
+              <td>Q1 2026</td>
+              <td><input type="checkbox" checked aria-label="Enable Contract authoring in Word"/></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
   <div id="layout">
@@ -58,6 +100,118 @@
       <div id="app-root"></div>
     </aside>
   </div>
+  <script>
+    (function(){
+      function randInt(min, max){ return Math.floor(Math.random() * (max - min + 1)) + min; }
+      function hexToRgb(hex){
+        var m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return m ? { r: parseInt(m[1],16), g: parseInt(m[2],16), b: parseInt(m[3],16) } : null;
+      }
+      function setupPill(pill){
+        if (!pill) return;
+        // Default palette while theme loads
+        var pairs = [
+          { bg: "#4B3FFF", fg: "#ffffff" },
+          { bg: "#FFB636", fg: "#111827" },
+          { bg: "#22C55E", fg: "#ffffff" },
+          { bg: "#EF4444", fg: "#ffffff" },
+          { bg: "#06B6D4", fg: "#0f172a" }
+        ];
+        var minS = 3, maxS = 10, glowAlpha = 0.35, activeS = 1.5, restMinS = 3, restMaxS = 10;
+        // Try to hydrate from server theme
+        try {
+          fetch('/api/v1/theme').then(function(r){ return r.ok ? r.json() : null; }).then(function(t){
+            if (!t) return;
+            if (t.pulse && Array.isArray(t.pulse.palette) && t.pulse.palette.length) {
+              var themed = [];
+              for (var i=0;i<t.pulse.palette.length;i++) {
+                var p = t.pulse.palette[i];
+                if (p && p.bg) themed.push({ bg: p.bg, fg: p.fg || '#ffffff' });
+              }
+              if (themed.length) pairs = themed;
+              if (typeof t.pulse.minSeconds === 'number') minS = t.pulse.minSeconds;
+              if (typeof t.pulse.maxSeconds === 'number') maxS = t.pulse.maxSeconds;
+              if (typeof t.pulse.activeSeconds === 'number') activeS = t.pulse.activeSeconds;
+              if (typeof t.pulse.restMinSeconds === 'number') restMinS = t.pulse.restMinSeconds;
+              if (typeof t.pulse.restMaxSeconds === 'number') restMaxS = t.pulse.restMaxSeconds;
+              if (typeof t.pulse.glowAlpha === 'number') glowAlpha = t.pulse.glowAlpha;
+            }
+          }).catch(function(){});
+        } catch {}
+        var idx = 0;
+        function doPulseCycle(){
+          // Next color
+          var pair = pairs[idx % pairs.length];
+          idx++;
+          var rgb = hexToRgb(pair.bg);
+          var glow = rgb ? ('rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + glowAlpha + ')') : 'rgba(255,255,255,' + glowAlpha + ')';
+          pill.style.background = pair.bg;
+          pill.style.color = pair.fg;
+          pill.style.setProperty('--pulse-glow-color', glow);
+          // One-shot pulse
+          pill.classList.remove('is-resting');
+          pill.style.setProperty('--pulse-duration', activeS + 's');
+          pill.style.animationIterationCount = '1';
+          // When pulse ends, rest with animation disabled, then schedule next
+          function onEnd(){
+            pill.removeEventListener('animationend', onEnd);
+            pill.classList.add('is-resting');
+            var rest = randInt(restMinS, restMaxS) * 1000;
+            setTimeout(function(){
+              // restore infinite count for safety; we will set back to 1 each time anyway
+              pill.style.animationIterationCount = '1';
+              pill.classList.remove('is-resting');
+              // re-trigger animation by forcing style change
+              void pill.offsetWidth; // reflow hack
+              doPulseCycle();
+            }, rest);
+          }
+          pill.addEventListener('animationend', onEnd);
+          // re-trigger animation start
+          void pill.offsetWidth; // reflow hack
+        }
+        doPulseCycle();
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function(){ setupPill(document.querySelector('.pill-right.pulse')); });
+      } else {
+        setupPill(document.querySelector('.pill-right.pulse'));
+      }
+      // Modal handlers
+      function openModal(el){
+        if (!el) return;
+        try { document.body.style.overflow = 'hidden'; } catch {}
+        el.classList.add('is-open');
+        el.setAttribute('aria-hidden', 'false');
+        try {
+          document.getElementById('coming-pill').setAttribute('aria-expanded', 'true');
+        } catch {}
+        try { el.querySelector('.ui-modal__close')?.focus(); } catch {}
+      }
+      function closeModal(el){
+        if (!el) return;
+        el.classList.remove('is-open');
+        el.setAttribute('aria-hidden', 'true');
+        try { document.body.style.overflow = ''; } catch {}
+        try { document.getElementById('coming-pill').setAttribute('aria-expanded', 'false'); } catch {}
+        try { document.getElementById('coming-pill').focus(); } catch {}
+      }
+      function wireModal(){
+        var pill = document.getElementById('coming-pill');
+        var modal = document.getElementById('coming-modal');
+        if (!pill || !modal) return;
+        pill.addEventListener('click', function(){ openModal(modal); });
+        pill.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(modal); } });
+        modal.addEventListener('click', function(e){ if (e.target === modal) closeModal(modal); });
+        var closeBtn = modal.querySelector('.ui-modal__close');
+        if (closeBtn) closeBtn.addEventListener('click', function(){ closeModal(modal); });
+        document.addEventListener('keydown', function onEsc(e){ if (e.key === 'Escape' && modal.classList.contains('is-open')) closeModal(modal); });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', wireModal);
+      } else { wireModal(); }
+    })();
+  </script>
 </body>
 </html>
 
