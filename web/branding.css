@@ -118,8 +118,9 @@
    Ensures toolbar wraps cleanly within the editor column
    without reserving right-side space or overflow menus.
 ------------------------------------------------------- */
-#layout { overflow-x: auto; }
-#editor-col { padding-right: 380px; padding-left: 16px; box-sizing: border-box; }
+#layout { display: grid; grid-template-columns: minmax(1100px, 1fr) 380px; overflow-x: auto; height: calc(100vh - var(--banner-h)); }
+#editor-col { min-width: 0; padding: 0 16px; box-sizing: border-box; }
+#pane { width: 380px; max-width: 380px; }
 #superdoc-toolbar {
   position: relative;
   z-index: 100;
