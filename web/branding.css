@@ -33,6 +33,39 @@
   --brand-subtitle-line-height: 20px;
   --brand-subtitle-font-weight: 500;
   --brand-subtitle-color: rgba(255,255,255,0.85);
+
+  /* Spacing scale */
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-24: 24px;
+
+  /* Buttons */
+  --btn-height: 32px;
+  --btn-radius: 6px;
+  --btn-font-size: 13px;
+  --btn-primary-bg: #111827;
+  --btn-primary-fg: #ffffff;
+  --btn-secondary-bg: #ffffff;
+  --btn-secondary-fg: #111827;
+  --btn-border: #111827;
+  --btn-disabled-opacity: 0.6;
+
+  /* Pills */
+  --pill-font-size: 11px;
+  --pill-radius: 999px;
+  --pill-bg: #e0e7ff;
+  --pill-fg: #1e3a8a;
+  --pill-border: #c7d2fe;
+
+  /* Banners */
+  --banner-info-bg: #eef2ff;
+  --banner-info-fg: #3730a3;
+  --banner-info-border: #c7d2fe;
+  --banner-error-bg: #fee2e2;
+  --banner-error-fg: #7f1d1d;
+  --banner-error-border: #fecaca;
 }
 
 /* Add-in header (Word taskpane) */
@@ -132,6 +165,40 @@
   padding: 6px 10px;
   width: 100%;
 }
+
+/* Standardize buttons inside right pane */
+#app-root .ms-Button {
+  height: var(--btn-height);
+  padding: 0 var(--space-8);
+  border-radius: var(--btn-radius);
+  font-size: var(--btn-font-size);
+}
+#app-root .ms-Button[disabled] { opacity: var(--btn-disabled-opacity); }
+
+/* Generic section header helper */
+.ui-section-header {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #6b7280;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+/* Pill base */
+.ui-pill {
+  background: var(--pill-bg);
+  color: var(--pill-fg);
+  border: 1px solid var(--pill-border);
+  border-radius: var(--pill-radius);
+  padding: 2px var(--space-8);
+  font-size: var(--pill-font-size);
+  font-weight: 700;
+}
+
+/* Banners (info/error) */
+.ui-banner.info { background: var(--banner-info-bg); color: var(--banner-info-fg); border-top: 1px solid var(--banner-info-border); border-bottom: 1px solid var(--banner-info-border); padding: var(--space-8) var(--space-12); }
+.ui-banner.error { background: var(--banner-error-bg); color: var(--banner-error-fg); border-top: 1px solid var(--banner-error-border); border-bottom: 1px solid var(--banner-error-border); padding: var(--space-8) var(--space-12); }
 
 #superdoc-toolbar .superdoc-toolbar {
   display: flex;

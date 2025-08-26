@@ -504,7 +504,7 @@
         try { actions.setUser(nextId, u.role || 'editor'); } catch {}
         setSelected(nextId);
       };
-      const pill = React.createElement('span', { style: { background: '#fde68a', color: '#92400e', border: '1px solid #fbbf24', borderRadius: '999px', padding: '2px 8px', fontSize: '11px', fontWeight: 700 } }, (currentRole || 'editor').toUpperCase());
+      const pill = React.createElement('span', { className: 'ui-pill' }, (currentRole || 'editor').toUpperCase());
       const select = React.createElement('select', { value: selected || '', onChange, style: { marginLeft: '8px' } }, (users || []).map((u, i) => React.createElement('option', { key: i, value: u.id || u.label }, u.label || u.id)));
       return React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } }, [pill, select]);
     }
@@ -926,7 +926,7 @@
       const headerStyle = { padding: '10px 12px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff' };
       const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 };
       const panelStyle = { width: '780px', maxWidth: '95vw', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
-      const btn = (label, onClick, variant) => React.createElement('button', { className: 'ms-Button', disabled: !!busy, onClick, style: variant==='primary' ? { background: '#111827', color: '#fff', border: '1px solid #111827', marginLeft: '8px' } : { marginLeft: '8px' } }, React.createElement('span', { className: 'ms-Button-label' }, label));
+      const btn = (label, onClick, variant) => React.createElement('button', { className: 'ms-Button', disabled: !!busy, onClick, style: variant==='primary' ? { background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-fg)', border: `1px solid var(--btn-border)`, marginLeft: '8px' } : { marginLeft: '8px)', background: 'var(--btn-secondary-bg)', color: 'var(--btn-secondary-fg)', border: `1px solid var(--btn-border)` } }, React.createElement('span', { className: 'ms-Button-label' }, label));
       const canOverride = (String(currentRole || '').toLowerCase() === 'editor');
       const canToggle = (row) => canOverride || String(row.userId) === String(currentUser);
       const onToggle = async (row, next) => {
