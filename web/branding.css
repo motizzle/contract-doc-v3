@@ -167,13 +167,20 @@
 }
 
 /* Standardize buttons inside right pane */
-#app-root .ms-Button {
+#app-root .ms-Button, .btn {
   height: var(--btn-height);
   padding: 0 var(--space-8);
   border-radius: var(--btn-radius);
   font-size: var(--btn-font-size);
+  border: 1px solid var(--btn-border);
+  transition: transform 80ms ease;
 }
-#app-root .ms-Button[disabled] { opacity: var(--btn-disabled-opacity); }
+#app-root .ms-Button[disabled], .btn[disabled] { opacity: var(--btn-disabled-opacity); }
+.btn:active { transform: scale(0.98); }
+
+/* Button variants driven by CSS tokens */
+.btn--primary { background: var(--btn-primary-bg); color: var(--btn-primary-fg); }
+.btn--secondary { background: var(--btn-secondary-bg); color: var(--btn-secondary-fg); }
 
 /* Generic section header helper */
 .ui-section-header {

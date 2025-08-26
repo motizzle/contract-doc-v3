@@ -63,20 +63,14 @@
 
     // Reusable button with pressed and loading states
     function UIButton(props) {
-      const { tokens } = React.useContext(ThemeContext);
       const { label, onClick, variant = 'primary', disabled = false, isLoading = false, style = {} } = props || {};
       const [pressed, setPressed] = React.useState(false);
       const [loading, setLoading] = React.useState(false);
-      const themed = (() => {
-        const t = tokens && tokens.buttons && tokens.buttons[variant];
-        return t ? { background: t.bg, color: t.fg, border: `1px solid ${t.border}` } : {};
-      })();
       const busy = !!isLoading || loading;
-      const visual = Object.assign({ margin: '4px', opacity: disabled ? 0.6 : 1, transform: pressed ? 'scale(0.98)' : 'scale(1)', transition: 'transform 80ms ease' }, themed, style);
+      const className = `btn btn--${variant}`;
+      const visual = Object.assign({ margin: '4px', opacity: disabled ? 0.6 : 1 }, style);
       const handleClick = async (e) => {
         if (disabled || busy) return;
-        setPressed(true);
-        setTimeout(() => { try { setPressed(false); } catch {} }, 150);
         try {
           const ret = onClick?.(e);
           if (ret && typeof ret.then === 'function') {
@@ -86,7 +80,7 @@
         } catch {}
       };
       const text = busy ? (typeof props.loadingLabel === 'string' ? props.loadingLabel : `${label}…`) : label;
-      return React.createElement('button', { className: 'ms-Button', onClick: handleClick, disabled: disabled || busy, style: visual }, React.createElement('span', { className: 'ms-Button-label' }, text));
+      return React.createElement('button', { className, onClick: handleClick, disabled: disabled || busy, style: visual }, React.createElement('span', null, text));
     }
 
     function StateProvider(props) {
