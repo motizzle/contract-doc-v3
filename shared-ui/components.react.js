@@ -387,9 +387,9 @@
       return React.createElement(React.Fragment, null,
         React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '8px' } }, [
           add('Checkout', actions.checkout, !!btns.checkoutBtn),
-          add('Check-in and Save', async () => { try { const ok = await actions.saveProgress(); if (ok) { await actions.checkin(); } } catch {} }, !!btns.checkinBtn, 'primary'),
+          add('Check-in and Save', async () => { try { const ok = await actions.saveProgress(); if (ok) { await actions.checkin(); } } catch {} }, !!btns.checkinBtn),
           add('Cancel Checkout', actions.cancel, !!btns.cancelBtn),
-          add('Save Progress', actions.saveProgress, !!btns.saveProgressBtn, 'primary'),
+          add('Save Progress', actions.saveProgress, !!btns.saveProgressBtn),
           add('Finalize', () => ask('Finalize?', 'This will lock the document.', actions.finalize), !!btns.finalizeBtn, 'primary'),
           add('Unfinalize', () => ask('Unlock?', 'This will unlock the document.', actions.unfinalize), !!btns.unfinalizeBtn),
           add('Override Checkout', actions.override, !!btns.overrideBtn),
