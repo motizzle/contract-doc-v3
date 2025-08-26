@@ -24,19 +24,7 @@
     .banner-title { font-size: 28px; font-weight: 800; text-align: center; text-shadow: 0 1px 1px rgba(0,0,0,0.25); }
     #layout { position: relative; display: flex; height: calc(100vh - var(--banner-h)); overflow-x: auto; }
     #editor-col { position: relative; z-index: 1; display: flex; flex-direction: column; flex: 1; min-width: 720px; }
-    #superdoc-toolbar { position: relative; z-index: 100; border-bottom: 1px solid #ddd; display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 10px; width: 100%; }
-    /* Ensure internal SuperDoc toolbar row wraps instead of overflowing */
-    #superdoc-toolbar .superdoc-toolbar { display: flex; flex-wrap: wrap !important; gap: 6px; justify-content: flex-start !important; box-sizing: border-box; width: 100%; }
-    /* Allow groups and items to wrap; undo vendor nowrap/overflow */
-    #superdoc-toolbar .superdoc-toolbar * { white-space: normal !important; }
-    #superdoc-toolbar .superdoc-toolbar-group-side { min-width: auto !important; }
-    #superdoc-toolbar .overflow-icon, 
-    #superdoc-toolbar .superdoc-toolbar-overflow { display: none !important; }
-    /* Flatten group sizing and remove spacers so all items participate in wrapping */
-    #superdoc-toolbar .superdoc-toolbar > * { flex: 0 1 auto !important; min-width: 0 !important; }
-    #superdoc-toolbar .superdoc-toolbar-group-side { flex: 0 0 auto !important; min-width: 0 !important; }
-    #superdoc-toolbar .sd-toolbar-spacer,
-    #superdoc-toolbar .superdoc-toolbar .spacer { display: none !important; }
+    /* Toolbar CSS overrides moved to /web/branding.css */
     #superdoc { position: relative; z-index: 1; flex: 1; min-height: 0; }
     #pane { position: relative; z-index: 5; width: 360px; max-width: 420px; border-left: 1px solid #eee; display: flex; flex-direction: column; padding-top: 20px; background: #fff; box-shadow: -2px 0 8px rgba(0,0,0,0.08); }
     #app-root { padding: 8px 12px; overflow: auto; background: #fff; }
