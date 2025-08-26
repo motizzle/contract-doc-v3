@@ -579,7 +579,7 @@
           } catch {}
         }
       };
-      const btn = (label, onClick, variant) => React.createElement(UIButton, { label, onClick, variant: variant || 'secondary' });
+      const btn = (label, onClick, variant) => React.createElement(UIButton, { label, onClick, variant: variant || 'primary' });
       return React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '8px' } }, [btn('Open New Document', openNew), btn('View Latest', viewLatest)]);
     }
 
