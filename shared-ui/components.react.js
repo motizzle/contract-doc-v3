@@ -397,7 +397,7 @@
           add('Unfinalize', () => ask('Unlock?', 'This will unlock the document.', actions.unfinalize), !!btns.unfinalizeBtn),
           add('Override Checkout', actions.override, !!btns.overrideBtn),
           add('Send to Vendor', () => { try { setTimeout(() => { try { actions.sendVendor({}); } catch {} }, 130); } catch {} }, !!btns.sendVendorBtn),
-          add('Back to OpenGov', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'open-gov' } })); } catch {} }, !!btns.openGovBtn, 'secondary'),
+          add('Back to OpenGov', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'open-gov' } })); } catch {} }, !!btns.openGovBtn, 'primary'),
           add('Request review', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'request-review' } })); } catch {} }, true, 'primary'),
           add('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true, 'primary'),
           add('Factory Reset', () => ask('Factory reset?', 'This will clear working data.', actions.factoryReset), true),

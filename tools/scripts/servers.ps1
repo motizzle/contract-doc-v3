@@ -5,6 +5,19 @@ param(
 
 $ErrorActionPreference = 'SilentlyContinue'
 
+function Ensure-NpmInstall([string]$Dir) {
+  try {
+    if (-not (Test-Path -LiteralPath $Dir)) { return }
+    $mods = Join-Path $Dir 'node_modules'
+    if (-not (Test-Path -LiteralPath $mods)) {
+      Write-Host "Installing dependencies in $Dir" -ForegroundColor Yellow
+      Push-Location $Dir
+      npm ci --no-audit --no-fund | Out-Host
+      Pop-Location
+    }
+  } catch {}
+}
+
 function Get-PortPid([int]$Port) {
   (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty OwningProcess)
 }
@@ -15,19 +28,32 @@ function Stop-Port([int]$Port) {
   else { Write-Host "No listener on port $Port" }
 }
 
+function Wait-Port([int]$Port, [int]$TimeoutSeconds = 20) {
+  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+  while ((Get-Date) -lt $deadline) {
+    $pid = Get-PortPid -Port $Port
+    if ($pid) { return $true }
+    Start-Sleep -Milliseconds 250
+  }
+  return $false
+}
+
 function Start-Backend() {
   $root = Split-Path -Parent $PSCommandPath | Split-Path -Parent | Split-Path -Parent
   $pfx = "$root\server\config\dev-cert.pfx"
+  Ensure-NpmInstall "$root\server"
   Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","$env:SUPERDOC_BASE_URL='http://localhost:4002'; if (Test-Path '$pfx') { $env:SSL_PFX_PATH='$pfx'; $env:SSL_PFX_PASS='password' }; cd '$root'; node server/src/server.js" -WindowStyle Minimized -PassThru
 }
 
 function Start-Dev() {
   $root = Split-Path -Parent $PSCommandPath | Split-Path -Parent | Split-Path -Parent
+  Ensure-NpmInstall "$root\addin"
   Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","cd '$root\addin'; npm run dev-server" -WindowStyle Minimized -PassThru
 }
 
 function Start-Collab() {
   $root = Split-Path -Parent $PSCommandPath | Split-Path -Parent | Split-Path -Parent
+  Ensure-NpmInstall "$root\collab"
   Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","cd '$root'; node collab/server.js" -WindowStyle Minimized -PassThru
 }
 
@@ -64,18 +90,18 @@ switch ($Action) {
   }
   'start'    {
     Stop-Port 4000; Stop-Port 4001; Stop-Port 4002;
-    $c=Start-Collab; Start-Sleep -Seconds 1;
-    $b=Start-Backend; Start-Sleep -Seconds 1;
-    $d=Start-Dev; Start-Sleep -Seconds 1;
+    $c=Start-Collab; if (-not (Wait-Port -Port 4002 -TimeoutSeconds 25)) { Write-Host "WARN: 4002 not listening" -ForegroundColor Yellow }
+    $b=Start-Backend; if (-not (Wait-Port -Port 4001 -TimeoutSeconds 25)) { Write-Host "WARN: 4001 not listening" -ForegroundColor Yellow }
+    $d=Start-Dev; if (-not (Wait-Port -Port 4000 -TimeoutSeconds 25)) { Write-Host "WARN: 4000 not listening" -ForegroundColor Yellow }
     $a=Start-AddinSideload; Start-Sleep -Seconds 1;
     Write-Host "Collab PID: $($c.Id)  Backend PID: $($b.Id)  Dev PID: $($d.Id)  Addin PID: $($a.Id)";
     Show-Status
   }
   'restart'  {
     Stop-Port 4000; Stop-Port 4001; Stop-Port 4002;
-    $c=Start-Collab; Start-Sleep -Seconds 1;
-    $b=Start-Backend; Start-Sleep -Seconds 1;
-    $d=Start-Dev; Start-Sleep -Seconds 1;
+    $c=Start-Collab; if (-not (Wait-Port -Port 4002 -TimeoutSeconds 25)) { Write-Host "WARN: 4002 not listening" -ForegroundColor Yellow }
+    $b=Start-Backend; if (-not (Wait-Port -Port 4001 -TimeoutSeconds 25)) { Write-Host "WARN: 4001 not listening" -ForegroundColor Yellow }
+    $d=Start-Dev; if (-not (Wait-Port -Port 4000 -TimeoutSeconds 25)) { Write-Host "WARN: 4000 not listening" -ForegroundColor Yellow }
     $a=Start-AddinSideload; Start-Sleep -Seconds 1;
     Write-Host "Collab PID: $($c.Id)  Backend PID: $($b.Id)  Dev PID: $($d.Id)  Addin PID: $($a.Id)";
     Show-Status
