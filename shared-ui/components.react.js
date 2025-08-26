@@ -64,7 +64,7 @@
     // Reusable button with pressed and loading states
     function UIButton(props) {
       const { tokens } = React.useContext(ThemeContext);
-      const { label, onClick, variant = 'secondary', disabled = false, isLoading = false, style = {} } = props || {};
+      const { label, onClick, variant = 'primary', disabled = false, isLoading = false, style = {} } = props || {};
       const [pressed, setPressed] = React.useState(false);
       const [loading, setLoading] = React.useState(false);
       const themed = (() => {
