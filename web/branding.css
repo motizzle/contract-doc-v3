@@ -215,11 +215,11 @@
   width: 90%;
   text-align: center;
 }
-.banner--available { background: linear-gradient(180deg,#16a34a,#4ade80); color: #ffffff; border: 1px solid #166534; }
-.banner--checked_out_self { background: linear-gradient(180deg,#f59e0b,#fcd34d); color: #111827; border: 1px solid #f59e0b; }
-.banner--checked_out_other { background: linear-gradient(180deg,#f97316,#fdba74); color: #111827; border: 1px solid #f97316; }
-.banner--final { background: linear-gradient(180deg,#6b7280,#9ca3af); color: #ffffff; border: 1px solid #6b7280; }
-.banner--update_available { background: linear-gradient(180deg,#0ea5e9,#38bdf8); color: #0f172a; border: 1px solid #0ea5e9; }
+.banner--available { background: #16a34a; color: #ffffff; border: 1px solid #166534; }
+.banner--checked_out_self { background: #f59e0b; color: #111827; border: 1px solid #f59e0b; }
+.banner--checked_out_other { background: #f97316; color: #111827; border: 1px solid #f97316; }
+.banner--final { background: #6b7280; color: #ffffff; border: 1px solid #6b7280; }
+.banner--update_available { background: #0ea5e9; color: #0f172a; border: 1px solid #0ea5e9; }
 
 #superdoc-toolbar .superdoc-toolbar {
   display: flex;
