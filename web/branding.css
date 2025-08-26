@@ -118,6 +118,8 @@
    Ensures toolbar wraps cleanly within the editor column
    without reserving right-side space or overflow menus.
 ------------------------------------------------------- */
+#layout { overflow-x: auto; }
+#editor-col { padding-right: 380px; box-sizing: border-box; }
 #superdoc-toolbar {
   position: relative;
   z-index: 100;
@@ -141,9 +143,6 @@
 /* Allow groups and items to wrap; undo vendor nowrap/overflow */
 #superdoc-toolbar .superdoc-toolbar * { white-space: normal !important; }
 #superdoc-toolbar .superdoc-toolbar-group-side { min-width: auto !important; }
-
-/* Keep overflow menu visible so items don't disappear when space is tight */
-/* (Previously hidden; restored for accessibility) */
 
 /* Flatten group sizing and remove spacers so all items participate in wrapping */
 #superdoc-toolbar .superdoc-toolbar > * { flex: 0 1 auto !important; min-width: 0 !important; }
