@@ -371,6 +371,8 @@ app.get('/api/v1/state-matrix', (req, res) => {
       saveProgressBtn: !!rolePerm.checkin && isOwner && !serverState.isFinal,
       overrideBtn: !!rolePerm.override && isCheckedOut && !isOwner && !serverState.isFinal,
       sendVendorBtn: !!rolePerm.sendVendor && !serverState.isFinal,
+      // Always show Back to OpenGov button (client-only UX)
+      openGovBtn: true,
     },
     finalize: {
       isFinal: serverState.isFinal,
