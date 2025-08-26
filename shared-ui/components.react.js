@@ -320,6 +320,7 @@
     }
 
     function BannerStack() {
+      const { tokens } = React.useContext(ThemeContext);
       const { config, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, revision, addLog, setDocumentSource } = React.useContext(StateContext);
       const banners = Array.isArray(config?.banners) ? config.banners : [];
       const API_BASE = getApiBase();
@@ -358,9 +359,16 @@
       };
       return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' } },
         banners.filter(show).map((b, i) => {
-          const cls = `ui-banner-pill banner--${String(b?.state || 'default')}`;
+          const t = (tokens && tokens.banner && b && b.state) ? tokens.banner[b.state] : null;
+          const style = {
+            marginTop: '0px',
+            background: (t && (t.pillBg || t.bg)) || '#eef2ff',
+            color: (t && (t.pillFg || t.fg)) || '#1e3a8a',
+            border: `1px solid ${((t && (t.pillBg || t.bg)) || '#c7d2fe')}`,
+            borderRadius: '6px', padding: '3px 8px', fontWeight: 600, width: '90%', textAlign: 'center'
+          };
           const text = (b && b.title && b.message) ? `${b.title}: ${b.message}` : (b?.title || '');
-          return React.createElement('div', { key: `b-${i}`, className: cls }, text);
+          return React.createElement('div', { key: `b-${i}`, style }, text);
         })
       );
     }

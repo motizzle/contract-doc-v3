@@ -16,5 +16,16 @@
   "buttons": {
     "primary": { "bg": "#111827", "fg": "#ffffff", "border": "#111827" },
     "secondary": { "bg": "#ffffff", "fg": "#111827", "border": "#e5e7eb" }
+  },
+  "pulse": {
+    "palette": [
+      { "bg": "#de3423", "fg": "#ffffff" },
+      { "bg": "#08a847", "fg": "#111827" },
+      { "bg": "#b056ff", "fg": "#ffffff" },
+      { "bg": "#0095da", "fg": "#ffffff" }
+    ],
+    "minSeconds": 3,
+    "maxSeconds": 10,
+    "glowAlpha": 0.35
   }
 }

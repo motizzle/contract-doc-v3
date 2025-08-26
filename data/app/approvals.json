@@ -18,14 +18,14 @@
       "userId": "user3",
       "name": "Yuri Lee Laffed",
       "order": 3,
-      "approved": true,
-      "notes": "dd"
+      "approved": false,
+      "notes": ""
     },
     {
       "userId": "user4",
       "name": "Hoo R U",
       "order": 4,
-      "approved": true,
+      "approved": false,
       "notes": ""
     },
     {
@@ -36,5 +36,5 @@
       "notes": ""
     }
   ],
-  "revision": 28
+  "revision": 46
 }

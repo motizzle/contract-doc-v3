@@ -426,6 +426,21 @@ app.get('/api/v1/theme', (req, res) => {
       available:        { bg: '#16a34a', fg: '#ffffff', pillBg: '#166534', pillFg: '#ffffff' },
       // Viewer-only banner (no edit permission)
       view_only: { bg: '#e5e7eb', fg: '#111827', pillBg: '#d1d5db', pillFg: '#111827' }
+    },
+    pulse: {
+      palette: [
+        { bg: '#4B3FFF', fg: '#ffffff' },
+        { bg: '#FFB636', fg: '#111827' },
+        { bg: '#22C55E', fg: '#ffffff' },
+        { bg: '#EF4444', fg: '#ffffff' },
+        { bg: '#06B6D4', fg: '#0f172a' }
+      ],
+      minSeconds: 3,
+      maxSeconds: 10,
+      activeSeconds: 1.5,
+      restMinSeconds: 3,
+      restMaxSeconds: 10,
+      glowAlpha: 0.35
     }
   });
 });

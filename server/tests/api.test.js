@@ -155,6 +155,7 @@ describe('API', () => {
 
     // Checkout by A -> true for A, false for B
     await postJson('/api/v1/checkout', { userId: 'a' });
+    await sleep(100); // allow state to persist
     r = await fetchJson('/api/v1/state-matrix?platform=web&userId=a');
     expect(r.json.config.buttons.saveProgressBtn).toBe(true);
     r = await fetchJson('/api/v1/state-matrix?platform=web&userId=b');
