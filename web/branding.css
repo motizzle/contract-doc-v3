@@ -56,12 +56,12 @@
   --pill-font-size: 11px;
   --pill-radius: 999px;
   --pill-bg: #e0e7ff;
-  --pill-fg: #1e3a8a;
+  --pill-fg: #dce6f4;
   --pill-border: #c7d2fe;
 
   /* Banners */
   --banner-info-bg: #eef2ff;
-  --banner-info-fg: #3730a3;
+  --banner-info-fg: #ffb636;
   --banner-info-border: #c7d2fe;
   --banner-error-bg: #fee2e2;
   --banner-error-fg: #7f1d1d;
@@ -206,6 +206,20 @@
 /* Banners (info/error) */
 .ui-banner.info { background: var(--banner-info-bg); color: var(--banner-info-fg); border-top: 1px solid var(--banner-info-border); border-bottom: 1px solid var(--banner-info-border); padding: var(--space-8) var(--space-12); }
 .ui-banner.error { background: var(--banner-error-bg); color: var(--banner-error-fg); border-top: 1px solid var(--banner-error-border); border-bottom: 1px solid var(--banner-error-border); padding: var(--space-8) var(--space-12); }
+
+/* Banner pills driven by CSS (replaces token inline styles) */
+.ui-banner-pill {
+  border-radius: 6px;
+  padding: 3px var(--space-8);
+  font-weight: 600;
+  width: 90%;
+  text-align: center;
+}
+.banner--available { background: linear-gradient(180deg,#16a34a,#4ade80); color: #ffffff; border: 1px solid #166534; }
+.banner--checked_out_self { background: linear-gradient(180deg,#f59e0b,#fcd34d); color: #111827; border: 1px solid #f59e0b; }
+.banner--checked_out_other { background: linear-gradient(180deg,#f97316,#fdba74); color: #111827; border: 1px solid #f97316; }
+.banner--final { background: linear-gradient(180deg,#6b7280,#9ca3af); color: #ffffff; border: 1px solid #6b7280; }
+.banner--update_available { background: linear-gradient(180deg,#0ea5e9,#38bdf8); color: #0f172a; border: 1px solid #0ea5e9; }
 
 #superdoc-toolbar .superdoc-toolbar {
   display: flex;

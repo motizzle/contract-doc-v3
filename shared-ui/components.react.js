@@ -320,7 +320,6 @@
     }
 
     function BannerStack() {
-      const { tokens } = React.useContext(ThemeContext);
       const { config, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, revision, addLog, setDocumentSource } = React.useContext(StateContext);
       const banners = Array.isArray(config?.banners) ? config.banners : [];
       const API_BASE = getApiBase();
@@ -359,13 +358,9 @@
       };
       return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' } },
         banners.filter(show).map((b, i) => {
-          const t = (tokens && tokens.banner && b && b.state) ? tokens.banner[b.state] : null;
-          const style = {
-            marginTop: '0px', background: (t && t.pillBg) || '#eef2ff', color: (t && t.pillFg) || '#1e3a8a',
-            border: `1px solid ${(t && t.pillBg) || '#c7d2fe'}`, borderRadius: '6px', padding: '3px 8px', fontWeight: 600, width: '90%', textAlign: 'center'
-          };
-          const text = (b.title && b.message) ? `${b.title}: ${b.message}` : (b.title || '');
-          return React.createElement('div', { key: `b-${i}`, style }, text);
+          const cls = `ui-banner-pill banner--${String(b?.state || 'default')}`;
+          const text = (b && b.title && b.message) ? `${b.title}: ${b.message}` : (b?.title || '');
+          return React.createElement('div', { key: `b-${i}`, className: cls }, text);
         })
       );
     }
@@ -373,7 +368,7 @@
     function ConnectionBadge() {
       const { isConnected, lastTs } = React.useContext(StateContext);
       const when = lastTs ? new Date(lastTs).toLocaleTimeString() : '—';
-      const style = { marginLeft: '8px', padding: '2px 6px', border: '1px solid #ddd', borderRadius: '10px', fontSize: '12px', background: isConnected ? '#e6ffed' : '#fff5f5' };
+      const style = { marginLeft: '8px', padding: '2px 6px', border: '1px solid #ddd', borderRadius: '10px', fontSize: '12px', background: isConnected ? '#f86a0b' : '#fff5f5' };
       return React.createElement('div', { style }, isConnected ? `connected • last: ${when}` : 'disconnected');
     }
 
@@ -1004,7 +999,6 @@
             React.createElement('div', { key: 't', style: { fontWeight: 700 } }, `Approvals (${hdr.approved}/${hdr.total} approved)`),
             React.createElement('div', { key: 'tb' }, [
               btn('Refresh', load),
-              btn('Request review', doNotify, 'primary'),
               btn('Factory reset', confirmReset),
               btn('Close', onClose),
             ])
