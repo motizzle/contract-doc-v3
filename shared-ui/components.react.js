@@ -382,7 +382,7 @@
       const [confirm, setConfirm] = React.useState(null);
       const { tokens } = React.useContext(ThemeContext);
       const btns = (config && config.buttons) ? config.buttons : {};
-      const add = (label, onClick, show, variant, opts = {}) => show ? React.createElement(UIButton, Object.assign({ key: label, label, onClick, variant: variant || 'primary' }, opts)) : null;
+      const add = (label, onClick, show, variant, opts = {}) => show ? React.createElement(UIButton, Object.assign({ key: label, label, onClick, variant: variant || (label && /^(Check\-in|Save Progress|Cancel Checkout|Override Checkout)/i.test(label) ? 'secondary' : 'primary') }, opts)) : null;
       const ask = (title, message, onConfirm) => setConfirm({ title, message, onConfirm });
       return React.createElement(React.Fragment, null,
         React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '8px' } }, [
