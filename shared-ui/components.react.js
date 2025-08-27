@@ -181,6 +181,10 @@
                 if (typeof p.revision === 'number') setApprovalsRevision(p.revision);
                 if (p.summary) setApprovalsSummary(p.summary);
               }
+              // Fan out chat messages to ChatConsole
+              if (p && p.type === 'chat') {
+                try { window.dispatchEvent(new CustomEvent('chat:message', { detail: p })); } catch {}
+              }
               // Do not auto-refresh document on save/revert; show banner via state-matrix
               refresh();
             } catch {}
@@ -572,6 +576,18 @@
           await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat', payload: { text: t }, userId: currentUser, platform: 'web' }) });
         } catch {}
       };
+      React.useEffect(() => {
+        function onInboundChat(ev) {
+          try {
+            const d = ev.detail;
+            const text = d && d.payload && d.payload.text;
+            const from = d && d.userId || 'bot';
+            if (text) setMessages((m) => m.concat(`[${from}] ${text}`));
+          } catch {}
+        }
+        window.addEventListener('chat:message', onInboundChat);
+        return () => window.removeEventListener('chat:message', onInboundChat);
+      }, []);
       const box = React.createElement('div', { style: { border: '1px solid #ddd', borderRadius: '6px', padding: '8px', height: '120px', overflow: 'auto', background: '#fff' } }, messages.map((m, i) => React.createElement('div', { key: i, style: { marginTop: i ? '6px' : 0 } }, m)));
       const input = React.createElement('input', { type: 'text', value: text, onChange: (e) => setText(e.target.value), placeholder: 'Type a message...', style: { flex: 1, padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' } });
       const btn = React.createElement(UIButton, { label: 'Send', onClick: send });
