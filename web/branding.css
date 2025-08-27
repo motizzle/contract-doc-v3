@@ -213,7 +213,7 @@
   background: #000000;
   color: #fff;
   border: 1px solid #000000;
-  padding: 2px 6px; /* internal padding (top/bottom, left/right) */
+  padding: 1px 1px; /* internal padding (top/bottom, left/right) */
   border-radius: 999px;
   font-size: 9px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
@@ -256,9 +256,9 @@
 
 /* Add-in pill override */
 .addin-header.brand-header-bg .pill-right {
-    top: 0px;
+    top: 2px;
     right: 16px;
-    padding: 4px 8px; /* your values */
+    padding: 2px 4px; /* your values */
   }
 
 /* ------------------------------------------------------

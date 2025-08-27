@@ -1,0 +1,18 @@
+{
+  "messages": [
+    "Hi! I'm OG Assist. How can I help today?",
+    "You got it — I’m on it.",
+    "All set. Want me to do anything else?",
+    "Tip: Use ‘View Latest’ to refresh the document.",
+    "I can open Word for you or save progress here.",
+    "Noted. I’ll keep an eye on changes.",
+    "Heads up: you can compile a packet from the right pane.",
+    "Let me know when to notify approvers."
+  ],
+  "policy": {
+    "mode": "sequential",
+    "loop": true
+  }
+}
+
+
