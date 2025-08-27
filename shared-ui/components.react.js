@@ -640,6 +640,15 @@
           try { setMessages([]); } catch {}
           try { localStorage.removeItem(getMsgsKey()); } catch {}
           try { localStorage.removeItem(getSeedKey()); } catch {}
+          // For add-in (Word), immediately seed first message after reset
+          if (plat === 'word') {
+            try {
+              await fetch(`${API_BASE}/api/v1/events/client`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'chat', payload: { text: '' }, userId: currentUser, platform: 'word' })
+              });
+            } catch {}
+          }
           return r;
         } catch {}
       };
