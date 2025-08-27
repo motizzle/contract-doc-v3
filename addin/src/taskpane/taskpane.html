@@ -2,7 +2,7 @@
 <!-- This file shows how to design a first-run page that provides a welcome screen to the user about the features of the add-in. -->
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8" />
@@ -19,18 +19,60 @@
     <!-- Template styles -->
     <link href="taskpane.css" rel="stylesheet" type="text/css" />
     <!-- Branding from server -->
-    <link href="/web/branding.css?v=brand-m1" rel="stylesheet" type="text/css" />
+    <link href="/web/branding.css?v=brand-m3" rel="stylesheet" type="text/css" />
 </head>
 
 <body class="ms-font-m ms-welcome ms-Fabric">
   <header class="ms-welcome__header ms-bgColor-neutralLighter addin-header brand-header-bg">
     <img class="brand-img" src="/web/assets/opengov-logo.png" alt="OpenGov" title="Redline Like You Mean It" />
-    <span class="pill-right">Coming 2026</span>
+    <span class="pill-right pulse" id="coming-pill" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="coming-modal" aria-expanded="false">Coming 2026</span>
     <div class="title-block">
       <h1 class="ms-font-su title-main">Redline Like You Mean It</h1>
       <div class="title-sub">The Future of Contracting</div>
     </div>
   </header>
+  <!-- Modal for Coming 2026 (shared styles) -->
+  <div class="ui-modal-backdrop" id="coming-modal" aria-hidden="true">
+    <div class="ui-modal" role="dialog" aria-modal="true" aria-labelledby="coming-modal-title">
+      <div class="ui-modal__header">
+        <div id="coming-modal-title">The Future is Coming</div>
+        <button type="button" class="ui-modal__close" aria-label="Close">×</button>
+      </div>
+      <div class="ui-modal__body">
+        <div style="font-size:14px;color:#6b7280;margin-bottom:8px">Preview and toggle upcoming features</div>
+        <table class="ui-table" aria-label="Upcoming features">
+          <thead>
+            <tr>
+              <th style="width:45%">Feature</th>
+              <th style="width:20%">Status</th>
+              <th style="width:20%">Release</th>
+              <th style="width:15%">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Contracts Landing Page</td>
+              <td><span class="ui-badge gray">pending release</span></td>
+              <td>2025-09-16</td>
+              <td><input type="checkbox" checked aria-label="Enable Contracts Landing Page"/></td>
+            </tr>
+            <tr>
+              <td>Evaluations, Awards, and Notices V2</td>
+              <td><span class="ui-badge indigo">in development</span></td>
+              <td>Q4 2025</td>
+              <td><input type="checkbox" checked aria-label="Enable Evaluations, Awards, and Notices V2"/></td>
+            </tr>
+            <tr>
+              <td>Contract authoring in Word</td>
+              <td><span class="ui-badge green">vision</span></td>
+              <td>Q1 2026</td>
+              <td><input type="checkbox" checked aria-label="Enable Contract authoring in Word"/></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
     <section id="sideload-msg" class="ms-welcome__main" style="display: none;">
         <h2 class="ms-font-xl">Loading...</h2>
     </section>
@@ -43,48 +85,19 @@
     <script defer src="/vendor/react/react.production.min.js"></script>
     <script defer src="/vendor/react/react-dom.production.min.js"></script>
     <script defer src="/ui/components.react.js?v=react-m7"></script>
-    <script>
-      (function(){
-        function tryMount() {
-          try {
-            var hasReact = !!(window.React && window.ReactDOM && window.ReactDOM.createRoot);
-            var hasEntry = !!window.mountReactApp;
-            if (!hasReact || !hasEntry) return false;
-            document.getElementById('sideload-msg').style.display = 'none';
-            document.getElementById('app-body').style.display = 'block';
-            window.mountReactApp({ rootSelector: '#app-root' });
-            return true;
-          } catch (e) {
-            try {
-              const el = document.getElementById('app-root');
-              el.innerHTML = '<div style="padding:8px;color:crimson">Failed to initialize: '+ (e && (e.message||e)) +'</div>';
-            } catch {}
-            return true; // stop retrying if we displayed an error
-          }
+    <script type="module">
+      function openModal(el){ if (!el) return; try { document.body.style.overflow='hidden'; } catch {}; el.classList.add('is-open'); el.setAttribute('aria-hidden','false'); try { document.getElementById('coming-pill').setAttribute('aria-expanded','true'); } catch {} }
+      function closeModal(el){ if (!el) return; el.classList.remove('is-open'); el.setAttribute('aria-hidden','true'); try { document.body.style.overflow=''; } catch {}; try { document.getElementById('coming-pill').setAttribute('aria-expanded','false'); document.getElementById('coming-pill').focus(); } catch {} }
+      function wireModal(){ const pill=document.getElementById('coming-pill'); const modal=document.getElementById('coming-modal'); if(!pill||!modal) return; pill.addEventListener('click',()=>openModal(modal)); pill.addEventListener('keydown',(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openModal(modal);} }); modal.addEventListener('click',(e)=>{ if(e.target===modal) closeModal(modal); }); const closeBtn=modal.querySelector('.ui-modal__close'); if(closeBtn) closeBtn.addEventListener('click',()=>closeModal(modal)); }
+      Office.onReady(async (info) => {
+        try { console.log('Office.ready host:', info && info.host); } catch {}
+        try { document.getElementById('sideload-msg').style.display = 'none'; } catch {}
+        try { document.getElementById('app-body').style.display = 'block'; } catch {}
+        try { if (window.mountReactApp) window.mountReactApp({ rootSelector: '#app-root' }); } catch (e) {
+          try { const el = document.getElementById('app-root'); el.innerHTML = '<div style="padding:8px;color:crimson">Failed to initialize: '+ (e && (e.message||e)) +'</div>'; } catch {}
         }
-        function start() {
-          // Only show the loading message if mount takes noticeable time
-          var showLoadingTimer = setTimeout(function(){
-            try { document.getElementById('sideload-msg').style.display = 'block'; } catch {}
-          }, 300);
-          var attempts = 0;
-          (function waitForEntry(){
-            attempts++;
-            if (tryMount()) { try { clearTimeout(showLoadingTimer); } catch {}; return; }
-            if (attempts < 60) { setTimeout(waitForEntry, 100); } else { try { clearTimeout(showLoadingTimer); } catch {} }
-          })();
-        }
-        if (window.Office && typeof Office.onReady === 'function') {
-          try { Office.onReady(function(info){ try { console.log('Office.ready host:', info && info.host); } catch {}; start(); }); } catch { start(); }
-        } else {
-          // Fallback: ensure we never block rendering if Office.js fails to bootstrap
-          if (document.readyState === 'complete' || document.readyState === 'interactive') {
-            setTimeout(start, 0);
-          } else {
-            document.addEventListener('DOMContentLoaded', start);
-          }
-        }
-      })();
+        try { wireModal(); } catch {}
+      });
     </script>
 </body>
 
