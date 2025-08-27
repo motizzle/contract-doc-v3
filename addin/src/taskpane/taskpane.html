@@ -19,60 +19,18 @@
     <!-- Template styles -->
     <link href="taskpane.css" rel="stylesheet" type="text/css" />
     <!-- Branding from server -->
-    <link href="/web/branding.css?v=brand-m3" rel="stylesheet" type="text/css" />
+    <link href="/web/branding.css?v=brand-m1" rel="stylesheet" type="text/css" />
 </head>
 
 <body class="ms-font-m ms-welcome ms-Fabric">
   <header class="ms-welcome__header ms-bgColor-neutralLighter addin-header brand-header-bg">
     <img class="brand-img" src="/web/assets/opengov-logo.png" alt="OpenGov" title="Redline Like You Mean It" />
-    <span class="pill-right pulse" id="coming-pill" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="coming-modal" aria-expanded="false">Coming 2026</span>
+    <span class="pill-right">Coming 2026</span>
     <div class="title-block">
       <h1 class="ms-font-su title-main">Redline Like You Mean It</h1>
       <div class="title-sub">The Future of Contracting</div>
     </div>
   </header>
-  <!-- Always-present modal -->
-  <div class="ui-modal-backdrop" id="coming-modal" aria-hidden="true">
-    <div class="ui-modal" role="dialog" aria-modal="true" aria-labelledby="coming-modal-title">
-      <div class="ui-modal__header">
-        <div id="coming-modal-title">The Future is Coming</div>
-        <button type="button" class="ui-modal__close" aria-label="Close">×</button>
-      </div>
-      <div class="ui-modal__body">
-        <div style="font-size:14px;color:#6b7280;margin-bottom:8px">Preview and toggle upcoming features</div>
-        <table class="ui-table" aria-label="Upcoming features">
-          <thead>
-            <tr>
-              <th style="width:45%">Feature</th>
-              <th style="width:20%">Status</th>
-              <th style="width:20%">Release</th>
-              <th style="width:15%">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Contracts Landing Page</td>
-              <td><span class="ui-badge gray">pending release</span></td>
-              <td>2025-09-16</td>
-              <td><input type="checkbox" checked aria-label="Enable Contracts Landing Page"/></td>
-            </tr>
-            <tr>
-              <td>Evaluations, Awards, and Notices V2</td>
-              <td><span class="ui-badge indigo">in development</span></td>
-              <td>Q4 2025</td>
-              <td><input type="checkbox" checked aria-label="Enable Evaluations, Awards, and Notices V2"/></td>
-            </tr>
-            <tr>
-              <td>Contract authoring in Word</td>
-              <td><span class="ui-badge green">vision</span></td>
-              <td>Q1 2026</td>
-              <td><input type="checkbox" checked aria-label="Enable Contract authoring in Word"/></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
     <section id="sideload-msg" class="ms-welcome__main" style="display: none;">
         <h2 class="ms-font-xl">Loading...</h2>
     </section>
@@ -126,95 +84,6 @@
             document.addEventListener('DOMContentLoaded', start);
           }
         }
-      })();
-    </script>
-    <script>
-      (function(){
-        function randInt(min, max){ return Math.floor(Math.random() * (max - min + 1)) + min; }
-        function hexToRgb(hex){
-          var m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-          return m ? { r: parseInt(m[1],16), g: parseInt(m[2],16), b: parseInt(m[3],16) } : null;
-        }
-        function setupPill(pill){
-          if (!pill) return;
-          // Default palette while theme loads
-          var pairs = [
-            { bg: "#000000", fg: "#ffffff" },
-            { bg: "#4B3FFF", fg: "#ffffff" },
-            { bg: "#FFB636", fg: "#111827" },
-            { bg: "#22C55E", fg: "#ffffff" },
-            { bg: "#EF4444", fg: "#ffffff" },
-            { bg: "#06B6D4", fg: "#0f172a" }
-          ];
-          var minS = 3, maxS = 10, glowAlpha = 0.35;
-          // Try to hydrate from server theme
-          try {
-            fetch('/api/v1/theme').then(function(r){ return r.ok ? r.json() : null; }).then(function(t){
-              if (!t) return;
-              if (t.pulse && Array.isArray(t.pulse.palette) && t.pulse.palette.length) {
-                var themed = [];
-                for (var i=0;i<t.pulse.palette.length;i++) {
-                  var p = t.pulse.palette[i];
-                  if (p && p.bg) themed.push({ bg: p.bg, fg: p.fg || '#ffffff' });
-                }
-                if (themed.length) pairs = themed;
-                if (typeof t.pulse.minSeconds === 'number') minS = t.pulse.minSeconds;
-                if (typeof t.pulse.maxSeconds === 'number') maxS = t.pulse.maxSeconds;
-                if (typeof t.pulse.glowAlpha === 'number') glowAlpha = t.pulse.glowAlpha;
-              }
-            }).catch(function(){});
-          } catch {}
-          var idx = 0;
-          function applyNext(){
-            var pair = pairs[idx % pairs.length];
-            var rgb = hexToRgb(pair.bg);
-            var glow = rgb ? ('rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + glowAlpha + ')') : 'rgba(255,255,255,' + glowAlpha + ')';
-            pill.style.background = pair.bg;
-            pill.style.color = pair.fg;
-            pill.style.setProperty('--pulse-glow-color', glow);
-            pill.style.setProperty('--pulse-duration', randInt(minS,maxS) + 's');
-            idx++;
-          }
-          pill.addEventListener('animationiteration', applyNext);
-          applyNext();
-        }
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', function(){ setupPill(document.querySelector('.pill-right.pulse')); });
-        } else {
-          setupPill(document.querySelector('.pill-right.pulse'));
-        }
-
-        // Modal handlers
-        function openModal(el){
-          if (!el) return;
-          try { document.body.style.overflow = 'hidden'; } catch {}
-          el.classList.add('is-open');
-          el.setAttribute('aria-hidden', 'false');
-          try { document.getElementById('coming-pill').setAttribute('aria-expanded', 'true'); } catch {}
-          try { el.querySelector('.ui-modal__close')?.focus(); } catch {}
-        }
-        function closeModal(el){
-          if (!el) return;
-          el.classList.remove('is-open');
-          el.setAttribute('aria-hidden', 'true');
-          try { document.body.style.overflow = ''; } catch {}
-          try { document.getElementById('coming-pill').setAttribute('aria-expanded', 'false'); } catch {}
-          try { document.getElementById('coming-pill').focus(); } catch {}
-        }
-        function wireModal(){
-          var pill = document.getElementById('coming-pill');
-          var modal = document.getElementById('coming-modal');
-          if (!pill || !modal) return;
-          pill.addEventListener('click', function(){ openModal(modal); });
-          pill.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(modal); } });
-          modal.addEventListener('click', function(e){ if (e.target === modal) closeModal(modal); });
-          var closeBtn = modal.querySelector('.ui-modal__close');
-          if (closeBtn) closeBtn.addEventListener('click', function(){ closeModal(modal); });
-          document.addEventListener('keydown', function onEsc(e){ if (e.key === 'Escape' && modal.classList.contains('is-open')) closeModal(modal); });
-        }
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', wireModal);
-        } else { wireModal(); }
       })();
     </script>
 </body>

@@ -1,35 +1,15 @@
 
-1 - react (WIP)
-2 - save progress (WIP)
+i want you to repeat this task back to me and tell me if you understand:
 
-brief done, ready to build:
-3A - fix the doc not loading in the web / initializing
-3B - auto-open file in the other platform when "open new document"
+1 - error on page load with default-doc
+2 - change "user1" checked out message
+3 - still getting the compile failure flash when loading the add-in
+4 - wrap toolbar
+5 - lock based on permissions (word and the web)
+6 - OG assist
+7 - templates
+8 - add users
 
-
-brief done, ready to build
-5 - approvals
-
-
-6 - branding
-- Phase 1: remove inline styles via CSS variables (keep React as-is)
-  - [ ] Add base stylesheet (variables + classes) for badges, pills, buttons, modals, panels
-  - [ ] Hydrate CSS variables from /api/v1/theme at :root (Web + Taskpane)
-  - [ ] Replace hex/rgba literals in shared-ui/components.react.js with classes using variables
-  - [ ] Replace hex/rgba literals in web/view.html with classes using variables
-  - [ ] Visual parity pass (side-by-side before/after)
-  - [ ] Enable CI lint for hex/rgba in .js/.html (exclude vendor)
-- Phase 2: (later) introduce primitives (Button/Modal/Pill) consuming variables
-
-brief done, ready to build
-7 - back to opengov
-
-
-8 - OG assist
-9 - new features modal
-10 - templates
-11 - compile
-12 - add users
 
 
 easter eggs
