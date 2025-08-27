@@ -386,7 +386,7 @@
       const { tokens } = React.useContext(ThemeContext);
       const btns = (config && config.buttons) ? config.buttons : {};
       const ask = (title, message, onConfirm) => setConfirm({ title, message, onConfirm });
-      const uniformBtnStyle = { width: '100%', minHeight: '36px' };
+      const uniformBtnStyle = { width: '100%', minHeight: '27px' };
       const add = (label, onClick, show, variant, opts = {}) => show
         ? React.createElement(UIButton, Object.assign({ key: label, label, onClick, variant: variant || (label && /^(Check\-in|Save Progress|Cancel Checkout|Override Checkout)/i.test(label) ? 'secondary' : 'primary'), style: Object.assign({}, uniformBtnStyle, opts.style || {}) }, opts))
         : null;
@@ -591,7 +591,7 @@
           } catch {}
         }
       };
-      const btn = (label, onClick, variant) => React.createElement(UIButton, { label, onClick, variant: variant || 'primary', style: { width: '100%', minHeight: '36px' } });
+      const btn = (label, onClick, variant) => React.createElement(UIButton, { label, onClick, variant: variant || 'primary', style: { width: '100%', minHeight: '27px' } });
       return React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' } }, [btn('Open New Document', openNew), btn('View Latest', viewLatest)]);
     }
 
