@@ -382,7 +382,7 @@
     }
 
     function ActionButtons() {
-      const { config, actions } = React.useContext(StateContext);
+      const { config, actions, revision, setDocumentSource, addLog, setLoadedVersion } = React.useContext(StateContext);
       const [confirm, setConfirm] = React.useState(null);
       const { tokens } = React.useContext(ThemeContext);
       const btns = (config && config.buttons) ? config.buttons : {};
@@ -391,6 +391,76 @@
       const add = (label, onClick, show, variant, opts = {}) => show
         ? React.createElement(UIButton, Object.assign({ key: label, label, onClick, variant: variant || (label && /^(Check\-in|Save Progress|Cancel Checkout|Override Checkout)/i.test(label) ? 'secondary' : 'primary'), style: Object.assign({}, uniformBtnStyle, opts.style || {}) }, opts))
         : null;
+
+      // Document controls (moved here so spacing matches other actions)
+      const API_BASE = getApiBase();
+      const isWord = (typeof Office !== 'undefined');
+      const openNew = async () => {
+        if (isWord) {
+          const input = document.createElement('input'); input.type = 'file'; input.accept = '.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+          input.onchange = async (e) => {
+            const file = e.target.files && e.target.files[0]; if (!file) return;
+            const buf = await file.arrayBuffer(); const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
+            try { await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); }); } catch {}
+          };
+          input.click();
+        } else {
+          const input = document.createElement('input'); input.type = 'file'; input.accept = '.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+          input.onchange = (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; try { setDocumentSource(f); addLog('doc src set [file]'); } catch {} };
+          input.click();
+        }
+      };
+      const viewLatest = async () => {
+        const w = `${API_BASE}/documents/working/default.docx`;
+        const c = `${API_BASE}/documents/canonical/default.docx`;
+        if (isWord) {
+          try {
+            let url = c;
+            try {
+              const h = await fetch(w, { method: 'HEAD' });
+              if (h.ok) {
+                const len = Number(h.headers.get('content-length') || '0');
+                if (Number.isFinite(len) && len > MIN_DOCX_SIZE) url = w;
+              }
+            } catch {}
+            const withRev = `${url}?rev=${revision || Date.now()}`;
+            const res = await fetch(withRev, { cache: 'no-store' }); if (!res.ok) throw new Error('download');
+            const buf = await res.arrayBuffer();
+            const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
+            await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
+            try {
+              const plat = 'word';
+              const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent('user1')}`;
+              const r = await fetch(u);
+              const j = await r.json();
+              const v = Number(j?.config?.documentVersion || 0);
+              if (v > 0) setLoadedVersion(v);
+            } catch {}
+          } catch {}
+        } else {
+          try {
+            let url = c;
+            try {
+              const h = await fetch(w, { method: 'HEAD' });
+              if (h.ok) {
+                const len = Number(h.headers.get('content-length') || '0');
+                if (Number.isFinite(len) && len > MIN_DOCX_SIZE) url = w;
+              }
+            } catch {}
+            const finalUrl = `${url}?rev=${revision || Date.now()}`;
+            setDocumentSource(finalUrl);
+            addLog(`doc src viewLatest -> ${finalUrl}`);
+            try {
+              const plat = 'web';
+              const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent('user1')}`;
+              const r = await fetch(u);
+              const j = await r.json();
+              const v = Number(j?.config?.documentVersion || 0);
+              if (v > 0) setLoadedVersion(v);
+            } catch {}
+          } catch {}
+        }
+      };
 
       // Top: checkout cluster only
       const topCluster = [
@@ -410,6 +480,9 @@
         add('Request review', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'request-review' } })); } catch {} }, true, 'primary'),
         add('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true, 'primary'),
         add('Factory Reset', () => ask('Factory reset?', 'This will clear working data.', actions.factoryReset), true),
+        // Document controls (standardized spacing within the same grid)
+        add('Open New Document', openNew, true),
+        add('View Latest', viewLatest, true),
       ].filter(Boolean);
 
       return React.createElement(React.Fragment, null,
@@ -1114,7 +1187,6 @@
               React.createElement('div', { key: 'hdr2', style: { fontSize: '11px', fontWeight: 700, letterSpacing: '0.02em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' } }, 'Actions'),
               React.createElement(ApprovalsPill, { key: 'approvals-pill' }),
               React.createElement(ActionButtons, { key: 'actions' }),
-              React.createElement(DocumentControls, { key: 'doc' }),
             ]),
             // 4 - Chatbot (OG Assist)
             React.createElement('div', { style: { marginTop: '12px', borderTop: '1px solid #e5e7eb', paddingTop: '8px' } }, [
