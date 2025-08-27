@@ -1205,8 +1205,8 @@
               ])
             ]),
             // 3 - Buttons (actions)
-            React.createElement('div', { style: { marginTop: '10px', borderTop: '1px solid #e5e7eb', paddingTop: '8px' } }, [
-              React.createElement('div', { key: 'hdr2', style: { fontSize: '11px', fontWeight: 700, letterSpacing: '0.02em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' } }, 'Actions'),
+            React.createElement('div', { style: { marginTop: '10px', borderTop: '1px solid #e5e7eb', paddingTop: '8px', display: 'grid', rowGap: '6px' } }, [
+              React.createElement('div', { key: 'hdr2', style: { fontSize: '11px', fontWeight: 700, letterSpacing: '0.02em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '0' } }, 'Actions'),
               React.createElement(ApprovalsPill, { key: 'approvals-pill' }),
               React.createElement(ActionButtons, { key: 'actions' }),
             ]),
