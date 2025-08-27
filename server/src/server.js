@@ -732,7 +732,8 @@ app.post('/api/v1/checkout/override', (req, res) => {
 app.post('/api/v1/events/client', (req, res) => {
   const { type = 'clientEvent', payload = {}, userId = 'user1', platform = 'web' } = req.body || {};
   const role = getUserRole(userId);
-  broadcast({ type, payload, userId, role, platform });
+  const originPlatform = String(platform || 'web');
+  broadcast({ type, payload, userId, role, platform: originPlatform });
   try {
     if (type === 'chat') {
       const cfg = loadChatbotResponses();
@@ -752,7 +753,7 @@ app.post('/api/v1/events/client', (req, res) => {
           pick = list[Math.floor(Math.random() * list.length)];
         }
         if (pick) {
-          broadcast({ type: 'chat', payload: { text: String(pick) }, userId: 'bot', role: 'assistant', platform: 'server' });
+          broadcast({ type: 'chat', payload: { text: String(pick), threadPlatform: originPlatform }, userId: 'bot', role: 'assistant', platform: 'server' });
         }
       }
     }
@@ -764,7 +765,9 @@ app.post('/api/v1/events/client', (req, res) => {
 app.post('/api/v1/chatbot/reset', (req, res) => {
   try {
     const key = String(req.body?.userId || 'default');
+    const originPlatform = String(req.body?.platform || 'web');
     chatbotStateByUser.delete(key);
+    try { broadcast({ type: 'chat:reset', payload: { threadPlatform: originPlatform }, userId: key, role: 'assistant', platform: 'server' }); } catch {}
     return res.json({ ok: true });
   } catch (e) {
     return res.status(500).json({ error: 'reset_failed' });

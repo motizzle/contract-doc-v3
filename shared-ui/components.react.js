@@ -185,6 +185,9 @@
               if (p && p.type === 'chat') {
                 try { window.dispatchEvent(new CustomEvent('chat:message', { detail: p })); } catch {}
               }
+              if (p && p.type === 'chat:reset') {
+                try { window.dispatchEvent(new CustomEvent('chat:reset', { detail: p })); } catch {}
+              }
               // Do not auto-refresh document on save/revert; show banner via state-matrix
               refresh();
             } catch {}
@@ -601,18 +604,47 @@
             const d = ev.detail;
             const text = d && d.payload && d.payload.text;
             const from = d && d.userId || 'bot';
+            const threadPlatform = d && d.payload && d.payload.threadPlatform;
+            // Ignore messages from other platforms (isolate threads)
+            try { if (typeof Office !== 'undefined') { if (threadPlatform && threadPlatform !== 'word') return; } else { if (threadPlatform && threadPlatform !== 'web') return; } } catch {}
             // Ignore echo of our own message (server broadcasts user messages too)
             if (!text || String(from) === String(currentUser)) return;
             setMessages((m) => { const next = (m || []).concat(`[${from}] ${text}`); try { localStorage.setItem(getMsgsKey(), JSON.stringify(next)); } catch {}; return next; });
           } catch {}
         }
+        function onChatReset(ev) {
+          try {
+            const d = ev.detail;
+            const forUser = String(d && d.userId || 'default');
+            const threadPlatform = d && d.payload && d.payload.threadPlatform;
+            // Ignore resets from other platforms
+            try { if (typeof Office !== 'undefined') { if (threadPlatform && threadPlatform !== 'word') return; } else { if (threadPlatform && threadPlatform !== 'web') return; } } catch {}
+            if (String(forUser) !== String(currentUser)) return;
+            setMessages([]);
+            try { localStorage.removeItem(getMsgsKey()); } catch {}
+            try { localStorage.removeItem(getSeedKey()); } catch {}
+          } catch {}
+        }
         window.addEventListener('chat:message', onInboundChat);
-        return () => window.removeEventListener('chat:message', onInboundChat);
-      }, [currentUser, getMsgsKey]);
+        window.addEventListener('chat:reset', onChatReset);
+        return () => { window.removeEventListener('chat:message', onInboundChat); window.removeEventListener('chat:reset', onChatReset); };
+      }, [currentUser, getMsgsKey, getSeedKey]);
       const box = React.createElement('div', { style: { border: '1px solid #ddd', borderRadius: '6px', padding: '8px', height: '120px', overflow: 'auto', background: '#fff' } }, messages.map((m, i) => React.createElement('div', { key: i, style: { marginTop: i ? '6px' : 0 } }, m)));
       const input = React.createElement('input', { type: 'text', value: text, onChange: (e) => setText(e.target.value), placeholder: 'Type a message...', style: { flex: 1, padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' } });
       const btn = React.createElement(UIButton, { label: 'Send', onClick: send });
-      const row = React.createElement('div', { style: { display: 'flex', gap: '8px' } }, [input, btn]);
+      const reset = async () => {
+        try {
+          const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
+          const r = await fetch(`${API_BASE}/api/v1/chatbot/reset`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUser, platform: plat }) });
+          // Optimistically clear locally; SSE chat:reset will also arrive
+          try { setMessages([]); } catch {}
+          try { localStorage.removeItem(getMsgsKey()); } catch {}
+          try { localStorage.removeItem(getSeedKey()); } catch {}
+          return r;
+        } catch {}
+      };
+      const resetBtn = React.createElement(UIButton, { label: 'Reset', onClick: reset, tone: 'secondary' });
+      const row = React.createElement('div', { style: { display: 'flex', gap: '8px' } }, [input, btn, resetBtn]);
       const wrap = React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } }, [box, row]);
       return React.createElement('div', null, [React.createElement('div', { key: 'hdr', style: { fontWeight: 600 } }, 'Assistant'), wrap]);
     }
