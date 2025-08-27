@@ -71,10 +71,15 @@
 /* Add-in header (Word taskpane) */
 .addin-header {
   position: relative;
-  min-height: 48px;
+  min-height: 85px;
   color: var(--brand-header-fg);
   /* Use CSS var fallbacks for robustness */
   padding: var(--brand-header-pt, 8px) var(--brand-header-pr, 12px) var(--brand-header-pb, 8px) var(--brand-header-pl, 12px);
+  /* Vertically center title/subtitle */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .addin-header .brand-img {
@@ -85,7 +90,7 @@
   width: auto;
 }
 
-.addin-header .title-block { margin: var(--brand-title-offset-top) 0 0 0; text-align: center; }
+.addin-header .title-block { margin: 0; text-align: center; }
 .addin-header .title-main {
   margin: 0;
   font-size: var(--brand-title-font-size);
@@ -208,7 +213,7 @@
   background: #000000;
   color: #fff;
   border: 1px solid #000000;
-  padding: 2px 6px; /* internal padding (top/bottom, left/right) */
+  padding: 1px 1px; /* internal padding (top/bottom, left/right) */
   border-radius: 999px;
   font-size: 9px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
@@ -251,9 +256,9 @@
 
 /* Add-in pill override */
 .addin-header.brand-header-bg .pill-right {
-    top: 0px;
-    right: 1px;
-    padding: 4px 8px; /* your values */
+    top: 2px;
+    right: 16px;
+    padding: 2px 4px; /* your values */
   }
 
 /* ------------------------------------------------------

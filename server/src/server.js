@@ -126,6 +126,20 @@ function getUserRole(userId) {
   return 'editor';
 }
 
+// Chatbot responses loader (hard-coded list from data file)
+function loadChatbotResponses() {
+  try {
+    const p = path.join(dataAppDir, 'config', 'chatbot-responses.json');
+    if (!fs.existsSync(p)) return null;
+    const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+    if (Array.isArray(j?.messages) && j.messages.length) return j;
+  } catch {}
+  return null;
+}
+
+// Track sequential reply index per user to keep each user's conversation ordered
+const chatbotStateByUser = new Map();
+
 function buildBanner({ isFinal, isCheckedOut, isOwner, checkedOutBy }) {
   if (isFinal) {
     return { state: 'final', title: 'Finalized', message: 'This document is finalized.' };
@@ -719,7 +733,42 @@ app.post('/api/v1/events/client', (req, res) => {
   const { type = 'clientEvent', payload = {}, userId = 'user1', platform = 'web' } = req.body || {};
   const role = getUserRole(userId);
   broadcast({ type, payload, userId, role, platform });
+  try {
+    if (type === 'chat') {
+      const cfg = loadChatbotResponses();
+      if (cfg && Array.isArray(cfg.messages) && cfg.messages.length) {
+        const list = cfg.messages;
+        const mode = (cfg.policy && cfg.policy.mode) || 'sequential';
+        let pick = '';
+        if (mode === 'sequential') {
+          const key = String(userId || 'default');
+          const current = chatbotStateByUser.get(key) || 0;
+          const i = current % list.length;
+          const next = current + 1;
+          const loop = (cfg.policy && cfg.policy.loop) !== false;
+          chatbotStateByUser.set(key, loop ? next : Math.min(next, list.length));
+          pick = list[i];
+        } else {
+          pick = list[Math.floor(Math.random() * list.length)];
+        }
+        if (pick) {
+          broadcast({ type: 'chat', payload: { text: String(pick) }, userId: 'bot', role: 'assistant', platform: 'server' });
+        }
+      }
+    }
+  } catch {}
   res.json({ ok: true });
+});
+
+// Chatbot: reset per-user scripted index (so sessions start from first message)
+app.post('/api/v1/chatbot/reset', (req, res) => {
+  try {
+    const key = String(req.body?.userId || 'default');
+    chatbotStateByUser.delete(key);
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ error: 'reset_failed' });
+  }
 });
 
 app.get('/api/v1/exhibits', (req, res) => {

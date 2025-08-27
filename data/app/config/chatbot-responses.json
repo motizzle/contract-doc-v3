@@ -1,0 +1,23 @@
+{
+  "messages": [
+    "Hi! I'm OG Assist. How can I help today?",
+    "Want help with your indemnification?",
+    "Lots of redlining happens there. Do you want me to suggest which clause to use?",
+    "Use witz. Clausewitz.",
+    "Lighten up. Or I'll write you a contract for a sense of a humor.",
+    "Perfect! Let's delve into the details!",
+    "Perfect! Let's delve into the details!",
+    "Perfect! Let's delve into the details!",
+    "Perfect! Let's delve into the details!",
+    "Perfect! Let's delve into the details!",
+    "Perfect! Let's delve into the details!",
+    "Perfect! Let's delve into the details!",
+    "Perfect! Let's delve into the details!"
+  ],
+  "policy": {
+    "mode": "sequential",
+    "loop": true
+  }
+}
+
+
