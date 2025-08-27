@@ -565,12 +565,12 @@
     function ChatConsole() {
       const API_BASE = getApiBase();
       const { currentUser } = React.useContext(StateContext);
-      const [messages, setMessages] = React.useState(["Hi, I'm OG Assist. How can I help you?"]);
+      const [messages, setMessages] = React.useState(["[bot] Hi, I'm OG Assist. How can I help you?"]);
       const [text, setText] = React.useState('');
       const send = async () => {
         const t = (text || '').trim();
         if (!t) return;
-        setMessages((m) => m.concat(t));
+        setMessages((m) => m.concat(`[${currentUser}] ${t}`));
         setText('');
         try {
           await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat', payload: { text: t }, userId: currentUser, platform: 'web' }) });
@@ -582,7 +582,9 @@
             const d = ev.detail;
             const text = d && d.payload && d.payload.text;
             const from = d && d.userId || 'bot';
-            if (text) setMessages((m) => m.concat(`[${from}] ${text}`));
+            // Ignore echo of our own message (server broadcasts user messages too)
+            if (!text || String(from) === String(currentUser)) return;
+            setMessages((m) => m.concat(`[${from}] ${text}`));
           } catch {}
         }
         window.addEventListener('chat:message', onInboundChat);
