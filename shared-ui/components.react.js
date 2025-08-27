@@ -385,23 +385,36 @@
       const [confirm, setConfirm] = React.useState(null);
       const { tokens } = React.useContext(ThemeContext);
       const btns = (config && config.buttons) ? config.buttons : {};
-      const add = (label, onClick, show, variant, opts = {}) => show ? React.createElement(UIButton, Object.assign({ key: label, label, onClick, variant: variant || (label && /^(Check\-in|Save Progress|Cancel Checkout|Override Checkout)/i.test(label) ? 'secondary' : 'primary') }, opts)) : null;
       const ask = (title, message, onConfirm) => setConfirm({ title, message, onConfirm });
+      const uniformBtnStyle = { width: '100%', minHeight: '36px' };
+      const add = (label, onClick, show, variant, opts = {}) => show
+        ? React.createElement(UIButton, Object.assign({ key: label, label, onClick, variant: variant || (label && /^(Check\-in|Save Progress|Cancel Checkout|Override Checkout)/i.test(label) ? 'secondary' : 'primary'), style: Object.assign({}, uniformBtnStyle, opts.style || {}) }, opts))
+        : null;
+
+      // Top: checkout cluster only
+      const topCluster = [
+        add('Checkout', actions.checkout, !!btns.checkoutBtn),
+        add('Check-in and Save', async () => { try { const ok = await actions.saveProgress(); if (ok) { await actions.checkin(); } } catch {} }, !!btns.checkinBtn),
+        add('Cancel Checkout', actions.cancel, !!btns.cancelBtn),
+        add('Save Progress', actions.saveProgress, !!btns.saveProgressBtn),
+        add('Override Checkout', actions.override, !!btns.overrideBtn),
+      ].filter(Boolean);
+
+      // Bottom: all other actions, in a uniform grid
+      const bottomGrid = [
+        add('Finalize', () => ask('Finalize?', 'This will lock the document.', actions.finalize), !!btns.finalizeBtn, 'primary'),
+        add('Unfinalize', () => ask('Unlock?', 'This will unlock the document.', actions.unfinalize), !!btns.unfinalizeBtn),
+        add('Send to Vendor', () => { try { setTimeout(() => { try { actions.sendVendor({}); } catch {} }, 130); } catch {} }, !!btns.sendVendorBtn),
+        add('Back to OpenGov', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'open-gov' } })); } catch {} }, !!btns.openGovBtn, 'primary'),
+        add('Request review', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'request-review' } })); } catch {} }, true, 'primary'),
+        add('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true, 'primary'),
+        add('Factory Reset', () => ask('Factory reset?', 'This will clear working data.', actions.factoryReset), true),
+      ].filter(Boolean);
+
       return React.createElement(React.Fragment, null,
-        React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '8px' } }, [
-          add('Checkout', actions.checkout, !!btns.checkoutBtn),
-          add('Check-in and Save', async () => { try { const ok = await actions.saveProgress(); if (ok) { await actions.checkin(); } } catch {} }, !!btns.checkinBtn),
-          add('Cancel Checkout', actions.cancel, !!btns.cancelBtn),
-          add('Save Progress', actions.saveProgress, !!btns.saveProgressBtn),
-          add('Finalize', () => ask('Finalize?', 'This will lock the document.', actions.finalize), !!btns.finalizeBtn, 'primary'),
-          add('Unfinalize', () => ask('Unlock?', 'This will unlock the document.', actions.unfinalize), !!btns.unfinalizeBtn),
-          add('Override Checkout', actions.override, !!btns.overrideBtn),
-          add('Send to Vendor', () => { try { setTimeout(() => { try { actions.sendVendor({}); } catch {} }, 130); } catch {} }, !!btns.sendVendorBtn),
-          add('Back to OpenGov', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'open-gov' } })); } catch {} }, !!btns.openGovBtn, 'primary'),
-          add('Request review', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'request-review' } })); } catch {} }, true, 'primary'),
-          add('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true, 'primary'),
-          add('Factory Reset', () => ask('Factory reset?', 'This will clear working data.', actions.factoryReset), true),
-        ].filter(Boolean)),
+        React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px' } }, topCluster),
+        React.createElement('div', { style: { height: '8px' } }),
+        React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px' } }, bottomGrid),
         confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
       );
     }
@@ -578,8 +591,8 @@
           } catch {}
         }
       };
-      const btn = (label, onClick, variant) => React.createElement(UIButton, { label, onClick, variant: variant || 'primary' });
-      return React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '8px' } }, [btn('Open New Document', openNew), btn('View Latest', viewLatest)]);
+      const btn = (label, onClick, variant) => React.createElement(UIButton, { label, onClick, variant: variant || 'primary', style: { width: '100%', minHeight: '36px' } });
+      return React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' } }, [btn('Open New Document', openNew), btn('View Latest', viewLatest)]);
     }
 
     function ErrorBanner() {
