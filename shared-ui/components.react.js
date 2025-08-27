@@ -413,9 +413,9 @@
       ].filter(Boolean);
 
       return React.createElement(React.Fragment, null,
-        React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', columnGap: '8px', rowGap: '6px' } }, topCluster),
+        React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', columnGap: '8px', rowGap: '6px', gridAutoRows: 'minmax(27px, auto)' } }, topCluster),
         React.createElement('div', { style: { height: '8px' } }),
-        React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', columnGap: '8px', rowGap: '6px' } }, bottomGrid),
+        React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', columnGap: '8px', rowGap: '6px', gridAutoRows: 'minmax(27px, auto)' } }, bottomGrid),
         confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
       );
     }
@@ -593,7 +593,7 @@
         }
       };
       const btn = (label, onClick, variant) => React.createElement(UIButton, { label, onClick, variant: variant || 'primary', style: { width: '100%', minHeight: '27px' } });
-      return React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', columnGap: '8px', rowGap: '6px' } }, [btn('Open New Document', openNew), btn('View Latest', viewLatest)]);
+      return React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', columnGap: '8px', rowGap: '6px', gridAutoRows: 'minmax(27px, auto)' } }, [btn('Open New Document', openNew), btn('View Latest', viewLatest)]);
     }
 
     function ErrorBanner() {
