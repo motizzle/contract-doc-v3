@@ -564,30 +564,37 @@
 
     function ChatConsole() {
       const API_BASE = getApiBase();
-      const { currentUser } = React.useContext(StateContext);
+      const { currentUser, isConnected } = React.useContext(StateContext);
       const [messages, setMessages] = React.useState([]);
+      const getMsgsKey = React.useCallback(() => `ogassist.messages.${String(currentUser || 'default')}`, [currentUser]);
+      const getSeedKey = React.useCallback(() => `ogassist.seeded.${String(currentUser || 'default')}`, [currentUser]);
+      // Hydrate from localStorage on mount/user change
+      React.useEffect(() => {
+        try { const raw = localStorage.getItem(getMsgsKey()); const arr = raw ? JSON.parse(raw) : []; if (Array.isArray(arr)) setMessages(arr.map(String)); } catch {}
+      }, [getMsgsKey]);
       const [text, setText] = React.useState('');
       const send = async () => {
         const t = (text || '').trim();
         if (!t) return;
-        setMessages((m) => m.concat(`[${currentUser}] ${t}`));
+        setMessages((m) => { const next = (m || []).concat(`[${currentUser}] ${t}`); try { localStorage.setItem(getMsgsKey(), JSON.stringify(next)); } catch {}; return next; });
         setText('');
         try {
           await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat', payload: { text: t }, userId: currentUser, platform: 'web' }) });
         } catch {}
       };
-      // Reset bot index on mount so each reload starts from first scripted line
+      // Seed first message once after SSE connects, web only (avoid add-in), only if no local messages
       React.useEffect(() => {
+        if (!isConnected) return;
+        try { if (typeof Office !== 'undefined') return; } catch {}
+        if ((messages || []).length > 0) return;
+        const seedKey = getSeedKey();
+        try { if (localStorage.getItem(seedKey)) return; localStorage.setItem(seedKey, '1'); } catch {}
         (async () => {
-          try {
-            await fetch(`${API_BASE}/api/v1/chatbot/reset`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUser }) });
-          } catch {}
-          // Trigger first server-driven chatbot message based on configured policy/messages
           try {
             await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat', payload: { text: '' }, userId: currentUser, platform: 'web' }) });
           } catch {}
         })();
-      }, [API_BASE, currentUser]);
+      }, [API_BASE, currentUser, isConnected, messages, getSeedKey]);
       React.useEffect(() => {
         function onInboundChat(ev) {
           try {
@@ -596,12 +603,12 @@
             const from = d && d.userId || 'bot';
             // Ignore echo of our own message (server broadcasts user messages too)
             if (!text || String(from) === String(currentUser)) return;
-            setMessages((m) => m.concat(`[${from}] ${text}`));
+            setMessages((m) => { const next = (m || []).concat(`[${from}] ${text}`); try { localStorage.setItem(getMsgsKey(), JSON.stringify(next)); } catch {}; return next; });
           } catch {}
         }
         window.addEventListener('chat:message', onInboundChat);
         return () => window.removeEventListener('chat:message', onInboundChat);
-      }, []);
+      }, [currentUser, getMsgsKey]);
       const box = React.createElement('div', { style: { border: '1px solid #ddd', borderRadius: '6px', padding: '8px', height: '120px', overflow: 'auto', background: '#fff' } }, messages.map((m, i) => React.createElement('div', { key: i, style: { marginTop: i ? '6px' : 0 } }, m)));
       const input = React.createElement('input', { type: 'text', value: text, onChange: (e) => setText(e.target.value), placeholder: 'Type a message...', style: { flex: 1, padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' } });
       const btn = React.createElement(UIButton, { label: 'Send', onClick: send });
