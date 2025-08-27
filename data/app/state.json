@@ -1,9 +1,9 @@
 {
-  "isFinal": true,
-  "checkedOutBy": null,
-  "lastUpdated": "2025-08-26T22:52:03.407Z",
-  "revision": 197,
-  "documentVersion": 152,
+  "isFinal": false,
+  "checkedOutBy": "user1",
+  "lastUpdated": "2025-08-26T23:49:31.980Z",
+  "revision": 199,
+  "documentVersion": 154,
   "updatedBy": {
     "userId": "user1",
     "label": "Warren Peace"
