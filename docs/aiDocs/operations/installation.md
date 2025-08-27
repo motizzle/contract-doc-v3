@@ -1,47 +1,85 @@
-# Installation and Dev Setup (Prototype)
+# Installation and Dev Setup (WordFTW)
 
-## Dependencies (required for developers)
-- Windows 10/11 with admin rights
+This is the canonical install guide for this repo. For a quick overview, see the root `README.md`.
+
+## Prerequisites
+- Windows 10/11
 - Microsoft Word (desktop)
-- Node.js 18+
-- PowerShell 5.1+ (built-in) or PowerShell 7+
-- Docker Desktop (with WSL2 enabled on Windows)
-- Git (optional)
-- Modern browser (Edge/Chrome) for the web client
+- Node.js 18+ and npm 9+
+- PowerShell 5.1+ or PowerShell 7+
+- Optional: LibreOffice for PDF compile
 
-## Why these dependencies
-- Docker Desktop: runs the SuperDoc collaboration backend locally, giving full editor features (comments, tracked changes, import/export) and future multi-user parity.
-- HTTPS dev cert: Word’s Edge WebView behaves most reliably over HTTPS; we serve both web and add‑in from the same origin.
+Ports in use:
+- App server (API + web + shared UI): `https://localhost:4001`
+- Word add‑in dev server: `https://localhost:4000`
+- Collab backend (proxied): `http://localhost:4002`
 
-## Dev ports and origins
-- Unified app server (web + API + static): `https://localhost:4001`
-- Word add‑in (Yeoman dev server): `https://localhost:4000`
-- SuperDoc backend (container): `https://localhost:4002`
-- Same-origin hosting removes CORS/CSP friction and makes taskpane activation more reliable.
+## One-command start (recommended)
 
-## Install notes (Windows)
-- Node.js: download LTS from nodejs.org or use winget
-  - `winget install -e --id OpenJS.NodeJS.LTS`
-- Docker Desktop: requires admin, virtualization/WSL2; reboot may be needed
-  - `winget install -e --id Docker.DockerDesktop --accept-source-agreements --accept-package-agreements`
-  - Ensure WSL2 is enabled: `wsl --install`
-- Git (optional): `winget install -e --id Git.Git`
+From repo root:
 
-## SuperDoc backend (local)
-- Run the SuperDoc collaboration backend in a container on `https://localhost:4002`.
-- Exact image name and environment variables come from the SuperDoc docs: https://docs.superdoc.dev/
-- Ensure CORS allows `https://localhost:4001` and that TLS is enabled for local testing.
+```powershell
+./tools/scripts/servers.ps1 -Action start
+```
 
-## HTTPS dev certificates
-- We use a trusted local certificate for `https://localhost:4001`.
-- Yeoman’s dev server provides its own HTTPS on `https://localhost:4000` via office-addin-dev-certs.
-- A PowerShell script will generate and trust a self‑signed certificate (to be added in `server/scripts/`).
+What it does:
+- Starts the main server on 4001 over HTTPS
+- Starts the Word add‑in dev server on 4000 and sideloads Word
+- Optionally starts/uses the collab backend on 4002
 
-## Next steps
-- Start Docker Desktop
-- Run the SuperDoc backend container exposing host port 4002 (container listens on 4100)
-- Start the Node server on port 4001 (HTTPS) to serve APIs and static modules
-- Start the Yeoman add‑in dev server on 4000: `cd clients/addin-yo && npm start`
-- Open the web client and the Word add‑in (manifest points to the same origin)
+Helpful:
+```powershell
+./tools/scripts/servers.ps1 -Action status
+./tools/scripts/servers.ps1 -Action stop
+./tools/scripts/servers.ps1 -Action sideload
+```
 
-Reference: SuperDoc Quick Start — https://docs.superdoc.dev/
+## First-time setup
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
+node -v
+npm -v
+
+# Install HTTPS dev certs for Office tooling (recommended)
+npx office-addin-dev-certs install
+```
+
+If you see HTTPS errors starting the server, either install a PFX at `server/config/dev-cert.pfx` (password `password`) or temporarily set `ALLOW_HTTP=true` for dev only.
+
+## Manual start (advanced)
+
+Open three terminals from repo root:
+
+1) Collab backend (optional)
+```powershell
+node collab/server.js
+```
+
+2) Main server (4001)
+```powershell
+cd server
+npm ci
+node src/server.js
+```
+
+3) Word add‑in (4000)
+```powershell
+cd addin
+npm ci
+npm run dev-server
+npm start
+```
+
+Open the web viewer at `https://localhost:4001`.
+
+## Troubleshooting
+
+- Ports busy: run `./tools/scripts/servers.ps1 -Action stop`
+- HTTPS/certs: install Office dev certs or place `server/config/dev-cert.pfx`; or set `ALLOW_HTTP=true` for dev only
+- Word didn’t open: rerun `./tools/scripts/servers.ps1 -Action sideload`
+- Compile fails: install LibreOffice or set `SOFFICE_PATH`
+
+## macOS
+
+See `docs/macos-setup.md` for a macOS‑specific guide.

@@ -565,7 +565,7 @@
     function ChatConsole() {
       const API_BASE = getApiBase();
       const { currentUser } = React.useContext(StateContext);
-      const [messages, setMessages] = React.useState(["[bot] Hi, I'm OG Assist. How can I help you?"]);
+      const [messages, setMessages] = React.useState([]);
       const [text, setText] = React.useState('');
       const send = async () => {
         const t = (text || '').trim();
@@ -578,7 +578,15 @@
       };
       // Reset bot index on mount so each reload starts from first scripted line
       React.useEffect(() => {
-        (async () => { try { await fetch(`${API_BASE}/api/v1/chatbot/reset`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUser }) }); } catch {} })();
+        (async () => {
+          try {
+            await fetch(`${API_BASE}/api/v1/chatbot/reset`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUser }) });
+          } catch {}
+          // Trigger first server-driven chatbot message based on configured policy/messages
+          try {
+            await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat', payload: { text: '' }, userId: currentUser, platform: 'web' }) });
+          } catch {}
+        })();
       }, [API_BASE, currentUser]);
       React.useEffect(() => {
         function onInboundChat(ev) {

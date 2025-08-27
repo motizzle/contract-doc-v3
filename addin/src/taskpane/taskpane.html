@@ -86,6 +86,39 @@
     <script defer src="/vendor/react/react-dom.production.min.js"></script>
     <script defer src="/ui/components.react.js?v=react-m7"></script>
     <script type="module">
+      // Pulse helper to match web behavior (one-shot pulse + rest, themed by /api/v1/theme)
+      function randInt(min, max){ return Math.floor(Math.random() * (max - min + 1)) + min; }
+      function hexToRgb(hex){ const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return m?{r:parseInt(m[1],16),g:parseInt(m[2],16),b:parseInt(m[3],16)}:null; }
+      function setupPill(pill){
+        if (!pill) return;
+        let pairs=[{bg:'#4B3FFF',fg:'#ffffff'},{bg:'#FFB636',fg:'#111827'},{bg:'#22C55E',fg:'#ffffff'},{bg:'#EF4444',fg:'#ffffff'},{bg:'#06B6D4',fg:'#0f172a'}];
+        let minS=3, maxS=10, activeS=1.5, restMinS=3, restMaxS=10, glowAlpha=0.35;
+        try{ fetch('/api/v1/theme').then(r=>r.ok?r.json():null).then(t=>{
+          if(!t) return;
+          if (t.pulse && Array.isArray(t.pulse.palette) && t.pulse.palette.length){
+            const themed=[]; for(const p of t.pulse.palette){ if(p&&p.bg) themed.push({bg:p.bg,fg:p.fg||'#ffffff'}); }
+            if (themed.length) pairs=themed;
+            if (typeof t.pulse.minSeconds==='number') minS=t.pulse.minSeconds;
+            if (typeof t.pulse.maxSeconds==='number') maxS=t.pulse.maxSeconds;
+            if (typeof t.pulse.activeSeconds==='number') activeS=t.pulse.activeSeconds;
+            if (typeof t.pulse.restMinSeconds==='number') restMinS=t.pulse.restMinSeconds;
+            if (typeof t.pulse.restMaxSeconds==='number') restMaxS=t.pulse.restMaxSeconds;
+            if (typeof t.pulse.glowAlpha==='number') glowAlpha=t.pulse.glowAlpha;
+          }
+        }).catch(()=>{}); } catch {}
+        let idx=0;
+        function cycle(){
+          const pair=pairs[idx++%pairs.length];
+          const rgb=hexToRgb(pair.bg);
+          const glow=rgb?`rgba(${rgb.r},${rgb.g},${rgb.b},${glowAlpha})`:`rgba(255,255,255,${glowAlpha})`;
+          pill.style.background=pair.bg; pill.style.color=pair.fg; pill.style.setProperty('--pulse-glow-color',glow);
+          pill.classList.remove('is-resting'); pill.style.setProperty('--pulse-duration', `${activeS}s`); pill.style.animationIterationCount='1';
+          function onEnd(){ pill.removeEventListener('animationend', onEnd); pill.classList.add('is-resting'); const rest=randInt(restMinS,restMaxS)*1000; setTimeout(()=>{ pill.style.animationIterationCount='1'; pill.classList.remove('is-resting'); void pill.offsetWidth; cycle(); }, rest); }
+          pill.addEventListener('animationend', onEnd); void pill.offsetWidth;
+        }
+        cycle();
+      }
+
       function openModal(el){ if (!el) return; try { document.body.style.overflow='hidden'; } catch {}; el.classList.add('is-open'); el.setAttribute('aria-hidden','false'); try { document.getElementById('coming-pill').setAttribute('aria-expanded','true'); } catch {} }
       function closeModal(el){ if (!el) return; el.classList.remove('is-open'); el.setAttribute('aria-hidden','true'); try { document.body.style.overflow=''; } catch {}; try { document.getElementById('coming-pill').setAttribute('aria-expanded','false'); document.getElementById('coming-pill').focus(); } catch {} }
       function wireModal(){ const pill=document.getElementById('coming-pill'); const modal=document.getElementById('coming-modal'); if(!pill||!modal) return; pill.addEventListener('click',()=>openModal(modal)); pill.addEventListener('keydown',(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openModal(modal);} }); modal.addEventListener('click',(e)=>{ if(e.target===modal) closeModal(modal); }); const closeBtn=modal.querySelector('.ui-modal__close'); if(closeBtn) closeBtn.addEventListener('click',()=>closeModal(modal)); }
@@ -97,6 +130,7 @@
           try { const el = document.getElementById('app-root'); el.innerHTML = '<div style="padding:8px;color:crimson">Failed to initialize: '+ (e && (e.message||e)) +'</div>'; } catch {}
         }
         try { wireModal(); } catch {}
+        try { setupPill(document.getElementById('coming-pill')); } catch {}
       });
     </script>
 </body>

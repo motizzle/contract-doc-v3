@@ -20,7 +20,7 @@ Status legend: [Draft] [Planned] [Implemented] [Deprecated]
   - features/view-latest.md [Draft]
   - features/user-permissions.md [Draft]
 - Operations
-  - operations/installation.md [Draft]
+  - operations/installation.md [Implemented]
   - operations/docker-notes.md [Draft]
 - Roadmap
   - roadmap/implementation-plan.md [Draft]
