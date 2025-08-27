@@ -137,7 +137,8 @@ function loadChatbotResponses() {
   return null;
 }
 
-let chatbotState = { idx: 0 };
+// Track sequential reply index per user to keep each user's conversation ordered
+const chatbotStateByUser = new Map();
 
 function buildBanner({ isFinal, isCheckedOut, isOwner, checkedOutBy }) {
   if (isFinal) {
@@ -740,8 +741,12 @@ app.post('/api/v1/events/client', (req, res) => {
         const mode = (cfg.policy && cfg.policy.mode) || 'sequential';
         let pick = '';
         if (mode === 'sequential') {
-          const i = chatbotState.idx % list.length;
-          chatbotState.idx = (chatbotState.idx + 1) % (cfg.policy?.loop === false ? list.length : Number.MAX_SAFE_INTEGER);
+          const key = String(userId || 'default');
+          const current = chatbotStateByUser.get(key) || 0;
+          const i = current % list.length;
+          const next = current + 1;
+          const loop = (cfg.policy && cfg.policy.loop) !== false;
+          chatbotStateByUser.set(key, loop ? next : Math.min(next, list.length));
           pick = list[i];
         } else {
           pick = list[Math.floor(Math.random() * list.length)];
