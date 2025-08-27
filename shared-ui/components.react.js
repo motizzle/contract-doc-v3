@@ -576,6 +576,10 @@
           await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat', payload: { text: t }, userId: currentUser, platform: 'web' }) });
         } catch {}
       };
+      // Reset bot index on mount so each reload starts from first scripted line
+      React.useEffect(() => {
+        (async () => { try { await fetch(`${API_BASE}/api/v1/chatbot/reset`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUser }) }); } catch {} })();
+      }, [API_BASE, currentUser]);
       React.useEffect(() => {
         function onInboundChat(ev) {
           try {

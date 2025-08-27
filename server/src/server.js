@@ -760,6 +760,17 @@ app.post('/api/v1/events/client', (req, res) => {
   res.json({ ok: true });
 });
 
+// Chatbot: reset per-user scripted index (so sessions start from first message)
+app.post('/api/v1/chatbot/reset', (req, res) => {
+  try {
+    const key = String(req.body?.userId || 'default');
+    chatbotStateByUser.delete(key);
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ error: 'reset_failed' });
+  }
+});
+
 app.get('/api/v1/exhibits', (req, res) => {
   res.json({ items: listExhibits() });
 });
