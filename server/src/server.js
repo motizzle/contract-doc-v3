@@ -8,6 +8,63 @@ const compression = require('compression');
 const multer = require('multer');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
+// Minimal LLM toggle (OpenAI via https request; no SDK)
+const LLM_USE_OPENAI = String(process.env.LLM_USE_OPENAI || '').toLowerCase() === 'true';
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+const LLM_SYSTEM_PROMPT = process.env.LLM_SYSTEM_PROMPT || 'You are OG Assist. Answer briefly and helpfully.';
+
+async function openAiChat(userText) {
+  return new Promise((resolve) => {
+    try {
+      const input = String(userText || '').trim();
+      if (!input) return resolve({ ok: false, status: 'empty', content: '' });
+      const payload = JSON.stringify({
+        model: OPENAI_MODEL,
+        messages: [
+          { role: 'system', content: LLM_SYSTEM_PROMPT },
+          { role: 'user', content: input }
+        ]
+      });
+      const options = {
+        method: 'POST',
+        hostname: 'api.openai.com',
+        path: '/v1/chat/completions',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(payload),
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY || ''}`,
+        },
+        timeout: 20000,
+      };
+      const req = https.request(options, (r) => {
+        const statusCode = Number(r.statusCode || 0);
+        const chunks = [];
+        r.on('data', (c) => { try { chunks.push(c); } catch {} });
+        r.on('end', () => {
+          const body = Buffer.concat(chunks).toString('utf8');
+          if (statusCode >= 200 && statusCode < 300) {
+            try {
+              const j = JSON.parse(body);
+              const content = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+              const text = (typeof content === 'string' ? content.trim() : '') || '';
+              return resolve({ ok: true, status: String(statusCode), content: text });
+            } catch {
+              return resolve({ ok: false, status: String(statusCode), content: '' });
+            }
+          }
+          return resolve({ ok: false, status: String(statusCode || 'error'), content: '' });
+        });
+      });
+      req.on('timeout', () => { try { req.destroy(new Error('timeout')); } catch {} });
+      req.on('error', () => resolve({ ok: false, status: 'error', content: '' }));
+      req.write(payload);
+      req.end();
+    } catch {
+      resolve({ ok: false, status: 'error', content: '' });
+    }
+  });
+}
+
 // Configuration
 const APP_PORT = Number(process.env.PORT || 4001);
 const SUPERDOC_BASE_URL = process.env.SUPERDOC_BASE_URL || 'http://localhost:4002';
@@ -729,31 +786,40 @@ app.post('/api/v1/checkout/override', (req, res) => {
 });
 
 // Client-originated events (prototype): accept and rebroadcast for parity
-app.post('/api/v1/events/client', (req, res) => {
+app.post('/api/v1/events/client', async (req, res) => {
   const { type = 'clientEvent', payload = {}, userId = 'user1', platform = 'web' } = req.body || {};
   const role = getUserRole(userId);
   const originPlatform = String(platform || 'web');
   broadcast({ type, payload, userId, role, platform: originPlatform });
   try {
     if (type === 'chat') {
-      const cfg = loadChatbotResponses();
-      if (cfg && Array.isArray(cfg.messages) && cfg.messages.length) {
-        const list = cfg.messages;
-        const mode = (cfg.policy && cfg.policy.mode) || 'sequential';
-        let pick = '';
-        if (mode === 'sequential') {
-          const key = String(userId || 'default');
-          const current = chatbotStateByUser.get(key) || 0;
-          const i = current % list.length;
-          const next = current + 1;
-          const loop = (cfg.policy && cfg.policy.loop) !== false;
-          chatbotStateByUser.set(key, loop ? next : Math.min(next, list.length));
-          pick = list[i];
-        } else {
-          pick = list[Math.floor(Math.random() * list.length)];
+      const text = String(payload?.text || '').trim();
+      if (LLM_USE_OPENAI) {
+        const result = await openAiChat(text);
+        const reply = result && result.ok ? (result.content || '') : String(result?.status || 'error');
+        if (reply) {
+          broadcast({ type: 'chat', payload: { text: reply, threadPlatform: originPlatform }, userId: 'bot', role: 'assistant', platform: 'server' });
         }
-        if (pick) {
-          broadcast({ type: 'chat', payload: { text: String(pick), threadPlatform: originPlatform }, userId: 'bot', role: 'assistant', platform: 'server' });
+      } else {
+        const cfg = loadChatbotResponses();
+        if (cfg && Array.isArray(cfg.messages) && cfg.messages.length) {
+          const list = cfg.messages;
+          const mode = (cfg.policy && cfg.policy.mode) || 'sequential';
+          let pick = '';
+          if (mode === 'sequential') {
+            const key = String(userId || 'default');
+            const current = chatbotStateByUser.get(key) || 0;
+            const i = current % list.length;
+            const next = current + 1;
+            const loop = (cfg.policy && cfg.policy.loop) !== false;
+            chatbotStateByUser.set(key, loop ? next : Math.min(next, list.length));
+            pick = list[i];
+          } else {
+            pick = list[Math.floor(Math.random() * list.length)];
+          }
+          if (pick) {
+            broadcast({ type: 'chat', payload: { text: String(pick), threadPlatform: originPlatform }, userId: 'bot', role: 'assistant', platform: 'server' });
+          }
         }
       }
     }
