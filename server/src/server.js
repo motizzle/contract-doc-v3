@@ -183,6 +183,17 @@ function getUserRole(userId) {
   return 'editor';
 }
 
+// Resolve a user id to a human-friendly display label using users.json
+function resolveUserLabel(id) {
+  if (!id) return id;
+  try {
+    const list = loadUsers();
+    if (!Array.isArray(list) || !list.length) return id;
+    const match = list.find((u) => (typeof u === 'string' ? u === id : (u && (u.id === id || u.label === id))));
+    return typeof match === 'string' ? match : ((match && (match.label || match.id)) || id);
+  } catch { return id; }
+}
+
 // Chatbot responses loader (hard-coded list from data file)
 function loadChatbotResponses() {
   try {
@@ -422,9 +433,11 @@ app.get('/api/v1/state-matrix', (req, res) => {
   const defaultPerms = { finalize: true, unfinalize: true, checkout: true, checkin: true, override: true, sendVendor: true };
   const isCheckedOut = !!serverState.checkedOutBy;
   const isOwner = serverState.checkedOutBy === userId;
+  // Resolve display label for checked-out user (fallbacks to raw id)
+  const checkedOutLabel = resolveUserLabel(serverState.checkedOutBy);
   const canWrite = !isCheckedOut || isOwner;
   const rolePerm = roleMap[derivedRole] || defaultPerms;
-  const banner = buildBanner({ isFinal: serverState.isFinal, isCheckedOut, isOwner, checkedOutBy: serverState.checkedOutBy });
+  const banner = buildBanner({ isFinal: serverState.isFinal, isCheckedOut, isOwner, checkedOutBy: checkedOutLabel });
   const approvals = loadApprovals();
   const approvalsSummary = computeApprovalsSummary(approvals.approvers);
   const config = {
