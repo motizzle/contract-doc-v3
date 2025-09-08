@@ -565,6 +565,78 @@
       );
     }
 
+    // Simple pulse pill component (server-themed) + Coming modal
+    function PulsePill(props) {
+      const { onClick } = props || {};
+      const { tokens } = React.useContext(ThemeContext);
+      const [styleVars, setStyleVars] = React.useState({ bg: '#4B3FFF', fg: '#ffffff', glow: 'rgba(75,63,255,0.35)' });
+      React.useEffect(() => {
+        let mounted = true;
+        let idx = 0;
+        function hexToRgb(hex){ const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return m?{r:parseInt(m[1],16),g:parseInt(m[2],16),b:parseInt(m[3],16)}:null; }
+        function randInt(min, max){ return Math.floor(Math.random() * (max - min + 1)) + min; }
+        const pulse = tokens?.pulse || {};
+        const palette = (Array.isArray(pulse.palette) && pulse.palette.length ? pulse.palette : [ { bg: '#4B3FFF', fg: '#ffffff' }, { bg: '#FFB636', fg: '#111827' }, { bg: '#22C55E', fg: '#ffffff' }, { bg: '#EF4444', fg: '#ffffff' }, { bg: '#06B6D4', fg: '#0f172a' } ]);
+        const activeS = typeof pulse.activeSeconds === 'number' ? pulse.activeSeconds : 1.5;
+        const restMinS = typeof pulse.restMinSeconds === 'number' ? pulse.restMinSeconds : 3;
+        const restMaxS = typeof pulse.restMaxSeconds === 'number' ? pulse.restMaxSeconds : 10;
+        const glowAlpha = typeof pulse.glowAlpha === 'number' ? pulse.glowAlpha : 0.35;
+        function cycle(){
+          if (!mounted) return;
+          const pair = palette[idx % palette.length]; idx++;
+          const rgb = hexToRgb(pair.bg) || { r: 75, g: 63, b: 255 };
+          const glow = `rgba(${rgb.r},${rgb.g},${rgb.b},${glowAlpha})`;
+          setStyleVars({ bg: pair.bg, fg: pair.fg || '#ffffff', glow });
+          setTimeout(() => { if (mounted) setTimeout(cycle, randInt(restMinS, restMaxS)*1000); }, activeS*1000);
+        }
+        cycle();
+        return () => { mounted = false; };
+      }, [tokens]);
+      const style = { cursor: 'pointer', background: styleVars.bg, color: styleVars.fg, borderRadius: '999px', padding: '4px 10px', fontWeight: 700, boxShadow: `0 0 10px ${styleVars.glow}` };
+      return React.createElement('span', { style, onClick, title: 'Upcoming features' }, 'Coming 2026');
+    }
+
+    function ComingModal(props) {
+      const { onClose } = props || {};
+      const { tokens } = React.useContext(ThemeContext);
+      const t = tokens && tokens.modal ? tokens.modal : {};
+      const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 };
+      const panelStyle = { width: '720px', maxWidth: '95vw', background: t.background || '#fff', border: `1px solid ${t.border || '#e5e7eb'}`, borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
+      const headerStyle = { padding: '14px 16px', borderBottom: `1px solid ${t.border || '#e5e7eb'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: t.headerBg || '#fff', color: t.headerFg || '#111827' };
+      const bodyStyle = { padding: '16px' };
+      const badge = (txt, tone) => React.createElement('span', { style: { display: 'inline-block', padding: '2px 6px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, background: tone==='indigo'?'#e0e7ff':(tone==='green'?'#dcfce7':'#f3f4f6'), color: tone==='indigo'?'#3730a3':(tone==='green'?'#166534':'#374151'), border: '1px solid #e5e7eb' } }, txt);
+      const rows = [
+        { feature: 'Contracts Landing Page', status: badge('pending release','gray'), release: '2025-09-16', actions: React.createElement('input', { type: 'checkbox', defaultChecked: true, 'aria-label': 'Enable Contracts Landing Page' }) },
+        { feature: 'Evaluations, Awards, and Notices V2', status: badge('in development','indigo'), release: 'Q4 2025', actions: React.createElement('input', { type: 'checkbox', defaultChecked: true, 'aria-label': 'Enable Evaluations, Awards, and Notices V2' }) },
+        { feature: 'Contract authoring in Word', status: badge('vision','green'), release: 'Q1 2026', actions: React.createElement('input', { type: 'checkbox', defaultChecked: true, 'aria-label': 'Enable Contract authoring in Word' }) },
+      ];
+      return React.createElement('div', { style: overlayStyle, onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
+        React.createElement('div', { style: panelStyle }, [
+          React.createElement('div', { key: 'h', style: headerStyle }, [
+            React.createElement('div', { key: 't', style: { fontWeight: 700 } }, 'The Future is Coming'),
+            React.createElement('button', { key: 'x', onClick: onClose, style: { border: 'none', background: 'transparent' } }, '✕')
+          ]),
+          React.createElement('div', { key: 'b', style: bodyStyle }, [
+            React.createElement('div', { key: 'lead', style: { fontSize: '14px', color: '#6b7280', marginBottom: '8px' } }, 'Preview and toggle upcoming features'),
+            React.createElement('table', { key: 'tbl', style: { width: '100%', borderCollapse: 'collapse' }, role: 'table', 'aria-label': 'Upcoming features' }, [
+              React.createElement('thead', { key: 'th' }, React.createElement('tr', null, [
+                React.createElement('th', { style: { textAlign: 'left', padding: '6px', width: '45%' } }, 'Feature'),
+                React.createElement('th', { style: { textAlign: 'left', padding: '6px', width: '20%' } }, 'Status'),
+                React.createElement('th', { style: { textAlign: 'left', padding: '6px', width: '20%' } }, 'Release'),
+                React.createElement('th', { style: { textAlign: 'left', padding: '6px', width: '15%' } }, 'Actions'),
+              ])),
+              React.createElement('tbody', { key: 'tb' }, rows.map((r, i) => React.createElement('tr', { key: i, style: { borderTop: '1px solid #eee' } }, [
+                React.createElement('td', { style: { padding: '6px' } }, r.feature),
+                React.createElement('td', { style: { padding: '6px' } }, r.status),
+                React.createElement('td', { style: { padding: '6px' } }, r.release),
+                React.createElement('td', { style: { padding: '6px' } }, r.actions),
+              ]))
+            ])
+          ]),
+        ])
+      );
+    }
+
     function ChatConsole() {
       const API_BASE = getApiBase();
       const { currentUser, isConnected } = React.useContext(StateContext);
@@ -1230,6 +1302,7 @@
 
     function App() {
       const [modal, setModal] = React.useState(null);
+      const [showComing, setShowComing] = React.useState(false);
       const { documentSource } = React.useContext(StateContext);
       React.useEffect(() => {
         function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); if (d && d.id === 'notifications') setModal({ id: 'notifications' }); if (d && d.id === 'request-review') setModal({ id: 'request-review' }); if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); } catch {} }
@@ -1249,8 +1322,19 @@
             React.createElement(ErrorBanner, null),
             // SuperDoc host only on web
             (typeof Office === 'undefined' ? React.createElement(SuperDocHost, { key: 'host', src: documentSource }) : null),
-            // 2 - Banners (top)
-            React.createElement(BannerStack, { key: 'banners' }),
+            // 2 - Banners (top) and pill (render into top-right slot if available)
+            React.createElement('div', { key: 'toprow' }, [
+              React.createElement(BannerStack, { key: 'banners' }),
+              (function(){
+                try {
+                  const slot = document.getElementById('coming-pill-slot');
+                  if (slot && win.ReactDOM && typeof win.ReactDOM.createPortal === 'function') {
+                    return win.ReactDOM.createPortal(React.createElement(PulsePill, { onClick: () => setShowComing(true) }), slot);
+                  }
+                } catch {}
+                return React.createElement(PulsePill, { onClick: () => setShowComing(true) });
+              })()
+            ]),
             // 1 - User selection + role pill + status
             React.createElement('div', { style: { marginTop: '8px', borderTop: '1px solid #e5e7eb', paddingTop: '8px' } }, [
               React.createElement('div', { key: 'hdr1', style: { fontSize: '11px', fontWeight: 700, letterSpacing: '0.02em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' } }, 'User & Role'),
@@ -1272,6 +1356,7 @@
               React.createElement(ChatConsole, { key: 'chat' }),
             ]),
             modal ? (modal.id === 'send-vendor' ? React.createElement(SendVendorModal, { userId: modal.userId, onClose: () => setModal(null) }) : (modal.id === 'approvals' ? React.createElement(ApprovalsModal, { onClose: () => setModal(null) }) : (modal.id === 'compile' ? React.createElement(CompileModal, { onClose: () => setModal(null) }) : (modal.id === 'notifications' ? React.createElement(NotificationsModal, { onClose: () => setModal(null) }) : (modal.id === 'request-review' ? React.createElement(RequestReviewModal, { onClose: () => setModal(null) }) : (modal.id === 'message' ? React.createElement(MessageModal, { toUserId: modal.toUserId, toUserName: modal.toUserName, onClose: () => setModal(null) }) : (modal.id === 'open-gov' ? React.createElement(OpenGovModal, { onClose: () => setModal(null) }) : null))))))) : null,
+            showComing ? React.createElement(ComingModal, { key: 'coming', onClose: () => setShowComing(false) }) : null,
             confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
           )
         )
