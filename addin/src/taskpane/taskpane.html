@@ -25,54 +25,11 @@
 <body class="ms-font-m ms-welcome ms-Fabric">
   <header class="ms-welcome__header ms-bgColor-neutralLighter addin-header brand-header-bg">
     <img class="brand-img" src="/web/assets/opengov-logo.png" alt="OpenGov" title="Redline Like You Mean It" />
-    <span class="pill-right pulse" id="coming-pill" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="coming-modal" aria-expanded="false">Coming 2026</span>
     <div class="title-block">
       <h1 class="ms-font-su title-main">Redline Like You Mean It</h1>
       <div class="title-sub">The Future of Contracting</div>
     </div>
   </header>
-  <!-- Always-present modal (shared styles in /web/branding.css) -->
-  <div class="ui-modal-backdrop" id="coming-modal" aria-hidden="true">
-    <div class="ui-modal" role="dialog" aria-modal="true" aria-labelledby="coming-modal-title">
-      <div class="ui-modal__header">
-        <div id="coming-modal-title">The Future is Coming</div>
-        <button type="button" class="ui-modal__close" aria-label="Close">×</button>
-      </div>
-      <div class="ui-modal__body">
-        <div style="font-size:14px;color:#6b7280;margin-bottom:8px">Preview and toggle upcoming features</div>
-        <table class="ui-table" aria-label="Upcoming features">
-          <thead>
-            <tr>
-              <th style="width:45%">Feature</th>
-              <th style="width:20%">Status</th>
-              <th style="width:20%">Release</th>
-              <th style="width:15%">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Contracts Landing Page</td>
-              <td><span class="ui-badge gray">pending release</span></td>
-              <td>2025-09-16</td>
-              <td><input type="checkbox" checked aria-label="Enable Contracts Landing Page"/></td>
-            </tr>
-            <tr>
-              <td>Evaluations, Awards, and Notices V2</td>
-              <td><span class="ui-badge indigo">in development</span></td>
-              <td>Q4 2025</td>
-              <td><input type="checkbox" checked aria-label="Enable Evaluations, Awards, and Notices V2"/></td>
-            </tr>
-            <tr>
-              <td>Contract authoring in Word</td>
-              <td><span class="ui-badge green">vision</span></td>
-              <td>Q1 2026</td>
-              <td><input type="checkbox" checked aria-label="Enable Contract authoring in Word"/></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
     <section id="sideload-msg" class="ms-welcome__main" style="display: none;">
         <h2 class="ms-font-xl">Loading...</h2>
     </section>
@@ -92,86 +49,38 @@
           var m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
           return m ? { r: parseInt(m[1],16), g: parseInt(m[2],16), b: parseInt(m[3],16) } : null;
         }
-        function setupPill(pill){
-          if (!pill) return;
-          var pairs = [ { bg: "#4B3FFF", fg: "#ffffff" }, { bg: "#FFB636", fg: "#111827" }, { bg: "#22C55E", fg: "#ffffff" }, { bg: "#EF4444", fg: "#ffffff" }, { bg: "#06B6D4", fg: "#0f172a" } ];
-          var minS = 3, maxS = 10, glowAlpha = 0.35, activeS = 1.5, restMinS = 3, restMaxS = 10;
+        function tryMount() {
           try {
-            fetch('/api/v1/theme').then(function(r){ return r.ok ? r.json() : null; }).then(function(t){
-              if (!t) return;
-              if (t.pulse && Array.isArray(t.pulse.palette) && t.pulse.palette.length) {
-                var themed = [];
-                for (var i=0;i<t.pulse.palette.length;i++) {
-                  var p = t.pulse.palette[i];
-                  if (p && p.bg) themed.push({ bg: p.bg, fg: p.fg || '#ffffff' });
-                }
-                if (themed.length) pairs = themed;
-                if (typeof t.pulse.minSeconds === 'number') minS = t.pulse.minSeconds;
-                if (typeof t.pulse.maxSeconds === 'number') maxS = t.pulse.maxSeconds;
-                if (typeof t.pulse.activeSeconds === 'number') activeS = t.pulse.activeSeconds;
-                if (typeof t.pulse.restMinSeconds === 'number') restMinS = t.pulse.restMinSeconds;
-                if (typeof t.pulse.restMaxSeconds === 'number') restMaxS = t.pulse.restMaxSeconds;
-                if (typeof t.pulse.glowAlpha === 'number') glowAlpha = t.pulse.glowAlpha;
-              }
-            }).catch(function(){});
-          } catch {}
-          var idx = 0;
-          function doPulseCycle(){
-            var pair = pairs[idx % pairs.length]; idx++;
-            var rgb = hexToRgb(pair.bg);
-            var glow = rgb ? ('rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + glowAlpha + ')') : 'rgba(255,255,255,' + glowAlpha + ')';
-            pill.style.background = pair.bg;
-            pill.style.color = pair.fg;
-            pill.style.setProperty('--pulse-glow-color', glow);
-            pill.classList.remove('is-resting');
-            pill.style.setProperty('--pulse-duration', activeS + 's');
-            pill.style.animationIterationCount = '1';
-            function onEnd(){
-              pill.removeEventListener('animationend', onEnd);
-              pill.classList.add('is-resting');
-              var rest = randInt(restMinS, restMaxS) * 1000;
-              setTimeout(function(){
-                pill.style.animationIterationCount = '1';
-                pill.classList.remove('is-resting');
-                void pill.offsetWidth;
-                doPulseCycle();
-              }, rest);
-            }
-            pill.addEventListener('animationend', onEnd);
-            void pill.offsetWidth;
-          }
-          doPulseCycle();
-        }
-        function openModal(el){ if (!el) return; try { document.body.style.overflow = 'hidden'; } catch {}; el.classList.add('is-open'); el.setAttribute('aria-hidden','false'); try { document.getElementById('coming-pill').setAttribute('aria-expanded','true'); } catch {} }
-        function closeModal(el){ if (!el) return; el.classList.remove('is-open'); el.setAttribute('aria-hidden','true'); try { document.body.style.overflow = ''; } catch {}; try { document.getElementById('coming-pill').setAttribute('aria-expanded','false'); document.getElementById('coming-pill').focus(); } catch {} }
-        function wireModal(){
-          var pill = document.getElementById('coming-pill');
-          var modal = document.getElementById('coming-modal');
-          if (!pill || !modal) return;
-          pill.addEventListener('click', function(){ openModal(modal); });
-          pill.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(modal); } });
-          modal.addEventListener('click', function(e){ if (e.target === modal) closeModal(modal); });
-          var closeBtn = modal.querySelector('.ui-modal__close');
-          if (closeBtn) closeBtn.addEventListener('click', function(){ closeModal(modal); });
-          setupPill(pill);
-        }
-        function start() {
-          try { document.getElementById('sideload-msg').style.display = 'none'; } catch {}
-          try { document.getElementById('app-body').style.display = 'block'; } catch {}
-          try {
-            if (window.mountReactApp) {
-              window.mountReactApp({ rootSelector: '#app-root' });
-            }
+            var hasReact = !!(window.React && window.ReactDOM && window.ReactDOM.createRoot);
+            var hasEntry = !!window.mountReactApp;
+            if (!hasReact || !hasEntry) return false;
+            document.getElementById('sideload-msg').style.display = 'none';
+            document.getElementById('app-body').style.display = 'block';
+            window.mountReactApp({ rootSelector: '#app-root' });
+            try { wireModal(); } catch {}
+            return true;
           } catch (e) {
             try {
               const el = document.getElementById('app-root');
-              el.innerHTML = '<div style="padding:8px;color:crimson">Failed to initialize: ' + (e && (e.message || e)) + '</div>';
+              el.innerHTML = '<div style="padding:8px;color:crimson">Failed to initialize: '+ (e && (e.message||e)) +'</div>';
             } catch {}
+            return true; // stop retrying if we displayed an error
           }
-          try { wireModal(); } catch {}
+        }
+        function start() {
+          // Only show the loading message if mount takes noticeable time
+          var showLoadingTimer = setTimeout(function(){
+            try { document.getElementById('sideload-msg').style.display = 'block'; } catch {}
+          }, 300);
+          var attempts = 0;
+          (function waitForEntry(){
+            attempts++;
+            if (tryMount()) { try { clearTimeout(showLoadingTimer); } catch {}; return; }
+            if (attempts < 60) { setTimeout(waitForEntry, 100); } else { try { clearTimeout(showLoadingTimer); } catch {} }
+          })();
         }
         if (window.Office && typeof Office.onReady === 'function') {
-          try { Office.onReady(function(){ start(); }); } catch { start(); }
+          try { Office.onReady(function(info){ try { console.log('Office.ready host:', info && info.host); } catch {}; start(); }); } catch { start(); }
         } else {
           // Fallback: ensure we never block rendering if Office.js fails to bootstrap
           if (document.readyState === 'complete' || document.readyState === 'interactive') {
