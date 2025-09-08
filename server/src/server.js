@@ -487,7 +487,7 @@ app.get('/api/v1/state-matrix', (req, res) => {
     })(),
     checkoutStatus: { isCheckedOut, checkedOutUserId: serverState.checkedOutBy },
     viewerMessage: isCheckedOut
-      ? { type: isOwner ? 'info' : 'warning', text: isOwner ? `Checked out by you` : `Checked out by ${serverState.checkedOutBy}` }
+      ? { type: isOwner ? 'info' : 'warning', text: isOwner ? `Checked out by you` : `Checked out by ${checkedOutLabel}` }
       : { type: 'success', text: 'Available for editing' },
     approvals: { enabled: true, summary: approvalsSummary },
   };
