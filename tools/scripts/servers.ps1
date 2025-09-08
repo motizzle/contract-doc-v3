@@ -1,6 +1,7 @@
 param(
   [ValidateSet('start','stop','restart','status','sideload')]
-  [string]$Action = 'status'
+  [string]$Action = 'status',
+  [switch]$ForceInstall = $false
 )
 
 $ErrorActionPreference = 'SilentlyContinue'
@@ -48,6 +49,17 @@ function Start-Backend() {
 function Start-Dev() {
   $root = Split-Path -Parent $PSCommandPath | Split-Path -Parent | Split-Path -Parent
   Ensure-NpmInstall "$root\addin"
+  # Preflight: ensure webpack exists for the add-in dev server; optionally force install
+  try {
+    $binDir = Join-Path "$root\addin\node_modules" ".bin"
+    $hasWebpack = (Test-Path -LiteralPath (Join-Path $binDir 'webpack.cmd')) -or (Test-Path -LiteralPath (Join-Path $binDir 'webpack.ps1')) -or (Test-Path -LiteralPath (Join-Path $binDir 'webpack'))
+    if ($ForceInstall -or -not $hasWebpack) {
+      Write-Host "Installing dependencies in $root\addin" -ForegroundColor Yellow
+      Push-Location "$root\addin"
+      npm ci --no-audit --no-fund | Out-Host
+      Pop-Location
+    }
+  } catch {}
   Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","cd '$root\addin'; npm run dev-server" -WindowStyle Minimized -PassThru
 }
 
@@ -90,18 +102,18 @@ switch ($Action) {
   }
   'start'    {
     Stop-Port 4000; Stop-Port 4001; Stop-Port 4002;
-    $c=Start-Collab; if (-not (Wait-Port -Port 4002 -TimeoutSeconds 25)) { Write-Host "WARN: 4002 not listening" -ForegroundColor Yellow }
-    $b=Start-Backend; if (-not (Wait-Port -Port 4001 -TimeoutSeconds 25)) { Write-Host "WARN: 4001 not listening" -ForegroundColor Yellow }
-    $d=Start-Dev; if (-not (Wait-Port -Port 4000 -TimeoutSeconds 25)) { Write-Host "WARN: 4000 not listening" -ForegroundColor Yellow }
+    $c=Start-Collab; if (-not (Wait-Port -Port 4002 -TimeoutSeconds 60)) { Write-Host "WARN: 4002 not listening" -ForegroundColor Yellow }
+    $b=Start-Backend; if (-not (Wait-Port -Port 4001 -TimeoutSeconds 60)) { Write-Host "WARN: 4001 not listening" -ForegroundColor Yellow }
+    $d=Start-Dev; if (-not (Wait-Port -Port 4000 -TimeoutSeconds 60)) { Write-Host "WARN: 4000 not listening" -ForegroundColor Yellow }
     $a=Start-AddinSideload; Start-Sleep -Seconds 1;
     Write-Host "Collab PID: $($c.Id)  Backend PID: $($b.Id)  Dev PID: $($d.Id)  Addin PID: $($a.Id)";
     Show-Status
   }
   'restart'  {
     Stop-Port 4000; Stop-Port 4001; Stop-Port 4002;
-    $c=Start-Collab; if (-not (Wait-Port -Port 4002 -TimeoutSeconds 25)) { Write-Host "WARN: 4002 not listening" -ForegroundColor Yellow }
-    $b=Start-Backend; if (-not (Wait-Port -Port 4001 -TimeoutSeconds 25)) { Write-Host "WARN: 4001 not listening" -ForegroundColor Yellow }
-    $d=Start-Dev; if (-not (Wait-Port -Port 4000 -TimeoutSeconds 25)) { Write-Host "WARN: 4000 not listening" -ForegroundColor Yellow }
+    $c=Start-Collab; if (-not (Wait-Port -Port 4002 -TimeoutSeconds 60)) { Write-Host "WARN: 4002 not listening" -ForegroundColor Yellow }
+    $b=Start-Backend; if (-not (Wait-Port -Port 4001 -TimeoutSeconds 60)) { Write-Host "WARN: 4001 not listening" -ForegroundColor Yellow }
+    $d=Start-Dev; if (-not (Wait-Port -Port 4000 -TimeoutSeconds 60)) { Write-Host "WARN: 4000 not listening" -ForegroundColor Yellow }
     $a=Start-AddinSideload; Start-Sleep -Seconds 1;
     Write-Host "Collab PID: $($c.Id)  Backend PID: $($b.Id)  Dev PID: $($d.Id)  Addin PID: $($a.Id)";
     Show-Status
