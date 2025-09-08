@@ -155,38 +155,23 @@
           if (closeBtn) closeBtn.addEventListener('click', function(){ closeModal(modal); });
           setupPill(pill);
         }
-        function tryMount() {
+        function start() {
+          try { document.getElementById('sideload-msg').style.display = 'none'; } catch {}
+          try { document.getElementById('app-body').style.display = 'block'; } catch {}
           try {
-            var hasReact = !!(window.React && window.ReactDOM && window.ReactDOM.createRoot);
-            var hasEntry = !!window.mountReactApp;
-            if (!hasReact || !hasEntry) return false;
-            document.getElementById('sideload-msg').style.display = 'none';
-            document.getElementById('app-body').style.display = 'block';
-            window.mountReactApp({ rootSelector: '#app-root' });
-            try { wireModal(); } catch {}
-            return true;
+            if (window.mountReactApp) {
+              window.mountReactApp({ rootSelector: '#app-root' });
+            }
           } catch (e) {
             try {
               const el = document.getElementById('app-root');
-              el.innerHTML = '<div style="padding:8px;color:crimson">Failed to initialize: '+ (e && (e.message||e)) +'</div>';
+              el.innerHTML = '<div style="padding:8px;color:crimson">Failed to initialize: ' + (e && (e.message || e)) + '</div>';
             } catch {}
-            return true; // stop retrying if we displayed an error
           }
-        }
-        function start() {
-          // Only show the loading message if mount takes noticeable time
-          var showLoadingTimer = setTimeout(function(){
-            try { document.getElementById('sideload-msg').style.display = 'block'; } catch {}
-          }, 300);
-          var attempts = 0;
-          (function waitForEntry(){
-            attempts++;
-            if (tryMount()) { try { clearTimeout(showLoadingTimer); } catch {}; return; }
-            if (attempts < 60) { setTimeout(waitForEntry, 100); } else { try { clearTimeout(showLoadingTimer); } catch {} }
-          })();
+          try { wireModal(); } catch {}
         }
         if (window.Office && typeof Office.onReady === 'function') {
-          try { Office.onReady(function(info){ try { console.log('Office.ready host:', info && info.host); } catch {}; start(); }); } catch { start(); }
+          try { Office.onReady(function(){ start(); }); } catch { start(); }
         } else {
           // Fallback: ensure we never block rendering if Office.js fails to bootstrap
           if (document.readyState === 'complete' || document.readyState === 'interactive') {

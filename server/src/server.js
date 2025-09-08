@@ -539,7 +539,8 @@ app.post('/api/v1/finalize', (req, res) => {
   const userId = req.body?.userId || 'user1';
   // Finalize allowed even if someone else has checkout? For safety, require not held by another user.
   if (serverState.checkedOutBy && serverState.checkedOutBy !== userId) {
-    return res.status(409).json({ error: `Checked out by ${serverState.checkedOutBy}` });
+    const by = resolveUserLabel(serverState.checkedOutBy);
+    return res.status(409).json({ error: `Checked out by ${by}` });
   }
   serverState.isFinal = true;
   // Clear any existing checkout
@@ -553,7 +554,8 @@ app.post('/api/v1/finalize', (req, res) => {
 app.post('/api/v1/unfinalize', (req, res) => {
   const userId = req.body?.userId || 'user1';
   if (serverState.checkedOutBy && serverState.checkedOutBy !== userId) {
-    return res.status(409).json({ error: `Checked out by ${serverState.checkedOutBy}` });
+    const by = resolveUserLabel(serverState.checkedOutBy);
+    return res.status(409).json({ error: `Checked out by ${by}` });
   }
   serverState.isFinal = false;
   serverState.lastUpdated = new Date().toISOString();
@@ -602,7 +604,10 @@ app.post('/api/v1/save-progress', (req, res) => {
     // Then enforce document state
     if (serverState.isFinal) return res.status(409).json({ error: 'Finalized' });
     if (!serverState.checkedOutBy) return res.status(409).json({ error: 'Not checked out' });
-    if (serverState.checkedOutBy !== userId) return res.status(409).json({ error: `Checked out by ${serverState.checkedOutBy}` });
+    if (serverState.checkedOutBy !== userId) {
+      const by = resolveUserLabel(serverState.checkedOutBy);
+      return res.status(409).json({ error: `Checked out by ${by}` });
+    }
     const dest = path.join(workingDocumentsDir, 'default.docx');
     try { fs.writeFileSync(dest, bytes); } catch { return res.status(500).json({ error: 'write_failed' }); }
     bumpRevision();
@@ -753,7 +758,8 @@ app.post('/api/v1/checkin', (req, res) => {
     return res.status(409).json({ error: 'Not checked out' });
   }
   if (serverState.checkedOutBy !== userId) {
-    return res.status(409).json({ error: `Checked out by ${serverState.checkedOutBy}` });
+    const by = resolveUserLabel(serverState.checkedOutBy);
+    return res.status(409).json({ error: `Checked out by ${by}` });
   }
   serverState.checkedOutBy = null;
   serverState.lastUpdated = new Date().toISOString();
@@ -769,7 +775,8 @@ app.post('/api/v1/checkout/cancel', (req, res) => {
     return res.status(409).json({ error: 'Not checked out' });
   }
   if (serverState.checkedOutBy !== userId) {
-    return res.status(409).json({ error: `Checked out by ${serverState.checkedOutBy}` });
+    const by = resolveUserLabel(serverState.checkedOutBy);
+    return res.status(409).json({ error: `Checked out by ${by}` });
   }
   serverState.checkedOutBy = null;
   serverState.lastUpdated = new Date().toISOString();
