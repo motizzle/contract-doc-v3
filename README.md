@@ -1,12 +1,8 @@
 # WordFTW: Redline Like You Mean It
 
-Consider this a new type of brief. A prototype. An idea. A vision statement and meeting combined with a video and a bunch of words. Hopefully something useful in accelerating our progress.
+Consider this a brief. A prototype. An idea. A vision statement and meeting combined with a video and a bunch of words. Hopefully something useful in accelerating our progress down this path.
 
-I wrote this with my 5 buddies: Claude 3.5 and 4, GPT o3, 4, and 5, but most  came from GPT 5. 
-
-Yes, it's vibe coding. No, that's not a bad word. If you want to see more of my thoughts about working with AI, see `docs/workingwithAI.md`
-
-This is not production code. If you look at it that way, it will disappoint you. Now, let's begin.
+I wrote this with my 5 buddies. Well no, my buddy #5 wrote this. I helped. This is vibe coding at its finest, and it's the best product brief I've written.
 
 ---
 
@@ -24,8 +20,6 @@ This is not production code. If you look at it that way, it will disappoint you.
   - Starts HTTPS server on 4001 (serves API, shared UI, and web viewer)
   - Starts the Word add‑in dev server on 4000 and sideloads Word
 - Then visit the web viewer at: https://localhost:4001
-
-- On macOS: see `docs/macos-setup.md` for setup and commands
 
 If you prefer artisanal hand-crafted terminals, see Manual start below.
 
@@ -148,10 +142,6 @@ Helpful variants:
 ./tools/scripts/servers.ps1 -Action stop     # stop all the things
 ./tools/scripts/servers.ps1 -Action sideload # only (re)launch the add‑in
 ```
-
-### macOS quickstart
-
-- Follow `docs/macos-setup.md` for Terminal commands, dev certs, and port notes.
 
 ---
 
@@ -287,7 +277,7 @@ More: `docs/state-matrix-plain-english.md` and `docs/Project-Summary.md`.
 
 ## Contributing
 
-- PRs welcome. I'll bring the beach.
+- PRs welcome. Please bring your own tacos.
 - Keep code readable and boring. Button labels can be exciting.
 
 ---

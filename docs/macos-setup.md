@@ -1,40 +1,56 @@
 # macOS Setup
 
+This project runs on macOS. Follow these steps to run the web app, API server, collab backend, and Word add‑in.
+
 ## Prerequisites
-- Node 18+ / npm 9+
-- Word for Mac
-- Docker Desktop (optional)
-- LibreOffice (optional)
 
-## Certs / helpers
-`ash
+- macOS 12+
+- Node.js 18+ and npm 9+ (`node -v`, `npm -v`)
+- Word for Mac (for the add‑in)
+- Docker Desktop (optional, for collab backend)
+- LibreOffice (optional, for Compile)
+
+Install helpers:
+```bash
+# Dev HTTPS certs for Office tooling
 npx office-addin-dev-certs install
-# LibreOffice:
+
+# LibreOffice (either):
 brew install --cask libreoffice
-# or:
-export SOFFICE_PATH="/Applications/LibreOffice.app/Contents/MacOS/soffice"
-`
+# or: export SOFFICE_PATH="/Applications/LibreOffice.app/Contents/MacOS/soffice"
+```
 
-## Start services
-Terminal 1 (collab):
-`ash
-cd collab && npm ci && node server.js
-# or Docker: cd ops/docker && docker compose up --build -d
-`
-Terminal 2 (server):
-`ash
+## Start services (manual)
+
+Terminal 1 – Collab backend (pick one):
+```bash
+# Direct
+cd collab && npm ci && node server.js    # listens on 4002 by default
+
+# Or Docker
+cd ops/docker && docker compose up --build -d  # maps 4002 -> 4100
+```
+
+Terminal 2 – Main server (HTTPS):
+```bash
 cd server && npm ci && node src/server.js  # https://localhost:4001
-`
-Terminal 3 (addin):
-`ash
-cd addin && npm ci
-npm run dev-server  # https://localhost:4000
-npm start         # sideload Word add-in
-`
+```
 
-Open https://localhost:4001
+Terminal 3 – Web add‑in dev server (+ optional sideload):
+```bash
+cd addin && npm ci
+npm run dev-server                         # https://localhost:4000
+npm start                                  # sideload Word add‑in
+```
+
+Open the web viewer:
+```
+https://localhost:4001
+```
 
 ## Notes
-- Trust dev certs in Keychain if prompted
-- Ports: 4000/4001/4002
-- If compile fails, set SOFFICE_PATH explicitly
+
+- Certificates: trust prompts from dev certs; check Keychain if needed.
+- Ports: 4000 (addin), 4001 (server), 4002 (collab).
+- Compile: if `soffice` is not in PATH, set `SOFFICE_PATH` to the full path.
+- The add‑in can be reloaded via Word’s Office Add-ins menu if it doesn’t sideload automatically.
