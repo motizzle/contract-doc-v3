@@ -520,7 +520,7 @@
         } catch {}
       };
       const btn = React.createElement(UIButton, { label: 'Copy', onClick: copy, className: 'self-end mb-1' });
-      const box = React.createElement('div', { className: 'font-mono p-8 border border-gray-300 rounded-md overflow-auto max-h-80 bg-gray-50', style: { whiteSpace: 'pre-wrap' } }, (logs || []).slice().reverse().join('\n'));
+      const box = React.createElement('div', { className: 'font-mono p-8 border border-gray-300 rounded-md overflow-auto max-h-80 bg-gray-50 whitespace-pre-wrap' }, (logs || []).slice().reverse().join('\n'));
       return React.createElement('div', { className: 'd-flex flex-column' }, [btn, box]);
     }
 
@@ -531,7 +531,7 @@
       const unseen = Math.max(0, total - (lastSeenLogCount || 0));
       const open = () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'notifications' } })); } catch {} };
       const style = { position: 'relative', cursor: 'pointer', borderRadius: '999px' };
-      const badge = unseen ? React.createElement('span', { className: 'ui-badge', style: { position: 'absolute', top: '-4px', right: '-4px', background: 'var(--color-error-500)', color: 'var(--color-white)', borderRadius: '999px', fontSize: '10px', padding: '0 var(--space-6)', lineHeight: '16px', height: '16px', minWidth: '16px', textAlign: 'center' } }, String(unseen)) : null;
+      const badge = unseen ? React.createElement('span', { className: 'ui-badge badge-notification' }, String(unseen)) : null;
       return React.createElement('span', { style, onClick: open, title: 'Notifications' }, ['🔔', badge]);
     }
 
@@ -541,7 +541,7 @@
       const { logs, markNotificationsSeen } = React.useContext(StateContext);
       const t = tokens && tokens.modal ? tokens.modal : {};
       const copy = async () => { try { const text = (logs || []).slice().reverse().join('\n'); if (navigator?.clipboard?.writeText) await navigator.clipboard.writeText(text); } catch {} };
-      const list = React.createElement('div', { className: 'font-mono bg-gray-50 border border-gray-200 rounded-md overflow-auto max-h-105', style: { whiteSpace: 'pre-wrap', padding: 'var(--space-8)' } }, (logs || []).slice().reverse().join('\n'));
+      const list = React.createElement('div', { className: 'font-mono bg-gray-50 border border-gray-200 rounded-md overflow-auto max-h-105 whitespace-pre-wrap p-8' }, (logs || []).slice().reverse().join('\n'));
       const button = (label, variant, onclick) => React.createElement(UIButton, { label, onClick: onclick, variant: variant || 'primary' });
       React.useEffect(() => { try { markNotificationsSeen?.(); } catch {} }, [markNotificationsSeen]);
 
@@ -597,20 +597,8 @@
       const t = tokens && tokens.modal ? tokens.modal : {};
 
       const badge = (txt, tone) => {
-        const bg = tone === 'indigo' ? '#e0e7ff' : (tone === 'green' ? '#dcfce7' : '#f3f4f6');
-        const fg = tone === 'indigo' ? '#3730a3' : (tone === 'green' ? '#166534' : '#374151');
-        return React.createElement('span', {
-          style: {
-            display: 'inline-block',
-            padding: '2px 6px',
-            borderRadius: '999px',
-            fontSize: '11px',
-            fontWeight: 700,
-            background: bg,
-            color: fg,
-            border: '1px solid #e5e7eb'
-          }
-        }, txt);
+        const className = `badge-base ${tone === 'indigo' ? 'badge-indigo' : tone === 'green' ? 'badge-green' : 'badge-gray'}`;
+        return React.createElement('span', { className }, txt);
       };
 
       const rows = [
@@ -710,8 +698,8 @@
         window.addEventListener('chat:reset', onChatReset);
         return () => { window.removeEventListener('chat:message', onInboundChat); window.removeEventListener('chat:reset', onChatReset); };
       }, [currentUser, getMsgsKey, getSeedKey]);
-      const box = React.createElement('div', { style: { border: '1px solid #ddd', borderRadius: '6px', padding: '8px', height: '120px', overflow: 'auto', background: '#fff' } }, messages.map((m, i) => React.createElement('div', { key: i, style: { marginTop: i ? '6px' : 0 } }, m)));
-      const input = React.createElement('input', { type: 'text', value: text, onChange: (e) => setText(e.target.value), placeholder: 'Type a message...', style: { flex: 1, padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' } });
+      const box = React.createElement('div', { className: 'chat-container' }, messages.map((m, i) => React.createElement('div', { key: i, className: 'chat-message-spacing' }, m)));
+      const input = React.createElement('input', { type: 'text', value: text, onChange: (e) => setText(e.target.value), placeholder: 'Type a message...', className: 'chat-input' });
       const btn = React.createElement(UIButton, { label: 'Send', onClick: send });
       const reset = async () => {
         try {

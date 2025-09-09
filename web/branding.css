@@ -1049,3 +1049,61 @@
 
 .badge-padding { padding: var(--badge-padding); }
 .badge-border-radius { border-radius: var(--badge-border-radius); }
+
+/* ===========================================
+   PHASE 2F: EDGE CASES & COMPONENT SPECIFIC
+   For remaining inline styles and specialized components
+   =========================================== */
+
+/* Text formatting */
+.whitespace-pre-wrap { white-space: pre-wrap; }
+.whitespace-nowrap { white-space: nowrap; }
+
+/* Badge positioning for notifications and alerts */
+.badge-notification {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--color-error-500);
+  color: var(--color-white);
+  border-radius: 999px;
+  font-size: 10px;
+  padding: 0 var(--space-6);
+  line-height: 16px;
+  height: 16px;
+  min-width: 16px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.badge-base {
+  display: inline-block;
+  padding: 2px var(--space-6);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.badge-indigo { background: var(--color-indigo-100); color: var(--color-indigo-700); }
+.badge-green { background: var(--color-success-100); color: var(--color-success-700); }
+.badge-gray { background: var(--color-gray-100); color: var(--color-gray-700); }
+
+/* Chat component styling */
+.chat-container {
+  border: var(--border-width-1) var(--border-style-solid) var(--color-gray-300);
+  border-radius: var(--border-radius-md);
+  padding: var(--space-8);
+  height: 120px;
+  overflow: auto;
+  background: var(--color-white);
+}
+
+.chat-input {
+  flex: 1;
+  padding: var(--space-6) var(--space-8);
+  border: var(--border-width-1) var(--border-style-solid) var(--color-gray-200);
+  border-radius: var(--border-radius-sm);
+}
+
+.chat-message-spacing { margin-top: 6px; }
+.chat-message-spacing:first-child { margin-top: 0; }
