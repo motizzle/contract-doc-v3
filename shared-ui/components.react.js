@@ -650,6 +650,11 @@
       React.useEffect(() => {
         try { const raw = localStorage.getItem(getMsgsKey()); const arr = raw ? JSON.parse(raw) : []; if (Array.isArray(arr)) setMessages(arr.map(String)); } catch {}
       }, [getMsgsKey]);
+      // Helper function to detect current platform
+      const getCurrentPlatform = () => {
+        try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; }
+      };
+
       const [text, setText] = React.useState('');
       const send = async () => {
         const t = (text || '').trim();
@@ -657,7 +662,8 @@
         setMessages((m) => { const next = (m || []).concat(`[${currentUser}] ${t}`); try { localStorage.setItem(getMsgsKey(), JSON.stringify(next)); } catch {}; return next; });
         setText('');
         try {
-          await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat', payload: { text: t }, userId: currentUser, platform: 'web' }) });
+          const platform = getCurrentPlatform();
+          await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat', payload: { text: t }, userId: currentUser, platform }) });
         } catch {}
       };
       // Seed first message once after SSE connects, web only (avoid add-in), only if no local messages
@@ -669,7 +675,8 @@
         try { if (localStorage.getItem(seedKey)) return; localStorage.setItem(seedKey, '1'); } catch {}
         (async () => {
           try {
-            await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat', payload: { text: '' }, userId: currentUser, platform: 'web' }) });
+            const platform = getCurrentPlatform();
+            await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat', payload: { text: '' }, userId: currentUser, platform }) });
           } catch {}
         })();
       }, [API_BASE, currentUser, isConnected, messages, getSeedKey]);
