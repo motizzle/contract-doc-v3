@@ -784,46 +784,62 @@ app.post('/api/v1/events/client', async (req, res) => {
     if (type === 'chat') {
       const text = String(payload?.text || '').trim();
 
-      if (LLM_USE_OPENAI && process.env.OPENAI_API_KEY) {
-        // Use LLM with streaming support
-        try {
-          const streamCallback = (chunk) => {
-            if (chunk.type === 'delta' && chunk.content) {
-              // Send streaming delta to client
-              broadcast({
-                type: 'chat:delta',
-                payload: {
-                  text: chunk.content,
-                  threadPlatform: originPlatform
-                },
-                userId: 'bot',
-                role: 'assistant',
-                platform: 'server'
-              });
-            } else if (chunk.type === 'complete') {
-              // Send completion event
-              broadcast({
-                type: 'chat:complete',
-                payload: {
-                  fullText: chunk.fullContent,
-                  threadPlatform: originPlatform
-                },
-                userId: 'bot',
-                role: 'assistant',
-                platform: 'server'
-              });
+      if (LLM_USE_OPENAI) {
+        // Check if we have a real API key or should use mock streaming
+        if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'mock') {
+          // Use real LLM with streaming support
+          try {
+            const streamCallback = (chunk) => {
+              if (chunk.type === 'delta' && chunk.content) {
+                // Send streaming delta to client
+                broadcast({
+                  type: 'chat:delta',
+                  payload: {
+                    text: chunk.content,
+                    threadPlatform: originPlatform
+                  },
+                  userId: 'bot',
+                  role: 'assistant',
+                  platform: 'server'
+                });
+              } else if (chunk.type === 'complete') {
+                // Send completion event
+                broadcast({
+                  type: 'chat:complete',
+                  payload: {
+                    fullText: chunk.fullContent,
+                    threadPlatform: originPlatform
+                  },
+                  userId: 'bot',
+                  role: 'assistant',
+                  platform: 'server'
+                });
+              }
+            };
+
+            const result = await generateReply({
+              messages: [{ role: 'user', content: text }],
+              systemPrompt: LLM_SYSTEM_PROMPT,
+              stream: streamCallback
+            });
+
+            if (!result.ok) {
+              // LLM failed, fallback to scripted response
+              console.warn('LLM failed, falling back to scripted response:', result.error);
+              const fallbackReply = getFallbackResponse(userId);
+              if (fallbackReply) {
+                broadcast({
+                  type: 'chat',
+                  payload: { text: fallbackReply, threadPlatform: originPlatform },
+                  userId: 'bot',
+                  role: 'assistant',
+                  platform: 'server'
+                });
+              }
             }
-          };
-
-          const result = await generateReply({
-            messages: [{ role: 'user', content: text }],
-            systemPrompt: LLM_SYSTEM_PROMPT,
-            stream: streamCallback
-          });
-
-          if (!result.ok) {
-            // LLM failed, fallback to scripted response
-            console.warn('LLM failed, falling back to scripted response:', result.error);
+          } catch (error) {
+            console.error('Chat processing error:', error);
+            // Fallback to scripted response on error
             const fallbackReply = getFallbackResponse(userId);
             if (fallbackReply) {
               broadcast({
@@ -835,19 +851,50 @@ app.post('/api/v1/events/client', async (req, res) => {
               });
             }
           }
-        } catch (error) {
-          console.error('Chat processing error:', error);
-          // Fallback to scripted response on error
-          const fallbackReply = getFallbackResponse(userId);
-          if (fallbackReply) {
-            broadcast({
-              type: 'chat',
-              payload: { text: fallbackReply, threadPlatform: originPlatform },
-              userId: 'bot',
-              role: 'assistant',
-              platform: 'server'
-            });
-          }
+        } else {
+          // MOCK STREAMING TEST - Demonstrates the streaming technology
+          console.log('🎭 Using mock streaming test (no API key required)');
+
+          const mockResponses = [
+            "Hello! I'm OG Assist, your AI-powered contract assistant. I can help you with contract analysis, clause explanations, and document insights. How can I help you today?",
+            "I understand you're working with contracts. I can help analyze clauses, explain legal terms, suggest improvements, or answer questions about your documents. What would you like to know?",
+            "Great question! As your AI contract assistant, I can provide insights on contract language, risk assessment, compliance issues, and best practices. Feel free to ask me anything about your documents.",
+            "I'm here to help with your contract work! Whether you need clause analysis, term explanations, or general contract advice, I'm ready to assist. What specific aspect would you like help with?"
+          ];
+
+          const mockResponse = mockResponses[Math.floor(Math.random() * mockResponses.length)];
+
+          // Simulate streaming by sending chunks with realistic delays
+          let index = 0;
+          const streamInterval = setInterval(() => {
+            if (index < mockResponse.length) {
+              const chunk = mockResponse[index];
+              broadcast({
+                type: 'chat:delta',
+                payload: {
+                  text: chunk,
+                  threadPlatform: originPlatform
+                },
+                userId: 'bot',
+                role: 'assistant',
+                platform: 'server'
+              });
+              index++;
+            } else {
+              clearInterval(streamInterval);
+              // Send completion event
+              broadcast({
+                type: 'chat:complete',
+                payload: {
+                  fullText: mockResponse,
+                  threadPlatform: originPlatform
+                },
+                userId: 'bot',
+                role: 'assistant',
+                platform: 'server'
+              });
+            }
+          }, 30); // 30ms delay between characters for smooth streaming
         }
       } else {
         // Use scripted responses (existing logic)
