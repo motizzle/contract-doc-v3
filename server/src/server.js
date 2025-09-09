@@ -894,7 +894,7 @@ app.post('/api/v1/events/client', async (req, res) => {
                 platform: 'server'
               });
             }
-          }, 30); // 30ms delay between characters for smooth streaming
+          }, 40); // 40ms delay between characters for smoother, slower streaming (30% slower)
         }
       } else {
         // Use scripted responses (existing logic)
