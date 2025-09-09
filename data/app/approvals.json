@@ -18,7 +18,7 @@
       "userId": "user3",
       "name": "Yuri Lee Laffed",
       "order": 3,
-      "approved": true,
+      "approved": false,
       "notes": ""
     },
     {
@@ -32,9 +32,9 @@
       "userId": "user5",
       "name": "Gettysburger King",
       "order": 5,
-      "approved": true,
+      "approved": false,
       "notes": ""
     }
   ],
-  "revision": 63
+  "revision": 66
 }

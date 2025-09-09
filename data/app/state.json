@@ -1,13 +1,13 @@
 {
   "isFinal": false,
-  "checkedOutBy": "user4",
-  "lastUpdated": "2025-09-08T23:58:30.486Z",
-  "revision": 228,
-  "documentVersion": 183,
+  "checkedOutBy": null,
+  "lastUpdated": "2025-09-09T05:08:09.373Z",
+  "revision": 232,
+  "documentVersion": 187,
   "updatedBy": {
-    "userId": "user1",
-    "label": "Warren Peace"
+    "userId": "user2",
+    "label": "Fun E Guy"
   },
-  "updatedPlatform": "web",
-  "approvalsRevision": 63
+  "updatedPlatform": "word",
+  "approvalsRevision": 66
 }

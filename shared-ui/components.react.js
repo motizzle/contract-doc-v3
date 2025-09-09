@@ -185,6 +185,12 @@
               if (p && p.type === 'chat') {
                 try { window.dispatchEvent(new CustomEvent('chat:message', { detail: p })); } catch {}
               }
+              if (p && p.type === 'chat:delta') {
+                try { window.dispatchEvent(new CustomEvent('chat:delta', { detail: p })); } catch {}
+              }
+              if (p && p.type === 'chat:complete') {
+                try { window.dispatchEvent(new CustomEvent('chat:complete', { detail: p })); } catch {}
+              }
               if (p && p.type === 'chat:reset') {
                 try { window.dispatchEvent(new CustomEvent('chat:reset', { detail: p })); } catch {}
               }
@@ -694,9 +700,63 @@
             try { localStorage.removeItem(getSeedKey()); } catch {}
           } catch {}
         }
+        function onChatDelta(ev) {
+          try {
+            const d = ev.detail;
+            const text = String(d && d.payload && d.payload.text || '');
+            if (!text) return;
+
+            // Check platform compatibility
+            const threadPlatform = d && d.payload && d.payload.threadPlatform;
+            try { if (typeof Office !== 'undefined') { if (threadPlatform && threadPlatform !== 'word') return; } else { if (threadPlatform && threadPlatform !== 'web') return; } } catch {}
+
+            // For streaming, we need to handle incremental updates to the last message
+            setMessages((m) => {
+              const next = [...(m || [])];
+              if (next.length === 0 || !next[next.length - 1].startsWith('[bot] ')) {
+                // Start new bot message
+                next.push('[bot] ' + text);
+              } else {
+                // Append to existing bot message
+                next[next.length - 1] = next[next.length - 1] + text;
+              }
+              try { localStorage.setItem(getMsgsKey(), JSON.stringify(next)); } catch {};
+              return next;
+            });
+          } catch {}
+        }
+        function onChatComplete(ev) {
+          try {
+            const d = ev.detail;
+            const fullText = String(d && d.payload && d.payload.fullText || '');
+
+            // Check platform compatibility
+            const threadPlatform = d && d.payload && d.payload.threadPlatform;
+            try { if (typeof Office !== 'undefined') { if (threadPlatform && threadPlatform !== 'word') return; } else { if (threadPlatform && threadPlatform !== 'web') return; } } catch {}
+
+            // Replace the last message with the complete text
+            setMessages((m) => {
+              const next = [...(m || [])];
+              if (next.length > 0 && next[next.length - 1].startsWith('[bot] ')) {
+                next[next.length - 1] = '[bot] ' + fullText;
+              } else {
+                next.push('[bot] ' + fullText);
+              }
+              try { localStorage.setItem(getMsgsKey(), JSON.stringify(next)); } catch {};
+              return next;
+            });
+          } catch {}
+        }
         window.addEventListener('chat:message', onInboundChat);
+        window.addEventListener('chat:delta', onChatDelta);
+        window.addEventListener('chat:complete', onChatComplete);
         window.addEventListener('chat:reset', onChatReset);
-        return () => { window.removeEventListener('chat:message', onInboundChat); window.removeEventListener('chat:reset', onChatReset); };
+        return () => {
+          window.removeEventListener('chat:message', onInboundChat);
+          window.removeEventListener('chat:delta', onChatDelta);
+          window.removeEventListener('chat:complete', onChatComplete);
+          window.removeEventListener('chat:reset', onChatReset);
+        };
       }, [currentUser, getMsgsKey, getSeedKey]);
       const box = React.createElement('div', { className: 'chat-container' }, messages.map((m, i) => React.createElement('div', { key: i, className: 'chat-message-spacing' }, m)));
       const input = React.createElement('input', { type: 'text', value: text, onChange: (e) => setText(e.target.value), placeholder: 'Type a message...', className: 'chat-input' });

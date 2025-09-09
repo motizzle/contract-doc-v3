@@ -8,62 +8,15 @@ const compression = require('compression');
 const multer = require('multer');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
+// Import LLM module
+const { generateReply } = require('./lib/llm');
+
 // Minimal LLM toggle (OpenAI via https request; no SDK)
 const LLM_USE_OPENAI = String(process.env.LLM_USE_OPENAI || '').toLowerCase() === 'true';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const LLM_SYSTEM_PROMPT = process.env.LLM_SYSTEM_PROMPT || 'You are OG Assist. Answer briefly and helpfully.';
 
-async function openAiChat(userText) {
-  return new Promise((resolve) => {
-    try {
-      const input = String(userText || '').trim();
-      if (!input) return resolve({ ok: false, status: 'empty', content: '' });
-      const payload = JSON.stringify({
-        model: OPENAI_MODEL,
-        messages: [
-          { role: 'system', content: LLM_SYSTEM_PROMPT },
-          { role: 'user', content: input }
-        ]
-      });
-      const options = {
-        method: 'POST',
-        hostname: 'api.openai.com',
-        path: '/v1/chat/completions',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(payload),
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY || ''}`,
-        },
-        timeout: 20000,
-      };
-      const req = https.request(options, (r) => {
-        const statusCode = Number(r.statusCode || 0);
-        const chunks = [];
-        r.on('data', (c) => { try { chunks.push(c); } catch {} });
-        r.on('end', () => {
-          const body = Buffer.concat(chunks).toString('utf8');
-          if (statusCode >= 200 && statusCode < 300) {
-            try {
-              const j = JSON.parse(body);
-              const content = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
-              const text = (typeof content === 'string' ? content.trim() : '') || '';
-              return resolve({ ok: true, status: String(statusCode), content: text });
-            } catch {
-              return resolve({ ok: false, status: String(statusCode), content: '' });
-            }
-          }
-          return resolve({ ok: false, status: String(statusCode || 'error'), content: '' });
-        });
-      });
-      req.on('timeout', () => { try { req.destroy(new Error('timeout')); } catch {} });
-      req.on('error', () => resolve({ ok: false, status: 'error', content: '' }));
-      req.write(payload);
-      req.end();
-    } catch {
-      resolve({ ok: false, status: 'error', content: '' });
-    }
-  });
-}
+// LLM function moved to ./lib/llm.js for better organization
 
 // Configuration
 const APP_PORT = Number(process.env.PORT || 4001);
@@ -394,7 +347,23 @@ const upload = multer({ storage });
 
 // API v1
 app.get('/api/v1/health', (req, res) => {
-  res.json({ ok: true, superdoc: SUPERDOC_BASE_URL });
+  const llmEnabled = LLM_USE_OPENAI && !!process.env.OPENAI_API_KEY;
+  const llmInfo = llmEnabled ? {
+    enabled: true,
+    provider: 'openai',
+    model: OPENAI_MODEL
+  } : {
+    enabled: false,
+    provider: null
+  };
+
+  res.json({
+    ok: true,
+    superdoc: SUPERDOC_BASE_URL,
+    llmEnabled: llmInfo.enabled,
+    llmProvider: llmInfo.provider,
+    llmModel: llmInfo.enabled ? llmInfo.model : null
+  });
 });
 
 app.get('/api/v1/users', (req, res) => {
@@ -814,38 +783,115 @@ app.post('/api/v1/events/client', async (req, res) => {
   try {
     if (type === 'chat') {
       const text = String(payload?.text || '').trim();
-      if (LLM_USE_OPENAI) {
-        const result = await openAiChat(text);
-        const reply = result && result.ok ? (result.content || '') : String(result?.status || 'error');
-        if (reply) {
-          broadcast({ type: 'chat', payload: { text: reply, threadPlatform: originPlatform }, userId: 'bot', role: 'assistant', platform: 'server' });
+
+      if (LLM_USE_OPENAI && process.env.OPENAI_API_KEY) {
+        // Use LLM with streaming support
+        try {
+          const streamCallback = (chunk) => {
+            if (chunk.type === 'delta' && chunk.content) {
+              // Send streaming delta to client
+              broadcast({
+                type: 'chat:delta',
+                payload: {
+                  text: chunk.content,
+                  threadPlatform: originPlatform
+                },
+                userId: 'bot',
+                role: 'assistant',
+                platform: 'server'
+              });
+            } else if (chunk.type === 'complete') {
+              // Send completion event
+              broadcast({
+                type: 'chat:complete',
+                payload: {
+                  fullText: chunk.fullContent,
+                  threadPlatform: originPlatform
+                },
+                userId: 'bot',
+                role: 'assistant',
+                platform: 'server'
+              });
+            }
+          };
+
+          const result = await generateReply({
+            messages: [{ role: 'user', content: text }],
+            systemPrompt: LLM_SYSTEM_PROMPT,
+            stream: streamCallback
+          });
+
+          if (!result.ok) {
+            // LLM failed, fallback to scripted response
+            console.warn('LLM failed, falling back to scripted response:', result.error);
+            const fallbackReply = getFallbackResponse(userId);
+            if (fallbackReply) {
+              broadcast({
+                type: 'chat',
+                payload: { text: fallbackReply, threadPlatform: originPlatform },
+                userId: 'bot',
+                role: 'assistant',
+                platform: 'server'
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Chat processing error:', error);
+          // Fallback to scripted response on error
+          const fallbackReply = getFallbackResponse(userId);
+          if (fallbackReply) {
+            broadcast({
+              type: 'chat',
+              payload: { text: fallbackReply, threadPlatform: originPlatform },
+              userId: 'bot',
+              role: 'assistant',
+              platform: 'server'
+            });
+          }
         }
       } else {
-        const cfg = loadChatbotResponses();
-        if (cfg && Array.isArray(cfg.messages) && cfg.messages.length) {
-          const list = cfg.messages;
-          const mode = (cfg.policy && cfg.policy.mode) || 'sequential';
-          let pick = '';
-          if (mode === 'sequential') {
-            const key = String(userId || 'default');
-            const current = chatbotStateByUser.get(key) || 0;
-            const i = current % list.length;
-            const next = current + 1;
-            const loop = (cfg.policy && cfg.policy.loop) !== false;
-            chatbotStateByUser.set(key, loop ? next : Math.min(next, list.length));
-            pick = list[i];
-          } else {
-            pick = list[Math.floor(Math.random() * list.length)];
-          }
-          if (pick) {
-            broadcast({ type: 'chat', payload: { text: String(pick), threadPlatform: originPlatform }, userId: 'bot', role: 'assistant', platform: 'server' });
-          }
+        // Use scripted responses (existing logic)
+        const fallbackReply = getFallbackResponse(userId);
+        if (fallbackReply) {
+          broadcast({
+            type: 'chat',
+            payload: { text: fallbackReply, threadPlatform: originPlatform },
+            userId: 'bot',
+            role: 'assistant',
+            platform: 'server'
+          });
         }
       }
     }
   } catch {}
   res.json({ ok: true });
 });
+
+// Helper function for fallback scripted responses
+function getFallbackResponse(userId) {
+  const cfg = loadChatbotResponses();
+  if (!cfg || !Array.isArray(cfg.messages) || !cfg.messages.length) {
+    return 'Hello! How can I help you today?';
+  }
+
+  const list = cfg.messages;
+  const mode = (cfg.policy && cfg.policy.mode) || 'sequential';
+  let pick = '';
+
+  if (mode === 'sequential') {
+    const key = String(userId || 'default');
+    const current = chatbotStateByUser.get(key) || 0;
+    const i = current % list.length;
+    const next = current + 1;
+    const loop = (cfg.policy && cfg.policy.loop) !== false;
+    chatbotStateByUser.set(key, loop ? next : Math.min(next, list.length));
+    pick = list[i];
+  } else {
+    pick = list[Math.floor(Math.random() * list.length)];
+  }
+
+  return pick ? String(pick) : 'Hello! How can I help you today?';
+}
 
 // Chatbot: reset per-user scripted index (so sessions start from first message)
 app.post('/api/v1/chatbot/reset', (req, res) => {
