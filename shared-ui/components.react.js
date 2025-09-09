@@ -365,7 +365,7 @@
           if (Number.isFinite(serverVersion) && serverVersion > 0) setLoadedVersion(serverVersion);
         } catch {}
       };
-      return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' } },
+      return React.createElement('div', { className: 'd-flex flex-column gap-6 items-center' },
         banners.filter(show).map((b, i) => {
           const t = (tokens && tokens.banner && b && b.state) ? tokens.banner[b.state] : null;
           const style = {
@@ -384,7 +384,7 @@
     function ConnectionBadge() {
       const { isConnected, lastTs } = React.useContext(StateContext);
       const when = lastTs ? new Date(lastTs).toLocaleTimeString() : '—';
-      const style = { marginLeft: '8px', padding: '2px 6px', border: '1px solid #ddd', borderRadius: '10px', fontSize: '12px', background: isConnected ? '#f86a0b' : '#fff5f5' };
+      const style = { borderRadius: '10px', fontSize: '12px' };
       return React.createElement('div', { style }, isConnected ? `connected • last: ${when}` : 'disconnected');
     }
 
@@ -493,9 +493,9 @@
       ].filter(Boolean);
 
       return React.createElement(React.Fragment, null,
-        React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', columnGap: '8px', rowGap: '6px', gridAutoRows: 'minmax(27px, auto)' } }, topCluster),
-        React.createElement('div', { style: { height: '8px' } }),
-        React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', columnGap: '8px', rowGap: '6px', gridAutoRows: 'minmax(27px, auto)' } }, bottomGrid),
+        React.createElement('div', { className: 'd-grid grid-cols-2 column-gap-8 row-gap-6 grid-auto-rows-minmax-27' }, topCluster),
+        React.createElement('div', { className: 'h-2' }),
+        React.createElement('div', { className: 'd-grid grid-cols-2 column-gap-8 row-gap-6 grid-auto-rows-minmax-27' }, bottomGrid),
         confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
       );
     }
@@ -506,7 +506,7 @@
       const refresh = React.useCallback(async () => { try { const r = await fetch(`${API_BASE}/api/v1/exhibits`); if (r.ok) { const j = await r.json(); setItems(Array.isArray(j.items) ? j.items : []); } } catch {} }, [API_BASE]);
       React.useEffect(() => { refresh(); }, [refresh]);
       return React.createElement('div', null,
-        React.createElement('div', { style: { fontWeight: 600, marginTop: '8px' } }, 'Exhibits'),
+        React.createElement('div', { className: 'font-semibold mt-2' }, 'Exhibits'),
         items.length ? React.createElement('ul', null, items.map((it, i) => React.createElement('li', { key: i }, React.createElement('a', { href: it.url, target: '_blank' }, it.name)))) : React.createElement('div', null, '(none)')
       );
     }
@@ -519,9 +519,9 @@
           if (navigator?.clipboard?.writeText) await navigator.clipboard.writeText(text);
         } catch {}
       };
-      const btn = React.createElement(UIButton, { label: 'Copy', onClick: copy, style: { alignSelf: 'flex-end', marginBottom: '4px' } });
-      const box = React.createElement('div', { style: { fontFamily: 'Consolas, monospace', whiteSpace: 'pre-wrap', background: '#f5f5f5', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', maxHeight: '320px', overflow: 'auto' } }, (logs || []).slice().reverse().join('\n'));
-      return React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } }, [btn, box]);
+      const btn = React.createElement(UIButton, { label: 'Copy', onClick: copy, className: 'self-end mb-1' });
+      const box = React.createElement('div', { className: 'font-mono p-8 border border-gray-300 rounded-md overflow-auto max-h-80 bg-gray-50', style: { whiteSpace: 'pre-wrap' } }, (logs || []).slice().reverse().join('\n'));
+      return React.createElement('div', { className: 'd-flex flex-column' }, [btn, box]);
     }
 
     // Notifications bell (standard icon) that opens a modal
@@ -530,8 +530,8 @@
       const total = (logs || []).length;
       const unseen = Math.max(0, total - (lastSeenLogCount || 0));
       const open = () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'notifications' } })); } catch {} };
-      const style = { position: 'relative', cursor: 'pointer', padding: '4px 8px', border: '1px solid #ddd', borderRadius: '999px', background: '#fff' };
-      const badge = unseen ? React.createElement('span', { style: { position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: '#fff', borderRadius: '999px', fontSize: '10px', padding: '0 6px', lineHeight: '16px', height: '16px', minWidth: '16px', textAlign: 'center' } }, String(unseen)) : null;
+      const style = { position: 'relative', cursor: 'pointer', borderRadius: '999px' };
+      const badge = unseen ? React.createElement('span', { className: 'ui-badge', style: { position: 'absolute', top: '-4px', right: '-4px', background: 'var(--color-error-500)', color: 'var(--color-white)', borderRadius: '999px', fontSize: '10px', padding: '0 var(--space-6)', lineHeight: '16px', height: '16px', minWidth: '16px', textAlign: 'center' } }, String(unseen)) : null;
       return React.createElement('span', { style, onClick: open, title: 'Notifications' }, ['🔔', badge]);
     }
 
@@ -540,24 +540,19 @@
       const { tokens } = React.useContext(ThemeContext);
       const { logs, markNotificationsSeen } = React.useContext(StateContext);
       const t = tokens && tokens.modal ? tokens.modal : {};
-      const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 };
-      const panelStyle = { width: '640px', maxWidth: '95vw', background: t.background || '#fff', border: `1px solid ${t.border || '#e5e7eb'}`, borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
-      const headerStyle = { padding: '14px 16px', borderBottom: `1px solid ${t.border || '#e5e7eb'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: t.headerBg || '#fff', color: t.headerFg || '#111827' };
-      const bodyStyle = { padding: '16px' };
-      const footerStyle = { padding: '12px 16px', borderTop: `1px solid ${t.border || '#e5e7eb'}`, display: 'flex', justifyContent: 'flex-end', gap: '8px' };
       const copy = async () => { try { const text = (logs || []).slice().reverse().join('\n'); if (navigator?.clipboard?.writeText) await navigator.clipboard.writeText(text); } catch {} };
-      const list = React.createElement('div', { style: { fontFamily: 'Consolas, monospace', whiteSpace: 'pre-wrap', background: '#f9fafb', padding: '8px', border: `1px solid ${t.border || '#e5e7eb'}`, borderRadius: '6px', maxHeight: '420px', overflow: 'auto' } }, (logs || []).slice().reverse().join('\n'));
+      const list = React.createElement('div', { className: 'font-mono bg-gray-50 border border-gray-200 rounded-md overflow-auto max-h-105', style: { whiteSpace: 'pre-wrap', padding: 'var(--space-8)' } }, (logs || []).slice().reverse().join('\n'));
       const button = (label, variant, onclick) => React.createElement(UIButton, { label, onClick: onclick, variant: variant || 'primary' });
       React.useEffect(() => { try { markNotificationsSeen?.(); } catch {} }, [markNotificationsSeen]);
 
-      return React.createElement('div', { style: overlayStyle, onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
-        React.createElement('div', { style: panelStyle }, [
-          React.createElement('div', { key: 'h', style: headerStyle }, [
-            React.createElement('div', { key: 't', style: { fontWeight: 700 } }, 'Notifications'),
-            React.createElement('button', { key: 'x', onClick: onClose, style: { border: 'none', background: 'transparent' } }, '✕')
+      return React.createElement('div', { className: 'modal-overlay', onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
+        React.createElement('div', { className: 'modal-panel' }, [
+          React.createElement('div', { key: 'h', className: 'ui-modal__header' }, [
+            React.createElement('div', { key: 't', className: 'font-bold' }, 'Notifications'),
+            React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: onClose }, '✕')
           ]),
-          React.createElement('div', { key: 'b', style: bodyStyle }, list),
-          React.createElement('div', { key: 'f', style: footerStyle }, [
+          React.createElement('div', { key: 'b', className: 'ui-modal__body' }, list),
+          React.createElement('div', { key: 'f', className: 'modal-footer' }, [
             button('Copy', 'secondary', copy),
             button('Close', 'primary', () => { try { markNotificationsSeen?.(); } finally { onClose?.(); } }),
           ])
@@ -600,39 +595,53 @@
       const { onClose } = props || {};
       const { tokens } = React.useContext(ThemeContext);
       const t = tokens && tokens.modal ? tokens.modal : {};
-      const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 };
-      const panelStyle = { width: '720px', maxWidth: '95vw', background: t.background || '#fff', border: `1px solid ${t.border || '#e5e7eb'}`, borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
-      const headerStyle = { padding: '14px 16px', borderBottom: `1px solid ${t.border || '#e5e7eb'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: t.headerBg || '#fff', color: t.headerFg || '#111827' };
-      const bodyStyle = { padding: '16px' };
-      const badge = (txt, tone) => React.createElement('span', { style: { display: 'inline-block', padding: '2px 6px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, background: tone==='indigo'?'#e0e7ff':(tone==='green'?'#dcfce7':'#f3f4f6'), color: tone==='indigo'?'#3730a3':(tone==='green'?'#166534':'#374151'), border: '1px solid #e5e7eb' } }, txt);
+
+      const badge = (txt, tone) => {
+        const bg = tone === 'indigo' ? '#e0e7ff' : (tone === 'green' ? '#dcfce7' : '#f3f4f6');
+        const fg = tone === 'indigo' ? '#3730a3' : (tone === 'green' ? '#166534' : '#374151');
+        return React.createElement('span', {
+          style: {
+            display: 'inline-block',
+            padding: '2px 6px',
+            borderRadius: '999px',
+            fontSize: '11px',
+            fontWeight: 700,
+            background: bg,
+            color: fg,
+            border: '1px solid #e5e7eb'
+          }
+        }, txt);
+      };
+
       const rows = [
         { feature: 'Contracts Landing Page', status: badge('pending release','gray'), release: '2025-09-16', actions: React.createElement('input', { type: 'checkbox', defaultChecked: true, 'aria-label': 'Enable Contracts Landing Page' }) },
         { feature: 'Evaluations, Awards, and Notices V2', status: badge('in development','indigo'), release: 'Q4 2025', actions: React.createElement('input', { type: 'checkbox', defaultChecked: true, 'aria-label': 'Enable Evaluations, Awards, and Notices V2' }) },
         { feature: 'Contract authoring in Word', status: badge('vision','green'), release: 'Q1 2026', actions: React.createElement('input', { type: 'checkbox', defaultChecked: true, 'aria-label': 'Enable Contract authoring in Word' }) },
       ];
-      return React.createElement('div', { style: overlayStyle, onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
-        React.createElement('div', { style: panelStyle }, [
-          React.createElement('div', { key: 'h', style: headerStyle }, [
-            React.createElement('div', { key: 't', style: { fontWeight: 700 } }, 'The Future is Coming'),
-            React.createElement('button', { key: 'x', onClick: onClose, style: { border: 'none', background: 'transparent' } }, '✕')
+
+      return React.createElement('div', { className: 'modal-overlay', onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
+        React.createElement('div', { className: 'modal-panel' }, [
+          React.createElement('div', { key: 'h', className: 'modal-header' }, [
+            React.createElement('div', { key: 't', className: 'font-bold' }, 'The Future is Coming'),
+            React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: onClose }, '✕')
           ]),
-          React.createElement('div', { key: 'b', style: bodyStyle }, [
-            React.createElement('div', { key: 'lead', style: { fontSize: '14px', color: '#6b7280', marginBottom: '8px' } }, 'Preview and toggle upcoming features'),
-            React.createElement('table', { key: 'tbl', style: { width: '100%', borderCollapse: 'collapse' }, role: 'table', 'aria-label': 'Upcoming features' }, [
+          React.createElement('div', { key: 'b', className: 'modal-body' }, [
+            React.createElement('div', { key: 'lead', className: 'text-lg text-gray-500 mb-2' }, 'Preview and toggle upcoming features'),
+            React.createElement('table', { key: 'tbl', className: 'w-full table-collapse', role: 'table', 'aria-label': 'Upcoming features' }, [
               React.createElement('thead', { key: 'th' }, React.createElement('tr', null, [
-                React.createElement('th', { style: { textAlign: 'left', padding: '6px', width: '45%' } }, 'Feature'),
-                React.createElement('th', { style: { textAlign: 'left', padding: '6px', width: '20%' } }, 'Status'),
-                React.createElement('th', { style: { textAlign: 'left', padding: '6px', width: '20%' } }, 'Release'),
-                React.createElement('th', { style: { textAlign: 'left', padding: '6px', width: '15%' } }, 'Actions'),
+                React.createElement('th', { className: 'text-left table-cell-padding w-45' }, 'Feature'),
+                React.createElement('th', { className: 'text-left table-cell-padding w-20' }, 'Status'),
+                React.createElement('th', { className: 'text-left table-cell-padding w-20' }, 'Release'),
+                React.createElement('th', { className: 'text-left table-cell-padding w-15' }, 'Actions'),
               ])),
-              React.createElement('tbody', { key: 'tb' }, rows.map((r, i) => React.createElement('tr', { key: i, style: { borderTop: '1px solid #eee' } }, [
-                React.createElement('td', { style: { padding: '6px' } }, r.feature),
-                React.createElement('td', { style: { padding: '6px' } }, r.status),
-                React.createElement('td', { style: { padding: '6px' } }, r.release),
-                React.createElement('td', { style: { padding: '6px' } }, r.actions),
-              ]))
+              React.createElement('tbody', { key: 'tb' }, rows.map((r, i) => React.createElement('tr', { key: i, className: 'border-t border-gray-200' }, [
+                React.createElement('td', { className: 'table-cell-padding' }, r.feature),
+                React.createElement('td', { className: 'table-cell-padding' }, r.status),
+                React.createElement('td', { className: 'table-cell-padding' }, r.release),
+                React.createElement('td', { className: 'table-cell-padding' }, r.actions),
+              ])))
             ])
-          ]),
+          ])
         ])
       );
     }
@@ -725,9 +734,9 @@
         } catch {}
       };
       const resetBtn = React.createElement(UIButton, { label: 'Reset', onClick: reset, tone: 'secondary' });
-      const row = React.createElement('div', { style: { display: 'flex', gap: '8px' } }, [input, btn, resetBtn]);
-      const wrap = React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } }, [box, row]);
-      return React.createElement('div', null, [React.createElement('div', { key: 'hdr', style: { fontWeight: 600 } }, 'Assistant'), wrap]);
+      const row = React.createElement('div', { className: 'd-flex gap-8' }, [input, btn, resetBtn]);
+      const wrap = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [box, row]);
+      return React.createElement('div', null, [React.createElement('div', { key: 'hdr', className: 'font-semibold' }, 'Assistant'), wrap]);
     }
 
     function UserCard() {
@@ -741,8 +750,8 @@
         setSelected(nextId);
       };
       const pill = React.createElement('span', { className: 'ui-pill' }, (currentRole || 'editor').toUpperCase());
-      const select = React.createElement('select', { value: selected || '', onChange, style: { marginLeft: '8px' } }, (users || []).map((u, i) => React.createElement('option', { key: i, value: u.id || u.label }, u.label || u.id)));
-      return React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } }, [pill, select]);
+      const select = React.createElement('select', { value: selected || '', onChange, className: 'ml-2' }, (users || []).map((u, i) => React.createElement('option', { key: i, value: u.id || u.label }, u.label || u.id)));
+      return React.createElement('div', { className: 'd-flex items-center gap-8' }, [pill, select]);
     }
 
     function DocumentControls() {
@@ -815,8 +824,8 @@
           } catch {}
         }
       };
-      const btn = (label, onClick, variant) => React.createElement(UIButton, { label, onClick, variant: variant || 'primary', style: { width: '100%', minHeight: '27px' } });
-      return React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', columnGap: '8px', rowGap: '6px', gridAutoRows: 'minmax(27px, auto)' } }, [btn('Open New Document', openNew), btn('View Latest', viewLatest)]);
+      const btn = (label, onClick, variant) => React.createElement(UIButton, { label, onClick, variant: variant || 'primary', className: 'w-full' });
+      return React.createElement('div', { className: 'd-grid grid-cols-2 column-gap-8 row-gap-6 grid-auto-rows-minmax-27' }, [btn('Open New Document', openNew), btn('View Latest', viewLatest)]);
     }
 
     function ErrorBanner() {
@@ -825,7 +834,7 @@
       const msg = lastError.message || 'An error occurred';
       const detail = lastError.url ? ` url=${lastError.url}` : '';
       const status = lastError.status ? ` status=${lastError.status}` : '';
-      return React.createElement('div', { style: { margin: '8px 0', padding: '8px', border: '1px solid #fca5a5', background: '#fee2e2', color: '#7f1d1d', borderRadius: '6px' } }, `Error: ${msg}${status}${detail}`);
+      return React.createElement('div', { className: 'my-2 p-2 border border-error-200 bg-error-50 text-error-700 rounded-md' }, `Error: ${msg}${status}${detail}`);
     }
 
     function SuperDocHost() {
@@ -938,11 +947,6 @@
 
       if (!schema) return null;
       const t = schema.theme || {};
-      const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 };
-      const panelStyle = { width: (schema.style?.width || 720) + 'px', maxWidth: '95vw', background: t.background || '#fff', border: `1px solid ${t.border || '#e5e7eb'}`, borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
-      const headerStyle = { padding: '14px 16px', borderBottom: `1px solid ${t.border || '#e5e7eb'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: t.headerBg || '#fff', color: t.headerFg || '#111827' };
-      const bodyStyle = { padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' };
-      const footerStyle = { padding: '12px 16px', borderTop: `1px solid ${t.border || '#e5e7eb'}`, display: 'flex', justifyContent: 'flex-end', gap: '8px' };
 
       const setField = (name, val) => setValues(v => ({ ...v, [name]: val }));
       const onAction = async (actionId) => {
@@ -958,25 +962,25 @@
         onClose?.();
       };
 
-      return React.createElement('div', { style: overlayStyle, onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
-        React.createElement('div', { style: panelStyle }, [
-          React.createElement('div', { key: 'h', style: headerStyle }, [
-            React.createElement('div', { key: 't', style: { fontWeight: 700 } }, schema.title || 'Modal'),
-            React.createElement('button', { key: 'x', onClick: () => onClose?.(), style: { border: 'none', background: 'transparent' } }, '✕')
+      return React.createElement('div', { className: 'modal-overlay', onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
+        React.createElement('div', { className: 'modal-panel' }, [
+          React.createElement('div', { key: 'h', className: 'modal-header' }, [
+            React.createElement('div', { key: 't', className: 'font-bold' }, schema.title || 'Modal'),
+            React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: () => onClose?.() }, '✕')
           ]),
-          React.createElement('div', { key: 'b', style: bodyStyle }, [
-            schema.description ? React.createElement('div', { key: 'd', style: { color: t.muted || '#6b7280' } }, schema.description) : null,
-            React.createElement('div', { key: 'f', style: { display: 'grid', gridTemplateColumns: '1fr', gap: '12px' } },
-              (Array.isArray(schema.fields) ? schema.fields : []).map((f, i) => React.createElement('div', { key: `r-${i}`, style: { display: 'flex', flexDirection: 'column', gap: '6px' } }, [
-                React.createElement('label', { key: 'l', style: { fontSize: '12px', color: t.muted || '#6b7280' } }, f.label || f.name),
+          React.createElement('div', { key: 'b', className: 'modal-body' }, [
+            schema.description ? React.createElement('div', { key: 'd', className: 'text-gray-500' }, schema.description) : null,
+            React.createElement('div', { key: 'f', className: 'd-grid grid-cols-1 gap-12' },
+              (Array.isArray(schema.fields) ? schema.fields : []).map((f, i) => React.createElement('div', { key: `r-${i}`, className: 'd-flex flex-column gap-6' }, [
+                React.createElement('label', { key: 'l', className: 'text-sm text-gray-500' }, f.label || f.name),
                 (f.type === 'textarea'
-                  ? React.createElement('textarea', { key: 'i', rows: 4, placeholder: f.placeholder || '', defaultValue: f.value || '', maxLength: f.maxLength || undefined, style: { padding: '8px', border: `1px solid ${t.border || '#e5e7eb'}`, borderRadius: '6px' }, onChange: (e) => setField(f.name, e.target.value) })
-                  : React.createElement('input', { key: 'i', type: 'text', placeholder: f.placeholder || '', defaultValue: f.value || '', style: { padding: '8px', border: `1px solid ${t.border || '#e5e7eb'}`, borderRadius: '6px' }, onChange: (e) => setField(f.name, e.target.value) })
+                  ? React.createElement('textarea', { key: 'i', rows: 4, placeholder: f.placeholder || '', defaultValue: f.value || '', maxLength: f.maxLength || undefined, className: 'input-padding input-border input-border-radius', onChange: (e) => setField(f.name, e.target.value) })
+                  : React.createElement('input', { key: 'i', type: 'text', placeholder: f.placeholder || '', defaultValue: f.value || '', className: 'input-padding input-border input-border-radius', onChange: (e) => setField(f.name, e.target.value) })
                 )
               ]))
             )
           ]),
-          React.createElement('div', { key: 'f2', style: footerStyle },
+          React.createElement('div', { key: 'f2', className: 'modal-footer' },
             (Array.isArray(schema.actions) ? schema.actions : []).map((a, i) => React.createElement(UIButton, { key: `a-${i}`, label: a.label || a.id, onClick: () => onAction(a.id), variant: a.variant || 'primary' }))
           )
         ])
@@ -989,11 +993,6 @@
       const { currentUser } = React.useContext(StateContext);
       const [text, setText] = React.useState('');
       const [busy, setBusy] = React.useState(false);
-      const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 };
-      const panelStyle = { width: '520px', maxWidth: '95vw', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
-      const headerStyle = { padding: '14px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', color: '#111827' };
-      const bodyStyle = { padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' };
-      const footerStyle = { padding: '12px 16px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '8px' };
       const send = async () => {
         setBusy(true);
         try {
@@ -1001,17 +1000,17 @@
         } catch {}
         finally { setBusy(false); onClose?.(); }
       };
-      return React.createElement('div', { style: overlayStyle, onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
-        React.createElement('div', { style: panelStyle }, [
-          React.createElement('div', { key: 'h', style: headerStyle }, [
-            React.createElement('div', { key: 't', style: { fontWeight: 700 } }, 'Message'),
-            React.createElement('button', { key: 'x', onClick: onClose, style: { border: 'none', background: 'transparent' } }, '✕')
+      return React.createElement('div', { className: 'modal-overlay', onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
+        React.createElement('div', { className: 'modal-panel' }, [
+          React.createElement('div', { key: 'h', className: 'modal-header' }, [
+            React.createElement('div', { key: 't', className: 'font-bold' }, 'Message'),
+            React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: onClose }, '✕')
           ]),
-          React.createElement('div', { key: 'b', style: bodyStyle }, [
-            React.createElement('div', { key: 'to', style: { fontSize: '12px', color: '#6b7280' } }, `To: ${toUserName || toUserId}`),
-            React.createElement('textarea', { key: 'm', rows: 4, placeholder: 'Write a message…', value: text, onChange: (e) => setText(e.target.value), style: { padding: '8px', border: '1px solid #e5e7eb', borderRadius: '6px' } })
+          React.createElement('div', { key: 'b', className: 'modal-body' }, [
+            React.createElement('div', { key: 'to', className: 'text-sm text-gray-500' }, `To: ${toUserName || toUserId}`),
+            React.createElement('textarea', { key: 'm', rows: 4, placeholder: 'Write a message…', value: text, onChange: (e) => setText(e.target.value), className: 'input-padding input-border input-border-radius' })
           ]),
-          React.createElement('div', { key: 'f', style: footerStyle }, [
+          React.createElement('div', { key: 'f', className: 'modal-footer' }, [
             React.createElement(UIButton, { key: 'cancel', label: 'Cancel', onClick: onClose, disabled: !!busy }),
             React.createElement(UIButton, { key: 'send', label: 'Send', onClick: send, variant: 'primary', disabled: !!busy })
           ])
@@ -1024,24 +1023,19 @@
       const API_BASE = getApiBase();
       const { currentUser } = React.useContext(StateContext);
       const [busy, setBusy] = React.useState(false);
-      const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 };
-      const panelStyle = { width: '520px', maxWidth: '95vw', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
-      const headerStyle = { padding: '14px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', color: '#111827' };
-      const bodyStyle = { padding: '16px' };
-      const footerStyle = { padding: '12px 16px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '8px' };
       const notify = async () => {
         setBusy(true);
         try { await fetch(`${API_BASE}/api/v1/approvals/notify`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ documentId: 'default', actorUserId: currentUser }) }); } catch {}
         finally { setBusy(false); onClose?.(); }
       };
-      return React.createElement('div', { style: overlayStyle, onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
-        React.createElement('div', { style: panelStyle }, [
-          React.createElement('div', { key: 'h', style: headerStyle }, [
-            React.createElement('div', { key: 't', style: { fontWeight: 700 } }, 'Request review'),
-            React.createElement('button', { key: 'x', onClick: onClose, style: { border: 'none', background: 'transparent' } }, '✕')
+      return React.createElement('div', { className: 'modal-overlay', onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
+        React.createElement('div', { className: 'modal-panel' }, [
+          React.createElement('div', { key: 'h', className: 'modal-header' }, [
+            React.createElement('div', { key: 't', className: 'font-bold' }, 'Request review'),
+            React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: onClose }, '✕')
           ]),
-          React.createElement('div', { key: 'b', style: bodyStyle }, 'Notify approvers that the document is ready for review?'),
-          React.createElement('div', { key: 'f', style: footerStyle }, [
+          React.createElement('div', { key: 'b', className: 'modal-body' }, 'Notify approvers that the document is ready for review?'),
+          React.createElement('div', { key: 'f', className: 'modal-footer' }, [
             React.createElement(UIButton, { key: 'cancel', label: 'Cancel', onClick: onClose, disabled: !!busy }),
             React.createElement(UIButton, { key: 'notify', label: 'Notify', onClick: notify, variant: 'primary', disabled: !!busy })
           ])
@@ -1106,22 +1100,17 @@
           setTimeout(() => { try { document.body.removeChild(a); } catch {} }, 0);
         } catch {}
       }, [resultUrl, API_BASE]);
-      const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 };
-      const panelStyle = { width: '720px', maxWidth: '95vw', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
-      const headerStyle = { padding: '14px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', color: '#111827' };
-      const bodyStyle = { padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' };
-      const footerStyle = { padding: '12px 16px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '8px' };
-      return React.createElement('div', { style: overlayStyle, onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
-        React.createElement('div', { style: panelStyle }, [
-          React.createElement('div', { key: 'h', style: headerStyle }, [
-            React.createElement('div', { key: 't', style: { fontWeight: 700 } }, 'Compile'),
-            React.createElement('button', { key: 'x', onClick: onClose, style: { border: 'none', background: 'transparent' } }, '✕')
+      return React.createElement('div', { className: 'modal-overlay', onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
+        React.createElement('div', { className: 'modal-panel' }, [
+          React.createElement('div', { key: 'h', className: 'modal-header' }, [
+            React.createElement('div', { key: 't', className: 'font-bold' }, 'Compile'),
+            React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: onClose }, '✕')
           ]),
-          error ? React.createElement('div', { key: 'e', style: { color: '#7f1d1d', background: '#fee2e2', padding: '8px 12px', borderTop: '1px solid #fecaca', borderBottom: '1px solid #fecaca' } }, error) : null,
-          React.createElement('div', { key: 'b', style: bodyStyle }, [
-            React.createElement('div', { key: 'lbl', style: { fontWeight: 600 } }, 'Exhibits'),
-            React.createElement('div', { key: 'list', style: { border: '1px solid #e5e7eb', borderRadius: '6px', padding: '8px', maxHeight: '200px', overflow: 'auto' } },
-              (items.length ? items.map((it, i) => React.createElement('label', { key: i, style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 6px' } }, [
+          error ? React.createElement('div', { key: 'e', className: 'bg-error-50 text-error-700 p-2 border-t border-b border-error-200' }, error) : null,
+          React.createElement('div', { key: 'b', className: 'modal-body d-flex flex-column gap-12' }, [
+            React.createElement('div', { key: 'lbl', className: 'font-semibold' }, 'Exhibits'),
+            React.createElement('div', { key: 'list', className: 'border border-gray-200 rounded-md p-2 overflow-auto max-h-50' },
+              (items.length ? items.map((it, i) => React.createElement('label', { key: i, className: 'd-flex items-center gap-2 p-1' }, [
                 React.createElement('input', { type: 'checkbox', checked: selected.has(it.name), onChange: () => toggle(it.name) }),
                 React.createElement('span', null, it.name)
               ])) : React.createElement('div', null, '(none)'))
@@ -1130,7 +1119,7 @@
               React.createElement('a', { href: resultUrl, target: '_blank', rel: 'noreferrer' }, 'Open compiled PDF')
             ]) : null
           ]),
-          React.createElement('div', { key: 'f', style: footerStyle }, [
+          React.createElement('div', { key: 'f', className: 'modal-footer' }, [
             React.createElement(UIButton, { key: 'upload', label: 'Upload PDF', onClick: upload, disabled: !!busy }),
             React.createElement(UIButton, { key: 'cancel', label: 'Cancel', onClick: onClose, disabled: !!busy }),
             React.createElement(UIButton, { key: 'go', label: 'Compile', onClick: compile, variant: 'primary', isLoading: !!busy, loadingLabel: 'Compiling…' }),
@@ -1143,20 +1132,16 @@
       const { onClose } = props || {};
       const { tokens } = React.useContext(ThemeContext);
       const t = tokens && tokens.modal ? tokens.modal : {};
-      const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 };
-      const panelStyle = { width: '720px', maxWidth: '95vw', background: t.background || '#fff', border: `1px solid ${t.border || '#e5e7eb'}`, borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
-      const headerStyle = { padding: '14px 16px', borderBottom: `1px solid ${t.border || '#e5e7eb'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: t.headerBg || '#fff', color: t.headerFg || '#111827' };
-      const bodyStyle = { padding: '0 16px 16px' };
       const ratioWrap = { position: 'relative', paddingTop: '56.25%', borderRadius: '8px', overflow: 'hidden' };
       const ratioInner = { position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 };
       // Remove iframe on close to stop playback: unmounting this component achieves that.
-      return React.createElement('div', { style: overlayStyle, onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
-        React.createElement('div', { style: panelStyle }, [
-          React.createElement('div', { key: 'h', style: headerStyle }, [
-            React.createElement('div', { key: 't', style: { fontWeight: 700 } }, `We're not going back. We're going forward!`),
-            React.createElement('button', { key: 'x', onClick: onClose, style: { border: 'none', background: 'transparent' } }, '✕')
+      return React.createElement('div', { className: 'modal-overlay', onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
+        React.createElement('div', { className: 'modal-panel' }, [
+          React.createElement('div', { key: 'h', className: 'modal-header' }, [
+            React.createElement('div', { key: 't', className: 'font-bold' }, `We're not going back. We're going forward!`),
+            React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: onClose }, '✕')
           ]),
-          React.createElement('div', { key: 'b', style: bodyStyle },
+          React.createElement('div', { key: 'b', className: 'modal-body' },
             React.createElement('div', { style: ratioWrap },
               React.createElement('iframe', { style: ratioInner, src: 'https://www.youtube.com/embed/oHg5SJYRHA0?autoplay=1&rel=0&modestbranding=1', title: 'Back to OpenGov', allow: 'autoplay; encrypted-media', allowFullScreen: true })
             )
@@ -1169,20 +1154,15 @@
       const { title, message, onConfirm, onClose } = props || {};
       const { tokens } = React.useContext(ThemeContext);
       const t = tokens && tokens.modal ? tokens.modal : {};
-      const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 };
-      const panelStyle = { width: '520px', maxWidth: '95vw', background: t.background || '#fff', border: `1px solid ${t.border || '#e5e7eb'}`, borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
-      const headerStyle = { padding: '14px 16px', borderBottom: `1px solid ${t.border || '#e5e7eb'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: t.headerBg || '#fff', color: t.headerFg || '#111827' };
-      const bodyStyle = { padding: '16px' };
-      const footerStyle = { padding: '12px 16px', borderTop: `1px solid ${t.border || '#e5e7eb'}`, display: 'flex', justifyContent: 'flex-end', gap: '8px' };
       const btn = (label, variant, onclick) => React.createElement(UIButton, { label, onClick: onclick, variant: variant || 'primary' });
-      return React.createElement('div', { style: overlayStyle, onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
-        React.createElement('div', { style: panelStyle }, [
-          React.createElement('div', { key: 'h', style: headerStyle }, [
-            React.createElement('div', { key: 't', style: { fontWeight: 700 } }, title || 'Confirm'),
-            React.createElement('button', { key: 'x', onClick: onClose, style: { border: 'none', background: 'transparent' } }, '✕')
+      return React.createElement('div', { className: 'modal-overlay', onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
+        React.createElement('div', { className: 'modal-panel' }, [
+          React.createElement('div', { key: 'h', className: 'modal-header' }, [
+            React.createElement('div', { key: 't', className: 'font-bold' }, title || 'Confirm'),
+            React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: onClose }, '✕')
           ]),
-          React.createElement('div', { key: 'b', style: bodyStyle }, message || ''),
-          React.createElement('div', { key: 'f', style: footerStyle }, [
+          React.createElement('div', { key: 'b', className: 'modal-body' }, message || ''),
+          React.createElement('div', { key: 'f', className: 'modal-footer' }, [
             btn('Cancel', 'secondary', onClose),
             btn('Confirm', 'primary', async () => { try { await onConfirm?.(); } finally { onClose?.(); } }),
           ])
@@ -1194,7 +1174,7 @@
       const { approvalsSummary } = React.useContext(StateContext);
       if (!approvalsSummary) return null;
       const text = `${approvalsSummary.approved || 0}/${approvalsSummary.total || 0} approved`;
-      const style = { background: '#e0e7ff', color: '#1e3a8a', border: '1px solid #c7d2fe', borderRadius: '999px', padding: '2px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' };
+      const style = { borderRadius: '999px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' };
       const open = () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'approvals' } })); } catch {} }, 200); } catch {} };
       return React.createElement('span', { style, onClick: open, title: 'Approvals' }, text);
     }
@@ -1251,9 +1231,6 @@
           finally { setBusy(false); }
         }});
       };
-      const headerStyle = { padding: '10px 12px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff' };
-      const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 };
-      const panelStyle = { width: '780px', maxWidth: '95vw', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' };
       const btn = (label, onClick, variant) => React.createElement(UIButton, { label, onClick, variant: variant || 'primary' });
       const canOverride = (String(currentRole || '').toLowerCase() === 'editor');
       const canToggle = (row) => canOverride || String(row.userId) === String(currentUser);
@@ -1265,33 +1242,33 @@
         }
         await setSelf(row.userId, next);
       };
-      return React.createElement('div', { style: overlayStyle, onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
-        React.createElement('div', { style: panelStyle }, [
-          React.createElement('div', { key: 'h', style: headerStyle }, [
-            React.createElement('div', { key: 't', style: { fontWeight: 700 } }, `Approvals (${hdr.approved}/${hdr.total} approved)`),
+      return React.createElement('div', { className: 'modal-overlay', onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
+        React.createElement('div', { className: 'modal-panel' }, [
+          React.createElement('div', { key: 'h', className: 'modal-header' }, [
+            React.createElement('div', { key: 't', className: 'font-bold' }, `Approvals (${hdr.approved}/${hdr.total} approved)`),
             React.createElement('div', { key: 'tb' }, [
               btn('Refresh', load),
               btn('Factory reset', confirmReset),
               btn('Close', onClose),
             ])
           ]),
-          error ? React.createElement('div', { key: 'e', style: { color: '#7f1d1d', background: '#fee2e2', padding: '8px 12px', borderTop: '1px solid #fecaca', borderBottom: '1px solid #fecaca' } }, error) : null,
-          React.createElement('div', { key: 'b', style: { padding: '12px' } }, [
+          error ? React.createElement('div', { key: 'e', className: 'bg-error-50 text-error-700 p-3 border-t border-b border-error-200' }, error) : null,
+          React.createElement('div', { key: 'b', className: 'modal-body p-3' }, [
             !rows ? React.createElement('div', null, 'Loading...') :
-              React.createElement('table', { style: { width: '100%', borderCollapse: 'collapse' } }, [
+              React.createElement('table', { className: 'w-full table-collapse' }, [
                 React.createElement('thead', { key: 'th' }, React.createElement('tr', null, [
-                  React.createElement('th', { key: 'o', style: { textAlign: 'left', padding: '6px' } }, '#'),
-                  React.createElement('th', { key: 'n', style: { textAlign: 'left', padding: '6px' } }, 'Human'),
-                  React.createElement('th', { key: 'a', style: { textAlign: 'left', padding: '6px' } }, 'Approved'),
-                  React.createElement('th', { key: 'm', style: { textAlign: 'left', padding: '6px' } }, 'Message'),
-                  React.createElement('th', { key: 't', style: { textAlign: 'left', padding: '6px' } }, 'Notes'),
+                  React.createElement('th', { key: 'o', className: 'text-left table-cell-padding' }, '#'),
+                  React.createElement('th', { key: 'n', className: 'text-left table-cell-padding' }, 'Human'),
+                  React.createElement('th', { key: 'a', className: 'text-left table-cell-padding' }, 'Approved'),
+                  React.createElement('th', { key: 'm', className: 'text-left table-cell-padding' }, 'Message'),
+                  React.createElement('th', { key: 't', className: 'text-left table-cell-padding' }, 'Notes'),
                 ])),
-                React.createElement('tbody', { key: 'tb' }, (rows||[]).map((r, i) => React.createElement('tr', { key: r.userId || i, style: { borderTop: '1px solid #eee' } }, [
-                  React.createElement('td', { key: 'o', style: { padding: '6px' } }, String(r.order || i+1)),
-                  React.createElement('td', { key: 'n', style: { padding: '6px' } }, r.name || r.userId),
-                  React.createElement('td', { key: 'a', style: { padding: '6px' } }, React.createElement('input', { type: 'checkbox', disabled: (!!busy) || (!canToggle(r)), checked: !!r.approved, title: (!canToggle(r) ? 'Only editors can override others' : undefined), onChange: (e) => onToggle(r, !!e.target.checked) })),
-                  React.createElement('td', { key: 'm', style: { padding: '6px' } }, React.createElement(UIButton, { label: 'Message', onClick: () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'message', options: { toUserId: r.userId, toUserName: r.name || r.userId } } })); } catch {} } })),
-                  React.createElement('td', { key: 't', style: { padding: '6px' } }, React.createElement('input', { type: 'text', defaultValue: r.notes || '', onBlur: (e) => setSelf(r.userId, r.approved, e.target.value), style: { width: '100%' } })),
+                React.createElement('tbody', { key: 'tb' }, (rows||[]).map((r, i) => React.createElement('tr', { key: r.userId || i, className: 'border-t border-gray-200' }, [
+                  React.createElement('td', { key: 'o', className: 'table-cell-padding' }, String(r.order || i+1)),
+                  React.createElement('td', { key: 'n', className: 'table-cell-padding' }, r.name || r.userId),
+                  React.createElement('td', { key: 'a', className: 'table-cell-padding' }, React.createElement('input', { type: 'checkbox', disabled: (!!busy) || (!canToggle(r)), checked: !!r.approved, title: (!canToggle(r) ? 'Only editors can override others' : undefined), onChange: (e) => onToggle(r, !!e.target.checked) })),
+                  React.createElement('td', { key: 'm', className: 'table-cell-padding' }, React.createElement(UIButton, { label: 'Message', onClick: () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'message', options: { toUserId: r.userId, toUserName: r.name || r.userId } } })); } catch {} } })),
+                  React.createElement('td', { key: 't', className: 'table-cell-padding' }, React.createElement('input', { type: 'text', defaultValue: r.notes || '', onBlur: (e) => setSelf(r.userId, r.approved, e.target.value), className: 'w-full' })),
                 ])))
               ])
           ]),
@@ -1336,23 +1313,23 @@
               })()
             ]),
             // 1 - User selection + role pill + status
-            React.createElement('div', { style: { marginTop: '8px', borderTop: '1px solid #e5e7eb', paddingTop: '8px' } }, [
-              React.createElement('div', { key: 'hdr1', style: { fontSize: '11px', fontWeight: 700, letterSpacing: '0.02em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' } }, 'User & Role'),
-              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' } }, [
+            React.createElement('div', { className: 'mt-2 border-t border-gray-200 pt-2' }, [
+              React.createElement('div', { key: 'hdr1', className: 'ui-section-header' }, 'User & Role'),
+              React.createElement('div', { className: 'd-flex items-center gap-8 flex-wrap' }, [
               React.createElement(UserCard, { key: 'user' }),
               React.createElement(ConnectionBadge, { key: 'conn' }),
               React.createElement(NotificationsBell, { key: 'bell' }),
               ])
             ]),
             // 3 - Buttons (actions)
-            React.createElement('div', { style: { marginTop: '10px', borderTop: '1px solid #e5e7eb', paddingTop: '8px' } }, [
-              React.createElement('div', { key: 'hdr2', style: { fontSize: '11px', fontWeight: 700, letterSpacing: '0.02em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' } }, 'Actions'),
+            React.createElement('div', { className: 'mt-2.5 border-t border-gray-200 pt-2' }, [
+              React.createElement('div', { key: 'hdr2', className: 'ui-section-header' }, 'Actions'),
               React.createElement(ApprovalsPill, { key: 'approvals-pill' }),
               React.createElement(ActionButtons, { key: 'actions' }),
             ]),
             // 4 - Chatbot (OG Assist)
-            React.createElement('div', { style: { marginTop: '12px', borderTop: '1px solid #e5e7eb', paddingTop: '8px' } }, [
-              React.createElement('div', { key: 'hdr3', style: { fontSize: '11px', fontWeight: 700, letterSpacing: '0.02em', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' } }, 'Assistant'),
+            React.createElement('div', { className: 'mt-3 border-t border-gray-200 pt-2' }, [
+              React.createElement('div', { key: 'hdr3', className: 'ui-section-header' }, 'Assistant'),
               React.createElement(ChatConsole, { key: 'chat' }),
             ]),
             modal ? (modal.id === 'send-vendor' ? React.createElement(SendVendorModal, { userId: modal.userId, onClose: () => setModal(null) }) : (modal.id === 'approvals' ? React.createElement(ApprovalsModal, { onClose: () => setModal(null) }) : (modal.id === 'compile' ? React.createElement(CompileModal, { onClose: () => setModal(null) }) : (modal.id === 'notifications' ? React.createElement(NotificationsModal, { onClose: () => setModal(null) }) : (modal.id === 'request-review' ? React.createElement(RequestReviewModal, { onClose: () => setModal(null) }) : (modal.id === 'message' ? React.createElement(MessageModal, { toUserId: modal.toUserId, toUserName: modal.toUserName, onClose: () => setModal(null) }) : (modal.id === 'open-gov' ? React.createElement(OpenGovModal, { onClose: () => setModal(null) }) : null))))))) : null,

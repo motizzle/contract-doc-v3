@@ -35,34 +35,41 @@
 
 ## Phased Plan
 
-### Phase 1 — Boot/Mount Unification + Server SOT (minimal UI change)
+### Phase 1 — Server SOT + Remove Inline UI (minimal change)
 
 - Goals
-  - One boot path in `shared-ui/components.react.js` for both platforms.
   - Server is authoritative for labels/messages (no raw ids; banners via `config.banners`).
-  - Keep platform shells minimal (only host-specific includes + `#app-root`).
+  - Remove inline pill/modal code and markup from platform pages; keep minimal shells (required includes + `#app-root`).
+  - Leave boot/mount as-is per platform (no unification yet).
 
-- Work Items
-  1) Centralize mount logic (already largely in place): Office detection, retries, error fallback, SSE init.
-  2) Ensure server resolves user labels for all messages/banners (checkout owner DONE; audit others).
-  3) Strip page-level boot scripts from `taskpane.html` and `view.html`; leave only includes + root div.
-  4) Verify SuperDoc host mounts only on Web (guarded by `typeof Office`).
+- Work Items (status)
+  - [x] Ensure server resolves user labels for banners/messages
+    - Checkout owner banner uses display label
+    - 409 responses now say “Checked out by {label}”
+  - [x] Remove inline pill/modal wiring and markup from platform pages
+    - `addin/src/taskpane/taskpane.html` cleaned; minimal shell retained
+    - `web/view.html` cleaned; minimal shell retained
+  - [x] Verify mount behavior remains per-platform
+    - Web: `ensureSuperDocLoaded` then single-shot `mountReactApp`
+    - Add-in: retry-based mount after `Office.onReady`
 
-- Phase 1 Exit Criteria
-  - Both pages have no inline boot logic; mount is shared.
-  - Banners show human-friendly names; messaging comes only from `config.banners`.
-  - No behavioral drift between platforms due to boot differences.
+- Phase 1 Exit Criteria (status)
+  - [x] No inline pill/modal code or markup remains in platform pages
+  - [x] Banners/messages show human-friendly names; no raw ids
+  - [x] Existing mount behavior unchanged and stable on Web and Word
 
-### Phase 2 — UI Consolidation (components, styling, cleanup)
+### Phase 2 — UI Consolidation + Boot Unification (components, styling, cleanup)
 
-- Work Items
-  1) Remove remaining inline UI logic from platform pages (modals, pill, badges/table).
-  2) Shared components in `shared-ui/components.react.js`:
-     - `BrandHeader`, `PulsePill`, `ComingModal` (and reuse existing modals).
-     - Keep `BannerStack` as sole banner renderer using server tokens.
-  3) Buttons and actions: render via `ActionButtons`/`UIButton`; remove Fabric overrides and page-level markup.
-  4) Theming: keep `web/branding.css` as the brand surface; delete conflicting taskpane overrides.
-  5) Cleanup/consistency: no `.ms-Button` reliance; names resolved everywhere; parity verified on Web and Word.
+- Work Items (status)
+  - [ ] Move pill + modal into shared UI and match prior UX
+    - [ ] Correct placement (top-right on web banner; matching spot in add-in header)
+    - [ ] Pulse animation per theme (palette, timings, glow)
+    - [ ] Modal features table (contracts landing, evaluations V2, authoring) restored
+  - [ ] Unify boot/mount in shared entry (Office.onReady for Word; after SuperDoc bridge for web)
+  - [ ] Add `BrandHeader`; keep `BannerStack`
+  - [ ] Buttons/actions via `ActionButtons`/`UIButton`; remove Fabric overrides
+  - [ ] Theming: keep `web/branding.css`; remove conflicting taskpane overrides
+  - [ ] Cleanup/consistency: no `.ms-Button` reliance; parity verified on Web and Word
 
 - Phase 2 Exit Criteria
   - No platform-specific inline UI; shared components render all UI.

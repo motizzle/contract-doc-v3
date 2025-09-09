@@ -58,7 +58,6 @@
             document.getElementById('sideload-msg').style.display = 'none';
             document.getElementById('app-body').style.display = 'block';
             window.mountReactApp({ rootSelector: '#app-root' });
-            try { wireModal(); } catch {}
             return true;
           } catch (e) {
             try {

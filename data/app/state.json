@@ -1,13 +1,13 @@
 {
   "isFinal": false,
-  "checkedOutBy": null,
-  "lastUpdated": "2025-08-27T07:07:14.187Z",
-  "revision": 218,
-  "documentVersion": 173,
+  "checkedOutBy": "user4",
+  "lastUpdated": "2025-09-08T23:58:30.486Z",
+  "revision": 228,
+  "documentVersion": 183,
   "updatedBy": {
     "userId": "user1",
     "label": "Warren Peace"
   },
   "updatedPlatform": "web",
-  "approvalsRevision": 56
+  "approvalsRevision": 63
 }
