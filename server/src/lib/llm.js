@@ -19,6 +19,11 @@ const DEFAULT_MAX_TOKENS = Number(process.env.LLM_MAX_TOKENS || '500');
 const DEFAULT_TEMPERATURE = Number(process.env.LLM_TEMPERATURE || '0.7');
 const DEFAULT_TIMEOUT = 30000; // 30 seconds
 
+// Provider configuration
+const LLM_PROVIDER = process.env.LLM_PROVIDER || 'ollama';
+const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://api.openai.com';
+
 /**
  * Main LLM generation function
  *
@@ -58,9 +63,14 @@ async function generateReply(options = {}) {
   apiMessages.push(...messages);
 
   try {
-    const response = await callOpenAI({
+    // Use appropriate model based on provider
+    const selectedModel = LLM_PROVIDER === 'ollama'
+      ? (process.env.OLLAMA_MODEL || 'llama3.2:3b')
+      : model;
+
+    const response = await callLLM({
       messages: apiMessages,
-      model,
+      model: selectedModel,
       maxTokens,
       temperature,
       stream
@@ -74,10 +84,10 @@ async function generateReply(options = {}) {
 }
 
 /**
- * OpenAI API implementation
+ * LLM API implementation - supports both Ollama (local) and OpenAI (remote)
  * This is where the actual API call happens
  */
-function callOpenAI(options) {
+function callLLM(options) {
   return new Promise((resolve, reject) => {
     const { messages, model, maxTokens, temperature, stream } = options;
 
@@ -89,19 +99,39 @@ function callOpenAI(options) {
       stream: !!stream // Enable streaming if callback provided
     });
 
-    const requestOptions = {
-      method: 'POST',
-      hostname: 'api.openai.com',
-      path: '/v1/chat/completions',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY || ''}`,
-        'Content-Length': Buffer.byteLength(payload)
-      },
-      timeout: DEFAULT_TIMEOUT
-    };
+    let requestOptions;
 
-    const req = https.request(requestOptions, (res) => {
+    if (LLM_PROVIDER === 'ollama') {
+      // Ollama local API (HTTP, no auth required)
+      const url = new URL(`${OLLAMA_BASE_URL}/v1/chat/completions`);
+      requestOptions = {
+        method: 'POST',
+        hostname: url.hostname,
+        port: url.port,
+        path: url.pathname,
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(payload)
+        },
+        timeout: DEFAULT_TIMEOUT
+      };
+    } else {
+      // OpenAI API (HTTPS, requires auth)
+      requestOptions = {
+        method: 'POST',
+        hostname: 'api.openai.com',
+        path: '/v1/chat/completions',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY || ''}`,
+          'Content-Length': Buffer.byteLength(payload)
+        },
+        timeout: DEFAULT_TIMEOUT
+      };
+    }
+
+    const httpModule = LLM_PROVIDER === 'ollama' ? require('http') : https;
+    const req = httpModule.request(requestOptions, (res) => {
       let fullContent = '';
       const statusCode = res.statusCode || 500;
 

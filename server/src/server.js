@@ -11,9 +11,11 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 // Import LLM module
 const { generateReply } = require('./lib/llm');
 
-// Minimal LLM toggle (OpenAI via https request; no SDK)
+// LLM Configuration - Support for Ollama (local) and OpenAI (remote)
+const LLM_PROVIDER = process.env.LLM_PROVIDER || 'ollama'; // 'ollama' or 'openai'
 const LLM_USE_OPENAI = String(process.env.LLM_USE_OPENAI || '').toLowerCase() === 'true';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2:3b'; // Lightweight model
 const LLM_SYSTEM_PROMPT = process.env.LLM_SYSTEM_PROMPT || 'You are OG Assist. Answer briefly and helpfully.';
 
 // LLM function moved to ./lib/llm.js for better organization
@@ -347,14 +349,17 @@ const upload = multer({ storage });
 
 // API v1
 app.get('/api/v1/health', (req, res) => {
-  const llmEnabled = LLM_USE_OPENAI && !!process.env.OPENAI_API_KEY;
+  const llmEnabled = (LLM_PROVIDER === 'ollama') ||
+                       (LLM_PROVIDER === 'openai' && !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'mock');
+
   const llmInfo = llmEnabled ? {
     enabled: true,
-    provider: 'openai',
-    model: OPENAI_MODEL
+    provider: LLM_PROVIDER,
+    model: LLM_PROVIDER === 'ollama' ? OLLAMA_MODEL : OPENAI_MODEL
   } : {
     enabled: false,
-    provider: null
+    provider: null,
+    usingMock: LLM_USE_OPENAI && process.env.OPENAI_API_KEY === 'mock'
   };
 
   res.json({
@@ -784,62 +789,46 @@ app.post('/api/v1/events/client', async (req, res) => {
     if (type === 'chat') {
       const text = String(payload?.text || '').trim();
 
-      if (LLM_USE_OPENAI) {
-        // Check if we have a real API key or should use mock streaming
-        if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'mock') {
-          // Use real LLM with streaming support
-          try {
-            const streamCallback = (chunk) => {
-              if (chunk.type === 'delta' && chunk.content) {
-                // Send streaming delta to client
-                broadcast({
-                  type: 'chat:delta',
-                  payload: {
-                    text: chunk.content,
-                    threadPlatform: originPlatform
-                  },
-                  userId: 'bot',
-                  role: 'assistant',
-                  platform: 'server'
-                });
-              } else if (chunk.type === 'complete') {
-                // Send completion event
-                broadcast({
-                  type: 'chat:complete',
-                  payload: {
-                    fullText: chunk.fullContent,
-                    threadPlatform: originPlatform
-                  },
-                  userId: 'bot',
-                  role: 'assistant',
-                  platform: 'server'
-                });
-              }
-            };
-
-            const result = await generateReply({
-              messages: [{ role: 'user', content: text }],
-              systemPrompt: LLM_SYSTEM_PROMPT,
-              stream: streamCallback
-            });
-
-            if (!result.ok) {
-              // LLM failed, fallback to scripted response
-              console.warn('LLM failed, falling back to scripted response:', result.error);
-              const fallbackReply = getFallbackResponse(userId);
-              if (fallbackReply) {
-                broadcast({
-                  type: 'chat',
-                  payload: { text: fallbackReply, threadPlatform: originPlatform },
-                  userId: 'bot',
-                  role: 'assistant',
-                  platform: 'server'
-                });
-              }
+      if (LLM_PROVIDER === 'ollama' || (LLM_PROVIDER === 'openai' && process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'mock')) {
+        // Use real LLM with streaming support (Ollama or OpenAI)
+        try {
+          const streamCallback = (chunk) => {
+            if (chunk.type === 'delta' && chunk.content) {
+              // Send streaming delta to client
+              broadcast({
+                type: 'chat:delta',
+                payload: {
+                  text: chunk.content,
+                  threadPlatform: originPlatform
+                },
+                userId: 'bot',
+                role: 'assistant',
+                platform: 'server'
+              });
+            } else if (chunk.type === 'complete') {
+              // Send completion event
+              broadcast({
+                type: 'chat:complete',
+                payload: {
+                  fullText: chunk.fullContent,
+                  threadPlatform: originPlatform
+                },
+                userId: 'bot',
+                role: 'assistant',
+                platform: 'server'
+              });
             }
-          } catch (error) {
-            console.error('Chat processing error:', error);
-            // Fallback to scripted response on error
+          };
+
+          const result = await generateReply({
+            messages: [{ role: 'user', content: text }],
+            systemPrompt: LLM_SYSTEM_PROMPT,
+            stream: streamCallback
+          });
+
+          if (!result.ok) {
+            // LLM failed, fallback to scripted response
+            console.warn(`LLM (${LLM_PROVIDER}) failed, falling back to scripted response:`, result.error);
             const fallbackReply = getFallbackResponse(userId);
             if (fallbackReply) {
               broadcast({
@@ -851,7 +840,21 @@ app.post('/api/v1/events/client', async (req, res) => {
               });
             }
           }
-        } else {
+        } catch (error) {
+          console.error(`Chat processing error (${LLM_PROVIDER}):`, error);
+          // Fallback to scripted response on error
+          const fallbackReply = getFallbackResponse(userId);
+          if (fallbackReply) {
+            broadcast({
+              type: 'chat',
+              payload: { text: fallbackReply, threadPlatform: originPlatform },
+              userId: 'bot',
+              role: 'assistant',
+              platform: 'server'
+            });
+          }
+        }
+      } else if (LLM_USE_OPENAI && process.env.OPENAI_API_KEY === 'mock') {
           // MOCK STREAMING TEST - Demonstrates the streaming technology
           console.log('🎭 Using mock streaming test (no API key required)');
 
