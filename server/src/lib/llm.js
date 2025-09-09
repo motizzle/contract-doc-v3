@@ -17,11 +17,12 @@ const https = require('https');
 const DEFAULT_MODEL = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
 const DEFAULT_MAX_TOKENS = Number(process.env.LLM_MAX_TOKENS || '500');
 const DEFAULT_TEMPERATURE = Number(process.env.LLM_TEMPERATURE || '0.7');
-const DEFAULT_TIMEOUT = 30000; // 30 seconds
+const DEFAULT_TIMEOUT = 60000; // 60 seconds (increased for Ollama)
 
 // Provider configuration
 const LLM_PROVIDER = process.env.LLM_PROVIDER || 'ollama';
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+console.log('🔧 OLLAMA_BASE_URL:', OLLAMA_BASE_URL);
 const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://api.openai.com';
 
 /**
@@ -99,6 +100,8 @@ function callLLM(options) {
       stream: !!stream // Enable streaming if callback provided
     });
 
+    console.log(`🔧 Payload:`, JSON.stringify({model, messageCount: messages.length, max_tokens: maxTokens, stream: !!stream}));
+
     let requestOptions;
 
     if (LLM_PROVIDER === 'ollama') {
@@ -131,6 +134,9 @@ function callLLM(options) {
     }
 
     const httpModule = LLM_PROVIDER === 'ollama' ? require('http') : https;
+
+    console.log(`🔧 Making ${LLM_PROVIDER} request to:`, LLM_PROVIDER === 'ollama' ? OLLAMA_BASE_URL : OPENAI_BASE_URL);
+
     const req = httpModule.request(requestOptions, (res) => {
       let fullContent = '';
       const statusCode = res.statusCode || 500;

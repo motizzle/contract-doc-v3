@@ -1,17 +1,10 @@
 {
   "messages": [
-    "Want help with your indemnification?",
-    "Lots of redlining happens there. Do you want me to suggest which clause to use?",
-    "Use witz. Clausewitz.",
-    "Lighten up. Or I'll write you a contract for a sense of a humor.",
-    "Perfect! Let's delve into the details!",
-    "Perfect! Let's delve into the details!",
-    "Perfect! Let's delve into the details!",
-    "Perfect! Let's delve into the details!",
-    "Perfect! Let's delve into the details!",
-    "Perfect! Let's delve into the details!",
-    "Perfect! Let's delve into the details!",
-    "Perfect! Let's delve into the details!"
+    "Hello! How can I help you with your document today?",
+    "Hi there! I'm here to assist with your contract. What would you like to know?",
+    "Welcome! I can help you understand clauses, suggest improvements, or answer questions about your document.",
+    "Hello! Let's work on your contract together. What specific aspect would you like help with?",
+    "Hi! I have access to your document context. How can I assist you today?"
   ],
   "policy": {
     "mode": "sequential",

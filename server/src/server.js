@@ -15,8 +15,74 @@ const { generateReply } = require('./lib/llm');
 const LLM_PROVIDER = process.env.LLM_PROVIDER || 'ollama'; // 'ollama' or 'openai'
 const LLM_USE_OPENAI = String(process.env.LLM_USE_OPENAI || '').toLowerCase() === 'true';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2:3b'; // Lightweight model
-const LLM_SYSTEM_PROMPT = process.env.LLM_SYSTEM_PROMPT || 'You are OG Assist. Answer briefly and helpfully.';
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'gemma3:1b'; // Smaller, faster model
+// Dynamic document context loading
+let DOCUMENT_CONTEXT = '';
+let DOCUMENT_LAST_MODIFIED = null;
+
+// Function to load document context from file
+function loadDocumentContext() {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+
+    // Try working directory first (more recent), then app directory
+    const workingDocPath = path.join(__dirname, '..', '..', 'data', 'working', 'documents', 'default.docx');
+    const appDocPath = path.join(__dirname, '..', '..', 'data', 'app', 'documents', 'default.docx');
+
+    let docPath = workingDocPath;
+    if (!fs.existsSync(workingDocPath) && fs.existsSync(appDocPath)) {
+      docPath = appDocPath;
+    }
+
+    if (fs.existsSync(docPath)) {
+      const stats = fs.statSync(docPath);
+      const currentModified = stats.mtime.getTime();
+
+      // Only reload if file has been modified
+      if (DOCUMENT_LAST_MODIFIED !== currentModified) {
+        console.log(`📄 Loading document from: ${docPath}`);
+
+        // For now, use the known document content we extracted earlier
+        // TODO: Implement proper DOCX text extraction
+        DOCUMENT_CONTEXT = `This Contract ("Contract") is made between OpenGov ("OG") and our Most Valuable Partners/Products ("MVPs"). OG wants to build some amazing stuff, and MVPs want OG to build some amazing features. Increased velocity towards a shared goal is our objective.
+
+Key points from the contract:
+- Contract documents are not handled like regular documents - they lose formatting, redlining, commenting, and Word features
+- 2026 goal: independent contract document experience
+- Core infrastructure includes invisible work necessary for baseline functionality
+- Technology is moving incredibly fast - need to catch up
+
+This is the current document context you're working with.`;
+
+        DOCUMENT_LAST_MODIFIED = currentModified;
+        console.log(`📄 Document context loaded (${DOCUMENT_CONTEXT.length} characters)`);
+      }
+    } else {
+      console.warn('⚠️ No document found, using basic context');
+      DOCUMENT_CONTEXT = 'No document found. Basic context about OpenGov contract management available.';
+    }
+  } catch (error) {
+    console.warn('⚠️ Error loading document context:', error.message);
+    DOCUMENT_CONTEXT = 'Document loading error. Basic context about OpenGov available.';
+  }
+}
+
+// Load document context on startup (preloaded)
+loadDocumentContext();
+
+// Function to get current system prompt (document preloaded on startup)
+function getSystemPrompt() {
+  // Check for document updates (handles refresh button and file changes)
+  loadDocumentContext();
+
+  return process.env.LLM_SYSTEM_PROMPT || `You are OG Assist, an AI assistant aware of the current document context.
+
+Current Document Context:
+${DOCUMENT_CONTEXT}
+
+Answer helpfully and provide insights based on the current document context. Reference specific details from the contract when relevant. Be concise but informative.`;
+}
 
 // LLM function moved to ./lib/llm.js for better organization
 
@@ -779,6 +845,21 @@ app.post('/api/v1/checkout/override', (req, res) => {
   return res.json({ ok: true, checkedOutBy: null });
 });
 
+// API endpoint to refresh document context
+app.post('/api/v1/refresh-document', (req, res) => {
+  try {
+    loadDocumentContext();
+    res.json({
+      ok: true,
+      message: 'Document context refreshed',
+      lastModified: DOCUMENT_LAST_MODIFIED ? new Date(DOCUMENT_LAST_MODIFIED).toLocaleString() : null,
+      contextLength: DOCUMENT_CONTEXT.length
+    });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
 // Client-originated events (prototype): accept and rebroadcast for parity
 app.post('/api/v1/events/client', async (req, res) => {
   const { type = 'clientEvent', payload = {}, userId = 'user1', platform = 'web' } = req.body || {};
@@ -788,6 +869,12 @@ app.post('/api/v1/events/client', async (req, res) => {
   try {
     if (type === 'chat') {
       const text = String(payload?.text || '').trim();
+
+      // Skip empty messages to prevent duplicate LLM calls
+      if (!text) {
+        console.log('🤖 Skipping empty chat message');
+        return;
+      }
 
       if (LLM_PROVIDER === 'ollama' || (LLM_PROVIDER === 'openai' && process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'mock')) {
         // Use real LLM with streaming support (Ollama or OpenAI)
@@ -820,49 +907,56 @@ app.post('/api/v1/events/client', async (req, res) => {
             }
           };
 
+
+          console.log('🤖 About to call LLM for message:', text.substring(0, 50) + '...');
+
           const result = await generateReply({
             messages: [{ role: 'user', content: text }],
-            systemPrompt: LLM_SYSTEM_PROMPT,
+            systemPrompt: getSystemPrompt(),
             stream: streamCallback
           });
 
+          console.log('🤖 LLM result received:', result.ok ? 'SUCCESS' : 'FAILED');
+
+
           if (!result.ok) {
-            // LLM failed, fallback to scripted response
-            console.warn(`LLM (${LLM_PROVIDER}) failed, falling back to scripted response:`, result.error);
-            const fallbackReply = getFallbackResponse(userId);
-            if (fallbackReply) {
-              broadcast({
-                type: 'chat',
-                payload: { text: fallbackReply, threadPlatform: originPlatform },
-                userId: 'bot',
-                role: 'assistant',
-                platform: 'server'
-              });
-            }
-          }
-        } catch (error) {
-          console.error(`Chat processing error (${LLM_PROVIDER}):`, error);
-          // Fallback to scripted response on error
-          const fallbackReply = getFallbackResponse(userId);
-          if (fallbackReply) {
+            // LLM failed - show the actual error instead of falling back
+            console.error(`LLM (${LLM_PROVIDER}) failed:`, result.error);
+            const fs = require('fs');
+            const errorLog = `[${new Date().toISOString()}] LLM Error: ${result.error || 'Unknown error'}\n`;
+            fs.appendFileSync('llm-errors.log', errorLog);
+
+            const errorMessage = `LLM Error: ${result.error || 'Unknown error'}. Check llm-errors.log for details.`;
             broadcast({
               type: 'chat',
-              payload: { text: fallbackReply, threadPlatform: originPlatform },
+              payload: { text: errorMessage, threadPlatform: originPlatform },
               userId: 'bot',
               role: 'assistant',
               platform: 'server'
             });
           }
+        } catch (error) {
+          console.error(`Chat processing error (${LLM_PROVIDER}):`, error);
+          // Show actual error instead of falling back
+          const errorMessage = `Server Error: ${error.message}. LLM integration needs debugging.`;
+          broadcast({
+            type: 'chat',
+            payload: { text: errorMessage, threadPlatform: originPlatform },
+            userId: 'bot',
+            role: 'assistant',
+            platform: 'server'
+          });
         }
       } else if (LLM_USE_OPENAI && process.env.OPENAI_API_KEY === 'mock') {
           // MOCK STREAMING TEST - Demonstrates the streaming technology
           console.log('🎭 Using mock streaming test (no API key required)');
 
           const mockResponses = [
-            "Hello! I'm OG Assist, your AI-powered contract assistant. I can help you with contract analysis, clause explanations, and document insights. How can I help you today?",
-            "I understand you're working with contracts. I can help analyze clauses, explain legal terms, suggest improvements, or answer questions about your documents. What would you like to know?",
-            "Great question! As your AI contract assistant, I can provide insights on contract language, risk assessment, compliance issues, and best practices. Feel free to ask me anything about your documents.",
-            "I'm here to help with your contract work! Whether you need clause analysis, term explanations, or general contract advice, I'm ready to assist. What specific aspect would you like help with?"
+            "Hello! How can I help you with your document today?",
+            "Hi there! I'm here to assist with your contract. What would you like to know?",
+            "Welcome! I can help you understand clauses, suggest improvements, or answer questions about your document.",
+            "Hello! Let's work on your contract together. What specific aspect would you like help with?",
+            "Hi! I have access to your document context. How can I assist you today?"
           ];
 
           const mockResponse = mockResponses[Math.floor(Math.random() * mockResponses.length)];
@@ -883,7 +977,7 @@ app.post('/api/v1/events/client', async (req, res) => {
                 platform: 'server'
               });
               index++;
-            } else {
+      } else {
               clearInterval(streamInterval);
               // Send completion event
               broadcast({
@@ -912,35 +1006,34 @@ app.post('/api/v1/events/client', async (req, res) => {
           });
         }
       }
-    }
   } catch {}
   res.json({ ok: true });
 });
 
 // Helper function for fallback scripted responses
 function getFallbackResponse(userId) {
-  const cfg = loadChatbotResponses();
+        const cfg = loadChatbotResponses();
   if (!cfg || !Array.isArray(cfg.messages) || !cfg.messages.length) {
-    return 'Hello! How can I help you today?';
+    return 'Hello! How can I help you with your document today?';
   }
 
-  const list = cfg.messages;
-  const mode = (cfg.policy && cfg.policy.mode) || 'sequential';
-  let pick = '';
+          const list = cfg.messages;
+          const mode = (cfg.policy && cfg.policy.mode) || 'sequential';
+          let pick = '';
 
-  if (mode === 'sequential') {
-    const key = String(userId || 'default');
-    const current = chatbotStateByUser.get(key) || 0;
-    const i = current % list.length;
-    const next = current + 1;
-    const loop = (cfg.policy && cfg.policy.loop) !== false;
-    chatbotStateByUser.set(key, loop ? next : Math.min(next, list.length));
-    pick = list[i];
-  } else {
-    pick = list[Math.floor(Math.random() * list.length)];
-  }
+          if (mode === 'sequential') {
+            const key = String(userId || 'default');
+            const current = chatbotStateByUser.get(key) || 0;
+            const i = current % list.length;
+            const next = current + 1;
+            const loop = (cfg.policy && cfg.policy.loop) !== false;
+            chatbotStateByUser.set(key, loop ? next : Math.min(next, list.length));
+            pick = list[i];
+          } else {
+            pick = list[Math.floor(Math.random() * list.length)];
+          }
 
-  return pick ? String(pick) : 'Hello! How can I help you today?';
+  return pick ? String(pick) : 'Hello! How can I help you with your document today?';
 }
 
 // Chatbot: reset per-user scripted index (so sessions start from first message)

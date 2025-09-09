@@ -656,6 +656,7 @@
       };
 
       const [text, setText] = React.useState('');
+      const [isResetting, setIsResetting] = React.useState(false);
       const send = async () => {
         const t = (text || '').trim();
         if (!t) return;
@@ -666,20 +667,50 @@
           await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat', payload: { text: t }, userId: currentUser, platform }) });
         } catch {}
       };
-      // Seed first message once after SSE connects, web only (avoid add-in), only if no local messages
+      // Seed first message once after SSE connects, web only (avoid add-in), only if no local messages and not resetting
+      const [justReset, setJustReset] = React.useState(false);
       React.useEffect(() => {
-        if (!isConnected) return;
-        try { if (typeof Office !== 'undefined') return; } catch {}
-        if ((messages || []).length > 0) return;
+        console.log('🔄 Seeding effect running:', { isConnected, isResetting, messagesLength: (messages || []).length, platform: typeof Office !== 'undefined' ? 'word' : 'web', justReset });
+        if (!isConnected || isResetting || justReset) {
+          console.log('🔄 Skipping seeding:', { isConnected, isResetting, justReset });
+          return;
+        }
+        try { if (typeof Office !== 'undefined') {
+          console.log('🔄 Skipping seeding - Word platform detected');
+          return;
+        } } catch {}
+        // Check messages length inside effect without depending on it
+        const currentMessages = messages || [];
+        if (currentMessages.length > 0) {
+          console.log('🔄 Skipping seeding - messages already exist');
+          return;
+        }
         const seedKey = getSeedKey();
-        try { if (localStorage.getItem(seedKey)) return; localStorage.setItem(seedKey, '1'); } catch {}
+        console.log('🔄 Checking seed key:', seedKey);
+        try {
+          const existingSeed = localStorage.getItem(seedKey);
+          console.log('🔄 Existing seed value:', existingSeed);
+          if (existingSeed) {
+            console.log('🔄 Skipping seeding - already seeded');
+            return;
+          }
+          console.log('🔄 Setting seed key for first time');
+          localStorage.setItem(seedKey, '1');
+        } catch (error) {
+          console.error('🔄 localStorage error:', error);
+        }
+        console.log('🚀 Starting seeding process...');
         (async () => {
           try {
             const platform = getCurrentPlatform();
-            await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat', payload: { text: '' }, userId: currentUser, platform }) });
-          } catch {}
+            console.log('📤 Sending seed message:', { platform, userId: currentUser });
+            await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat', payload: { text: 'Hi' }, userId: currentUser, platform }) });
+            console.log('✅ Seed message sent');
+          } catch (error) {
+            console.error('❌ Seed message failed:', error);
+          }
         })();
-      }, [API_BASE, currentUser, isConnected, messages, getSeedKey]);
+      }, [API_BASE, currentUser, isConnected, getSeedKey, isResetting, justReset]);
       React.useEffect(() => {
         function onInboundChat(ev) {
           try {
@@ -699,13 +730,52 @@
             const d = ev.detail;
             const forUser = String(d && d.userId || 'default');
             const threadPlatform = d && d.payload && d.payload.threadPlatform;
+            const currentPlatform = typeof Office !== 'undefined' ? 'word' : 'web';
+            console.log('📨 SSE reset received:', { forUser, threadPlatform, currentPlatform, currentUser });
+
             // Ignore resets from other platforms
-            try { if (typeof Office !== 'undefined') { if (threadPlatform && threadPlatform !== 'word') return; } else { if (threadPlatform && threadPlatform !== 'web') return; } } catch {}
-            if (String(forUser) !== String(currentUser)) return;
+            try {
+              if (typeof Office !== 'undefined') {
+                if (threadPlatform && threadPlatform !== 'word') {
+                  console.log('🔄 Ignoring reset - wrong platform for Word');
+                  return;
+                }
+              } else {
+                if (threadPlatform && threadPlatform !== 'web') {
+                  console.log('🔄 Ignoring reset - wrong platform for Web');
+                  return;
+                }
+              }
+            } catch {}
+
+            if (String(forUser) !== String(currentUser)) {
+              console.log('🔄 Ignoring reset - wrong user');
+              return;
+            }
+
+            console.log('🔄 Processing reset for current user/platform');
+            setIsResetting(true); // Prevent seeding during reset
+            setJustReset(true); // Prevent immediate seeding after reset
             setMessages([]);
-            try { localStorage.removeItem(getMsgsKey()); } catch {}
-            try { localStorage.removeItem(getSeedKey()); } catch {}
-          } catch {}
+            try {
+              console.log('🧹 SSE reset clearing localStorage');
+              localStorage.removeItem(getMsgsKey());
+              localStorage.removeItem(getSeedKey());
+            } catch (error) {
+              console.error('🧹 SSE reset localStorage error:', error);
+            }
+            // Re-enable seeding after a short delay
+            setTimeout(() => {
+              setIsResetting(false);
+              console.log('🔄 SSE reset state cleared');
+            }, 100);
+            // Clear justReset flag after a longer delay to ensure reset is fully complete
+            setTimeout(() => {
+              setJustReset(false);
+            }, 500);
+          } catch (error) {
+            console.error('❌ SSE reset error:', error);
+          }
         }
         function onChatDelta(ev) {
           try {
@@ -770,26 +840,55 @@
       const btn = React.createElement(UIButton, { label: 'Send', onClick: send });
       const reset = async () => {
         try {
+          console.log('🔄 Starting reset process...');
+          setIsResetting(true); // Prevent seeding during reset
+          setJustReset(true); // Prevent immediate seeding after reset
           const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
+          console.log('📤 Sending reset request:', { platform: plat, userId: currentUser });
           const r = await fetch(`${API_BASE}/api/v1/chatbot/reset`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUser, platform: plat }) });
           // Optimistically clear locally; SSE chat:reset will also arrive
           try { setMessages([]); } catch {}
-          try { localStorage.removeItem(getMsgsKey()); } catch {}
-          try { localStorage.removeItem(getSeedKey()); } catch {}
-          // For add-in (Word), immediately seed first message after reset
-          if (plat === 'word') {
-            try {
-              await fetch(`${API_BASE}/api/v1/events/client`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type: 'chat', payload: { text: '' }, userId: currentUser, platform: 'word' })
-              });
-            } catch {}
+          try {
+            console.log('🧹 Clearing localStorage keys');
+            localStorage.removeItem(getMsgsKey());
+            localStorage.removeItem(getSeedKey());
+          } catch (error) {
+            console.error('🧹 Error clearing localStorage:', error);
           }
+          console.log('✅ Reset completed locally');
           return r;
-        } catch {}
+        } catch (error) {
+          console.error('❌ Reset failed:', error);
+        } finally {
+          setTimeout(() => {
+            setIsResetting(false); // Re-enable seeding after reset
+            console.log('🔄 Reset state cleared, seeding re-enabled');
+          }, 100);
+          // Clear justReset flag after a longer delay to ensure reset is fully complete
+          setTimeout(() => {
+            setJustReset(false);
+          }, 500);
+        }
+      };
+      const refreshDoc = async () => {
+        try {
+          const response = await fetch(`${API_BASE}/api/v1/refresh-document`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          const result = await response.json();
+          if (result.ok) {
+            setMessages((m) => [...(m || []), `[system] Document context refreshed - ${result.contextLength} chars loaded`]);
+          } else {
+            setMessages((m) => [...(m || []), `[system] Failed to refresh document: ${result.error}`]);
+          }
+        } catch (error) {
+          setMessages((m) => [...(m || []), `[system] Error refreshing document: ${error.message}`]);
+        }
       };
       const resetBtn = React.createElement(UIButton, { label: 'Reset', onClick: reset, tone: 'secondary' });
-      const row = React.createElement('div', { className: 'd-flex gap-8' }, [input, btn, resetBtn]);
+      const refreshBtn = React.createElement(UIButton, { label: 'Refresh Doc', onClick: refreshDoc, tone: 'secondary' });
+      const row = React.createElement('div', { className: 'd-flex gap-8' }, [input, btn, resetBtn, refreshBtn]);
       const wrap = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [box, row]);
       return React.createElement('div', null, [React.createElement('div', { key: 'hdr', className: 'font-semibold' }, 'Assistant'), wrap]);
     }
