@@ -835,8 +835,22 @@
           window.removeEventListener('chat:reset', onChatReset);
         };
       }, [currentUser, getMsgsKey, getSeedKey]);
-      const box = React.createElement('div', { className: 'chat-container' }, messages.map((m, i) => React.createElement('div', { key: i, className: 'chat-message-spacing' }, m)));
-      const input = React.createElement('input', { type: 'text', value: text, onChange: (e) => setText(e.target.value), placeholder: 'Type a message...', className: 'chat-input' });
+      const box = React.createElement('div', { className: 'chat-container', style: { height: '400px', overflowY: 'auto' } }, messages.map((m, i) => React.createElement('div', { key: i, className: 'chat-message-spacing' }, m)));
+      const onKeyPress = (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          send();
+        }
+      };
+      const input = React.createElement('textarea', {
+        value: text,
+        onChange: (e) => setText(e.target.value),
+        onKeyPress: onKeyPress,
+        placeholder: 'Type a message...',
+        className: 'chat-input',
+        style: { height: '60px', resize: 'none', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' },
+        rows: 2
+      });
       const btn = React.createElement(UIButton, { label: 'Send', onClick: send });
       const reset = async () => {
         try {
@@ -888,8 +902,9 @@
       };
       const resetBtn = React.createElement(UIButton, { label: 'Reset', onClick: reset, tone: 'secondary' });
       const refreshBtn = React.createElement(UIButton, { label: 'Refresh Doc', onClick: refreshDoc, tone: 'secondary' });
-      const row = React.createElement('div', { className: 'd-flex gap-8' }, [input, btn, resetBtn, refreshBtn]);
-      const wrap = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [box, row]);
+      const inputRow = React.createElement('div', { className: 'd-flex gap-8 align-items-end' }, [input, btn]);
+      const buttonRow = React.createElement('div', { className: 'd-flex gap-8' }, [resetBtn, refreshBtn]);
+      const wrap = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [box, inputRow, buttonRow]);
       return React.createElement('div', null, [React.createElement('div', { key: 'hdr', className: 'font-semibold' }, 'Assistant'), wrap]);
     }
 
