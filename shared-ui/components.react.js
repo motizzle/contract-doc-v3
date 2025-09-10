@@ -727,7 +727,7 @@
         cycle();
         return () => { mounted = false; };
       }, [tokens]);
-      const style = { cursor: 'pointer', background: styleVars.bg, color: styleVars.fg, borderRadius: '999px', padding: '4px 10px', fontWeight: 700, boxShadow: `0 0 10px ${styleVars.glow}` };
+      const style = { cursor: 'pointer', background: styleVars.bg, color: styleVars.fg, borderRadius: '999px', padding: '4px 10px', fontWeight: 700, boxShadow: `0 0 10px ${styleVars.glow}`, border: 'none' };
       return React.createElement('span', { style, onClick, title: 'Upcoming features' }, 'Coming 2026');
     }
 
