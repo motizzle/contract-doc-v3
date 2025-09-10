@@ -1,5 +1,13 @@
+now i want to understand how the start / stop / status bat files work. do they do the same thing as the bootstrap file or is there a reason why not?
+
 
 i want you to repeat this task back to me and tell me if you understand:
+
+
+3 - update readme
+4 - update working with AI
+5 - chat bot using LLM?
+
 
 1 - error on page load with default-doc
 2 - change "user1" checked out message
@@ -41,3 +49,20 @@ installation message (startup)
 message    = 'Hi there, thanks for offering to help, and for making it this far! Any feedback at all would be great - slack or email me.\n\nThe next steps might be a little daunting if this is the first time you've used this type of software. But I promise, it's not that bad.\n\nClear off your desktop, or create a new one, and make sure word is closed. Once you click "go for it baby!" a few things will happen:\n\n1 - it will start raining tacos\n2 - tons of windows will pop up. seriously, it will look like I'm acquaintenanceing you on friendster. bridge too far?\n3 - your web browser will open up with a nifty website\n4 - word should show up with a similarly nifty thing on the side\n\nAlternatively, this could crash and nothing will happen.\n\nLet's live on the edge!\n\n---\n'
 
 Suggestion: add a small /style-guide route that renders all tokens and key components (Button, Modal, Pill, Badge) to verify theming visually in one place.
+
+
+
+
+
+Done 8/26
+1 - stop restarting word and just point to whatever is open
+2 - fix status not looking at 4002
+3 - get a single bat file for stop,start, and status, so they don't require 3 clicks. do we already have a bootstrap file though? is it a bad idea to have a bat file that mirrors the bootstrap one?
+4 - reverse the ordering of notifications and put it in a bell
+5 - disable checkboxes in approvals if you can't over-ride
+6 - banners and spacing within the add-in
+7 - remove the exhibit configuration
+8 - standardize button, pill, banner styling
+9 - flashing new features modal
+10 - back to opengov
+

@@ -63,11 +63,11 @@
 
     // Reusable button with pressed and loading states
     function UIButton(props) {
-      const { label, onClick, variant = 'primary', disabled = false, isLoading = false, style = {} } = props || {};
+      const { label, onClick, variant = 'primary', disabled = false, isLoading = false, uniform = false, style = {} } = props || {};
       const [pressed, setPressed] = React.useState(false);
       const [loading, setLoading] = React.useState(false);
       const busy = !!isLoading || loading;
-      const className = `btn btn--${variant}`;
+      const className = `btn btn--${variant}${uniform ? ' btn-uniform' : ''}`;
       // Standardize spacing: no external margins; parents control spacing via gap
       const visual = Object.assign({ margin: '0', opacity: disabled ? 0.6 : 1 }, style);
       const handleClick = async (e) => {
@@ -139,8 +139,8 @@
             setLogs((prev) => prev.concat(m));
           } else {
             // Plain text fallback
-            const ts = new Date().toLocaleTimeString();
-            setLogs((prev) => prev.concat(`[${ts}] ${m}`));
+          const ts = new Date().toLocaleTimeString();
+          setLogs((prev) => prev.concat(`[${ts}] ${m}`));
           }
         } catch {}
       }, [formatNotification]);
@@ -155,58 +155,36 @@
           // Legacy plain text notification
           return React.createElement('div', {
             key: index,
-            className: 'notification-item notification-legacy',
-            style: {
-              padding: '8px 12px',
-              marginBottom: '4px',
-              border: '1px solid #e5e7eb',
-              borderRadius: '6px',
-              backgroundColor: '#f9fafb',
-              fontFamily: 'monospace',
-              fontSize: '12px',
-              lineHeight: '1.4'
-            }
+            className: 'notification-item notification-legacy'
           }, log);
         } else if (log.formatted) {
           // Formatted notification object
           const { message, timestamp, type, style } = log;
+          const dynamicStyle = {
+            border: `1px solid ${style.borderColor}`,
+            backgroundColor: style.bgColor,
+            color: style.color
+          };
           return React.createElement('div', {
             key: log.id || index,
             className: 'notification-item notification-formatted',
-            style: {
-              padding: '10px 14px',
-              marginBottom: '6px',
-              border: `1px solid ${style.borderColor}`,
-              borderRadius: '8px',
-              backgroundColor: style.bgColor,
-              color: style.color,
-              fontSize: '13px',
-              lineHeight: '1.4',
-              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '8px'
-            }
+            style: dynamicStyle
           }, [
             React.createElement('span', {
               key: 'icon',
-              style: { fontSize: '14px', flexShrink: 0 }
+              className: 'notification-icon'
             }, style.icon),
             React.createElement('div', {
               key: 'content',
-              style: { flex: 1 }
+              className: 'notification-content'
             }, [
               React.createElement('div', {
                 key: 'message',
-                style: { fontWeight: '500', marginBottom: '2px' }
+                className: 'notification-message'
               }, message),
               React.createElement('div', {
                 key: 'timestamp',
-                style: {
-                  fontSize: '11px',
-                  opacity: 0.7,
-                  fontWeight: '400'
-                }
+                className: 'notification-timestamp'
               }, timestamp)
             ])
           ]);
@@ -273,7 +251,6 @@
           sse.onopen = () => { setIsConnected(true); addLog('Connected to server', 'network'); };
           sse.onmessage = (ev) => {
             try {
-              addLog(`Server update: ${ev.data}`, 'info');
               const p = JSON.parse(ev.data);
               if (p && p.ts) setLastTs(p.ts);
               const nextRev = (typeof p.revision === 'number') ? p.revision : null;
@@ -281,6 +258,54 @@
               if (p && p.type === 'approvals:update') {
                 if (typeof p.revision === 'number') setApprovalsRevision(p.revision);
                 if (p.summary) setApprovalsSummary(p.summary);
+                // Only log approvals updates that have user-relevant notices
+                if (p.notice) {
+                  const noticeType = p.notice.type;
+                  if (noticeType === 'reset') {
+                    addLog('Approvals have been reset', 'warning');
+                  } else if (noticeType === 'request_review') {
+                    addLog('Review requested for approvals', 'info');
+                  }
+                }
+              }
+              // Only log user-relevant events as notifications
+              if (p && p.type) {
+                switch (p.type) {
+                  case 'documentUpload':
+                    addLog(`Document "${p.name}" uploaded successfully`, 'document');
+                    break;
+                  case 'documentRevert':
+                    addLog('Document reverted to previous version', 'warning');
+                    break;
+                  case 'snapshot':
+                    addLog(`Snapshot "${p.name}" created`, 'success');
+                    break;
+                  case 'factoryReset':
+                    addLog('System factory reset completed', 'warning');
+                    break;
+                  case 'exhibitUpload':
+                    addLog(`Exhibit "${p.name}" uploaded`, 'document');
+                    break;
+                  case 'compile':
+                    addLog(`Document compiled as "${p.name}"`, 'success');
+                    break;
+                  case 'finalize':
+                    addLog(p.value ? 'Document finalized' : 'Document unfinalized', 'system');
+                    break;
+                  case 'checkout':
+                    addLog('Document checked out', 'info');
+                    break;
+                  case 'checkin':
+                    addLog('Document checked in', 'success');
+                    break;
+                  case 'checkoutCancel':
+                    addLog('Checkout cancelled', 'warning');
+                    break;
+                  case 'overrideCheckout':
+                    addLog('Checkout override performed', 'warning');
+                    break;
+                  // Skip logging: hello, saveProgress, chat events, sendVendor, and plain approvals:update
+                }
               }
               // Fan out chat messages to ChatConsole
               if (p && p.type === 'chat') {
@@ -475,15 +500,13 @@
       return React.createElement('div', { className: 'd-flex flex-column gap-6 items-center' },
         banners.filter(show).map((b, i) => {
           const t = (tokens && tokens.banner && b && b.state) ? tokens.banner[b.state] : null;
-          const style = {
-            marginTop: '0px',
+          const dynamicStyle = {
             background: (t && (t.pillBg || t.bg)) || '#eef2ff',
             color: (t && (t.pillFg || t.fg)) || '#1e3a8a',
-            border: `1px solid ${((t && (t.pillBg || t.bg)) || '#c7d2fe')}`,
-            borderRadius: '6px', padding: '3px 8px', fontWeight: 600, width: '90%', textAlign: 'center'
+            border: `1px solid ${((t && (t.pillBg || t.bg)) || '#c7d2fe')}`
           };
           const text = (b && b.title && b.message) ? `${b.title}: ${b.message}` : (b?.title || '');
-          return React.createElement('div', { key: `b-${i}`, style }, text);
+          return React.createElement('div', { key: `b-${i}`, className: 'banner-item', style: dynamicStyle }, text);
         })
       );
     }
@@ -491,8 +514,7 @@
     function ConnectionBadge() {
       const { isConnected, lastTs } = React.useContext(StateContext);
       const when = lastTs ? new Date(lastTs).toLocaleTimeString() : '—';
-      const style = { borderRadius: '10px', fontSize: '12px' };
-      return React.createElement('div', { style }, isConnected ? `connected • last: ${when}` : 'disconnected');
+      return React.createElement('div', { className: 'connection-badge' }, isConnected ? `connected • last: ${when}` : 'disconnected');
     }
 
     function ActionButtons() {
@@ -501,9 +523,8 @@
       const { tokens } = React.useContext(ThemeContext);
       const btns = (config && config.buttons) ? config.buttons : {};
       const ask = (title, message, onConfirm) => setConfirm({ title, message, onConfirm });
-      const uniformBtnStyle = { width: '100%', minHeight: '27px' };
       const add = (label, onClick, show, variant, opts = {}) => show
-        ? React.createElement(UIButton, Object.assign({ key: label, label, onClick, variant: variant || (label && /^(Check\-in|Save Progress|Cancel Checkout|Override Checkout)/i.test(label) ? 'secondary' : 'primary'), style: Object.assign({}, uniformBtnStyle, opts.style || {}) }, opts))
+        ? React.createElement(UIButton, Object.assign({ key: label, label, onClick, variant: variant || (label && /^(Check\-in|Save Progress|Cancel Checkout|Override Checkout)/i.test(label) ? 'secondary' : 'primary'), uniform: true }, opts))
         : null;
 
       // Document controls (moved here so spacing matches other actions)
@@ -632,15 +653,7 @@
       const btn = React.createElement(UIButton, { label: 'Copy', onClick: copy, className: 'self-end mb-2' });
 
       const notificationsList = React.createElement('div', {
-        className: 'notifications-list',
-        style: {
-          maxHeight: '300px',
-          overflowY: 'auto',
-          padding: '8px',
-          backgroundColor: '#f9fafb',
-          border: '1px solid #e5e7eb',
-          borderRadius: '8px'
-        }
+        className: 'notifications-list'
       }, (logs || []).slice().reverse().map((log, index) => renderNotification(log, index)).filter(Boolean));
 
       return React.createElement('div', { className: 'd-flex flex-column gap-2' }, [btn, notificationsList]);
@@ -652,9 +665,8 @@
       const total = (logs || []).length;
       const unseen = Math.max(0, total - (lastSeenLogCount || 0));
       const open = () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'notifications' } })); } catch {} };
-      const style = { position: 'relative', cursor: 'pointer', borderRadius: '999px' };
       const badge = unseen ? React.createElement('span', { className: 'ui-badge badge-notification' }, String(unseen)) : null;
-      return React.createElement('span', { style, onClick: open, title: 'Notifications' }, ['🔔', badge]);
+      return React.createElement('span', { className: 'notifications-bell', onClick: open, title: 'Notifications' }, ['🔔', badge]);
     }
 
     function NotificationsModal(props) {
@@ -674,12 +686,7 @@
       };
 
       const list = React.createElement('div', {
-        className: 'notifications-list',
-        style: {
-          maxHeight: '400px',
-          overflowY: 'auto',
-          padding: '8px'
-        }
+        className: 'notifications-list notifications-list-modal'
       }, (logs || []).slice().reverse().map((log, index) => renderNotification(log, index)).filter(Boolean));
 
       const button = (label, variant, onclick) => React.createElement(UIButton, { label, onClick: onclick, variant: variant || 'primary' });
@@ -704,31 +711,72 @@
     function PulsePill(props) {
       const { onClick } = props || {};
       const { tokens } = React.useContext(ThemeContext);
-      const [styleVars, setStyleVars] = React.useState({ bg: '#4B3FFF', fg: '#ffffff', glow: 'rgba(75,63,255,0.35)' });
+      const [styleVars, setStyleVars] = React.useState({ bg: '#FFB636', fg: '#111827', glow: 'rgba(255,182,54,0.35)' });
+      const [isPulsing, setIsPulsing] = React.useState(false);
+      const [pulseDuration, setPulseDuration] = React.useState(1.5);
+
       React.useEffect(() => {
         let mounted = true;
         let idx = 0;
         function hexToRgb(hex){ const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return m?{r:parseInt(m[1],16),g:parseInt(m[2],16),b:parseInt(m[3],16)}:null; }
         function randInt(min, max){ return Math.floor(Math.random() * (max - min + 1)) + min; }
+
         const pulse = tokens?.pulse || {};
-        const palette = (Array.isArray(pulse.palette) && pulse.palette.length ? pulse.palette : [ { bg: '#4B3FFF', fg: '#ffffff' }, { bg: '#FFB636', fg: '#111827' }, { bg: '#22C55E', fg: '#ffffff' }, { bg: '#EF4444', fg: '#ffffff' }, { bg: '#06B6D4', fg: '#0f172a' } ]);
-        const activeS = typeof pulse.activeSeconds === 'number' ? pulse.activeSeconds : 1.5;
-        const restMinS = typeof pulse.restMinSeconds === 'number' ? pulse.restMinSeconds : 3;
-        const restMaxS = typeof pulse.restMaxSeconds === 'number' ? pulse.restMaxSeconds : 10;
-        const glowAlpha = typeof pulse.glowAlpha === 'number' ? pulse.glowAlpha : 0.35;
-        function cycle(){
+        const palette = (Array.isArray(pulse.palette) && pulse.palette.length ? pulse.palette : [
+          { bg: '#FFB636', fg: '#111827' },  // Orange
+          { bg: '#22C55E', fg: '#ffffff' },  // Green
+          { bg: '#EF4444', fg: '#ffffff' },  // Red
+          { bg: '#06B6D4', fg: '#0f172a' },  // Cyan
+          { bg: '#8B5CF6', fg: '#ffffff' }   // Purple
+        ]);
+
+        function startPulse() {
           if (!mounted) return;
-          const pair = palette[idx % palette.length]; idx++;
+
+          // Random pulse duration (1-3 seconds)
+          const duration = randInt(1000, 3000) / 1000;
+          setPulseDuration(duration);
+
+          // Start pulsing animation
+          setIsPulsing(true);
+
+          // Change to next color
+          const pair = palette[idx % palette.length];
+          idx++;
           const rgb = hexToRgb(pair.bg) || { r: 75, g: 63, b: 255 };
-          const glow = `rgba(${rgb.r},${rgb.g},${rgb.b},${glowAlpha})`;
+          const glow = `rgba(${rgb.r},${rgb.g},${rgb.b},0.35)`;
           setStyleVars({ bg: pair.bg, fg: pair.fg || '#ffffff', glow });
-          setTimeout(() => { if (mounted) setTimeout(cycle, randInt(restMinS, restMaxS)*1000); }, activeS*1000);
+
+          // Stop pulsing after animation duration
+          setTimeout(() => {
+            if (mounted) {
+              setIsPulsing(false);
+              // Schedule next pulse (6-15 seconds delay)
+              setTimeout(startPulse, randInt(6000, 15000));
+            }
+          }, duration * 1000);
         }
-        cycle();
+
+        // Start first pulse after initial delay
+        setTimeout(startPulse, randInt(2000, 5000));
+
         return () => { mounted = false; };
       }, [tokens]);
-      const style = { cursor: 'pointer', background: styleVars.bg, color: styleVars.fg, borderRadius: '999px', padding: '4px 10px', fontWeight: 700, boxShadow: `0 0 10px ${styleVars.glow}`, border: 'none' };
-      return React.createElement('span', { style, onClick, title: 'Upcoming features' }, 'Coming 2026');
+      const dynamicStyle = {
+        background: styleVars.bg,
+        color: styleVars.fg,
+        boxShadow: `0 0 10px ${styleVars.glow}`,
+        animationDuration: `${pulseDuration}s`
+      };
+
+      const className = `pulse-pill${isPulsing ? ' pulsing' : ''}`;
+
+      return React.createElement('span', {
+        className,
+        style: dynamicStyle,
+        onClick,
+        title: 'Upcoming features'
+      }, 'Coming 2026');
     }
 
     function ComingModal(props) {
@@ -969,7 +1017,7 @@
           window.removeEventListener('chat:reset', onChatReset);
         };
       }, [currentUser, getMsgsKey, getSeedKey]);
-      const box = React.createElement('div', { className: 'chat-container', style: { height: '360px', overflowY: 'auto' } }, messages.map((m, i) => React.createElement('div', { key: i, className: 'chat-message-spacing' }, m)));
+      const box = React.createElement('div', { className: 'chat-container' }, messages.map((m, i) => React.createElement('div', { key: i, className: 'chat-message-spacing' }, m)));
       const onKeyPress = (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
@@ -982,7 +1030,6 @@
         onKeyPress: onKeyPress,
         placeholder: 'Type a message...',
         className: 'chat-input',
-        style: { height: '60px', resize: 'none', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' },
         rows: 2
       });
       const btn = React.createElement(UIButton, { label: 'Send', onClick: send });
@@ -1477,9 +1524,8 @@
       const { approvalsSummary } = React.useContext(StateContext);
       if (!approvalsSummary) return null;
       const text = `${approvalsSummary.approved || 0}/${approvalsSummary.total || 0} approved`;
-      const style = { borderRadius: '999px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' };
       const open = () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'approvals' } })); } catch {} }, 200); } catch {} };
-      return React.createElement('span', { style, onClick: open, title: 'Approvals' }, text);
+      return React.createElement('span', { className: 'approvals-pill', onClick: open, title: 'Approvals' }, text);
     }
 
     function ApprovalsModal(props) {

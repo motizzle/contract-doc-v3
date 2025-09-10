@@ -84,8 +84,6 @@ ${DOCUMENT_CONTEXT}
 Answer helpfully and provide insights based on the current document context. Reference specific details from the contract when relevant. Be concise but informative.`;
 }
 
-// LLM function moved to ./lib/llm.js for better organization
-
 // Configuration
 const APP_PORT = Number(process.env.PORT || 4001);
 const SUPERDOC_BASE_URL = process.env.SUPERDOC_BASE_URL || 'http://localhost:4002';
@@ -338,7 +336,6 @@ app.use((req, res, next) => {
 app.use('/vendor', express.static(path.join(publicDir, 'vendor'), { fallthrough: true }));
 // Serve shared UI under /ui
 app.use('/ui', express.static(sharedUiDir, { fallthrough: true }));
-// Legacy /static/vendor path removed; use /vendor/* instead
 // Serve web static assets (helper scripts) under /web
 app.use('/web', express.static(webDir, { fallthrough: true }));
 // Serve compiled outputs (PDFs)

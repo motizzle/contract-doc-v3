@@ -237,7 +237,7 @@
 /* Add-in header (Word taskpane) */
 .addin-header {
   position: relative;
-  min-height: 85px;
+  min-height: 95px;  /* Increased from 85px to provide more space for button + title */
   color: var(--brand-header-fg);
   /* Use CSS var fallbacks for robustness */
   padding: var(--brand-header-pt, 8px) var(--brand-header-pr, 12px) var(--brand-header-pb, 8px) var(--brand-header-pl, 12px);
@@ -254,6 +254,7 @@
   left: var(--brand-logo-left);
   height: var(--brand-logo-height);
   width: auto;
+  vertical-align: top;  /* Ensure consistent top alignment with button */
 }
 
 .addin-header .title-block { margin: 0; text-align: center; }
@@ -371,34 +372,57 @@
   border-bottom: var(--brand-header-border);
 }
 
-/* Add-in: top-right pill (e.g., Coming 2026) */
-.addin-header .pill-right {
+/* Add-in: pulse pill (e.g., Coming 2026) */
+.addin-header .pulse-pill {
   position: absolute;
-  top: 1px;  /* offset from top edge */
-  right: 2px; /* offset from right edge */
-  background: #000000;
-  color: #fff;
-  border: 1px solid #000000;
-  padding: 1px 1px; /* internal padding (top/bottom, left/right) */
+  top: 2px;  /* Slightly below logo for better visual alignment */
+  right: 8px; /* offset from right edge */
+  z-index: 10;  /* Ensure button appears above other content */
+  background: #FFB636;  /* Default orange background - allow inline styles to override */
+  color: #ffffff;       /* Default text color - allow inline styles to override */
+  box-shadow: 0 0 10px rgba(255,182,54,0.35);  /* Default orange glow - allow inline styles to override */
+  border: none;
+  padding: 2px 6px; /* internal padding (top/bottom, left/right) */
   border-radius: 999px;
   font-size: 9px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-  transition: background-color 400ms ease, color 400ms ease, box-shadow 300ms ease;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background 400ms ease, color 400ms ease, box-shadow 300ms ease;
+  max-height: 20px;
+  overflow: hidden;
+  outline: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  z-index: 1000;  /* Ensure button is above banner */
+  max-width: calc(100vw - 16px);  /* Prevent extending off right edge */
 }
 
-/* Web: top-right pill (matches add-in) */
-.brand-header-bg .pill-right {
-  position: absolute;
-  top: 12px;
-  right: 4px;
-  background: #4B3FFF;
-  color: #fff;
-  border: 1px solid #000000;
-  padding: 2px 6px;
-  border-radius: 999px;
-  font-size: 12px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-  transition: background-color 400ms ease, color 400ms ease, box-shadow 300ms ease;
+/* Pulse pill - Coming 2026 button */
+body .brand-header-bg .pulse-pill {
+  position: absolute !important;
+  top: 2px !important;  /* Match logo position (1px) + 1px visual adjustment */
+  right: 8px !important;
+  background: #FFB636;  /* Default orange background - allow inline styles to override */
+  color: #ffffff;       /* Default text color - allow inline styles to override */
+  box-shadow: 0 0 10px rgba(255,182,54,0.35);  /* Default orange glow - allow inline styles to override */
+  border: none !important;
+  padding: 4px 8px !important;
+  border-radius: 999px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;  /* Bold text */
+  line-height: 1.2 !important;
+  cursor: pointer !important;  /* Pointer cursor */
+  transition: background 400ms ease, color 400ms ease, box-shadow 300ms ease !important;
+  max-height: 24px !important;
+  overflow: hidden !important;
+  outline: none !important;  /* Remove focus outlines */
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;  /* Cross-browser appearance reset */
+  z-index: 1000 !important;  /* Ensure button is above banner */
+  max-width: calc(100vw - 16px);  /* Prevent extending off right edge */
 }
 
 /* Button-like behavior for the pill (shared) */
@@ -408,16 +432,180 @@
   justify-content: center;
   gap: 6px;
   cursor: pointer;
+  font-weight: 700;
   -webkit-user-select: none;
   user-select: none;
   outline: 0;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
   transition: background-color 200ms ease, color 200ms ease, box-shadow 150ms ease, transform 80ms ease, filter 120ms ease;
+}
+
+/* Connection badge styling */
+.connection-badge {
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+/* Approvals pill styling */
+.approvals-pill {
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Notifications bell styling */
+.notifications-bell {
+  position: relative;
+  cursor: pointer;
+  border-radius: 999px;
+}
+
+/* Chat container styling */
+.chat-container {
+  height: 398px;  /* Increased by 30% from 306px (306 * 1.3 = 397.8) */
+  overflow-y: auto;
+}
+
+/* Chat input styling */
+.chat-input {
+  height: 60px;
+  resize: none;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Banner item styling */
+.banner-item {
+  margin-top: 0px;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-weight: 600;
+  width: 90%;
+  text-align: center;
+  /* Dynamic properties will be set via inline styles for theme tokens */
+}
+
+/* Notification styling */
+.notification-item {
+  margin-bottom: 4px;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.notification-legacy {
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+}
+
+.notification-formatted {
+  padding: 10px 14px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.notification-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.notification-content {
+  flex: 1;
+}
+
+.notification-message {
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.notification-timestamp {
+  font-size: 11px;
+  opacity: 0.7;
+  font-weight: 400;
+}
+
+/* Uniform button styling */
+.btn-uniform {
+  width: 100%;
+  min-height: 27px;
+}
+
+/* Notifications list styling */
+.notifications-list {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 8px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.notifications-list-modal {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 8px;
 }
 .pill-right:hover { filter: brightness(1.06) saturate(1.02); transform: translateY(-1px); }
 .pill-right:active { transform: scale(0.98); filter: brightness(0.98) saturate(0.98); }
 .pill-right[aria-expanded="true"] { transform: scale(0.98); filter: brightness(0.98) saturate(0.98); }
 .pill-right:focus-visible {
   box-shadow: 0 0 0 2px rgba(255,255,255,0.9), 0 0 0 4px rgba(37,99,235,0.7);
+}
+
+/* Pulse pill hover effects - compatible with dynamic styling */
+.pulse-pill:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+  transition: transform 80ms ease, filter 120ms ease;
+}
+
+/* Pulsing animation keyframes */
+@keyframes pulse-pill {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  25% {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+  }
+  50% {
+    transform: scale(1.1);
+    filter: brightness(1.2);
+  }
+  75% {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+/* Pulse pill pulsing state - duration controlled by inline style */
+.pulse-pill.pulsing {
+  animation-name: pulse-pill;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: forwards;
+}
+
+/* Add-in pulse pill hover effects */
+.addin-header .pulse-pill:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+  transition: transform 80ms ease, filter 120ms ease;
 }
 
 /* Add-in pill override */
@@ -1088,12 +1276,12 @@
 .badge-green { background: var(--color-success-100); color: var(--color-success-700); }
 .badge-gray { background: var(--color-gray-100); color: var(--color-gray-700); }
 
-/* Chat component styling */
-.chat-container {
+/* Add-in specific chat container (smaller for Word interface) */
+.ms-welcome .chat-container {
   border: var(--border-width-1) var(--border-style-solid) var(--color-gray-300);
   border-radius: var(--border-radius-md);
   padding: var(--space-8);
-  height: 120px;
+  height: 120px;  /* Keep original add-in height */
   overflow: auto;
   background: var(--color-white);
 }
