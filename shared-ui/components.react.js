@@ -102,16 +102,117 @@
       const [approvalsRevision, setApprovalsRevision] = React.useState(0);
       const API_BASE = getApiBase();
 
-      const addLog = React.useCallback((m) => {
-        try {
-          const ts = new Date().toLocaleTimeString();
-          setLogs((prev) => prev.concat(`[${ts}] ${m}`));
-        } catch {}
+      // Notification formatting system
+      const NOTIFICATION_TYPES = {
+        success: { icon: '✅', color: '#10b981', bgColor: '#d1fae5', borderColor: '#34d399' },
+        error: { icon: '❌', color: '#ef4444', bgColor: '#fee2e2', borderColor: '#f87171' },
+        warning: { icon: '⚠️', color: '#f59e0b', bgColor: '#fef3c7', borderColor: '#fbbf24' },
+        info: { icon: 'ℹ️', color: '#3b82f6', bgColor: '#dbeafe', borderColor: '#60a5fa' },
+        system: { icon: '🔧', color: '#6b7280', bgColor: '#f9fafb', borderColor: '#d1d5db' },
+        user: { icon: '👤', color: '#8b5cf6', bgColor: '#ede9fe', borderColor: '#a78bfa' },
+        document: { icon: '📄', color: '#059669', bgColor: '#d1fae5', borderColor: '#34d399' },
+        network: { icon: '🌐', color: '#0891b2', bgColor: '#cffafe', borderColor: '#06b6d4' }
+      };
+
+      const formatNotification = React.useCallback((message, type = 'info') => {
+        const ts = new Date().toLocaleTimeString();
+        const notificationType = NOTIFICATION_TYPES[type] || NOTIFICATION_TYPES.info;
+
+        return {
+          id: Date.now() + Math.random(),
+          timestamp: ts,
+          message: typeof message === 'string' ? message : String(message),
+          type: type,
+          formatted: true,
+          style: notificationType
+        };
       }, []);
+
+      const addLog = React.useCallback((m, type = 'info') => {
+        try {
+          if (typeof m === 'string' && !m.includes('[Formatted]')) {
+            // Legacy plain text message - wrap in formatted structure
+            const formatted = formatNotification(m, type);
+            setLogs((prev) => prev.concat(formatted));
+          } else if (typeof m === 'object' && m.formatted) {
+            // Already formatted notification object
+            setLogs((prev) => prev.concat(m));
+          } else {
+            // Plain text fallback
+            const ts = new Date().toLocaleTimeString();
+            setLogs((prev) => prev.concat(`[${ts}] ${m}`));
+          }
+        } catch {}
+      }, [formatNotification]);
 
       const markNotificationsSeen = React.useCallback(() => {
         try { setLastSeenLogCount((logs || []).length); } catch {}
       }, [logs]);
+
+      // Render formatted notification
+      const renderNotification = React.useCallback((log, index) => {
+        if (typeof log === 'string') {
+          // Legacy plain text notification
+          return React.createElement('div', {
+            key: index,
+            className: 'notification-item notification-legacy',
+            style: {
+              padding: '8px 12px',
+              marginBottom: '4px',
+              border: '1px solid #e5e7eb',
+              borderRadius: '6px',
+              backgroundColor: '#f9fafb',
+              fontFamily: 'monospace',
+              fontSize: '12px',
+              lineHeight: '1.4'
+            }
+          }, log);
+        } else if (log.formatted) {
+          // Formatted notification object
+          const { message, timestamp, type, style } = log;
+          return React.createElement('div', {
+            key: log.id || index,
+            className: 'notification-item notification-formatted',
+            style: {
+              padding: '10px 14px',
+              marginBottom: '6px',
+              border: `1px solid ${style.borderColor}`,
+              borderRadius: '8px',
+              backgroundColor: style.bgColor,
+              color: style.color,
+              fontSize: '13px',
+              lineHeight: '1.4',
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '8px'
+            }
+          }, [
+            React.createElement('span', {
+              key: 'icon',
+              style: { fontSize: '14px', flexShrink: 0 }
+            }, style.icon),
+            React.createElement('div', {
+              key: 'content',
+              style: { flex: 1 }
+            }, [
+              React.createElement('div', {
+                key: 'message',
+                style: { fontWeight: '500', marginBottom: '2px' }
+              }, message),
+              React.createElement('div', {
+                key: 'timestamp',
+                style: {
+                  fontSize: '11px',
+                  opacity: 0.7,
+                  fontWeight: '400'
+                }
+              }, timestamp)
+            ])
+          ]);
+        }
+        return null;
+      }, []);
 
       // Prefer working default if present, else canonical. Append a revision hint.
       const choosePreferredDocUrl = React.useCallback(async (revHint) => {
@@ -169,7 +270,7 @@
         let sse;
         try {
           sse = new EventSource(`${API_BASE}/api/v1/events`);
-          sse.onopen = () => { setIsConnected(true); addLog('SSE open'); };
+          sse.onopen = () => { setIsConnected(true); addLog('Server connection established', 'network'); };
           sse.onmessage = (ev) => {
             try {
               addLog(`SSE ${ev.data}`);
@@ -198,7 +299,7 @@
               refresh();
             } catch {}
           };
-          sse.onerror = () => { setIsConnected(false); addLog('SSE error'); };
+          sse.onerror = () => { setIsConnected(false); addLog('Connection to server lost', 'error'); };
         } catch {}
         return () => { try { sse && sse.close(); } catch {} };
       }, [API_BASE, refresh, addLog]);
@@ -326,11 +427,11 @@
         override: async () => { try { await fetch(`${API_BASE}/api/v1/checkout/override`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('override OK'); await refresh(); } catch (e) { addLog(`override ERR ${e?.message||e}`); } },
         factoryReset: async () => { try { await fetch(`${API_BASE}/api/v1/factory-reset`, { method: 'POST' }); addLog('factory reset OK'); await refresh(); } catch (e) { addLog(`factory reset ERR ${e?.message||e}`); } },
         sendVendor: (opts) => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'send-vendor', options: { userId, ...(opts||{}) } } })); } catch {} },
-        saveProgress: async () => { try { if (typeof Office !== 'undefined') { await saveProgressWord(); } else { await saveProgressWebViaDownload(); } addLog('save progress OK'); await refresh(); return true; } catch (e) { addLog(`save progress ERR ${e?.message||e}`); return false; } },
-        setUser: (nextUserId, nextRole) => { try { setUserId(nextUserId); if (nextRole) setRole(nextRole); addLog(`user set to ${nextUserId}`); } catch {} },
+        saveProgress: async () => { try { if (typeof Office !== 'undefined') { await saveProgressWord(); } else { await saveProgressWebViaDownload(); } addLog('Progress saved successfully', 'success'); await refresh(); return true; } catch (e) { addLog(`Failed to save progress: ${e?.message||e}`, 'error'); return false; } },
+        setUser: (nextUserId, nextRole) => { try { setUserId(nextUserId); if (nextRole) setRole(nextRole); addLog(`Switched to user: ${nextUserId}`, 'user'); } catch {} },
       }), [API_BASE, refresh, userId, addLog]);
 
-      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision } }, props.children);
+      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, renderNotification, formatNotification } }, props.children);
     }
 
     function BannerStack() {
@@ -518,16 +619,31 @@
     }
 
     function NotificationsPanel() {
-      const { logs } = React.useContext(StateContext);
+      const { logs, renderNotification } = React.useContext(StateContext);
       const copy = async () => {
         try {
-          const text = (logs || []).slice().reverse().join('\n');
+          const text = (logs || []).slice().reverse().map(log => {
+            if (typeof log === 'string') return log;
+            return `[${log.timestamp}] ${log.message}`;
+          }).join('\n');
           if (navigator?.clipboard?.writeText) await navigator.clipboard.writeText(text);
         } catch {}
       };
-      const btn = React.createElement(UIButton, { label: 'Copy', onClick: copy, className: 'self-end mb-1' });
-      const box = React.createElement('div', { className: 'font-mono p-8 border border-gray-300 rounded-md overflow-auto max-h-80 bg-gray-50 whitespace-pre-wrap' }, (logs || []).slice().reverse().join('\n'));
-      return React.createElement('div', { className: 'd-flex flex-column' }, [btn, box]);
+      const btn = React.createElement(UIButton, { label: 'Copy', onClick: copy, className: 'self-end mb-2' });
+
+      const notificationsList = React.createElement('div', {
+        className: 'notifications-list',
+        style: {
+          maxHeight: '300px',
+          overflowY: 'auto',
+          padding: '8px',
+          backgroundColor: '#f9fafb',
+          border: '1px solid #e5e7eb',
+          borderRadius: '8px'
+        }
+      }, (logs || []).slice().reverse().map((log, index) => renderNotification(log, index)).filter(Boolean));
+
+      return React.createElement('div', { className: 'd-flex flex-column gap-2' }, [btn, notificationsList]);
     }
 
     // Notifications bell (standard icon) that opens a modal
@@ -544,10 +660,28 @@
     function NotificationsModal(props) {
       const { onClose } = props || {};
       const { tokens } = React.useContext(ThemeContext);
-      const { logs, markNotificationsSeen } = React.useContext(StateContext);
+      const { logs, markNotificationsSeen, renderNotification } = React.useContext(StateContext);
       const t = tokens && tokens.modal ? tokens.modal : {};
-      const copy = async () => { try { const text = (logs || []).slice().reverse().join('\n'); if (navigator?.clipboard?.writeText) await navigator.clipboard.writeText(text); } catch {} };
-      const list = React.createElement('div', { className: 'font-mono bg-gray-50 border border-gray-200 rounded-md overflow-auto max-h-105 whitespace-pre-wrap p-8' }, (logs || []).slice().reverse().join('\n'));
+
+      const copy = async () => {
+        try {
+          const text = (logs || []).slice().reverse().map(log => {
+            if (typeof log === 'string') return log;
+            return `[${log.timestamp}] ${log.message}`;
+          }).join('\n');
+          if (navigator?.clipboard?.writeText) await navigator.clipboard.writeText(text);
+        } catch {}
+      };
+
+      const list = React.createElement('div', {
+        className: 'notifications-list',
+        style: {
+          maxHeight: '400px',
+          overflowY: 'auto',
+          padding: '8px'
+        }
+      }, (logs || []).slice().reverse().map((log, index) => renderNotification(log, index)).filter(Boolean));
+
       const button = (label, variant, onclick) => React.createElement(UIButton, { label, onClick: onclick, variant: variant || 'primary' });
       React.useEffect(() => { try { markNotificationsSeen?.(); } catch {} }, [markNotificationsSeen]);
 
