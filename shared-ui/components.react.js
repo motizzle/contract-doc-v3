@@ -230,7 +230,7 @@
           const rev = (typeof revHint === 'number' && revHint > 0) ? revHint : Date.now();
           return `${url}?rev=${rev}`;
         } catch (e) {
-          addLog(`doc choose ERR ${e?.message||e}`);
+            addLog(`Failed to load document: ${e?.message||e}`, 'error');
           return `${API_BASE}/documents/canonical/default.docx?rev=${Date.now()}`;
         }
       }, [API_BASE, addLog]);
@@ -270,10 +270,10 @@
         let sse;
         try {
           sse = new EventSource(`${API_BASE}/api/v1/events`);
-          sse.onopen = () => { setIsConnected(true); addLog('Server connection established', 'network'); };
+          sse.onopen = () => { setIsConnected(true); addLog('Connected to server', 'network'); };
           sse.onmessage = (ev) => {
             try {
-              addLog(`SSE ${ev.data}`);
+              addLog(`Server update: ${ev.data}`, 'info');
               const p = JSON.parse(ev.data);
               if (p && p.ts) setLastTs(p.ts);
               const nextRev = (typeof p.revision === 'number') ? p.revision : null;
@@ -299,13 +299,13 @@
               refresh();
             } catch {}
           };
-          sse.onerror = () => { setIsConnected(false); addLog('Connection to server lost', 'error'); };
+          sse.onerror = () => { setIsConnected(false); addLog('Lost connection to server', 'error'); };
         } catch {}
         return () => { try { sse && sse.close(); } catch {} };
       }, [API_BASE, refresh, addLog]);
 
       const addError = React.useCallback((err) => {
-        try { setLastError(err || null); if (err && err.message) addLog(`ERR ${err.message}`); } catch {}
+        try { setLastError(err || null); if (err && err.message) addLog(`Error: ${err.message}`, 'error'); } catch {}
       }, [addLog]);
 
       // Compute initial document source on web (prefer working overlay)
@@ -315,7 +315,7 @@
           try {
             const src = await choosePreferredDocUrl(Date.now());
             setDocumentSource(src);
-            addLog(`doc src set ${src}`);
+            addLog(`Document source updated`, 'document');
             // Initialize version from first matrix load
             try {
               const r = await fetch(`${API_BASE}/api/v1/state-matrix?platform=web&userId=${encodeURIComponent(userId)}`);
@@ -397,35 +397,35 @@
       async function saveProgressWebViaDownload() {
         // Web must export from live editor; no fallback to server bytes
         if (!(window.superdocAPI && typeof window.superdocAPI.export === 'function')) {
-          addLog('web_save ERR export_unavailable');
+          addLog('Document export not available', 'warning');
           throw new Error('export_unavailable');
         }
         const b64 = await window.superdocAPI.export('docx');
         const size = (() => { try { return atob(b64 || '').length; } catch { return 0; } })();
         const pk = (() => { try { const u = new Uint8Array(atob(b64||'').split('').map(c=>c.charCodeAt(0))); return u[0]===0x50 && u[1]===0x4b; } catch { return false; } })();
-        addLog(`web_save export size=${size} pk=${pk}`);
+        addLog(`Document exported (${Math.round(size/1024)}KB)`, 'document');
         if (!b64 || size < 1024 || !pk) {
-          addLog('web_save ERR export_invalid');
+          addLog('Document export failed - invalid format', 'error');
           throw new Error('export_invalid');
         }
         const r = await fetch(`${API_BASE}/api/v1/save-progress`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, base64: b64, platform: 'web' }) });
         if (!r.ok) {
           let msg = '';
           try { const j = await r.json(); msg = j && (j.error || j.message) || ''; } catch { try { msg = await r.text(); } catch {} }
-          addLog(`web_save ERR save-progress ${r.status} ${msg}`.trim());
+          addLog(`Failed to save progress: ${msg || 'Server error'}`, 'error');
           throw new Error(`save-progress ${r.status} ${msg}`.trim());
         }
-        addLog('web_save OK');
+        addLog('Progress saved successfully', 'success');
       }
 
       const actions = React.useMemo(() => ({
-        finalize: async () => { try { await fetch(`${API_BASE}/api/v1/finalize`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('finalize OK'); await refresh(); } catch (e) { addLog(`finalize ERR ${e?.message||e}`); } },
-        unfinalize: async () => { try { await fetch(`${API_BASE}/api/v1/unfinalize`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('unfinalize OK'); await refresh(); } catch (e) { addLog(`unfinalize ERR ${e?.message||e}`); } },
-        checkout: async () => { try { await fetch(`${API_BASE}/api/v1/checkout`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('checkout OK'); await refresh(); } catch (e) { addLog(`checkout ERR ${e?.message||e}`); } },
-        checkin: async () => { try { await fetch(`${API_BASE}/api/v1/checkin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('checkin OK'); await refresh(); } catch (e) { addLog(`checkin ERR ${e?.message||e}`); } },
-        cancel: async () => { try { await fetch(`${API_BASE}/api/v1/checkout/cancel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('cancel checkout OK'); await refresh(); } catch (e) { addLog(`cancel checkout ERR ${e?.message||e}`); } },
-        override: async () => { try { await fetch(`${API_BASE}/api/v1/checkout/override`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('override OK'); await refresh(); } catch (e) { addLog(`override ERR ${e?.message||e}`); } },
-        factoryReset: async () => { try { await fetch(`${API_BASE}/api/v1/factory-reset`, { method: 'POST' }); addLog('factory reset OK'); await refresh(); } catch (e) { addLog(`factory reset ERR ${e?.message||e}`); } },
+        finalize: async () => { try { await fetch(`${API_BASE}/api/v1/finalize`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Document finalized successfully', 'success'); await refresh(); } catch (e) { addLog(`Failed to finalize document: ${e?.message||e}`, 'error'); } },
+        unfinalize: async () => { try { await fetch(`${API_BASE}/api/v1/unfinalize`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Document unfinalized successfully', 'success'); await refresh(); } catch (e) { addLog(`Failed to unfinalize document: ${e?.message||e}`, 'error'); } },
+        checkout: async () => { try { await fetch(`${API_BASE}/api/v1/checkout`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Document checked out successfully', 'success'); await refresh(); } catch (e) { addLog(`Failed to check out document: ${e?.message||e}`, 'error'); } },
+        checkin: async () => { try { await fetch(`${API_BASE}/api/v1/checkin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Document checked in successfully', 'success'); await refresh(); } catch (e) { addLog(`Failed to check in document: ${e?.message||e}`, 'error'); } },
+        cancel: async () => { try { await fetch(`${API_BASE}/api/v1/checkout/cancel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Checkout cancelled successfully', 'success'); await refresh(); } catch (e) { addLog(`Failed to cancel checkout: ${e?.message||e}`, 'error'); } },
+        override: async () => { try { await fetch(`${API_BASE}/api/v1/checkout/override`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Checkout override successful', 'warning'); await refresh(); } catch (e) { addLog(`Failed to override checkout: ${e?.message||e}`, 'error'); } },
+        factoryReset: async () => { try { await fetch(`${API_BASE}/api/v1/factory-reset`, { method: 'POST' }); addLog('System reset completed successfully', 'system'); await refresh(); } catch (e) { addLog(`Failed to reset system: ${e?.message||e}`, 'error'); } },
         sendVendor: (opts) => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'send-vendor', options: { userId, ...(opts||{}) } } })); } catch {} },
         saveProgress: async () => { try { if (typeof Office !== 'undefined') { await saveProgressWord(); } else { await saveProgressWebViaDownload(); } addLog('Progress saved successfully', 'success'); await refresh(); return true; } catch (e) { addLog(`Failed to save progress: ${e?.message||e}`, 'error'); return false; } },
         setUser: (nextUserId, nextRole) => { try { setUserId(nextUserId); if (nextRole) setRole(nextRole); addLog(`Switched to user: ${nextUserId}`, 'user'); } catch {} },
