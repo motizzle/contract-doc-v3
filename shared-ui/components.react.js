@@ -969,7 +969,7 @@
           window.removeEventListener('chat:reset', onChatReset);
         };
       }, [currentUser, getMsgsKey, getSeedKey]);
-      const box = React.createElement('div', { className: 'chat-container', style: { height: '400px', overflowY: 'auto' } }, messages.map((m, i) => React.createElement('div', { key: i, className: 'chat-message-spacing' }, m)));
+      const box = React.createElement('div', { className: 'chat-container', style: { height: '360px', overflowY: 'auto' } }, messages.map((m, i) => React.createElement('div', { key: i, className: 'chat-message-spacing' }, m)));
       const onKeyPress = (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
