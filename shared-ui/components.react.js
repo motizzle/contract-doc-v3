@@ -503,7 +503,7 @@
           const dynamicStyle = {
             background: (t && (t.pillBg || t.bg)) || '#eef2ff',
             color: (t && (t.pillFg || t.fg)) || '#1e3a8a',
-            border: `1px solid ${((t && (t.pillBg || t.bg)) || '#c7d2fe')}`
+            border: `1px solid ${(t && t.border) || ((t && (t.pillBg || t.bg)) || '#c7d2fe')}`
           };
           const text = (b && b.title && b.message) ? `${b.title}: ${b.message}` : (b?.title || '');
           return React.createElement('div', { key: `b-${i}`, className: 'banner-item', style: dynamicStyle }, text);

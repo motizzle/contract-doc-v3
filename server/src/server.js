@@ -259,10 +259,10 @@ function buildBanner({ isFinal, isCheckedOut, isOwner, checkedOutBy }) {
     return { state: 'final', title: 'Finalized', message: 'This document is finalized.' };
   }
   if (isCheckedOut) {
-    if (isOwner) return { state: 'checked_out_self', title: 'Checked out by you', message: 'You can edit. Remember to check in.' };
+    if (isOwner) return { state: 'checked_out_self', title: 'You\'ve got it checked out', message: 'You can edit. Remember to check in.' };
     return { state: 'checked_out_other', title: 'Checked out', message: `Checked out by ${checkedOutBy}` };
   }
-  return { state: 'available', title: 'Available to check out', message: 'Redline it up baby!' };
+  return { state: 'available', title: 'Available to check out', message: 'Redline like you mean it!' };
 }
 
 // Approvals helpers
@@ -569,7 +569,7 @@ app.get('/api/v1/theme', (req, res) => {
   } catch {}
   return res.json({
     banner: {
-      update_available: { bg: '#de3423', fg: '#0f172a', pillBg: '#de3423', pillFg: '#0f172a' },
+      update_available: { bg: '#fecaca', fg: '#0f172a', pillBg: '#fecaca', pillFg: '#0f172a', border: '#000000' },
       final:            { bg: '#7f8ca0', fg: '#ffffff', pillBg: '#7f8ca0', pillFg: '#ffffff' },
       checked_out_self: { bg: '#dce6f4', fg: '#111827', pillBg: '#dce6f4', pillFg: '#111827' },
       checked_out_other:{ bg: '#c6c8ca', fg: '#111827', pillBg: '#c6c8ca', pillFg: '#111827' },

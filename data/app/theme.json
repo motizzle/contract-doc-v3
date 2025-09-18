@@ -3,7 +3,9 @@
     "final": { "bg": "linear-gradient(180deg,#b91c1c,#ef4444)", "fg": "#ffffff", "pillBg": "#7f1d1d", "pillFg": "#ffffff" },
     "checked_out_self": { "bg": "linear-gradient(180deg,#2563eb,#60a5fa)", "fg": "#ffffff", "pillBg": "#1e3a8a", "pillFg": "#ffffff" },
     "checked_out_other": { "bg": "linear-gradient(180deg,#b45309,#f59e0b)", "fg": "#111827", "pillBg": "#92400e", "pillFg": "#ffffff" },
-    "available": { "bg": "linear-gradient(180deg,#16a34a,#4ade80)", "fg": "#ffffff", "pillBg": "#166534", "pillFg": "#ffffff" }
+    "available": { "bg": "linear-gradient(180deg,#16a34a,#4ade80)", "fg": "#ffffff", "pillBg": "#166534", "pillFg": "#ffffff" },
+    "update_available": { "bg": "#fecaca", "fg": "#0f172a", "pillBg": "#fecaca", "pillFg": "#0f172a", "border": "#000000" },
+    "view_only": { "bg": "#e5e7eb", "fg": "#111827", "pillBg": "#d1d5db", "pillFg": "#111827" }
   },
   "modal": {
     "background": "#ffffff",
