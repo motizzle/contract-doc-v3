@@ -1525,7 +1525,7 @@
       if (!approvalsSummary) return null;
       const text = `${approvalsSummary.approved || 0}/${approvalsSummary.total || 0} approved`;
       const open = () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'approvals' } })); } catch {} }, 200); } catch {} };
-      return React.createElement('button', { className: 'approvals-pill', onClick: open, title: 'Approvals', type: 'button' }, text);
+      return React.createElement('button', { className: 'approvals-pill mb-3', onClick: open, title: 'Approvals', type: 'button' }, text);
     }
 
     function ApprovalsModal(props) {
@@ -1674,7 +1674,6 @@
             React.createElement('div', { className: 'mt-2.5 border-t border-gray-200 pt-2' }, [
               React.createElement('div', { key: 'hdr2', className: 'ui-section-header' }, 'Actions'),
               React.createElement(ApprovalsPill, { key: 'approvals-pill' }),
-              React.createElement('div', { className: 'mt-3' }),
               React.createElement(ActionButtons, { key: 'actions' }),
             ]),
             // 4 - Chatbot (OG Assist)
