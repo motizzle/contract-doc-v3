@@ -1674,6 +1674,7 @@
             React.createElement('div', { className: 'mt-2.5 border-t border-gray-200 pt-2' }, [
               React.createElement('div', { key: 'hdr2', className: 'ui-section-header' }, 'Actions'),
               React.createElement(ApprovalsPill, { key: 'approvals-pill' }),
+              React.createElement('div', { className: 'mt-3' }),
               React.createElement(ActionButtons, { key: 'actions' }),
             ]),
             // 4 - Chatbot (OG Assist)
