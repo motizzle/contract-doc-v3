@@ -1525,7 +1525,7 @@
       if (!approvalsSummary) return null;
       const text = `${approvalsSummary.approved || 0}/${approvalsSummary.total || 0} approved`;
       const open = () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'approvals' } })); } catch {} }, 200); } catch {} };
-      return React.createElement('span', { className: 'approvals-pill', onClick: open, title: 'Approvals' }, text);
+      return React.createElement('button', { className: 'approvals-pill', onClick: open, title: 'Approvals', type: 'button' }, text);
     }
 
     function ApprovalsModal(props) {
