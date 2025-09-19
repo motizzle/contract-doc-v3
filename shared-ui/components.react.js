@@ -621,8 +621,8 @@
       ].filter(Boolean);
 
       return React.createElement(React.Fragment, null,
-        React.createElement('div', { className: 'd-grid grid-cols-2 column-gap-8 row-gap-6 grid-auto-rows-minmax-27 mt-3' }, topCluster),
-        React.createElement('div', { className: 'h-2' }),
+        React.createElement('div', { className: 'd-grid grid-cols-2 column-gap-8 row-gap-6 grid-auto-rows-minmax-27' }, topCluster),
+        React.createElement('div', { className: 'h-4' }),
         React.createElement('div', { className: 'd-grid grid-cols-2 column-gap-8 row-gap-6 grid-auto-rows-minmax-27' }, bottomGrid),
         confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
       );
@@ -1525,7 +1525,7 @@
       if (!approvalsSummary) return null;
       const text = `${approvalsSummary.approved || 0}/${approvalsSummary.total || 0} approved`;
       const open = () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'approvals' } })); } catch {} }, 200); } catch {} };
-      return React.createElement('button', { className: 'approvals-pill', onClick: open, title: 'Approvals', type: 'button' }, text);
+      return React.createElement('button', { className: 'approvals-pill mb-3', onClick: open, title: 'Approvals', type: 'button' }, text);
     }
 
     function ApprovalsModal(props) {
