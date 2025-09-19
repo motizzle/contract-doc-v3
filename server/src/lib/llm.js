@@ -92,21 +92,42 @@ function callLLM(options) {
   return new Promise((resolve, reject) => {
     const { messages, model, maxTokens, temperature, stream } = options;
 
-    const payload = JSON.stringify({
-      model,
-      messages,
-      max_tokens: maxTokens,
-      temperature,
-      stream: !!stream // Enable streaming if callback provided
-    });
+    let payload;
+    if (LLM_PROVIDER === 'ollama') {
+      // Ollama /api/generate format - convert messages to prompt
+      const systemPrompt = messages.find(m => m.role === 'system')?.content || '';
+      const userMessages = messages.filter(m => m.role === 'user');
+      const prompt = systemPrompt
+        ? `${systemPrompt}\n\n${userMessages.map(m => m.content).join('\n')}`
+        : userMessages.map(m => m.content).join('\n');
+
+      payload = JSON.stringify({
+        model,
+        prompt,
+        stream: !!stream,
+        options: {
+          temperature,
+          num_predict: maxTokens
+        }
+      });
+    } else {
+      // OpenAI format
+      payload = JSON.stringify({
+        model,
+        messages,
+        max_tokens: maxTokens,
+        temperature,
+        stream: !!stream
+      });
+    }
 
     console.log(`🔧 Payload:`, JSON.stringify({model, messageCount: messages.length, max_tokens: maxTokens, stream: !!stream}));
 
     let requestOptions;
 
     if (LLM_PROVIDER === 'ollama') {
-      // Ollama local API (HTTP, no auth required)
-      const url = new URL(`${OLLAMA_BASE_URL}/v1/chat/completions`);
+      // Ollama local API (HTTP, no auth required) - use /api/generate
+      const url = new URL(`${OLLAMA_BASE_URL}/api/generate`);
       requestOptions = {
         method: 'POST',
         hostname: url.hostname,
@@ -148,24 +169,41 @@ function callLLM(options) {
             const lines = chunk.toString().split('\n').filter(line => line.trim());
 
             for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6);
-
-                if (data === '[DONE]') {
-                  stream({ type: 'done' });
-                  break;
-                }
-
-                try {
-                  const parsed = JSON.parse(data);
-                  const delta = parsed.choices?.[0]?.delta?.content;
-                  if (delta) {
-                    fullContent += delta;
-                    stream({ type: 'delta', content: delta });
+              try {
+                if (LLM_PROVIDER === 'ollama') {
+                  // Ollama /api/generate response format
+                  if (line.trim()) {
+                    const parsed = JSON.parse(line);
+                    if (parsed.done) {
+                      stream({ type: 'done' });
+                      break;
+                    }
+                    const delta = parsed.response;
+                    if (delta) {
+                      fullContent += delta;
+                      stream({ type: 'delta', content: delta });
+                    }
                   }
-                } catch (e) {
-                  // Ignore parsing errors for SSE format
+                } else {
+                  // OpenAI response format
+                  if (line.startsWith('data: ')) {
+                    const data = line.slice(6);
+
+                    if (data === '[DONE]') {
+                      stream({ type: 'done' });
+                      break;
+                    }
+
+                    const parsed = JSON.parse(data);
+                    const delta = parsed.choices?.[0]?.delta?.content;
+                    if (delta) {
+                      fullContent += delta;
+                      stream({ type: 'delta', content: delta });
+                    }
+                  }
                 }
+              } catch (e) {
+                // Ignore parsing errors for SSE format
               }
             }
           });
@@ -183,7 +221,16 @@ function callLLM(options) {
             const body = Buffer.concat(chunks).toString();
             try {
               const data = JSON.parse(body);
-              const content = data.choices?.[0]?.message?.content || '';
+              let content = '';
+
+              if (LLM_PROVIDER === 'ollama') {
+                // Ollama response format
+                content = data.response || '';
+              } else {
+                // OpenAI response format
+                content = data.choices?.[0]?.message?.content || '';
+              }
+
               resolve({ ok: true, content });
             } catch (error) {
               resolve({ ok: false, error: 'Failed to parse response' });

@@ -55,9 +55,9 @@
   /* Pills */
   --pill-font-size: 11px;
   --pill-radius: 999px;
-  --pill-bg: #e0e7ff;
-  --pill-fg: #1e3a8a;
-  --pill-border: #c7d2fe;
+  --pill-bg: #6b7280;
+  --pill-fg: #ffffff;
+  --pill-border: #9ca3af;
 
   /* Banners */
   --banner-info-bg: #eef2ff;

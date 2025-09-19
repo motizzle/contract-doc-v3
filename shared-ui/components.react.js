@@ -620,9 +620,8 @@
         add('View Latest', viewLatest, true),
       ].filter(Boolean);
 
-      return React.createElement(React.Fragment, null,
+      return React.createElement('div', { className: 'd-flex flex-column gap-6' },
         React.createElement('div', { className: 'd-grid grid-cols-2 column-gap-8 row-gap-6 grid-auto-rows-minmax-27' }, topCluster),
-        React.createElement('div', { className: 'h-4' }),
         React.createElement('div', { className: 'd-grid grid-cols-2 column-gap-8 row-gap-6 grid-auto-rows-minmax-27' }, bottomGrid),
         confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
       );
