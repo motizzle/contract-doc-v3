@@ -1333,3 +1333,22 @@ body .brand-header-bg .pulse-pill {
   padding: 6px 12px;
   border-radius: 6px;
 }
+
+/* Header layout styles */
+.addin-header-layout {
+  justify-content: space-between;
+}
+.addin-header-left {
+  display: flex;
+  align-items: center;
+}
+.header-bar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 8px 12px;
+}
+.header-actions {
+  display: flex;
+  justify-content: flex-end;
+}
