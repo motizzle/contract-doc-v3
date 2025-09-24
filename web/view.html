@@ -18,13 +18,12 @@
     @media (max-width: 640px) { .brand-logo img { height: 22px; } }
     body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; height: 100vh; }
     /* Background now comes from .brand-header-bg in /web/branding.css */
-    :root { --banner-h: 60px; }
-    #banner { min-height: var(--banner-h); display: flex; align-items: center; justify-content: flex-end; padding: 0 12px; color: #fff; }
-    .banner-inner { display: flex; justify-content: flex-end; width: 100%; max-width: 1024px; }
-    #layout { position: relative; height: calc(100vh - var(--banner-h)); }
+    #banner { min-height: 60px; display: flex; align-items: center; justify-content: flex-end; padding: 0 12px; color: #fff; }
+    .banner-inner { display: flex; justify-content: flex-end; width: 100%; }
+    #layout { position: relative; height: 100vh; }
     #editor-col { position: relative; z-index: 1; display: flex; flex-direction: column; min-width: 0; }
     #superdoc { position: relative; z-index: 1; flex: 1; min-height: 0; }
-    #pane { position: relative; z-index: 5; width: 437px; max-width: 437px; border-left: 1px solid #eee; display: flex; flex-direction: column; padding-top: 20px; background: #fff; box-shadow: -2px 0 8px rgba(0,0,0,0.08); }
+    #pane { position: relative; z-index: 5; width: 437px; max-width: 437px; border-left: 1px solid #eee; display: flex; flex-direction: column; background: #fff; box-shadow: -2px 0 8px rgba(0,0,0,0.08); }
     #app-root { padding: 8px 12px; overflow: auto; background: #fff; }
   </style>
   <!-- React UMD (local) and React entry (shared) -->
@@ -42,19 +41,19 @@
 </head>
 <body>
   <a class="brand-logo" href="/" aria-label="OpenGov Home"><img src="/web/assets/opengov-logo.png" alt="OpenGov" /></a>
-  <div id="banner" class="brand-header-bg">
-    <div class="banner-inner">
-      <div class="header-actions">
-        <button onclick="openNewDocument()" class="btn btn--primary">Open New Document</button>
-      </div>
-    </div>
-  </div>
   <div id="layout">
     <div id="editor-col">
       <div id="superdoc-toolbar"></div>
       <div id="superdoc"></div>
     </div>
     <aside id="pane">
+      <div id="banner" class="brand-header-bg">
+        <div class="banner-inner">
+          <div class="header-actions">
+            <button onclick="openNewDocument()" class="btn btn--primary">Open New Document</button>
+          </div>
+        </div>
+      </div>
       <div id="app-root"></div>
     </aside>
   </div>
