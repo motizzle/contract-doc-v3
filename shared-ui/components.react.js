@@ -714,120 +714,6 @@
       );
     }
 
-    // Simple pulse pill component (server-themed) + Coming modal
-    function PulsePill(props) {
-      const { onClick } = props || {};
-      const { tokens } = React.useContext(ThemeContext);
-      const [styleVars, setStyleVars] = React.useState({ bg: '#FFB636', fg: '#111827', glow: 'rgba(255,182,54,0.35)' });
-      const [isPulsing, setIsPulsing] = React.useState(false);
-      const [pulseDuration, setPulseDuration] = React.useState(1.5);
-
-      React.useEffect(() => {
-        let mounted = true;
-        let idx = 0;
-        function hexToRgb(hex){ const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return m?{r:parseInt(m[1],16),g:parseInt(m[2],16),b:parseInt(m[3],16)}:null; }
-        function randInt(min, max){ return Math.floor(Math.random() * (max - min + 1)) + min; }
-
-        const pulse = tokens?.pulse || {};
-        const palette = (Array.isArray(pulse.palette) && pulse.palette.length ? pulse.palette : [
-          { bg: '#FFB636', fg: '#111827' },  // Orange
-          { bg: '#22C55E', fg: '#ffffff' },  // Green
-          { bg: '#EF4444', fg: '#ffffff' },  // Red
-          { bg: '#06B6D4', fg: '#0f172a' },  // Cyan
-          { bg: '#8B5CF6', fg: '#ffffff' }   // Purple
-        ]);
-
-        function startPulse() {
-          if (!mounted) return;
-
-          // Random pulse duration (1-3 seconds)
-          const duration = randInt(1000, 3000) / 1000;
-          setPulseDuration(duration);
-
-          // Start pulsing animation
-          setIsPulsing(true);
-
-          // Change to next color
-          const pair = palette[idx % palette.length];
-          idx++;
-          const rgb = hexToRgb(pair.bg) || { r: 75, g: 63, b: 255 };
-          const glow = `rgba(${rgb.r},${rgb.g},${rgb.b},0.35)`;
-          setStyleVars({ bg: pair.bg, fg: pair.fg || '#ffffff', glow });
-
-          // Stop pulsing after animation duration
-          setTimeout(() => {
-            if (mounted) {
-              setIsPulsing(false);
-              // Schedule next pulse (6-15 seconds delay)
-              setTimeout(startPulse, randInt(6000, 15000));
-            }
-          }, duration * 1000);
-        }
-
-        // Start first pulse after initial delay
-        setTimeout(startPulse, randInt(2000, 5000));
-
-        return () => { mounted = false; };
-      }, [tokens]);
-      const dynamicStyle = {
-        background: styleVars.bg,
-        color: styleVars.fg,
-        boxShadow: `0 0 10px ${styleVars.glow}`,
-        animationDuration: `${pulseDuration}s`
-      };
-
-      const className = `pulse-pill${isPulsing ? ' pulsing' : ''}`;
-
-      return React.createElement('span', {
-        className,
-        style: dynamicStyle,
-        onClick,
-        title: 'Upcoming features'
-      }, 'Coming 2026');
-    }
-
-    function ComingModal(props) {
-      const { onClose } = props || {};
-      const { tokens } = React.useContext(ThemeContext);
-      const t = tokens && tokens.modal ? tokens.modal : {};
-
-      const badge = (txt, tone) => {
-        const className = `badge-base ${tone === 'indigo' ? 'badge-indigo' : tone === 'green' ? 'badge-green' : 'badge-gray'}`;
-        return React.createElement('span', { className }, txt);
-      };
-
-      const rows = [
-        { feature: 'Contracts Landing Page', status: badge('pending release','gray'), release: '2025-09-16', actions: React.createElement('input', { type: 'checkbox', defaultChecked: true, 'aria-label': 'Enable Contracts Landing Page' }) },
-        { feature: 'Evaluations, Awards, and Notices V2', status: badge('in development','indigo'), release: 'Q4 2025', actions: React.createElement('input', { type: 'checkbox', defaultChecked: true, 'aria-label': 'Enable Evaluations, Awards, and Notices V2' }) },
-        { feature: 'Contract authoring in Word', status: badge('vision','green'), release: 'Q1 2026', actions: React.createElement('input', { type: 'checkbox', defaultChecked: true, 'aria-label': 'Enable Contract authoring in Word' }) },
-      ];
-
-      return React.createElement('div', { className: 'modal-overlay', onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
-        React.createElement('div', { className: 'modal-panel' }, [
-          React.createElement('div', { key: 'h', className: 'modal-header' }, [
-            React.createElement('div', { key: 't', className: 'font-bold' }, 'The Future is Coming'),
-            React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: onClose }, '✕')
-          ]),
-          React.createElement('div', { key: 'b', className: 'modal-body' }, [
-            React.createElement('div', { key: 'lead', className: 'text-lg text-gray-500 mb-2' }, 'Preview and toggle upcoming features'),
-            React.createElement('table', { key: 'tbl', className: 'w-full table-collapse', role: 'table', 'aria-label': 'Upcoming features' }, [
-              React.createElement('thead', { key: 'th' }, React.createElement('tr', null, [
-                React.createElement('th', { className: 'text-left table-cell-padding w-45' }, 'Feature'),
-                React.createElement('th', { className: 'text-left table-cell-padding w-20' }, 'Status'),
-                React.createElement('th', { className: 'text-left table-cell-padding w-20' }, 'Release'),
-                React.createElement('th', { className: 'text-left table-cell-padding w-15' }, 'Actions'),
-              ])),
-              React.createElement('tbody', { key: 'tb' }, rows.map((r, i) => React.createElement('tr', { key: i, className: 'border-t border-gray-200' }, [
-                React.createElement('td', { className: 'table-cell-padding' }, r.feature),
-                React.createElement('td', { className: 'table-cell-padding' }, r.status),
-                React.createElement('td', { className: 'table-cell-padding' }, r.release),
-                React.createElement('td', { className: 'table-cell-padding' }, r.actions),
-              ])))
-            ])
-          ])
-        ])
-      );
-    }
 
     function ChatConsole() {
       const API_BASE = getApiBase();
@@ -1635,7 +1521,6 @@
 
     function App() {
       const [modal, setModal] = React.useState(null);
-      const [showComing, setShowComing] = React.useState(false);
       const { documentSource } = React.useContext(StateContext);
       React.useEffect(() => {
         function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); if (d && d.id === 'notifications') setModal({ id: 'notifications' }); if (d && d.id === 'request-review') setModal({ id: 'request-review' }); if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); } catch {} }
@@ -1655,19 +1540,8 @@
             React.createElement(ErrorBanner, null),
             // SuperDoc host only on web
             (typeof Office === 'undefined' ? React.createElement(SuperDocHost, { key: 'host', src: documentSource }) : null),
-            // 2 - Banners (top) and pill (render into top-right slot if available)
-            React.createElement('div', { key: 'toprow' }, [
-              React.createElement(BannerStack, { key: 'banners' }),
-              (function(){
-                try {
-                  const slot = document.getElementById('coming-pill-slot');
-                  if (slot && win.ReactDOM && typeof win.ReactDOM.createPortal === 'function') {
-                    return win.ReactDOM.createPortal(React.createElement(PulsePill, { onClick: () => setShowComing(true) }), slot);
-                  }
-                } catch {}
-                return React.createElement(PulsePill, { onClick: () => setShowComing(true) });
-              })()
-            ]),
+            // 2 - Banners (top)
+            React.createElement(BannerStack, { key: 'banners' }),
             // 1 - User selection + role pill + status
             React.createElement('div', { className: 'mt-2 border-t border-gray-200 pt-2' }, [
               React.createElement('div', { key: 'hdr1', className: 'ui-section-header' }, 'User & Role'),
@@ -1689,7 +1563,6 @@
               React.createElement(ChatConsole, { key: 'chat' }),
             ]),
             modal ? (modal.id === 'send-vendor' ? React.createElement(SendVendorModal, { userId: modal.userId, onClose: () => setModal(null) }) : (modal.id === 'approvals' ? React.createElement(ApprovalsModal, { onClose: () => setModal(null) }) : (modal.id === 'compile' ? React.createElement(CompileModal, { onClose: () => setModal(null) }) : (modal.id === 'notifications' ? React.createElement(NotificationsModal, { onClose: () => setModal(null) }) : (modal.id === 'request-review' ? React.createElement(RequestReviewModal, { onClose: () => setModal(null) }) : (modal.id === 'message' ? React.createElement(MessageModal, { toUserId: modal.toUserId, toUserName: modal.toUserName, onClose: () => setModal(null) }) : (modal.id === 'open-gov' ? React.createElement(OpenGovModal, { onClose: () => setModal(null) }) : null))))))) : null,
-            showComing ? React.createElement(ComingModal, { key: 'coming', onClose: () => setShowComing(false) }) : null,
             confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
           )
         )
