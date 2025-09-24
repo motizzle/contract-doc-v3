@@ -509,6 +509,10 @@ app.get('/api/v1/state-matrix', (req, res) => {
     documentVersion: serverState.documentVersion,
     lastUpdated: serverState.lastUpdated,
     updatedBy: serverState.updatedBy,
+    lastSaved: {
+      user: serverState.updatedBy || 'Unknown User',
+      timestamp: serverState.lastUpdated || 'Unknown Time'
+    },
     buttons: {
       replaceDefaultBtn: true,
       finalizeBtn: !!rolePerm.finalize && !serverState.isFinal && canWrite,
