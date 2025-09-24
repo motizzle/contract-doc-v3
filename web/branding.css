@@ -1342,13 +1342,6 @@ body .brand-header-bg .pulse-pill {
   display: flex;
   align-items: center;
 }
-.header-bar {
-  position: absolute;
-  top: 0;
-  right: 0;
-  padding: 8px 12px;
-  z-index: 10001;
-}
 .header-actions {
   display: flex;
   justify-content: flex-end;
