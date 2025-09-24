@@ -10,8 +10,17 @@
   <!-- Preload local React UMD -->
   <link rel="preload" as="script" href="/vendor/react/react.production.min.js" />
   <link rel="preload" as="script" href="/vendor/react/react-dom.production.min.js" />
-  <!-- Shared branding styles -->
-  <link href="/web/branding.css?v=brand-m3" rel="stylesheet" />
+    <!-- Shared branding styles -->
+    <link href="/web/branding.css?v=brand-m3" rel="stylesheet" />
+    <style>
+      .header-actions button {
+        background: #5069ff !important;
+        color: white !important;
+        border: 1px solid #111827;
+        padding: 6px 12px;
+        border-radius: 6px;
+      }
+    </style>
   <style>
     .brand-logo { position: fixed; top: 8px; left: 12px; z-index: 10000; display: inline-flex; align-items: center; }
     .brand-logo img { height: 30px; width: auto; display: block; }
@@ -43,7 +52,7 @@
   <a class="brand-logo" href="/" aria-label="OpenGov Home"><img src="/web/assets/opengov-logo.png" alt="OpenGov" /></a>
   <div class="header-bar">
     <div class="header-actions">
-      <button onclick="openNewDocument()" class="btn btn--primary" style="background: #5069ff; color: white; border: 1px solid #111827; padding: 6px 12px; border-radius: 6px;">Open New Document</button>
+      <button onclick="openNewDocument()" class="btn btn--primary">Open New Document</button>
     </div>
   </div>
   <div id="layout">
