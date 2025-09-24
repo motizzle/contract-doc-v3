@@ -521,6 +521,15 @@
       const { config, actions, revision, setDocumentSource, addLog, setLoadedVersion } = React.useContext(StateContext);
       const [confirm, setConfirm] = React.useState(null);
       const { tokens } = React.useContext(ThemeContext);
+
+      // Listen for open-new-document event from header button
+      React.useEffect(() => {
+        function handleOpenNew() {
+          openNew();
+        }
+        window.addEventListener('open-new-document', handleOpenNew);
+        return () => window.removeEventListener('open-new-document', handleOpenNew);
+      }, []);
       const btns = (config && config.buttons) ? config.buttons : {};
       const ask = (title, message, onConfirm) => setConfirm({ title, message, onConfirm });
       const add = (label, onClick, show, variant, opts = {}) => show
@@ -624,7 +633,6 @@
           add('...', () => setMenuOpen(!menuOpen), true, 'secondary'),
           nestedActions.length > 0 && menuOpen ? React.createElement('div', { style: { position: 'absolute', left: 0, top: '100%', minWidth: '150px', minHeight: '100px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, nestedActions) : null
         ]),
-        add('Open New Document', openNew, true),
         add('View Latest', viewLatest, true),
       ].filter(Boolean);
    

@@ -23,6 +23,8 @@
     #superdoc { position: relative; z-index: 1; flex: 1; min-height: 0; }
     #pane { position: relative; z-index: 5; width: 437px; max-width: 437px; border-left: 1px solid #eee; display: flex; flex-direction: column; padding-top: 20px; background: #fff; box-shadow: -2px 0 8px rgba(0,0,0,0.08); }
     #app-root { padding: 8px 12px; overflow: auto; background: #fff; }
+    .header-bar { position: absolute; top: 0; right: 0; padding: 8px 12px; }
+    .header-actions { display: flex; justify-content: flex-end; }
   </style>
   <!-- React UMD (local) and React entry (shared) -->
   <script defer src="/vendor/react/react.production.min.js"></script>
@@ -39,6 +41,11 @@
 </head>
 <body>
   <a class="brand-logo" href="/" aria-label="OpenGov Home"><img src="/web/assets/opengov-logo.png" alt="OpenGov" /></a>
+  <div class="header-bar">
+    <div class="header-actions">
+      <button onclick="openNewDocument()" class="btn btn--primary">Open New Document</button>
+    </div>
+  </div>
   <div id="layout">
     <div id="editor-col">
       <div id="superdoc-toolbar"></div>
@@ -50,6 +57,9 @@
   </div>
   <script>
     // Pill and modal are managed by shared UI in Phase 2; no inline wiring in Phase 1
+    function openNewDocument() {
+      window.dispatchEvent(new CustomEvent('open-new-document'));
+    }
   </script>
 </body>
 </html>
