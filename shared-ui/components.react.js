@@ -606,20 +606,28 @@
         add('Override Checkout', actions.override, !!btns.overrideBtn),
       ].filter(Boolean);
 
-      // Bottom: all other actions, in a uniform grid
-      const bottomGrid = [
+      // Menu state and nested actions
+      const [menuOpen, setMenuOpen] = React.useState(false);
+      const nestedActions = [
         add('Finalize', () => ask('Finalize?', 'This will lock the document.', actions.finalize), !!btns.finalizeBtn, 'primary'),
-        add('Unfinalize', () => ask('Unlock?', 'This will unlock the document.', actions.unfinalize), !!btns.unfinalizeBtn),
-        add('Send to Vendor', () => { try { setTimeout(() => { try { actions.sendVendor({}); } catch {} }, 130); } catch {} }, !!btns.sendVendorBtn),
         add('Back to OpenGov', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'open-gov' } })); } catch {} }, !!btns.openGovBtn, 'primary'),
+        add('Send to Vendor', () => { try { setTimeout(() => { try { actions.sendVendor({}); } catch {} }, 130); } catch {} }, !!btns.sendVendorBtn),
         add('Request review', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'request-review' } })); } catch {} }, true, 'primary'),
         add('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true, 'primary'),
         add('Factory Reset', () => ask('Factory reset?', 'This will clear working data.', actions.factoryReset), true),
-        // Document controls (standardized spacing within the same grid)
+      ].filter(Boolean);
+
+      // Bottom: all other actions, with '...' for menu
+      const bottomGrid = [
+        add('Unfinalize', () => ask('Unlock?', 'This will unlock the document.', actions.unfinalize), !!btns.unfinalizeBtn),
+        React.createElement('div', { style: { position: 'relative' } }, [
+          add('...', () => setMenuOpen(!menuOpen), true, 'secondary'),
+          nestedActions.length > 0 && menuOpen ? React.createElement('div', { style: { position: 'absolute', left: 0, top: '100%', minWidth: '150px', minHeight: '100px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, nestedActions) : null
+        ]),
         add('Open New Document', openNew, true),
         add('View Latest', viewLatest, true),
       ].filter(Boolean);
-
+   
       return React.createElement('div', { className: 'd-flex flex-column gap-6' },
         React.createElement('div', { className: 'd-grid grid-cols-2 column-gap-8 row-gap-6 grid-auto-rows-minmax-27' }, topCluster),
         React.createElement('div', { className: 'd-grid grid-cols-2 column-gap-8 row-gap-6 grid-auto-rows-minmax-27' }, bottomGrid),
