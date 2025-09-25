@@ -249,9 +249,6 @@
 }
 
 .addin-header .brand-img {
-  position: absolute;
-  top: var(--brand-logo-top);
-  left: var(--brand-logo-left);
   height: var(--brand-logo-height);
   width: auto;
   vertical-align: top;  /* Ensure consistent top alignment with button */
