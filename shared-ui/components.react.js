@@ -1597,7 +1597,7 @@
     }
 
     const root = ReactDOM.createRoot(rootEl);
-    root.render(React.createElement(App, null));
+    root.render(React.createElement(StateProvider, null));
   }
 
   try {
