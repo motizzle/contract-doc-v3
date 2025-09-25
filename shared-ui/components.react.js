@@ -1531,11 +1531,22 @@
           console.log('header found:', document.querySelector('header'));
           console.log('header-actions found:', document.querySelector('.header-actions'));
           console.log('all divs in header-actions:', Array.from(document.querySelector('.header-actions')?.children || []).map(c => c.tagName + ' ' + (c.id || c.className)));
-          const el = document.querySelector('.header-actions > div');
+          let el = document.querySelector('.header-actions > div');
           console.log('Element found by header-actions child:', el);
+          if (!el) {
+            // Create the div if not found (Office removed it)
+            const headerActions = document.querySelector('.header-actions');
+            if (headerActions) {
+              el = document.createElement('div');
+              el.className = 'text-xs text-gray-400 mt-1';
+              el.id = 'last-saved-info';
+              headerActions.appendChild(el);
+              console.log('Created element:', el);
+            }
+          }
           if (el) {
             el.textContent = `Last saved by ${config.lastSaved.user?.label || 'Unknown'} at ${new Date(config.lastSaved.timestamp).toLocaleString()}`;
-            el.style.color = 'red';
+            el.style.color = 'white';
             console.log('Text set to:', el.textContent);
           }
         }
