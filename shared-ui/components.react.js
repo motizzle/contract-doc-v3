@@ -1534,6 +1534,7 @@
     }
 
     function App() {
+      console.log('App render');
       const [modal, setModal] = React.useState(null);
       const { documentSource, config } = React.useContext(StateContext);
       console.log('App context, config:', config);
