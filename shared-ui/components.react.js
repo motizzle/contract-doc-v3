@@ -1542,6 +1542,28 @@
         if (kind === 'unfinalize') setConfirm({ title: 'Unlock?', message: 'This will unlock the document.', onConfirm: actions.unfinalize });
         if (kind === 'reset') setConfirm({ title: 'Factory reset?', message: 'This will clear working data.', onConfirm: actions.factoryReset });
       };
+
+      const renderModal = () => {
+        if (!modal) return null;
+        switch (modal.id) {
+          case 'send-vendor':
+            return React.createElement(SendVendorModal, { userId: modal.userId, onClose: () => setModal(null) });
+          case 'approvals':
+            return React.createElement(ApprovalsModal, { onClose: () => setModal(null) });
+          case 'compile':
+            return React.createElement(CompileModal, { onClose: () => setModal(null) });
+          case 'notifications':
+            return React.createElement(NotificationsModal, { onClose: () => setModal(null) });
+          case 'request-review':
+            return React.createElement(RequestReviewModal, { onClose: () => setModal(null) });
+          case 'message':
+            return React.createElement(MessageModal, { toUserId: modal.toUserId, toUserName: modal.toUserName, onClose: () => setModal(null) });
+          case 'open-gov':
+            return React.createElement(OpenGovModal, { onClose: () => setModal(null) });
+          default:
+            return null;
+        }
+      };
       return React.createElement(ThemeProvider, null,
         React.createElement(React.Fragment, null,
             React.createElement(ErrorBanner, null),
@@ -1569,7 +1591,7 @@
               React.createElement('div', { key: 'hdr3', className: 'ui-section-header' }, 'Assistant'),
               React.createElement(ChatConsole, { key: 'chat' }),
             ]),
-            modal ? (modal.id === 'send-vendor' ? React.createElement(SendVendorModal, { userId: modal.userId, onClose: () => setModal(null) }) : (modal.id === 'approvals' ? React.createElement(ApprovalsModal, { onClose: () => setModal(null) }) : (modal.id === 'compile' ? React.createElement(CompileModal, { onClose: () => setModal(null) }) : (modal.id === 'notifications' ? React.createElement(NotificationsModal, { onClose: () => setModal(null) }) : (modal.id === 'request-review' ? React.createElement(RequestReviewModal, { onClose: () => setModal(null) }) : (modal.id === 'message' ? React.createElement(MessageModal, { toUserId: modal.toUserId, toUserName: modal.toUserName, onClose: () => setModal(null) }) : (modal.id === 'open-gov' ? React.createElement(OpenGovModal, { onClose: () => setModal(null) }) : null))))))) : null,
+            renderModal(),
             confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
           ])
         )
