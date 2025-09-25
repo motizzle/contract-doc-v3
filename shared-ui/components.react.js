@@ -1571,7 +1571,7 @@
             ]),
             modal ? (modal.id === 'send-vendor' ? React.createElement(SendVendorModal, { userId: modal.userId, onClose: () => setModal(null) }) : (modal.id === 'approvals' ? React.createElement(ApprovalsModal, { onClose: () => setModal(null) }) : (modal.id === 'compile' ? React.createElement(CompileModal, { onClose: () => setModal(null) }) : (modal.id === 'notifications' ? React.createElement(NotificationsModal, { onClose: () => setModal(null) }) : (modal.id === 'request-review' ? React.createElement(RequestReviewModal, { onClose: () => setModal(null) }) : (modal.id === 'message' ? React.createElement(MessageModal, { toUserId: modal.toUserId, toUserName: modal.toUserName, onClose: () => setModal(null) }) : (modal.id === 'open-gov' ? React.createElement(OpenGovModal, { onClose: () => setModal(null) }) : null))))))) : null,
             confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
-          )
+          ])
         )
       );
     }
