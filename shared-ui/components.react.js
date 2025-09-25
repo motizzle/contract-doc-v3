@@ -649,7 +649,7 @@
       const menuItem = (label, onClick, show, opts = {}) => {
         if (!show) return null;
         const className = 'ui-menu__item' + (opts.danger ? ' danger' : '');
-        const handler = (e) => { try { e.stopPropagation?.(); } catch {} try { setMenuOpen(false); } catch {} try { onClick?.(e); } catch {} };
+        const handler = (e) => { try { e.stopPropagation?.(); } catch {} try { setMenuOpen(false); } catch {} try { setCheckinMenuOpen(false); } catch {} try { onClick?.(e); } catch {} };
         const onKey = (e) => { try { if (e && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handler(e); } } catch {} };
         return React.createElement('div', { key: label, role: 'menuitem', tabIndex: 0, className, onClick: handler, onKeyDown: onKey }, label);
       };
@@ -732,8 +732,8 @@
             React.createElement('div', { style: { position: 'relative', flex: '1 1 0' } }, [
               add('Check-in ▾', () => setCheckinMenuOpen(!checkinMenuOpen), !!btns.checkinBtn, 'secondary', { style: { width: '100%' } }),
               (checkinMenuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 100 } }, [
-                add('Check-in and Save', async () => { try { const ok = await actions.saveProgress(); if (ok) await actions.checkin(); } catch {} }, !!btns.checkinBtn),
-                add('Cancel Checkout', actions.cancel, !!btns.cancelBtn)
+                menuItem('Check-in and Save', async () => { try { const ok = await actions.saveProgress(); if (ok) await actions.checkin(); } catch {} }, !!btns.checkinBtn),
+                menuItem('Cancel Checkout', actions.cancel, !!btns.cancelBtn)
               ]) : null)
             ]),
             React.createElement('div', { style: { position: 'relative' } }, [
@@ -1775,6 +1775,7 @@
       const [hdr, setHdr] = React.useState({ approved: 0, total: 0 });
       const [busy, setBusy] = React.useState(false);
       const [error, setError] = React.useState('');
+      const [prompt, setPrompt] = React.useState(null);
       const load = React.useCallback(async () => {
         try {
           const r = await fetch(`${API_BASE}/api/v1/approvals`);
@@ -1792,6 +1793,14 @@
       };
       const titleOf = (uid) => {
         try { const u = (users || []).find(x => (x && (x.id === uid || x.label === uid))); return (u && (u.title || '')) || ''; } catch { return ''; }
+      };
+      const initialsOf = (label) => {
+        try {
+          const parts = String(label || '').trim().split(/\s+/).filter(Boolean);
+          if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+          if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+          return '';
+        } catch { return ''; }
       };
 
       const canOverride = (String(currentRole || '').toLowerCase() === 'editor');
@@ -1813,9 +1822,7 @@
       const onToggle = async (row, next) => {
         if (!canToggle(row)) return;
         if (row.userId !== currentUser && canOverride) {
-          try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'confirm', options: { title: 'Override approval?', message: `Override approval for ${row.name}?`, onConfirm: async () => { await setSelf(row.userId, next); } } } })); } catch {}
-          // Fallback: just set
-          await setSelf(row.userId, next);
+          setPrompt({ title: 'Override approval?', message: `Override approval for ${row.name}?`, onConfirm: async () => { await setSelf(row.userId, next); } });
           return;
         }
         await setSelf(row.userId, next);
@@ -1830,22 +1837,27 @@
         finally { setBusy(false); }
       };
 
-      const header = React.createElement('div', { className: 'd-flex items-center justify-between mb-2' }, [
-        React.createElement('div', { key: 'sum', className: 'text-sm text-gray-700' }, `Approvals (${hdr.approved}/${hdr.total} approved)`),
-        React.createElement(UIButton, { key: 'notify', label: 'Notify reviewers', onClick: notify, variant: 'secondary' })
-      ]);
+      const header = null;
 
       const list = !rows ? React.createElement('div', null, 'Loading...') : React.createElement('div', { className: 'd-flex flex-column gap-8' },
         rows.map((r, i) => React.createElement('div', { key: r.userId || i, className: 'workflow-card d-flex items-center justify-between' }, [
-          React.createElement('div', { key: 'l', className: 'd-flex flex-column' }, [
-            React.createElement('div', { key: 'n', className: 'font-medium' }, r.name || r.userId),
-            React.createElement('div', { key: 'tr', className: 'text-sm text-gray-600' }, [titleOf(r.userId), titleOf(r.userId) ? ' • ' : '', (roleOf(r.userId) || '').toString()])
+          React.createElement('div', { key: 'lwrap', className: 'd-flex items-center' }, [
+            React.createElement('div', { key: 'av', className: 'avatar-initials', style: { marginRight: 10 } }, initialsOf(r.name || r.userId)),
+            React.createElement('div', { key: 'txt', className: 'd-flex flex-column' }, [
+              React.createElement('div', { key: 'n', className: 'font-medium' }, r.name || r.userId),
+              React.createElement('div', { key: 'tr', className: 'text-sm text-gray-600' }, [titleOf(r.userId), titleOf(r.userId) ? ' • ' : '', (roleOf(r.userId) || '').toString()])
+            ])
           ]),
           React.createElement('input', { key: 'c', type: 'checkbox', disabled: (!!busy) || (!canToggle(r)), checked: !!r.approved, onChange: (e) => onToggle(r, !!e.target.checked), title: (!canToggle(r) ? 'Only editors can override others' : undefined) })
         ]))
       );
 
-      return React.createElement('div', null, [error ? React.createElement('div', { className: 'bg-error-50 text-error-700 p-2 mb-2 border border-error-200 rounded' }, error) : null, header, list]);
+      return React.createElement('div', null, [
+        error ? React.createElement('div', { className: 'bg-error-50 text-error-700 p-2 mb-2 border border-error-200 rounded' }, error) : null,
+        header,
+        list,
+        (prompt ? React.createElement(ConfirmModal, { title: prompt.title, message: prompt.message, onConfirm: async () => { try { await prompt.onConfirm?.(); } finally { setPrompt(null); } }, onClose: () => setPrompt(null) }) : null)
+      ]);
     }
 
     function App(props) {
@@ -1853,7 +1865,7 @@
       const [modal, setModal] = React.useState(null);
       const { config } = props;
       console.log('App props, config:', config);
-      const { documentSource, actions } = React.useContext(StateContext);
+      const { documentSource, actions, approvalsSummary } = React.useContext(StateContext);
       React.useEffect(() => {
         function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); if (d && d.id === 'notifications') setModal({ id: 'notifications' }); if (d && d.id === 'request-review') setModal({ id: 'request-review' }); if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); } catch {} }
         window.addEventListener('react:open-modal', onOpen);
@@ -1934,6 +1946,8 @@
       }, [activeTab]);
 
       React.useEffect(() => { recalcUnderline(); }, [recalcUnderline]);
+      // Recalculate underline if the Workflow tab label width changes due to summary updates
+      React.useEffect(() => { recalcUnderline(); }, [approvalsSummary, recalcUnderline]);
       React.useEffect(() => {
         const onResize = () => recalcUnderline();
         window.addEventListener('resize', onResize);
@@ -1953,7 +1967,12 @@
             className: activeTab === 'Workflow' ? 'tab tab--active' : 'tab',
             onClick: () => setActiveTab('Workflow'),
             style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Workflow' ? '#111827' : '#6B7280', fontWeight: 600 }
-          }, React.createElement('span', { ref: wfLabelRef, style: { display: 'inline-block' } }, 'Workflow')),
+          }, React.createElement('span', { ref: wfLabelRef, style: { display: 'inline-block' } }, [
+            'Workflow',
+            (approvalsSummary && typeof approvalsSummary.total === 'number'
+              ? ` (${approvalsSummary.approved || 0}/${approvalsSummary.total})`
+              : '')
+          ])),
           React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
         React.createElement('div', { key: 'tabbody', className: 'mt-3' }, [

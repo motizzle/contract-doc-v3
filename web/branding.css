@@ -1420,6 +1420,18 @@ body .brand-header-bg .pulse-pill {
   padding: 10px 12px;
   background: #ffffff;
 }
+.avatar-initials {
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: #E5E7EB;
+  color: #111827;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+}
 
 /* Add-in (Word) specific: no outer gutters; ensure 3px padding on all sides */
 .ms-welcome .panel { padding: 14px; margin-left: 0; margin-right: 0; }
