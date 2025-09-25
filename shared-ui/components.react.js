@@ -1725,8 +1725,9 @@
         }
       };
 
+      const topRowStyle = { gap: 5, paddingTop: (typeof Office === 'undefined' ? 8 : 0) };
       const topPanel = React.createElement('div', { className: 'panel panel--top' }, [
-        React.createElement('div', { className: 'd-flex items-center', style: { gap: 5 } }, [
+        React.createElement('div', { className: 'd-flex items-center', style: topRowStyle }, [
           React.createElement(NotificationsBell, { key: 'bell-top' }),
           React.createElement('div', { style: { width: 5, height: 1 } }),
           React.createElement(StatusBadge, { key: 'status' }),
