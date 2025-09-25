@@ -1537,6 +1537,9 @@
             // Create the div if not found (Office removed it)
             const headerActions = document.querySelector('.header-actions');
             if (headerActions) {
+              // Set flex direction to column to stack button and div vertically
+              headerActions.style.flexDirection = 'column';
+              headerActions.style.alignItems = 'flex-end';
               el = document.createElement('div');
               el.className = 'text-xs text-gray-400 mt-1';
               el.id = 'last-saved-info';
