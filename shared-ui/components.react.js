@@ -342,6 +342,37 @@
 
       // Do NOT auto-update document on revision changes. The banner/CTA controls refresh.
 
+      // Refresh the document ONLY when the user changes (explicit action)
+      const didInitUserRef = React.useRef(false);
+      React.useEffect(() => {
+        // Skip on initial mount; we already set initial document (web) or leave as-is (Word)
+        if (!didInitUserRef.current) { didInitUserRef.current = true; return; }
+        (async () => {
+          try {
+            const w = `${API_BASE}/documents/working/default.docx`;
+            const c = `${API_BASE}/documents/canonical/default.docx`;
+            let url = c;
+            try {
+              const h = await fetch(w, { method: 'HEAD' });
+              if (h.ok) {
+                const len = Number(h.headers.get('content-length') || '0');
+                if (Number.isFinite(len) && len > MIN_DOCX_SIZE) url = w;
+              }
+            } catch {}
+            const withRev = `${url}?rev=${Date.now()}`;
+            if (typeof Office !== 'undefined') {
+              const res = await fetch(withRev, { cache: 'no-store' }); if (!res.ok) throw new Error('download');
+              const buf = await res.arrayBuffer();
+              const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
+              await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
+            } else {
+              setDocumentSource(withRev);
+              addLog(`doc src userSwitch -> ${withRev}`, 'document');
+            }
+          } catch {}
+        })();
+      }, [userId]);
+
       async function exportWordDocumentAsBase64() {
         function u8ToB64(u8) { let bin=''; for (let i=0;i<u8.length;i++) bin+=String.fromCharCode(u8[i]); return btoa(bin); }
         function normalizeSliceToB64(data) {
@@ -702,16 +733,43 @@
       })();
 
       const showUpdateBanner = Array.isArray(config?.banners) && (config.banners || []).some(b => b && b.state === 'update_available');
-      const updateBannerText = (function(){
+      const updateBannerParts = (function(){
         try {
           const b = (config.banners || []).find(x => x && x.state === 'update_available');
-          return (b && (b.title && b.message ? `${b.title}: ${b.message}` : (b.title || b.message))) || '';
-        } catch { return ''; }
+          return {
+            title: (b && b.title) || '',
+            message: (b && b.message) || ''
+          };
+        } catch { return { title: '', message: '' }; }
       })();
 
       return React.createElement('div', { ref: rootRef, className: 'd-flex flex-column gap-6' },
         topLayout,
-        (showUpdateBanner ? React.createElement('div', { className: 'update-banner' }, updateBannerText) : null),
+        (showUpdateBanner ? (
+          React.createElement('div', { className: 'update-banner' },
+            React.createElement('div', { style: { position: 'relative', width: '100%' } }, [
+              React.createElement('div', { key: 'row', style: { display: 'grid', gridTemplateColumns: '24px 1fr auto', alignItems: 'center', columnGap: 12 } }, [
+                // Icon
+                React.createElement('div', { key: 'icon', style: { width: 24, height: 24, borderRadius: '50%', border: '2px solid currentColor', color: '#0E6F7F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 } }, 'i'),
+                // Text (title + message)
+                React.createElement('div', { key: 'text', style: { color: 'inherit', textAlign: 'left' } }, [
+                  updateBannerParts.title ? React.createElement('div', { key: 't', style: { fontWeight: 700, color: '#0E6F7F' } }, updateBannerParts.title) : null,
+                  updateBannerParts.message ? React.createElement('div', { key: 'm' }, updateBannerParts.message) : null,
+                ]),
+                // Tertiary button aligned with title baseline
+                React.createElement('button', {
+                  key: 'btn',
+                  onClick: viewLatest,
+                  title: 'View latest',
+                  style: {
+                    background: 'transparent', border: 'none', padding: 0, margin: 0,
+                    color: 'inherit', cursor: 'pointer', font: 'inherit', textDecoration: 'underline', alignSelf: 'start'
+                  }
+                }, 'View latest')
+              ])
+            ])
+          )
+        ) : null),
         React.createElement('div', { className: 'd-grid grid-cols-2 column-gap-8 row-gap-6 grid-auto-rows-minmax-27' }, bottomGrid),
         confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
       );
