@@ -1593,7 +1593,15 @@
               React.createElement(ChatConsole, { key: 'chat' }),
             ]),
             renderModal(),
-            confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
+            confirm ? React.createElement(
+              ConfirmModal,
+              {
+                title: confirm.title,
+                message: confirm.message,
+                onConfirm: confirm.onConfirm,
+                onClose: () => setConfirm(null)
+              }
+            ) : null
           ])
         )
       );
