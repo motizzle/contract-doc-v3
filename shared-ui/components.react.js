@@ -1528,10 +1528,13 @@
       React.useEffect(() => {
         console.log('useEffect for last saved, config:', config);
         if (config?.lastSaved && typeof document !== 'undefined') {
+          console.log('header found:', document.querySelector('header'));
+          console.log('header-actions found:', document.querySelector('.header-actions'));
           const el = document.querySelector('header .header-actions div');
           console.log('Element found:', el);
           if (el) {
             el.textContent = `Last saved by ${config.lastSaved.user} at ${new Date(config.lastSaved.timestamp).toLocaleString()}`;
+            el.style.color = 'red';
             console.log('Text set to:', el.textContent);
           }
         }
