@@ -49,10 +49,10 @@
     <aside id="pane">
       <div id="banner" class="brand-header-bg">
         <div class="banner-inner">
-          <div class="header-actions">
+          <div class="header-actions" style="display: flex; flex-direction: column; align-items: flex-end;">
             <button onclick="openNewDocument()" class="btn btn--primary">Open New Document</button>
+            <div id="last-saved-info" class="text-xs text-gray-300 mt-1"></div>
           </div>
-          <div id="last-saved-info" class="text-xs text-gray-300 mt-1"></div>
         </div>
       </div>
       <div id="app-root"></div>
