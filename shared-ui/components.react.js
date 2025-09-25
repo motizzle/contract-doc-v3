@@ -218,12 +218,20 @@
         const qs = `platform=${encodeURIComponent(plat)}&userId=${encodeURIComponent(userId)}&clientVersion=${encodeURIComponent(loadedVersion||0)}`;
         try {
           const r = await fetch(`${API_BASE}/api/v1/state-matrix?${qs}`);
-          if (r.ok) {
-            const j = await r.json();
-            setConfig(j.config || null);
-            if (typeof j.revision === 'number') setRevision(j.revision);
-            try { const sum = j?.config?.approvals?.summary || null; setApprovalsSummary(sum); } catch {}
-          }
+            if (r.ok) {
+              const j = await r.json();
+              setConfig(j.config || null);
+              if (typeof j.revision === 'number') setRevision(j.revision);
+              try { const sum = j?.config?.approvals?.summary || null; setApprovalsSummary(sum); } catch {}
+              // Update last saved info in HTML header
+              const lastSaved = j.config?.lastSaved;
+              if (lastSaved && typeof document !== 'undefined') {
+                const el = document.getElementById('last-saved-info');
+                if (el) {
+                  el.textContent = `${lastSaved.user} last saved the file at ${lastSaved.timestamp}`;
+                }
+              }
+            }
         } catch {}
       }, [API_BASE, userId, loadedVersion]);
 

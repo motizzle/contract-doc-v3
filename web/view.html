@@ -63,13 +63,6 @@
     function openNewDocument() {
       window.dispatchEvent(new CustomEvent('open-new-document'));
     }
-    // Fetch and display last saved info
-    fetch('/api/v1/state-matrix?platform=web&userId=user1').then(r => r.json()).then(data => {
-      const lastSaved = data.config?.lastSaved;
-      if (lastSaved) {
-        document.getElementById('last-saved-info').textContent = `${lastSaved.user} last saved the file at ${lastSaved.timestamp}`;
-      }
-    }).catch(() => {});
   </script>
 </body>
 </html>
