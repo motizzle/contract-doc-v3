@@ -220,6 +220,7 @@
           const r = await fetch(`${API_BASE}/api/v1/state-matrix?${qs}`);
             if (r.ok) {
               const j = await r.json();
+              console.log('Fetched config:', j.config);
               setConfig(j.config || null);
               if (typeof j.revision === 'number') setRevision(j.revision);
               try { const sum = j?.config?.approvals?.summary || null; setApprovalsSummary(sum); } catch {}
