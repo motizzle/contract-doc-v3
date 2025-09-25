@@ -204,8 +204,9 @@
           const r = await fetch(`${API_BASE}/api/v1/state-matrix?${qs}`);
             if (r.ok) {
               const j = await r.json();
-              console.log('Fetched config:', j.config);
-              console.log('Setting config to:', j.config);
+            console.log('Fetched config:', j.config);
+            try { console.log('Buttons:', j?.config?.buttons, 'Checkout:', j?.config?.checkoutStatus); } catch {}
+            console.log('Setting config to:', j.config);
               setConfig(j.config || null);
               if (typeof j.revision === 'number') setRevision(j.revision);
               try { const sum = j?.config?.approvals?.summary || null; setApprovalsSummary(sum); } catch {}
@@ -470,7 +471,27 @@
         factoryReset: async () => { try { await fetch(`${API_BASE}/api/v1/factory-reset`, { method: 'POST' }); addLog('System reset completed successfully', 'system'); await refresh(); } catch (e) { addLog(`Failed to reset system: ${e?.message||e}`, 'error'); } },
         sendVendor: (opts) => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'send-vendor', options: { userId, ...(opts||{}) } } })); } catch {} },
         saveProgress: async () => { try { if (typeof Office !== 'undefined') { await saveProgressWord(); } else { await saveProgressWebViaDownload(); } addLog('Progress saved successfully', 'success'); await refresh(); return true; } catch (e) { addLog(`Failed to save progress: ${e?.message||e}`, 'error'); return false; } },
-        setUser: (nextUserId, nextRole) => { try { setUserId(nextUserId); if (nextRole) setRole(nextRole); addLog(`Switched to user: ${nextUserId}`, 'user'); } catch {} },
+        setUser: (nextUserId, nextRole) => {
+          try {
+            const plat = (typeof Office !== 'undefined') ? 'word' : 'web';
+            setUserId(nextUserId);
+            if (nextRole) setRole(nextRole);
+            addLog(`Switched to user: ${nextUserId}`, 'user');
+            // Immediately fetch matrix for the new user so buttons (override) reflect correctly
+            (async () => {
+              try {
+                const qs = `platform=${encodeURIComponent(plat)}&userId=${encodeURIComponent(nextUserId)}&clientVersion=${encodeURIComponent(loadedVersion||0)}`;
+                const r = await fetch(`${API_BASE}/api/v1/state-matrix?${qs}`);
+                if (r.ok) {
+                  const j = await r.json();
+                  try { console.log('[user switch] Buttons:', j?.config?.buttons, 'Checkout:', j?.config?.checkoutStatus); } catch {}
+                  setConfig(j.config || null);
+                  if (typeof j.revision === 'number') setRevision(j.revision);
+                }
+              } catch {}
+            })();
+          } catch {}
+        },
       }), [API_BASE, refresh, userId, addLog]);
 
       return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, renderNotification, formatNotification } }, React.createElement(App, { config }));
@@ -632,6 +653,7 @@
         add('Send to Vendor', () => { try { setTimeout(() => { try { actions.sendVendor({}); } catch {} }, 130); } catch {} }, !!btns.sendVendorBtn),
         add('Request review', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'request-review' } })); } catch {} }, true, 'primary'),
         add('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true, 'primary'),
+        add('Override Checkout', actions.override, !!btns.overrideBtn),
         add('Factory Reset', () => ask('Factory reset?', 'This will clear working data.', actions.factoryReset), true),
       ].filter(Boolean);
 

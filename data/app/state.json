@@ -1,15 +1,15 @@
 {
   "isFinal": false,
-  "checkedOutBy": "user1",
-  "lastUpdated": "2025-09-25T15:44:59.512Z",
-  "revision": 303,
-  "documentVersion": 223,
+  "checkedOutBy": "user2",
+  "lastUpdated": "2025-09-25T15:59:23.363Z",
+  "revision": 306,
+  "documentVersion": 226,
   "title": "CLM Contract",
   "status": "draft",
   "updatedBy": {
-    "userId": "user1",
-    "label": "Warren Peace"
+    "userId": "user2",
+    "label": "Fun E Guy"
   },
-  "updatedPlatform": "word",
+  "updatedPlatform": "web",
   "approvalsRevision": 74
 }
