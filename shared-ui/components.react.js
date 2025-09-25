@@ -1564,6 +1564,8 @@
             return null;
         }
       };
+
+      const renderConfirm = () => confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null;
       return React.createElement(ThemeProvider, null,
         React.createElement(React.Fragment, null,
             React.createElement(ErrorBanner, null),
@@ -1592,7 +1594,7 @@
               React.createElement(ChatConsole, { key: 'chat' }),
             ]),
             renderModal(),
-            confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
+            renderConfirm()
           ])
         )
       );
