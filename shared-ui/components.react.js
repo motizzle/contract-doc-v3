@@ -1537,10 +1537,13 @@
       }, []);
       // Update last saved text in header
       React.useEffect(() => {
+        console.log('useEffect for last saved, config:', config);
         if (config?.lastSaved && typeof document !== 'undefined') {
           const el = document.getElementById('last-saved-info');
+          console.log('Element found:', el);
           if (el) {
             el.textContent = `${config.lastSaved.user} last saved the file at ${config.lastSaved.timestamp}`;
+            console.log('Text set to:', el.textContent);
           }
         }
       }, [config]);
