@@ -227,12 +227,17 @@
               const lastSaved = j.config?.lastSaved;
               console.log('Updating last saved:', lastSaved);
               if (lastSaved && typeof document !== 'undefined') {
-                const el = document.getElementById('last-saved-info');
-                console.log('Element found:', el);
-                if (el) {
-                  el.textContent = `${lastSaved.user} last saved the file at ${lastSaved.timestamp}`;
-                  console.log('Text set to:', el.textContent);
-                }
+                const updateText = () => {
+                  const el = document.getElementById('last-saved-info');
+                  console.log('Element found:', el);
+                  if (el) {
+                    el.textContent = `${lastSaved.user} last saved the file at ${lastSaved.timestamp}`;
+                    console.log('Text set to:', el.textContent);
+                  }
+                };
+                updateText();
+                // Retry after a short delay in case DOM isn't ready
+                setTimeout(updateText, 1000);
               }
             }
         } catch {}
