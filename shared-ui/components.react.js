@@ -731,7 +731,7 @@
         if (mode === 'not_checked_out') {
           return React.createElement('div', { className: 'd-flex items-center gap-8' }, [
             add('Checkout', actions.checkout, !!btns.checkoutBtn, undefined, { style: { width: '90%' } }),
-            React.createElement('div', { style: { position: 'relative', flex: '0 0 auto' } }, [
+            React.createElement('div', { style: { position: 'relative', flex: '0 0 auto', marginLeft: 'auto' } }, [
           add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
           nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 100 } }, nestedItems) : null
             ])
@@ -759,7 +759,7 @@
                 })
               ]) : null)
             ]),
-            React.createElement('div', { style: { position: 'relative' } }, [
+            React.createElement('div', { style: { position: 'relative', marginLeft: 'auto' } }, [
               add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
               nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 100 } }, nestedItems) : null
             ])
