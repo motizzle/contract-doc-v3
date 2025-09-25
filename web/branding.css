@@ -1390,5 +1390,36 @@ body .brand-header-bg .pulse-pill {
 .panel--top { margin-top: 0; background: #F8F8F8; border: 1px solid #E6E6E6; }
 .panel--assistant { margin-top: 0; background: #FFFFFF; }
 
+/* Plain text dropdown menu (three-dots) */
+.ui-menu {
+  min-width: 220px;
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+  padding: 10px 0;
+}
+.ui-menu__item {
+  padding: 10px 16px;
+  font-size: 16px;
+  line-height: 24px;
+  color: #111827;
+  cursor: pointer;
+}
+.ui-menu__item:hover, .ui-menu__item:focus {
+  background: #F3F4F6;
+  outline: none;
+}
+.ui-menu__item.danger { color: #dc2626; }
+.ui-menu__item.danger:hover, .ui-menu__item.danger:focus { background: #FEF2F2; }
+
+/* Workflow approvals cards */
+.workflow-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #ffffff;
+}
+
 /* Add-in (Word) specific: no outer gutters; ensure 3px padding on all sides */
 .ms-welcome .panel { padding: 14px; margin-left: 0; margin-right: 0; }

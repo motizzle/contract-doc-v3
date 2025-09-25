@@ -474,7 +474,7 @@ app.get('/api/v1/users', (req, res) => {
     const roles = fs.existsSync(rp) ? JSON.parse(fs.readFileSync(rp, 'utf8')) : {};
     const norm = (Array.isArray(users) ? users : []).map(u => {
       if (typeof u === 'string') return { id: u, label: u, role: 'editor' };
-      return { id: u.id || u.label || 'user', label: u.label || u.id, role: u.role || 'editor' };
+      return { id: u.id || u.label || 'user', label: u.label || u.id, role: u.role || 'editor', title: u.title || '' };
     });
     return res.json({ items: norm, roles });
   } catch (e) {

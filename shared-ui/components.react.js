@@ -644,17 +644,24 @@
         }
       };
 
-      // Menu state and nested actions
+      // Menu state and plain text menu items (no UIButton dependency)
       const [menuOpen, setMenuOpen] = React.useState(false);
-      const nestedActions = [
-        add('View Latest', viewLatest, true, 'primary'),
-        add('Finalize', () => ask('Finalize?', 'This will lock the document.', actions.finalize), !!btns.finalizeBtn, 'primary'),
-        add('Back to OpenGov', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'open-gov' } })); } catch {} }, !!btns.openGovBtn, 'primary'),
-        add('Send to Vendor', () => { try { setTimeout(() => { try { actions.sendVendor({}); } catch {} }, 130); } catch {} }, !!btns.sendVendorBtn),
-        add('Request review', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'request-review' } })); } catch {} }, true, 'primary'),
-        add('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true, 'primary'),
-        add('Override Checkout', actions.override, !!btns.overrideBtn),
-        add('Factory Reset', () => ask('Factory reset?', 'This will clear working data.', actions.factoryReset), true),
+      const menuItem = (label, onClick, show, opts = {}) => {
+        if (!show) return null;
+        const className = 'ui-menu__item' + (opts.danger ? ' danger' : '');
+        const handler = (e) => { try { e.stopPropagation?.(); } catch {} try { setMenuOpen(false); } catch {} try { onClick?.(e); } catch {} };
+        const onKey = (e) => { try { if (e && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handler(e); } } catch {} };
+        return React.createElement('div', { key: label, role: 'menuitem', tabIndex: 0, className, onClick: handler, onKeyDown: onKey }, label);
+      };
+      const nestedItems = [
+        menuItem('View Latest', viewLatest, true),
+        menuItem('Finalize', () => ask('Finalize?', 'This will lock the document.', actions.finalize), !!btns.finalizeBtn),
+        menuItem('Back to OpenGov', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'open-gov' } })); } catch {} }, !!btns.openGovBtn),
+        menuItem('Send to Vendor', () => { try { setTimeout(() => { try { actions.sendVendor({}); } catch {} }, 130); } catch {} }, !!btns.sendVendorBtn),
+        menuItem('Request review', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'request-review' } })); } catch {} }, true),
+        menuItem('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true),
+        menuItem('Override Checkout', actions.override, !!btns.overrideBtn),
+        menuItem('Factory Reset', () => ask('Factory reset?', 'This will clear working data.', actions.factoryReset), true, { danger: true }),
       ].filter(Boolean);
 
       // Compute special case: only checkout is available (plus menu)
@@ -665,7 +672,7 @@
         add('Checkout', actions.checkout, !!btns.checkoutBtn),
         React.createElement('div', { style: { position: 'relative' } }, [
           add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
-          nestedActions.length > 0 && menuOpen ? React.createElement('div', { style: { position: 'absolute', right: 0, top: '100%', minWidth: '150px', minHeight: '100px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, nestedActions) : null
+          nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 100 } }, nestedItems) : null
         ]),
         add('Check-in and Save', async () => { try { const ok = await actions.saveProgress(); if (ok) { await actions.checkin(); } } catch {} }, !!btns.checkinBtn),
         add('Cancel Checkout', actions.cancel, !!btns.cancelBtn),
@@ -714,8 +721,8 @@
           return React.createElement('div', { className: 'd-flex items-center gap-8' }, [
             add('Checkout', actions.checkout, !!btns.checkoutBtn, undefined, { style: { width: '90%' } }),
             React.createElement('div', { style: { position: 'relative', flex: '0 0 auto' } }, [
-              add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
-              nestedActions.length > 0 && menuOpen ? React.createElement('div', { style: { position: 'absolute', right: 0, top: '100%', minWidth: '150px', minHeight: '100px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, nestedActions) : null
+          add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
+          nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 100 } }, nestedItems) : null
             ])
           ]);
         }
@@ -724,14 +731,14 @@
             add('Save', actions.saveProgress, !!btns.saveProgressBtn, 'primary', { style: { flex: '1 1 0', width: '100%' } }),
             React.createElement('div', { style: { position: 'relative', flex: '1 1 0' } }, [
               add('Check-in ▾', () => setCheckinMenuOpen(!checkinMenuOpen), !!btns.checkinBtn, 'secondary', { style: { width: '100%' } }),
-              (checkinMenuOpen ? React.createElement('div', { style: { position: 'absolute', right: 0, top: '100%', minWidth: '180px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, [
+              (checkinMenuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 100 } }, [
                 add('Check-in and Save', async () => { try { const ok = await actions.saveProgress(); if (ok) await actions.checkin(); } catch {} }, !!btns.checkinBtn),
                 add('Cancel Checkout', actions.cancel, !!btns.cancelBtn)
               ]) : null)
             ]),
             React.createElement('div', { style: { position: 'relative' } }, [
               add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
-              nestedActions.length > 0 && menuOpen ? React.createElement('div', { style: { position: 'absolute', right: 0, top: '100%', minWidth: '150px', minHeight: '100px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, nestedActions) : null
+              nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 100 } }, nestedItems) : null
             ])
           ]);
         }
@@ -749,7 +756,7 @@
           })(),
           React.createElement('div', { style: { position: 'relative', marginLeft: 'auto' } }, [
             add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
-            nestedActions.length > 0 && menuOpen ? React.createElement('div', { style: { position: 'absolute', right: 0, top: '100%', minWidth: '150px', minHeight: '100px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, nestedActions) : null
+            nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 100 } }, nestedItems) : null
           ])
         ]);
       })();
@@ -1161,7 +1168,7 @@
     }
 
     function InlineTitleEditor() {
-      const { config, addLog } = React.useContext(StateContext);
+      const { config, addLog, currentUser } = React.useContext(StateContext);
       const API_BASE = getApiBase();
       const [title, setTitle] = React.useState(config?.title || 'Untitled Document');
       React.useEffect(() => { setTitle(config?.title || 'Untitled Document'); }, [config?.title]);
@@ -1170,9 +1177,8 @@
         if (!next) return;
         try {
           const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
-          const currentUser = (function(){ try { return (JSON.parse(localStorage.getItem('ogassist.userId')))||null; } catch { return null; } })();
           const payload = { title: next };
-          try { payload.userId = (currentUser || (window?.OG_STATE?.currentUser) || null) || undefined; } catch {}
+          try { payload.userId = currentUser || undefined; } catch {}
           payload.platform = plat;
           const r = await fetch(`${API_BASE}/api/v1/title`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
           if (!r.ok) throw new Error('title_update');
@@ -1761,6 +1767,87 @@
       );
     }
 
+    // Inline Workflow approvals panel (reuses modal logic)
+    function WorkflowApprovalsPanel() {
+      const { currentUser, currentRole, approvalsRevision, users } = React.useContext(StateContext);
+      const API_BASE = getApiBase();
+      const [rows, setRows] = React.useState(null);
+      const [hdr, setHdr] = React.useState({ approved: 0, total: 0 });
+      const [busy, setBusy] = React.useState(false);
+      const [error, setError] = React.useState('');
+      const load = React.useCallback(async () => {
+        try {
+          const r = await fetch(`${API_BASE}/api/v1/approvals`);
+          if (!r.ok) throw new Error('load');
+          const j = await r.json();
+          setRows(Array.isArray(j.approvers) ? j.approvers : []);
+          setHdr(j.summary || { approved: 0, total: 0 });
+        } catch { setError('Failed to load approvals'); }
+      }, [API_BASE]);
+      React.useEffect(() => { load(); }, [load]);
+      React.useEffect(() => { if (approvalsRevision) load(); }, [approvalsRevision, load]);
+
+      const roleOf = (uid) => {
+        try { const u = (users || []).find(x => (x && (x.id === uid || x.label === uid))); return (u && (u.role || 'editor')) || 'editor'; } catch { return 'editor'; }
+      };
+      const titleOf = (uid) => {
+        try { const u = (users || []).find(x => (x && (x.id === uid || x.label === uid))); return (u && (u.title || '')) || ''; } catch { return ''; }
+      };
+
+      const canOverride = (String(currentRole || '').toLowerCase() === 'editor');
+      const canToggle = (row) => canOverride || String(row.userId) === String(currentUser);
+      const setSelf = async (targetUserId, approved, notes) => {
+        setBusy(true); setError('');
+        try {
+          const body = { documentId: 'default', actorUserId: currentUser, targetUserId, approved: !!approved };
+          if (notes !== undefined) body.notes = String(notes);
+          const r = await fetch(`${API_BASE}/api/v1/approvals/set`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          if (!r.ok) throw new Error('set');
+          const j = await r.json();
+          setRows(Array.isArray(j.approvers) ? j.approvers : []);
+          setHdr(j.summary || { approved: 0, total: 0 });
+        } catch { setError('Failed to update'); }
+        finally { setBusy(false); }
+      };
+
+      const onToggle = async (row, next) => {
+        if (!canToggle(row)) return;
+        if (row.userId !== currentUser && canOverride) {
+          try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'confirm', options: { title: 'Override approval?', message: `Override approval for ${row.name}?`, onConfirm: async () => { await setSelf(row.userId, next); } } } })); } catch {}
+          // Fallback: just set
+          await setSelf(row.userId, next);
+          return;
+        }
+        await setSelf(row.userId, next);
+      };
+
+      const notify = async () => {
+        setBusy(true); setError('');
+        try {
+          const r = await fetch(`${API_BASE}/api/v1/approvals/notify`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ documentId: 'default', actorUserId: currentUser }) });
+          if (!r.ok) throw new Error('notify');
+        } catch { setError('Failed to notify'); }
+        finally { setBusy(false); }
+      };
+
+      const header = React.createElement('div', { className: 'd-flex items-center justify-between mb-2' }, [
+        React.createElement('div', { key: 'sum', className: 'text-sm text-gray-700' }, `Approvals (${hdr.approved}/${hdr.total} approved)`),
+        React.createElement(UIButton, { key: 'notify', label: 'Notify reviewers', onClick: notify, variant: 'secondary' })
+      ]);
+
+      const list = !rows ? React.createElement('div', null, 'Loading...') : React.createElement('div', { className: 'd-flex flex-column gap-8' },
+        rows.map((r, i) => React.createElement('div', { key: r.userId || i, className: 'workflow-card d-flex items-center justify-between' }, [
+          React.createElement('div', { key: 'l', className: 'd-flex flex-column' }, [
+            React.createElement('div', { key: 'n', className: 'font-medium' }, r.name || r.userId),
+            React.createElement('div', { key: 'tr', className: 'text-sm text-gray-600' }, [titleOf(r.userId), titleOf(r.userId) ? ' • ' : '', (roleOf(r.userId) || '').toString()])
+          ]),
+          React.createElement('input', { key: 'c', type: 'checkbox', disabled: (!!busy) || (!canToggle(r)), checked: !!r.approved, onChange: (e) => onToggle(r, !!e.target.checked), title: (!canToggle(r) ? 'Only editors can override others' : undefined) })
+        ]))
+      );
+
+      return React.createElement('div', null, [error ? React.createElement('div', { className: 'bg-error-50 text-error-700 p-2 mb-2 border border-error-200 rounded' }, error) : null, header, list]);
+    }
+
     function App(props) {
       console.log('App render');
       const [modal, setModal] = React.useState(null);
@@ -1871,7 +1958,7 @@
         ]),
         React.createElement('div', { key: 'tabbody', className: 'mt-3' }, [
           (activeTab === 'AI' ? React.createElement(ChatConsole, { key: 'chat' }) : null),
-          (activeTab === 'Workflow' ? React.createElement(ApprovalsPill, { key: 'approvals-pill' }) : null),
+          (activeTab === 'Workflow' ? React.createElement(WorkflowApprovalsPanel, { key: 'workflow' }) : null),
         ])
       ]);
 
