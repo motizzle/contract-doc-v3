@@ -1530,10 +1530,11 @@
         if (config?.lastSaved && typeof document !== 'undefined') {
           console.log('header found:', document.querySelector('header'));
           console.log('header-actions found:', document.querySelector('.header-actions'));
+          console.log('all divs in header-actions:', Array.from(document.querySelector('.header-actions')?.children || []).map(c => c.tagName + ' ' + (c.id || c.className)));
           const el = document.querySelector('.header-actions > div');
           console.log('Element found by header-actions child:', el);
           if (el) {
-            el.textContent = `Last saved by ${config.lastSaved.user} at ${new Date(config.lastSaved.timestamp).toLocaleString()}`;
+            el.textContent = `Last saved by ${config.lastSaved.user?.label || 'Unknown'} at ${new Date(config.lastSaved.timestamp).toLocaleString()}`;
             el.style.color = 'red';
             console.log('Text set to:', el.textContent);
           }
