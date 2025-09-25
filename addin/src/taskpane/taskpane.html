@@ -26,13 +26,10 @@
   <header class="ms-welcome__header ms-bgColor-neutralLighter addin-header brand-header-bg addin-header-layout">
     <div class="addin-header-left">
       <img class="brand-img" src="/web/assets/opengov-logo.png" alt="OpenGov" title="Redline Like You Mean It" />
-      <div class="title-block">
-        <h1 class="ms-font-su title-main">Redline Like You Mean It</h1>
-        <div class="title-sub">The Future of Contracting</div>
-      </div>
     </div>
-    <div class="header-actions" style="display: flex; align-items: center;">
+    <div class="header-actions" style="display: flex; flex-direction: column; align-items: flex-end;">
       <button onclick="openNewDocument()" class="btn btn--primary">Open New Document</button>
+      <div id="last-saved-info" class="text-xs text-gray-400 mt-1"></div>
     </div>
   </header>
     <section id="sideload-msg" class="ms-welcome__main" style="display: none;">
