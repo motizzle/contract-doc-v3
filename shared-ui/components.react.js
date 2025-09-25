@@ -1530,8 +1530,8 @@
         if (config?.lastSaved && typeof document !== 'undefined') {
           console.log('header found:', document.querySelector('header'));
           console.log('header-actions found:', document.querySelector('.header-actions'));
-          const el = document.querySelector('header .header-actions div');
-          console.log('Element found:', el);
+          const el = document.querySelector('.text-xs.text-gray-400.mt-1');
+          console.log('Element found by class:', el);
           if (el) {
             el.textContent = `Last saved by ${config.lastSaved.user} at ${new Date(config.lastSaved.timestamp).toLocaleString()}`;
             el.style.color = 'red';
