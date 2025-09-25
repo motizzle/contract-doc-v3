@@ -10,24 +10,22 @@
   <!-- Preload local React UMD -->
   <link rel="preload" as="script" href="/vendor/react/react.production.min.js" />
   <link rel="preload" as="script" href="/vendor/react/react-dom.production.min.js" />
-  <!-- Shared branding styles -->
-  <link href="/web/branding.css?v=brand-m3" rel="stylesheet" />
+    <!-- Shared branding styles -->
+    <link href="/web/branding.css?v=brand-m4" rel="stylesheet" />
   <style>
-    .brand-logo { position: fixed; top: 8px; left: 12px; z-index: 10000; display: inline-flex; align-items: center; }
-    .brand-logo img { height: 30px; width: auto; display: block; }
-    @media (max-width: 640px) { .brand-logo img { height: 22px; } }
-    :root { --banner-h: 140px; }
+    /* Top navigation (web only) */
+    #og-navbar { position: fixed; top: 0; left: 0; right: 0; height: 48px; background: #ffffff; border-bottom: 1px solid rgba(0,0,0,0.08); z-index: 10000; display: block; }
+    #og-navbar .nav-image { display: block; width: 100%; height: 100%; background-image: url('/web/assets/procurement-navbar.png'); background-size: contain; background-position: left center; background-repeat: no-repeat; }
     body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; height: 100vh; }
     /* Background now comes from .brand-header-bg in /web/branding.css */
-    #banner { min-height: var(--banner-h); display: flex; align-items: center; justify-content: center; padding: 12px; color: #fff; }
-    .banner-inner { position: relative; width: 100%; max-width: 1024px; display: flex; flex-direction: column; align-items: center; gap: 12px; border-radius: 12px; }
-    .banner-title { font-size: 28px; font-weight: 800; text-align: center; text-shadow: 0 1px 1px rgba(0,0,0,0.25); }
-    /* Layout moved to Grid; keep minimal structural rules here */
-    #layout { position: relative; }
+    #banner { min-height: 60px; display: flex; align-items: center; justify-content: flex-end; padding: 0 12px; color: #fff; border-bottom: 0; }
+    .banner-inner { display: flex; justify-content: flex-end; width: 100%; }
+    /* Push the app layout below the fixed nav and preserve full height */
+    #layout { position: relative; height: calc(100vh - 48px); margin-top: 48px; }
     #editor-col { position: relative; z-index: 1; display: flex; flex-direction: column; min-width: 0; }
     #superdoc { position: relative; z-index: 1; flex: 1; min-height: 0; }
-    #pane { position: relative; z-index: 5; width: 437px; max-width: 437px; border-left: 1px solid #eee; display: flex; flex-direction: column; padding-top: 20px; background: #fff; box-shadow: -2px 0 8px rgba(0,0,0,0.08); }
-    #app-root { padding: 8px 12px; overflow: auto; background: #fff; }
+    #pane { position: relative; z-index: 5; width: 437px; max-width: 437px; border-left: 1px solid #eee; display: flex; flex-direction: column; background: #fff; box-shadow: -2px 0 8px rgba(0,0,0,0.08); }
+    #app-root { padding: 0 12px; overflow: auto; background: #fff; }
   </style>
   <!-- React UMD (local) and React entry (shared) -->
   <script defer src="/vendor/react/react.production.min.js"></script>
@@ -43,13 +41,7 @@
   </script>
 </head>
 <body>
-  <a class="brand-logo" href="/" aria-label="OpenGov Home"><img src="/web/assets/opengov-logo.png" alt="OpenGov" /></a>
-  <div id="banner" class="brand-header-bg">
-    <span id="coming-pill-slot"></span>
-    <div class="banner-inner">
-      <div class="banner-title">Redline Like You Mean It: The Future of Contracting</div>
-    </div>
-  </div>
+  <div id="og-navbar"><a class="nav-image" href="https://procurement.opengov.com" target="_blank" rel="noopener noreferrer" aria-label="OpenGov Procurement"></a></div>
   <div id="layout">
     <div id="editor-col">
       <div id="superdoc-toolbar"></div>
@@ -61,6 +53,9 @@
   </div>
   <script>
     // Pill and modal are managed by shared UI in Phase 2; no inline wiring in Phase 1
+    function openNewDocument() {
+      window.dispatchEvent(new CustomEvent('open-new-document'));
+    }
   </script>
 </body>
 </html>

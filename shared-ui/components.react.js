@@ -28,27 +28,7 @@
     const MIN_DOCX_SIZE = 8192; // bytes; reject tiny/invalid working overlays
 
     const ThemeContext = React.createContext({ tokens: null });
-    const StateContext = React.createContext({
-      config: null,
-      revision: 0,
-      actions: {},
-      isConnected: false,
-      lastTs: 0,
-      currentUser: 'user1',
-      currentRole: 'editor',
-      users: [],
-      setUser: () => {},
-      logs: [],
-      addLog: () => {},
-      lastSeenLogCount: 0,
-      markNotificationsSeen: () => {},
-      documentSource: null,
-      setDocumentSource: () => {},
-      lastError: null,
-      setLastError: () => {},
-      approvalsSummary: null,
-      approvalsRevision: 0,
-    });
+  const StateContext = React.createContext(null);
 
     function ThemeProvider(props) {
       const [tokens, setTokens] = React.useState(null);
@@ -101,6 +81,10 @@
       const [approvalsSummary, setApprovalsSummary] = React.useState(null);
       const [approvalsRevision, setApprovalsRevision] = React.useState(0);
       const API_BASE = getApiBase();
+
+      React.useEffect(() => {
+        console.log('StateProvider config changed to:', config);
+      }, [config]);
 
       // Notification formatting system
       const NOTIFICATION_TYPES = {
@@ -218,12 +202,15 @@
         const qs = `platform=${encodeURIComponent(plat)}&userId=${encodeURIComponent(userId)}&clientVersion=${encodeURIComponent(loadedVersion||0)}`;
         try {
           const r = await fetch(`${API_BASE}/api/v1/state-matrix?${qs}`);
-          if (r.ok) {
-            const j = await r.json();
-            setConfig(j.config || null);
-            if (typeof j.revision === 'number') setRevision(j.revision);
-            try { const sum = j?.config?.approvals?.summary || null; setApprovalsSummary(sum); } catch {}
-          }
+            if (r.ok) {
+              const j = await r.json();
+            console.log('Fetched config:', j.config);
+            try { console.log('Buttons:', j?.config?.buttons, 'Checkout:', j?.config?.checkoutStatus); } catch {}
+            console.log('Setting config to:', j.config);
+              setConfig(j.config || null);
+              if (typeof j.revision === 'number') setRevision(j.revision);
+              try { const sum = j?.config?.approvals?.summary || null; setApprovalsSummary(sum); } catch {}
+            }
         } catch {}
       }, [API_BASE, userId, loadedVersion]);
 
@@ -356,6 +343,37 @@
 
       // Do NOT auto-update document on revision changes. The banner/CTA controls refresh.
 
+      // Refresh the document ONLY when the user changes (explicit action)
+      const didInitUserRef = React.useRef(false);
+      React.useEffect(() => {
+        // Skip on initial mount; we already set initial document (web) or leave as-is (Word)
+        if (!didInitUserRef.current) { didInitUserRef.current = true; return; }
+        (async () => {
+          try {
+            const w = `${API_BASE}/documents/working/default.docx`;
+            const c = `${API_BASE}/documents/canonical/default.docx`;
+            let url = c;
+            try {
+              const h = await fetch(w, { method: 'HEAD' });
+              if (h.ok) {
+                const len = Number(h.headers.get('content-length') || '0');
+                if (Number.isFinite(len) && len > MIN_DOCX_SIZE) url = w;
+              }
+            } catch {}
+            const withRev = `${url}?rev=${Date.now()}`;
+            if (typeof Office !== 'undefined') {
+              const res = await fetch(withRev, { cache: 'no-store' }); if (!res.ok) throw new Error('download');
+              const buf = await res.arrayBuffer();
+              const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
+              await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
+            } else {
+              setDocumentSource(withRev);
+              addLog(`doc src userSwitch -> ${withRev}`, 'document');
+            }
+          } catch {}
+        })();
+      }, [userId]);
+
       async function exportWordDocumentAsBase64() {
         function u8ToB64(u8) { let bin=''; for (let i=0;i<u8.length;i++) bin+=String.fromCharCode(u8[i]); return btoa(bin); }
         function normalizeSliceToB64(data) {
@@ -453,22 +471,41 @@
         factoryReset: async () => { try { await fetch(`${API_BASE}/api/v1/factory-reset`, { method: 'POST' }); addLog('System reset completed successfully', 'system'); await refresh(); } catch (e) { addLog(`Failed to reset system: ${e?.message||e}`, 'error'); } },
         sendVendor: (opts) => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'send-vendor', options: { userId, ...(opts||{}) } } })); } catch {} },
         saveProgress: async () => { try { if (typeof Office !== 'undefined') { await saveProgressWord(); } else { await saveProgressWebViaDownload(); } addLog('Progress saved successfully', 'success'); await refresh(); return true; } catch (e) { addLog(`Failed to save progress: ${e?.message||e}`, 'error'); return false; } },
-        setUser: (nextUserId, nextRole) => { try { setUserId(nextUserId); if (nextRole) setRole(nextRole); addLog(`Switched to user: ${nextUserId}`, 'user'); } catch {} },
+        setUser: (nextUserId, nextRole) => {
+          try {
+            const plat = (typeof Office !== 'undefined') ? 'word' : 'web';
+            setUserId(nextUserId);
+            if (nextRole) setRole(nextRole);
+            addLog(`Switched to user: ${nextUserId}`, 'user');
+            // Immediately fetch matrix for the new user so buttons (override) reflect correctly
+            (async () => {
+              try {
+                const qs = `platform=${encodeURIComponent(plat)}&userId=${encodeURIComponent(nextUserId)}&clientVersion=${encodeURIComponent(loadedVersion||0)}`;
+                const r = await fetch(`${API_BASE}/api/v1/state-matrix?${qs}`);
+                if (r.ok) {
+                  const j = await r.json();
+                  try { console.log('[user switch] Buttons:', j?.config?.buttons, 'Checkout:', j?.config?.checkoutStatus); } catch {}
+                  setConfig(j.config || null);
+                  if (typeof j.revision === 'number') setRevision(j.revision);
+                }
+              } catch {}
+            })();
+          } catch {}
+        },
       }), [API_BASE, refresh, userId, addLog]);
 
-      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, renderNotification, formatNotification } }, props.children);
+      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, renderNotification, formatNotification } }, React.createElement(App, { config }));
     }
 
-    function BannerStack() {
+    function BannerStack(props) {
       const { tokens } = React.useContext(ThemeContext);
       const { config, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, revision, addLog, setDocumentSource } = React.useContext(StateContext);
       const banners = Array.isArray(config?.banners) ? config.banners : [];
       const API_BASE = getApiBase();
       const show = (b) => {
-        if (!b || b.state !== 'update_available') return true;
-        const serverVersion = Number(config?.documentVersion || 0);
-        if (dismissedVersion && dismissedVersion >= serverVersion) return false;
-        if (loadedVersion && loadedVersion >= serverVersion) return false;
+        if (!b) return false;
+        // Exclude update_available here; it is rendered in a custom location
+        if (b.state === 'update_available') return false;
         return true;
       };
       const refreshNow = async () => {
@@ -518,9 +555,19 @@
     }
 
     function ActionButtons() {
-      const { config, actions, revision, setDocumentSource, addLog, setLoadedVersion } = React.useContext(StateContext);
+      const { config, actions, revision, setDocumentSource, addLog, setLoadedVersion, users, currentUser } = React.useContext(StateContext);
       const [confirm, setConfirm] = React.useState(null);
       const { tokens } = React.useContext(ThemeContext);
+      const rootRef = React.useRef(null);
+
+      // Listen for open-new-document event from header button
+      React.useEffect(() => {
+        function handleOpenNew() {
+          openNew();
+        }
+        window.addEventListener('open-new-document', handleOpenNew);
+        return () => window.removeEventListener('open-new-document', handleOpenNew);
+      }, []);
       const btns = (config && config.buttons) ? config.buttons : {};
       const ask = (title, message, onConfirm) => setConfirm({ title, message, onConfirm });
       const add = (label, onClick, show, variant, opts = {}) => show
@@ -597,31 +644,184 @@
         }
       };
 
-      // Top: checkout cluster only
+      // Menu state and plain text menu items (no UIButton dependency)
+      const [menuOpen, setMenuOpen] = React.useState(false);
+      const menuItem = (label, onClick, show, opts = {}) => {
+        if (!show) return null;
+        const className = 'ui-menu__item' + (opts.danger ? ' danger' : '');
+        const handler = (e) => { try { e.stopPropagation?.(); } catch {} try { setMenuOpen(false); } catch {} try { setCheckinMenuOpen(false); } catch {} try { onClick?.(e); } catch {} };
+        const onKey = (e) => { try { if (e && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handler(e); } } catch {} };
+        return React.createElement('div', { key: label, role: 'menuitem', tabIndex: 0, className, onClick: handler, onKeyDown: onKey }, label);
+      };
+      const menuItemTwo = (opts) => {
+        const { icon, title, subtitle, onClick, show, danger } = opts || {};
+        if (!show) return null;
+        const className = 'ui-menu__item ui-menu__item--two' + (danger ? ' danger' : '');
+        const handler = (e) => { try { e.stopPropagation?.(); } catch {} try { setMenuOpen(false); } catch {} try { setCheckinMenuOpen(false); } catch {} try { onClick?.(e); } catch {} };
+        const onKey = (e) => { try { if (e && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handler(e); } } catch {} };
+        const iconEl = React.createElement('span', { className: 'ui-menu__icon', 'aria-hidden': true }, icon || '•');
+        const titleEl = React.createElement('div', { className: 'ui-menu__title' }, title || '');
+        const subEl = React.createElement('div', { className: 'ui-menu__subtitle' }, subtitle || '');
+        const textEl = React.createElement('div', { className: 'ui-menu__text' }, [titleEl, subEl]);
+        return React.createElement('div', { key: (title || Math.random()), role: 'menuitem', tabIndex: 0, className, onClick: handler, onKeyDown: onKey }, [iconEl, textEl]);
+      };
+      const nestedItems = [
+        menuItem('View Latest', viewLatest, true),
+        menuItem('Finalize', () => ask('Finalize?', 'This will lock the document.', actions.finalize), !!btns.finalizeBtn),
+        menuItem('Send to Vendor', () => { try { setTimeout(() => { try { actions.sendVendor({}); } catch {} }, 130); } catch {} }, !!btns.sendVendorBtn),
+        menuItem('Request review', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'request-review' } })); } catch {} }, true),
+        menuItem('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true),
+        menuItem('Override Checkout', actions.override, !!btns.overrideBtn),
+        menuItem('Factory Reset', () => ask('Factory reset?', 'This will clear working data.', actions.factoryReset), true, { danger: true }),
+      ].filter(Boolean);
+
+      // Compute special case: only checkout is available (plus menu)
+      const onlyCheckout = !!btns.checkoutBtn && !btns.checkinBtn && !btns.cancelBtn && !btns.saveProgressBtn && !btns.overrideBtn;
+
+      // Top: checkout cluster with menu immediately adjacent (default)
       const topCluster = [
         add('Checkout', actions.checkout, !!btns.checkoutBtn),
+        React.createElement('div', { style: { position: 'relative' } }, [
+          add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
+          nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 100 } }, nestedItems) : null
+        ]),
         add('Check-in and Save', async () => { try { const ok = await actions.saveProgress(); if (ok) { await actions.checkin(); } } catch {} }, !!btns.checkinBtn),
         add('Cancel Checkout', actions.cancel, !!btns.cancelBtn),
         add('Save Progress', actions.saveProgress, !!btns.saveProgressBtn),
         add('Override Checkout', actions.override, !!btns.overrideBtn),
       ].filter(Boolean);
 
-      // Bottom: all other actions, in a uniform grid
+      // Bottom: all other actions, with '...' for menu
       const bottomGrid = [
-        add('Finalize', () => ask('Finalize?', 'This will lock the document.', actions.finalize), !!btns.finalizeBtn, 'primary'),
         add('Unfinalize', () => ask('Unlock?', 'This will unlock the document.', actions.unfinalize), !!btns.unfinalizeBtn),
-        add('Send to Vendor', () => { try { setTimeout(() => { try { actions.sendVendor({}); } catch {} }, 130); } catch {} }, !!btns.sendVendorBtn),
-        add('Back to OpenGov', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'open-gov' } })); } catch {} }, !!btns.openGovBtn, 'primary'),
-        add('Request review', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'request-review' } })); } catch {} }, true, 'primary'),
-        add('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true, 'primary'),
-        add('Factory Reset', () => ask('Factory reset?', 'This will clear working data.', actions.factoryReset), true),
-        // Document controls (standardized spacing within the same grid)
-        add('Open New Document', openNew, true),
-        add('View Latest', viewLatest, true),
       ].filter(Boolean);
 
-      return React.createElement('div', { className: 'd-flex flex-column gap-6' },
-        React.createElement('div', { className: 'd-grid grid-cols-2 column-gap-8 row-gap-6 grid-auto-rows-minmax-27' }, topCluster),
+      // Read server-provided primary layout mode
+      const mode = (config && config.buttons && config.buttons.primaryLayout && config.buttons.primaryLayout.mode)
+        || (onlyCheckout ? 'not_checked_out' : (btns.checkinBtn ? 'self' : 'not_checked_out'));
+      const [checkinMenuOpen, setCheckinMenuOpen] = React.useState(false);
+      // Close any open dropdowns when mode changes (e.g., after Checkout)
+      React.useEffect(() => { try { setMenuOpen(false); setCheckinMenuOpen(false); } catch {} }, [mode]);
+
+      // Close menus when clicking outside of ActionButtons (web and add-in)
+      React.useEffect(() => {
+        const onOutside = (e) => {
+          try {
+            if (!menuOpen && !checkinMenuOpen) return;
+            const el = rootRef.current;
+            if (el && el.contains(e.target)) return; // click inside
+          } catch {}
+          try { setMenuOpen(false); } catch {}
+          try { setCheckinMenuOpen(false); } catch {}
+        };
+        document.addEventListener('mousedown', onOutside, true);
+        return () => { document.removeEventListener('mousedown', onOutside, true); };
+      }, [menuOpen, checkinMenuOpen]);
+
+      // Allow ESC to close any open menus
+      React.useEffect(() => {
+        const onKey = (e) => {
+          try { if (e && (e.key === 'Escape' || e.key === 'Esc')) { setMenuOpen(false); setCheckinMenuOpen(false); } } catch {}
+        };
+        document.addEventListener('keydown', onKey, true);
+        return () => { document.removeEventListener('keydown', onKey, true); };
+      }, []);
+
+      const topLayout = (function(){
+        if (mode === 'not_checked_out') {
+          return React.createElement('div', { className: 'd-flex items-center gap-8' }, [
+            add('Checkout', actions.checkout, !!btns.checkoutBtn, undefined, { style: { width: '90%' } }),
+            React.createElement('div', { style: { position: 'relative', flex: '0 0 auto', marginLeft: 'auto' } }, [
+          add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
+          nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 100 } }, nestedItems) : null
+            ])
+          ]);
+        }
+        if (mode === 'self') {
+          return React.createElement('div', { className: 'd-flex items-center gap-8' }, [
+            add('Save', actions.saveProgress, !!btns.saveProgressBtn, 'primary', { style: { flex: '1 1 0', width: '100%' } }),
+            React.createElement('div', { style: { position: 'relative', flex: '1 1 0' } }, [
+              add('Check-in ▾', () => setCheckinMenuOpen(!checkinMenuOpen), !!btns.checkinBtn, 'secondary', { style: { width: '100%' } }),
+              (checkinMenuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 100 } }, [
+                menuItemTwo({
+                  icon: '🗝️',
+                  title: 'Save and Check In',
+                  subtitle: 'Save your progress and check in the document.',
+                  onClick: async () => { try { const ok = await actions.saveProgress(); if (ok) await actions.checkin(); } catch {} },
+                  show: !!btns.checkinBtn
+                }),
+                menuItemTwo({
+                  icon: '➤',
+                  title: 'Cancel Checkout',
+                  subtitle: 'Cancel changes and check in the document.',
+                  onClick: async () => { try { await actions.cancel(); } catch {} },
+                  show: !!btns.checkinBtn
+                })
+              ]) : null)
+            ]),
+            React.createElement('div', { style: { position: 'relative', marginLeft: 'auto' } }, [
+              add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
+              nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 100 } }, nestedItems) : null
+            ])
+          ]);
+        }
+        // mode === 'other'
+        return React.createElement('div', { className: 'd-flex items-center gap-8 flex-wrap' }, [
+          (function(){
+            try {
+              const uid = (config && config.checkoutStatus && config.checkoutStatus.checkedOutUserId) || '';
+              const match = (Array.isArray(users) ? users.find(u => (u && (u.id === uid || u.label === uid)) ) : null);
+              const name = (match && (match.label || match.id)) || uid || 'someone';
+              const when = (config && config.lastUpdated) ? new Date(config.lastUpdated).toLocaleDateString() : '';
+              const text = `Checked out by ${name}${when ? (' on ' + when) : ''}`;
+              return React.createElement('div', { className: 'text-sm text-gray-700' }, text);
+            } catch { return React.createElement('div', { className: 'text-sm text-gray-700' }, 'Checked out by someone'); }
+          })(),
+          React.createElement('div', { style: { position: 'relative', marginLeft: 'auto' } }, [
+            add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
+            nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 100 } }, nestedItems) : null
+          ])
+        ]);
+      })();
+
+      const showUpdateBanner = Array.isArray(config?.banners) && (config.banners || []).some(b => b && b.state === 'update_available');
+      const updateBannerParts = (function(){
+        try {
+          const b = (config.banners || []).find(x => x && x.state === 'update_available');
+          return {
+            title: (b && b.title) || '',
+            message: (b && b.message) || ''
+          };
+        } catch { return { title: '', message: '' }; }
+      })();
+
+      return React.createElement('div', { ref: rootRef, className: 'd-flex flex-column gap-6' },
+        topLayout,
+        (showUpdateBanner ? (
+          React.createElement('div', { className: 'update-banner' },
+            React.createElement('div', { style: { position: 'relative', width: '100%' } }, [
+              React.createElement('div', { key: 'row', style: { display: 'grid', gridTemplateColumns: '24px 1fr auto', alignItems: 'center', columnGap: 12 } }, [
+                // Icon
+                React.createElement('div', { key: 'icon', style: { width: 24, height: 24, borderRadius: '50%', border: '2px solid currentColor', color: '#0E6F7F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 } }, 'i'),
+                // Text (title + message)
+                React.createElement('div', { key: 'text', style: { color: 'inherit', textAlign: 'left' } }, [
+                  updateBannerParts.title ? React.createElement('div', { key: 't', style: { fontWeight: 700, color: '#0E6F7F' } }, updateBannerParts.title) : null,
+                  updateBannerParts.message ? React.createElement('div', { key: 'm' }, updateBannerParts.message) : null,
+                ]),
+                // Tertiary button aligned with title baseline
+                React.createElement('button', {
+                  key: 'btn',
+                  onClick: viewLatest,
+                  title: 'View latest',
+                  style: {
+                    background: 'transparent', border: 'none', padding: 0, margin: 0,
+                    color: 'inherit', cursor: 'pointer', font: 'inherit', textDecoration: 'underline', alignSelf: 'start'
+                  }
+                }, 'View latest')
+              ])
+            ])
+          )
+        ) : null),
         React.createElement('div', { className: 'd-grid grid-cols-2 column-gap-8 row-gap-6 grid-auto-rows-minmax-27' }, bottomGrid),
         confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
       );
@@ -706,120 +906,6 @@
       );
     }
 
-    // Simple pulse pill component (server-themed) + Coming modal
-    function PulsePill(props) {
-      const { onClick } = props || {};
-      const { tokens } = React.useContext(ThemeContext);
-      const [styleVars, setStyleVars] = React.useState({ bg: '#FFB636', fg: '#111827', glow: 'rgba(255,182,54,0.35)' });
-      const [isPulsing, setIsPulsing] = React.useState(false);
-      const [pulseDuration, setPulseDuration] = React.useState(1.5);
-
-      React.useEffect(() => {
-        let mounted = true;
-        let idx = 0;
-        function hexToRgb(hex){ const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return m?{r:parseInt(m[1],16),g:parseInt(m[2],16),b:parseInt(m[3],16)}:null; }
-        function randInt(min, max){ return Math.floor(Math.random() * (max - min + 1)) + min; }
-
-        const pulse = tokens?.pulse || {};
-        const palette = (Array.isArray(pulse.palette) && pulse.palette.length ? pulse.palette : [
-          { bg: '#FFB636', fg: '#111827' },  // Orange
-          { bg: '#22C55E', fg: '#ffffff' },  // Green
-          { bg: '#EF4444', fg: '#ffffff' },  // Red
-          { bg: '#06B6D4', fg: '#0f172a' },  // Cyan
-          { bg: '#8B5CF6', fg: '#ffffff' }   // Purple
-        ]);
-
-        function startPulse() {
-          if (!mounted) return;
-
-          // Random pulse duration (1-3 seconds)
-          const duration = randInt(1000, 3000) / 1000;
-          setPulseDuration(duration);
-
-          // Start pulsing animation
-          setIsPulsing(true);
-
-          // Change to next color
-          const pair = palette[idx % palette.length];
-          idx++;
-          const rgb = hexToRgb(pair.bg) || { r: 75, g: 63, b: 255 };
-          const glow = `rgba(${rgb.r},${rgb.g},${rgb.b},0.35)`;
-          setStyleVars({ bg: pair.bg, fg: pair.fg || '#ffffff', glow });
-
-          // Stop pulsing after animation duration
-          setTimeout(() => {
-            if (mounted) {
-              setIsPulsing(false);
-              // Schedule next pulse (6-15 seconds delay)
-              setTimeout(startPulse, randInt(6000, 15000));
-            }
-          }, duration * 1000);
-        }
-
-        // Start first pulse after initial delay
-        setTimeout(startPulse, randInt(2000, 5000));
-
-        return () => { mounted = false; };
-      }, [tokens]);
-      const dynamicStyle = {
-        background: styleVars.bg,
-        color: styleVars.fg,
-        boxShadow: `0 0 10px ${styleVars.glow}`,
-        animationDuration: `${pulseDuration}s`
-      };
-
-      const className = `pulse-pill${isPulsing ? ' pulsing' : ''}`;
-
-      return React.createElement('span', {
-        className,
-        style: dynamicStyle,
-        onClick,
-        title: 'Upcoming features'
-      }, 'Coming 2026');
-    }
-
-    function ComingModal(props) {
-      const { onClose } = props || {};
-      const { tokens } = React.useContext(ThemeContext);
-      const t = tokens && tokens.modal ? tokens.modal : {};
-
-      const badge = (txt, tone) => {
-        const className = `badge-base ${tone === 'indigo' ? 'badge-indigo' : tone === 'green' ? 'badge-green' : 'badge-gray'}`;
-        return React.createElement('span', { className }, txt);
-      };
-
-      const rows = [
-        { feature: 'Contracts Landing Page', status: badge('pending release','gray'), release: '2025-09-16', actions: React.createElement('input', { type: 'checkbox', defaultChecked: true, 'aria-label': 'Enable Contracts Landing Page' }) },
-        { feature: 'Evaluations, Awards, and Notices V2', status: badge('in development','indigo'), release: 'Q4 2025', actions: React.createElement('input', { type: 'checkbox', defaultChecked: true, 'aria-label': 'Enable Evaluations, Awards, and Notices V2' }) },
-        { feature: 'Contract authoring in Word', status: badge('vision','green'), release: 'Q1 2026', actions: React.createElement('input', { type: 'checkbox', defaultChecked: true, 'aria-label': 'Enable Contract authoring in Word' }) },
-      ];
-
-      return React.createElement('div', { className: 'modal-overlay', onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
-        React.createElement('div', { className: 'modal-panel' }, [
-          React.createElement('div', { key: 'h', className: 'modal-header' }, [
-            React.createElement('div', { key: 't', className: 'font-bold' }, 'The Future is Coming'),
-            React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: onClose }, '✕')
-          ]),
-          React.createElement('div', { key: 'b', className: 'modal-body' }, [
-            React.createElement('div', { key: 'lead', className: 'text-lg text-gray-500 mb-2' }, 'Preview and toggle upcoming features'),
-            React.createElement('table', { key: 'tbl', className: 'w-full table-collapse', role: 'table', 'aria-label': 'Upcoming features' }, [
-              React.createElement('thead', { key: 'th' }, React.createElement('tr', null, [
-                React.createElement('th', { className: 'text-left table-cell-padding w-45' }, 'Feature'),
-                React.createElement('th', { className: 'text-left table-cell-padding w-20' }, 'Status'),
-                React.createElement('th', { className: 'text-left table-cell-padding w-20' }, 'Release'),
-                React.createElement('th', { className: 'text-left table-cell-padding w-15' }, 'Actions'),
-              ])),
-              React.createElement('tbody', { key: 'tb' }, rows.map((r, i) => React.createElement('tr', { key: i, className: 'border-t border-gray-200' }, [
-                React.createElement('td', { className: 'table-cell-padding' }, r.feature),
-                React.createElement('td', { className: 'table-cell-padding' }, r.status),
-                React.createElement('td', { className: 'table-cell-padding' }, r.release),
-                React.createElement('td', { className: 'table-cell-padding' }, r.actions),
-              ])))
-            ])
-          ])
-        ])
-      );
-    }
 
     function ChatConsole() {
       const API_BASE = getApiBase();
@@ -1085,7 +1171,82 @@
       const inputRow = React.createElement('div', { className: 'd-flex gap-8 align-items-end' }, [input, btn]);
       const buttonRow = React.createElement('div', { className: 'd-flex gap-8' }, [resetBtn, refreshBtn]);
       const wrap = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [box, inputRow, buttonRow]);
-      return React.createElement('div', null, [React.createElement('div', { key: 'hdr', className: 'font-semibold' }, 'Assistant'), wrap]);
+      return React.createElement('div', null, [wrap]);
+    }
+
+    function LastUpdatedPrefix() {
+      const { config } = React.useContext(StateContext);
+      let when = '—';
+      let firstName = '';
+      try {
+        const ts = config && config.lastSaved && config.lastSaved.timestamp;
+        when = ts ? new Date(ts).toLocaleString() : '—';
+        const user = config && config.lastSaved && config.lastSaved.user;
+        const label = (user && (user.label || user.name || user.id)) || '';
+        const parts = String(label).trim().split(/\s+/);
+        firstName = parts && parts.length ? parts[0] : '';
+      } catch {}
+      const suffix = firstName ? ` by ${firstName}` : ' by';
+      return React.createElement('span', null, `Last updated on ${when}${suffix}`);
+    }
+
+    function InlineTitleEditor() {
+      const { config, addLog, currentUser } = React.useContext(StateContext);
+      const API_BASE = getApiBase();
+      const [title, setTitle] = React.useState(config?.title || 'Untitled Document');
+      React.useEffect(() => { setTitle(config?.title || 'Untitled Document'); }, [config?.title]);
+      const onBlur = async () => {
+        const next = (title || '').trim();
+        if (!next) return;
+        try {
+          const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
+          const payload = { title: next };
+          try { payload.userId = currentUser || undefined; } catch {}
+          payload.platform = plat;
+          const r = await fetch(`${API_BASE}/api/v1/title`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+          if (!r.ok) throw new Error('title_update');
+          addLog && addLog('Title updated', 'document');
+        } catch {}
+      };
+      return React.createElement('textarea', {
+        value: title,
+        onChange: (e) => setTitle(e.target.value),
+        onBlur,
+        placeholder: 'Untitled Document',
+        className: 'font-semibold w-full',
+        rows: 1,
+        style: {
+          background: 'transparent',
+          border: 'none',
+          outline: 'none',
+          padding: '0',
+          margin: '0',
+          fontSize: 'calc(var(--font-size-2xl) * 1.5)',
+          lineHeight: '1.15',
+          height: 'calc((var(--font-size-2xl) * 1.5) * 1.2)',
+          whiteSpace: 'normal',
+          overflowWrap: 'anywhere',
+          overflow: 'hidden',
+          resize: 'none'
+        }
+      });
+    }
+
+    function StatusBadge() {
+      const { config, addLog } = React.useContext(StateContext);
+      const API_BASE = getApiBase();
+      const [status, setStatus] = React.useState((config?.status || 'draft').toLowerCase());
+      React.useEffect(() => { setStatus((config?.status || 'draft').toLowerCase()); }, [config?.status]);
+      const cycle = async () => {
+        try { const r = await fetch(`${API_BASE}/api/v1/status/cycle`, { method: 'POST' }); if (r.ok) { const j = await r.json(); setStatus((j.status || 'draft').toLowerCase()); addLog && addLog(`Status: ${j.status}`, 'system'); } } catch {}
+      };
+      const label = (s => s === 'final' ? 'Final' : s === 'review' ? 'Review' : 'Draft')(status);
+      const cls = (function(s){
+        if (s === 'final') return 'ui-badge gray-verydark';
+        if (s === 'review') return 'ui-badge gray-dark';
+        return 'ui-badge gray-medium';
+      })(status);
+      return React.createElement('div', { className: 'mb-2' }, React.createElement('span', { className: cls, onClick: cycle, style: { cursor: 'pointer' } }, label));
     }
 
     function UserCard() {
@@ -1098,9 +1259,13 @@
         try { actions.setUser(nextId, u.role || 'editor'); } catch {}
         setSelected(nextId);
       };
-      const pill = React.createElement('span', { className: 'ui-pill' }, (currentRole || 'editor').toUpperCase());
-      const select = React.createElement('select', { value: selected || '', onChange, className: 'ml-2' }, (users || []).map((u, i) => React.createElement('option', { key: i, value: u.id || u.label }, u.label || u.id)));
-      return React.createElement('div', { className: 'd-flex items-center gap-8' }, [pill, select]);
+      const select = React.createElement('select', { value: selected || '', onChange }, (users || []).map((u, i) => {
+        const name = u.label || u.id;
+        const role = String(u.role || 'editor').toLowerCase();
+        const optionLabel = name ? `${name} (${role})` : `(${role})`;
+        return React.createElement('option', { key: i, value: u.id || u.label }, optionLabel);
+      }));
+      return React.createElement('div', { className: 'd-flex items-center' }, [select]);
     }
 
     function DocumentControls() {
@@ -1625,71 +1790,233 @@
       );
     }
 
-    function App() {
+    // Inline Workflow approvals panel (reuses modal logic)
+    function WorkflowApprovalsPanel() {
+      const { currentUser, currentRole, approvalsRevision, users } = React.useContext(StateContext);
+      const API_BASE = getApiBase();
+      const [rows, setRows] = React.useState(null);
+      const [hdr, setHdr] = React.useState({ approved: 0, total: 0 });
+      const [busy, setBusy] = React.useState(false);
+      const [error, setError] = React.useState('');
+      const [prompt, setPrompt] = React.useState(null);
+      const load = React.useCallback(async () => {
+        try {
+          const r = await fetch(`${API_BASE}/api/v1/approvals`);
+          if (!r.ok) throw new Error('load');
+          const j = await r.json();
+          setRows(Array.isArray(j.approvers) ? j.approvers : []);
+          setHdr(j.summary || { approved: 0, total: 0 });
+        } catch { setError('Failed to load approvals'); }
+      }, [API_BASE]);
+      React.useEffect(() => { load(); }, [load]);
+      React.useEffect(() => { if (approvalsRevision) load(); }, [approvalsRevision, load]);
+
+      const roleOf = (uid) => {
+        try { const u = (users || []).find(x => (x && (x.id === uid || x.label === uid))); return (u && (u.role || 'editor')) || 'editor'; } catch { return 'editor'; }
+      };
+      const titleOf = (uid) => {
+        try { const u = (users || []).find(x => (x && (x.id === uid || x.label === uid))); return (u && (u.title || '')) || ''; } catch { return ''; }
+      };
+      const initialsOf = (label) => {
+        try {
+          const parts = String(label || '').trim().split(/\s+/).filter(Boolean);
+          if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+          if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+          return '';
+        } catch { return ''; }
+      };
+
+      const canOverride = (String(currentRole || '').toLowerCase() === 'editor');
+      const canToggle = (row) => canOverride || String(row.userId) === String(currentUser);
+      const setSelf = async (targetUserId, approved, notes) => {
+        setBusy(true); setError('');
+        try {
+          const body = { documentId: 'default', actorUserId: currentUser, targetUserId, approved: !!approved };
+          if (notes !== undefined) body.notes = String(notes);
+          const r = await fetch(`${API_BASE}/api/v1/approvals/set`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          if (!r.ok) throw new Error('set');
+          const j = await r.json();
+          setRows(Array.isArray(j.approvers) ? j.approvers : []);
+          setHdr(j.summary || { approved: 0, total: 0 });
+        } catch { setError('Failed to update'); }
+        finally { setBusy(false); }
+      };
+
+      const onToggle = async (row, next) => {
+        if (!canToggle(row)) return;
+        if (row.userId !== currentUser && canOverride) {
+          setPrompt({ title: 'Override approval?', message: `Override approval for ${row.name}?`, onConfirm: async () => { await setSelf(row.userId, next); } });
+          return;
+        }
+        await setSelf(row.userId, next);
+      };
+
+      const notify = async () => {
+        setBusy(true); setError('');
+        try {
+          const r = await fetch(`${API_BASE}/api/v1/approvals/notify`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ documentId: 'default', actorUserId: currentUser }) });
+          if (!r.ok) throw new Error('notify');
+        } catch { setError('Failed to notify'); }
+        finally { setBusy(false); }
+      };
+
+      const header = null;
+
+      const list = !rows ? React.createElement('div', null, 'Loading...') : React.createElement('div', { className: 'd-flex flex-column gap-8' },
+        rows.map((r, i) => React.createElement('div', { key: r.userId || i, className: 'workflow-card d-flex items-center justify-between' }, [
+          React.createElement('div', { key: 'lwrap', className: 'd-flex items-center' }, [
+            React.createElement('div', { key: 'av', className: 'avatar-initials', style: { marginRight: 10 } }, initialsOf(r.name || r.userId)),
+            React.createElement('div', { key: 'txt', className: 'd-flex flex-column' }, [
+              React.createElement('div', { key: 'n', className: 'font-medium' }, r.name || r.userId),
+              React.createElement('div', { key: 'tr', className: 'text-sm text-gray-600' }, [titleOf(r.userId), titleOf(r.userId) ? ' • ' : '', (roleOf(r.userId) || '').toString()])
+            ])
+          ]),
+          React.createElement('input', { key: 'c', type: 'checkbox', disabled: (!!busy) || (!canToggle(r)), checked: !!r.approved, onChange: (e) => onToggle(r, !!e.target.checked), title: (!canToggle(r) ? 'Only editors can override others' : undefined) })
+        ]))
+      );
+
+      return React.createElement('div', null, [
+        error ? React.createElement('div', { className: 'bg-error-50 text-error-700 p-2 mb-2 border border-error-200 rounded' }, error) : null,
+        header,
+        list,
+        (prompt ? React.createElement(ConfirmModal, { title: prompt.title, message: prompt.message, onConfirm: async () => { try { await prompt.onConfirm?.(); } finally { setPrompt(null); } }, onClose: () => setPrompt(null) }) : null)
+      ]);
+    }
+
+    function App(props) {
+      console.log('App render');
       const [modal, setModal] = React.useState(null);
-      const [showComing, setShowComing] = React.useState(false);
-      const { documentSource } = React.useContext(StateContext);
+      const { config } = props;
+      console.log('App props, config:', config);
+      const { documentSource, actions, approvalsSummary } = React.useContext(StateContext);
       React.useEffect(() => {
         function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); if (d && d.id === 'notifications') setModal({ id: 'notifications' }); if (d && d.id === 'request-review') setModal({ id: 'request-review' }); if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); } catch {} }
         window.addEventListener('react:open-modal', onOpen);
         return () => window.removeEventListener('react:open-modal', onOpen);
       }, []);
+  
       const [confirm, setConfirm] = React.useState(null);
-      const { actions } = React.useContext(StateContext);
       const ask = (kind) => {
         if (kind === 'finalize') setConfirm({ title: 'Finalize?', message: 'This will lock the document.', onConfirm: actions.finalize });
         if (kind === 'unfinalize') setConfirm({ title: 'Unlock?', message: 'This will unlock the document.', onConfirm: actions.unfinalize });
         if (kind === 'reset') setConfirm({ title: 'Factory reset?', message: 'This will clear working data.', onConfirm: actions.factoryReset });
       };
-      return React.createElement(ThemeProvider, null,
-        React.createElement(StateProvider, null,
-          React.createElement(React.Fragment, null,
-            React.createElement(ErrorBanner, null),
-            // SuperDoc host only on web
-            (typeof Office === 'undefined' ? React.createElement(SuperDocHost, { key: 'host', src: documentSource }) : null),
-            // 2 - Banners (top) and pill (render into top-right slot if available)
-            React.createElement('div', { key: 'toprow' }, [
-              React.createElement(BannerStack, { key: 'banners' }),
-              (function(){
-                try {
-                  const slot = document.getElementById('coming-pill-slot');
-                  if (slot && win.ReactDOM && typeof win.ReactDOM.createPortal === 'function') {
-                    return win.ReactDOM.createPortal(React.createElement(PulsePill, { onClick: () => setShowComing(true) }), slot);
-                  }
-                } catch {}
-                return React.createElement(PulsePill, { onClick: () => setShowComing(true) });
-              })()
-            ]),
-            // 1 - User selection + role pill + status
-            React.createElement('div', { className: 'mt-2 border-t border-gray-200 pt-2' }, [
-              React.createElement('div', { key: 'hdr1', className: 'ui-section-header' }, 'User & Role'),
-              React.createElement('div', { className: 'd-flex items-center gap-8 flex-wrap' }, [
-              React.createElement(UserCard, { key: 'user' }),
-              React.createElement(ConnectionBadge, { key: 'conn' }),
-              React.createElement(NotificationsBell, { key: 'bell' }),
-              ])
-            ]),
-            // 3 - Buttons (actions)
-            React.createElement('div', { className: 'mt-2.5 border-t border-gray-200 pt-2' }, [
-              React.createElement('div', { key: 'hdr2', className: 'ui-section-header' }, 'Actions'),
-              React.createElement(ApprovalsPill, { key: 'approvals-pill' }),
-              React.createElement(ActionButtons, { key: 'actions' }),
-            ]),
-            // 4 - Chatbot (OG Assist)
-            React.createElement('div', { className: 'mt-3 border-t border-gray-200 pt-2' }, [
-              React.createElement('div', { key: 'hdr3', className: 'ui-section-header' }, 'Assistant'),
-              React.createElement(ChatConsole, { key: 'chat' }),
-            ]),
-            modal ? (modal.id === 'send-vendor' ? React.createElement(SendVendorModal, { userId: modal.userId, onClose: () => setModal(null) }) : (modal.id === 'approvals' ? React.createElement(ApprovalsModal, { onClose: () => setModal(null) }) : (modal.id === 'compile' ? React.createElement(CompileModal, { onClose: () => setModal(null) }) : (modal.id === 'notifications' ? React.createElement(NotificationsModal, { onClose: () => setModal(null) }) : (modal.id === 'request-review' ? React.createElement(RequestReviewModal, { onClose: () => setModal(null) }) : (modal.id === 'message' ? React.createElement(MessageModal, { toUserId: modal.toUserId, toUserName: modal.toUserName, onClose: () => setModal(null) }) : (modal.id === 'open-gov' ? React.createElement(OpenGovModal, { onClose: () => setModal(null) }) : null))))))) : null,
-            showComing ? React.createElement(ComingModal, { key: 'coming', onClose: () => setShowComing(false) }) : null,
-            confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
-          )
-        )
-      );
+
+      const onClose = () => setModal(null);
+      const onConfirmClose = () => setConfirm(null);
+
+      const renderModal = () => {
+        if (!modal) return null;
+        switch (modal.id) {
+          case 'send-vendor':
+            return React.createElement(SendVendorModal, { userId: modal.userId, onClose });
+          case 'approvals':
+            return React.createElement(ApprovalsModal, { onClose });
+          case 'compile':
+            return React.createElement(CompileModal, { onClose });
+          case 'notifications':
+            return React.createElement(NotificationsModal, { onClose });
+          case 'request-review':
+            return React.createElement(RequestReviewModal, { onClose });
+          case 'message':
+            return React.createElement(MessageModal, { toUserId: modal.toUserId, toUserName: modal.toUserName, onClose });
+          case 'open-gov':
+            return React.createElement(OpenGovModal, { onClose });
+          default:
+            return null;
+        }
+      };
+
+      const isWordHost = (typeof Office !== 'undefined');
+      const topRowStyle = { gap: 5, paddingTop: (isWordHost ? 0 : 8) };
+      const topPanel = React.createElement('div', { className: 'panel panel--top' }, [
+        React.createElement('div', { className: 'd-flex items-center', style: topRowStyle }, [
+          React.createElement(NotificationsBell, { key: 'bell-top' }),
+          React.createElement('div', { style: { width: 5, height: 1 } }),
+          React.createElement(StatusBadge, { key: 'status' }),
+          (isWordHost ? React.createElement(UIButton, { key: 'open-og', label: 'Open in OpenGov ↗', onClick: () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'open-gov' } })); } catch {} }, variant: 'tertiary', style: { marginLeft: 'auto' } }) : null),
+        ]),
+        React.createElement(InlineTitleEditor, { key: 'title' }),
+        React.createElement(ErrorBanner, null),
+        (typeof Office === 'undefined' ? React.createElement(SuperDocHost, { key: 'host', src: documentSource }) : null),
+        React.createElement('div', { className: '', style: { marginTop: 8 } }, [
+          React.createElement('div', { className: 'd-flex items-center gap-8 flex-wrap' }, [
+            React.createElement(LastUpdatedPrefix, { key: 'last' }),
+            React.createElement(UserCard, { key: 'user' }),
+          ]),
+        ]),
+        React.createElement('div', { className: 'pt-2', style: { paddingTop: 8, marginTop: 0 } }, [
+          React.createElement(ActionButtons, { key: 'actions' }),
+        ]),
+      ]);
+
+      // Bottom section: two tabs - AI and Workflow
+      const [activeTab, setActiveTab] = React.useState('AI');
+      const [underline, setUnderline] = React.useState({ left: 0, width: 0 });
+      const tabbarRef = React.useRef(null);
+      const aiLabelRef = React.useRef(null);
+      const wfLabelRef = React.useRef(null);
+
+      const recalcUnderline = React.useCallback(() => {
+        try {
+          const bar = tabbarRef.current;
+          const labelEl = (activeTab === 'AI' ? aiLabelRef.current : wfLabelRef.current);
+          if (!bar || !labelEl) return;
+          const barRect = bar.getBoundingClientRect();
+          const labRect = labelEl.getBoundingClientRect();
+          const width = Math.max(24, Math.round(labRect.width));
+          const left = Math.round((labRect.left - barRect.left) + (labRect.width / 2) - (width / 2));
+          setUnderline({ left, width });
+        } catch {}
+      }, [activeTab]);
+
+      React.useEffect(() => { recalcUnderline(); }, [recalcUnderline]);
+      // Recalculate underline if the Workflow tab label width changes due to summary updates
+      React.useEffect(() => { recalcUnderline(); }, [approvalsSummary, recalcUnderline]);
+      React.useEffect(() => {
+        const onResize = () => recalcUnderline();
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+      }, [recalcUnderline]);
+
+      const Tabs = React.createElement('div', { className: 'mt-3 pt-2' }, [
+        React.createElement('div', { key: 'tabbar', ref: tabbarRef, className: 'd-flex items-center gap-16 border-b border-gray-200', style: { position: 'relative', padding: '0 8px' } }, [
+          React.createElement('button', {
+            key: 'tab-ai',
+            className: activeTab === 'AI' ? 'tab tab--active' : 'tab',
+            onClick: () => setActiveTab('AI'),
+            style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'AI' ? '#111827' : '#6B7280', fontWeight: 600 }
+          }, React.createElement('span', { ref: aiLabelRef, style: { display: 'inline-block' } }, 'AI')),
+          React.createElement('button', {
+            key: 'tab-workflow',
+            className: activeTab === 'Workflow' ? 'tab tab--active' : 'tab',
+            onClick: () => setActiveTab('Workflow'),
+            style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Workflow' ? '#111827' : '#6B7280', fontWeight: 600 }
+          }, React.createElement('span', { ref: wfLabelRef, style: { display: 'inline-block' } }, [
+            'Workflow',
+            (approvalsSummary && typeof approvalsSummary.total === 'number'
+              ? ` (${approvalsSummary.approved || 0}/${approvalsSummary.total})`
+              : '')
+          ])),
+          React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
+        ]),
+        React.createElement('div', { key: 'tabbody', className: 'mt-3' }, [
+          (activeTab === 'AI' ? React.createElement(ChatConsole, { key: 'chat' }) : null),
+          (activeTab === 'Workflow' ? React.createElement(WorkflowApprovalsPanel, { key: 'workflow' }) : null),
+        ])
+      ]);
+
+      const assistantPanel = React.createElement('div', { className: 'panel panel--assistant' }, [
+        Tabs,
+        renderModal(),
+        (confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: onConfirmClose }) : null)
+      ]);
+
+      return React.createElement(ThemeProvider, null, React.createElement(React.Fragment, null, [topPanel, assistantPanel]));
     }
 
     const root = ReactDOM.createRoot(rootEl);
-    root.render(React.createElement(App, null));
+    root.render(React.createElement(StateProvider, null));
   }
 
   try {

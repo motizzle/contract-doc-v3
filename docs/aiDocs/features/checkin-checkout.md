@@ -55,7 +55,7 @@ Errors use `4xx` with `{ ok: false, error }` (e.g., conflict, forbidden).
 - On any state change (checkout, checkin, finalize): server broadcasts an event like `event: state\:update` with the new state snapshot.
 
 ## State Matrix mapping (what the clients consume)
-The server computes a config bundle used by both clients. Relevant parts:
+The server computes a config bundle used by both clients. Relevant parts (updated to support new primary‑row layout rules):
 
 ```json
 {
@@ -65,7 +65,8 @@ The server computes a config bundle used by both clients. Relevant parts:
     "cancelBtn": false,
     "overrideBtn": false,
     "finalizeBtn": false,
-    "unfinalizeBtn": false
+    "unfinalizeBtn": false,
+    "primaryLayout": { "mode": "not_checked_out" }
   },
   "checkoutStatus": { "isCheckedOut": false, "checkedOutUserId": null }
 }
@@ -75,10 +76,15 @@ Rules (summarized from implementation):
 - `canWrite = !isCheckedOut || isOwner` where `isOwner = (checkedOutBy === userId)`.
 - `checkoutBtn`: shown for roles that allow checkout when not checked out.
 - `overrideBtn`: shown for roles with `override: true` when someone else has it checked out.
-- `checkinBtn` and `cancelBtn`: shown only for the owner.
+- `checkinBtn` and `cancelBtn`: available only for the owner.
 - `overrideBtn`: shown for roles with `override: true` when someone else owns the checkout. Action clears `checkedOutBy` (revert to Available), it does not transfer ownership.
 - `finalizeBtn`: enabled for editors when not final AND (not checked out OR owner); on finalize, checkout is cleared.
 - `unfinalizeBtn`: enabled for editors when final.
+
+Primary‑row rendering guidance (client responsibility using `primaryLayout.mode`):
+- `not_checked_out`: show [Checkout, three‑dots]
+- `self`: show [Save, Check‑in (dropdown: Check‑in & Save, Cancel Checkout), three‑dots]
+- `other`: show a banner and [three‑dots ] only
 
 ### Document modes by role
 - Mapping (shared UI):

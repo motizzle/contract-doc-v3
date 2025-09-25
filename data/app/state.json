@@ -1,13 +1,15 @@
 {
   "isFinal": false,
   "checkedOutBy": null,
-  "lastUpdated": "2025-09-19T21:22:22.365Z",
-  "revision": 236,
-  "documentVersion": 191,
+  "lastUpdated": "2025-09-25T21:37:45.423Z",
+  "revision": 323,
+  "documentVersion": 235,
+  "title": "CLM Contract",
+  "status": "draft",
   "updatedBy": {
-    "userId": "system",
-    "label": "system"
+    "userId": "user5",
+    "label": "Gettysburger King"
   },
-  "updatedPlatform": null,
-  "approvalsRevision": 69
+  "updatedPlatform": "word",
+  "approvalsRevision": 89
 }

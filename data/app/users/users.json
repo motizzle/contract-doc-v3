@@ -1,8 +1,8 @@
 [
-  { "id": "user1", "label": "Warren Peace", "role": "editor" },
-  { "id": "user2", "label": "Fun E Guy", "role": "editor" },
-  { "id": "user3", "label": "Yuri Lee Laffed",  "role": "suggestor" },
-  { "id": "user4", "label": "Hoo R U",  "role": "vendor" },
-  { "id": "user5", "label": "Gettysburger King",  "role": "viewer" }
+  { "id": "user1", "label": "Warren Peace", "role": "editor", "title": "Chief of Not Messing Around" },
+  { "id": "user2", "label": "Fun E Guy", "role": "editor", "title": "Junior Money Man" },
+  { "id": "user3", "label": "Yuri Lee Laffed",  "role": "suggestor", "title": "Head of Solving Problems" },
+  { "id": "user4", "label": "Hugh R U",  "role": "vendor", "title": "CEO" },
+  { "id": "user5", "label": "Gettysburger King",  "role": "viewer", "title": "Executive Vice Intern" }
 ]
 
