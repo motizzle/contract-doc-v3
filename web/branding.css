@@ -1333,20 +1333,20 @@ body .brand-header-bg .pulse-pill {
 
 /* Header layout styles */
 .addin-header-layout {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: flex-start !important;
 }
 .addin-header-left {
-  display: flex;
-  align-items: flex-start;
+  display: flex !important;
+  align-items: flex-start !important;
 }
 .header-actions {
-  display: flex;
-  justify-content: flex-start;
-  flex-direction: column;
-  align-items: flex-end;
+  display: flex !important;
+  justify-content: flex-start !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
 }
 .header-actions div {
-  color: white;
+  color: white !important;
 }
