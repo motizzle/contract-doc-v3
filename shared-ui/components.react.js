@@ -1111,7 +1111,7 @@
           border: 'none',
           outline: 'none',
           padding: '0',
-          margin: '0 0 5px 0',
+          margin: '0',
           fontSize: 'calc(var(--font-size-2xl) * 1.5)',
           lineHeight: '1.15',
           height: 'calc((var(--font-size-2xl) * 1.5) * 1.2)',
@@ -1734,13 +1734,13 @@
         React.createElement(InlineTitleEditor, { key: 'title' }),
         React.createElement(ErrorBanner, null),
         (typeof Office === 'undefined' ? React.createElement(SuperDocHost, { key: 'host', src: documentSource }) : null),
-        React.createElement('div', { className: '', style: { marginTop: 5 } }, [
+        React.createElement('div', { className: '', style: { marginTop: 8 } }, [
           React.createElement('div', { className: 'd-flex items-center gap-8 flex-wrap' }, [
             React.createElement(LastUpdatedPrefix, { key: 'last' }),
             React.createElement(UserCard, { key: 'user' }),
           ]),
         ]),
-        React.createElement('div', { className: 'pt-2', style: { paddingTop: 9, marginTop: 0 } }, [
+        React.createElement('div', { className: 'pt-2', style: { paddingTop: 8, marginTop: 0 } }, [
           React.createElement(ActionButtons, { key: 'actions' }),
         ]),
       ]);
