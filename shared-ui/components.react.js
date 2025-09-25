@@ -28,27 +28,7 @@
     const MIN_DOCX_SIZE = 8192; // bytes; reject tiny/invalid working overlays
 
     const ThemeContext = React.createContext({ tokens: null });
-    const StateContext = React.createContext({
-      config: null,
-      revision: 0,
-      actions: {},
-      isConnected: false,
-      lastTs: 0,
-      currentUser: 'user1',
-      currentRole: 'editor',
-      users: [],
-      setUser: () => {},
-      logs: [],
-      addLog: () => {},
-      lastSeenLogCount: 0,
-      markNotificationsSeen: () => {},
-      documentSource: null,
-      setDocumentSource: () => {},
-      lastError: null,
-      setLastError: () => {},
-      approvalsSummary: null,
-      approvalsRevision: 0,
-    });
+  const StateContext = React.createContext(null);
 
     function ThemeProvider(props) {
       const [tokens, setTokens] = React.useState(null);
@@ -462,12 +442,12 @@
         setUser: (nextUserId, nextRole) => { try { setUserId(nextUserId); if (nextRole) setRole(nextRole); addLog(`Switched to user: ${nextUserId}`, 'user'); } catch {} },
       }), [API_BASE, refresh, userId, addLog]);
 
-      return React.createElement(App, { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, renderNotification, formatNotification });
+      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, renderNotification, formatNotification } }, React.createElement(App, { config }));
     }
 
     function BannerStack(props) {
       const { tokens } = React.useContext(ThemeContext);
-      const { config, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, revision, addLog, setDocumentSource } = props;
+      const { config, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, revision, addLog, setDocumentSource } = React.useContext(StateContext);
       const banners = Array.isArray(config?.banners) ? config.banners : [];
       const API_BASE = getApiBase();
       const show = (b) => {
@@ -1536,7 +1516,7 @@
     function App(props) {
       console.log('App render');
       const [modal, setModal] = React.useState(null);
-      const { documentSource, config, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, revision, addLog, setDocumentSource } = props;
+      const { config } = props;
       console.log('App props, config:', config);
       React.useEffect(() => {
         function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); if (d && d.id === 'notifications') setModal({ id: 'notifications' }); if (d && d.id === 'request-review') setModal({ id: 'request-review' }); if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); } catch {} }
@@ -1563,13 +1543,12 @@
         if (kind === 'reset') setConfirm({ title: 'Factory reset?', message: 'This will clear working data.', onConfirm: actions.factoryReset });
       };
       return React.createElement(ThemeProvider, null,
-        React.createElement(StateProvider, null,
-          React.createElement(React.Fragment, null,
+        React.createElement(React.Fragment, null,
             React.createElement(ErrorBanner, null),
             // SuperDoc host only on web
             (typeof Office === 'undefined' ? React.createElement(SuperDocHost, { key: 'host', src: documentSource }) : null),
             // 2 - Banners (top)
-            React.createElement(BannerStack, { key: 'banners', config, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, revision, addLog, setDocumentSource }),
+            React.createElement(BannerStack, { key: 'banners' }),
             // 1 - User selection + role pill + status
             React.createElement('div', { className: 'mt-2 border-t border-gray-200 pt-2' }, [
               React.createElement('div', { key: 'hdr1', className: 'ui-section-header' }, 'User & Role'),
