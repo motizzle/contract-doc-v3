@@ -28,15 +28,14 @@
       <img class="brand-img" src="/web/assets/opengov-logo.png" alt="OpenGov" title="Redline Like You Mean It" />
     </div>
     <div class="header-actions">
-      <button onclick="openNewDocument()" class="btn btn--primary">Open New Document</button>
-      <div id="last-saved-info" class="text-xs text-gray-400 mt-1"></div>
+      <button onclick="openNewDocument()" class="btn btn--secondary">Open A Doc</button>
     </div>
   </header>
-    <section id="sideload-msg" class="ms-welcome__main" style="display: none;">
+    <section id="sideload-msg" class="ms-welcome__main is-hidden">
         <h2 class="ms-font-xl">Loading...</h2>
     </section>
-    <main id="app-body" class="ms-welcome__main" style="display: none; padding:0; gap:0;">
-        <div id="app-root" style="padding: 8px 12px;"></div>
+    <main id="app-body" class="ms-welcome__main is-hidden no-padding no-gap items-stretch">
+        <div id="app-root" class="w-full"></div>
     </main>
     <!-- Preload and load React UMD locally via backend proxy -->
     <link rel="preload" as="script" href="/vendor/react/react.production.min.js" />

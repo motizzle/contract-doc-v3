@@ -3,21 +3,21 @@
 /* Global brand variables (override values below as needed) */
 :root {
   /* Header background and foreground */
-  --brand-header-bg: #4b3fff;
-  --brand-header-fg: #fff;
-  --brand-header-shadow: 0 2px 12px rgba(0,0,0,0.12) inset, 0 2px 6px rgba(0,0,0,0.08);
+  --brand-header-bg: #ffffff;
+  --brand-header-fg: #111827;
+  --brand-header-shadow: none;
   --brand-header-border: 1px solid rgba(7, 7, 7, 0.25);
 
   /* Header padding */
   --brand-header-pt: 8px;   /* top */
   --brand-header-pr: 12px;  /* right */
-  --brand-header-pb: 8px;   /* bottom */
+  --brand-header-pb: 0px;   /* bottom */
   --brand-header-pl: 12px;  /* left */
 
   /* Logo */
   --brand-logo-top: 1px;
   --brand-logo-left: 2px;
-  --brand-logo-height: 20px;
+  --brand-logo-height: 24px;
 
   /* Title */
   --brand-title-font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -45,10 +45,10 @@
   --btn-height: 32px;
   --btn-radius: 6px;
   --btn-font-size: 13px;
-  --btn-primary-bg: #5069ff;
+  --btn-primary-bg: #4B3FFF;
   --btn-primary-fg: #ffffff;
-  --btn-secondary-bg: #dce6f4;
-  --btn-secondary-fg: #111827;
+  --btn-secondary-bg: #ffffff;
+  --btn-secondary-fg: #000000;
   --btn-border: #111827;
   --btn-disabled-opacity: 0.6;
 
@@ -237,7 +237,7 @@
 /* Add-in header (Word taskpane) */
 .addin-header {
   position: relative;
-  min-height: 95px;  /* Increased from 85px to provide more space for button + title */
+  min-height: 57px;  /* Reduced ~40% from 95px to shrink banner height */
   color: var(--brand-header-fg);
   /* Use CSS var fallbacks for robustness */
   padding: var(--brand-header-pt, 8px) var(--brand-header-pr, 12px) var(--brand-header-pb, 8px) var(--brand-header-pl, 12px);
@@ -357,9 +357,10 @@
 .ui-table th, .ui-table td { padding: 10px 8px; border-top: 1px solid #f3f4f6; text-align: left; }
 .ui-table th { font-size: 12px; color: #6b7280; font-weight: 700; text-transform: uppercase; }
 .ui-badge { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-.ui-badge.gray { background: #e5e7eb; color: #111827; }
-.ui-badge.indigo { background: #e0e7ff; color: #3730a3; }
-.ui-badge.green { background: #dcfce7; color: #166534; }
+/* Status greys */
+.ui-badge.gray-medium { background: var(--color-gray-600); color: var(--color-white); border-radius: 6px; }
+.ui-badge.gray-dark { background: var(--color-gray-700); color: var(--color-white); border-radius: 6px; }
+.ui-badge.gray-verydark { background: var(--color-gray-900); color: var(--color-white); border-radius: 6px; }
 
 /* Shared brand header background (use for both web banner and add-in header) */
 .brand-header-bg {
@@ -1324,18 +1325,20 @@ body .brand-header-bg .pulse-pill {
 
 /* Header actions button overrides for visibility in Office add-ins */
 .header-actions button {
-  background: #5069ff;
-  color: white;
-  border: 1px solid #111827;
-  padding: 6px 12px;
+  border: 1px solid var(--btn-border);
+  width: 141px;
+  height: 30px;
+  padding: 3px 8px;
+  font-size: 11px;
   border-radius: 6px;
 }
 
 /* Header layout styles */
 .addin-header-layout {
   display: flex !important;
+  flex-direction: row !important;
   justify-content: space-between !important;
-  align-items: flex-start !important;
+  align-items: center !important;
 }
 .addin-header-left {
   display: flex !important;
@@ -1350,3 +1353,42 @@ body .brand-header-bg .pulse-pill {
 .header-actions div {
   color: white !important;
 }
+
+/* Utility classes to replace inline styles in add-in HTML */
+.is-hidden { display: none; }
+.no-padding { padding: 0; }
+.no-gap { gap: 0; }
+.items-stretch { align-items: stretch; }
+.w-full { width: 100%; }
+
+/* Last updated banner */
+.last-updated-banner, .update-banner {
+  background: #F1FAFC;
+  border: 1px solid #0E6F7F;
+  height: 45px;
+  width: 100%;
+  max-width: 424px;
+  margin: 8px auto 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  padding: 8px;
+  box-sizing: border-box;
+  text-align: center;
+  word-break: break-word;
+}
+
+/* Debug: red outline to visualize below-banner sections */
+.debug-outline {
+  outline: 2px solid red !important;
+  outline-offset: -2px;
+}
+
+/* Panels beneath the header */
+.panel { padding: 3px 12px; margin-left: -12px; margin-right: -12px; }
+.panel--top { margin-top: 0; background: #F8F8F8; border: 1px solid #E6E6E6; }
+.panel--assistant { margin-top: 0; background: #FFFFFF; }
+
+/* Add-in (Word) specific: no outer gutters; ensure 3px padding on all sides */
+.ms-welcome .panel { padding: 14px; margin-left: 0; margin-right: 0; }

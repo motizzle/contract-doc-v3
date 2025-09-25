@@ -149,6 +149,8 @@ const serverState = {
   revision: 1,
   // Document update tracking (prototype)
   documentVersion: 1,
+  title: 'Untitled Document',
+  status: 'draft',
   updatedBy: null, // { userId, label }
   updatedPlatform: null, // 'web' | 'word' | null
   approvalsRevision: 1,
@@ -164,6 +166,8 @@ try {
     if (typeof saved.lastUpdated === 'string') serverState.lastUpdated = saved.lastUpdated;
     if (typeof saved.revision === 'number') serverState.revision = saved.revision;
     if (typeof saved.documentVersion === 'number') serverState.documentVersion = saved.documentVersion;
+    if (typeof saved.title === 'string') serverState.title = saved.title;
+    if (typeof saved.status === 'string') serverState.status = saved.status;
     if (saved.updatedBy && typeof saved.updatedBy === 'object') serverState.updatedBy = saved.updatedBy;
     if (typeof saved.updatedPlatform === 'string') serverState.updatedPlatform = saved.updatedPlatform;
     if (typeof saved.approvalsRevision === 'number') serverState.approvalsRevision = saved.approvalsRevision;
@@ -172,7 +176,7 @@ try {
 
 function persistState() {
   try {
-    fs.writeFileSync(stateFilePath, JSON.stringify({ isFinal: serverState.isFinal, checkedOutBy: serverState.checkedOutBy, lastUpdated: serverState.lastUpdated, revision: serverState.revision, documentVersion: serverState.documentVersion, updatedBy: serverState.updatedBy, updatedPlatform: serverState.updatedPlatform, approvalsRevision: serverState.approvalsRevision }, null, 2));
+    fs.writeFileSync(stateFilePath, JSON.stringify({ isFinal: serverState.isFinal, checkedOutBy: serverState.checkedOutBy, lastUpdated: serverState.lastUpdated, revision: serverState.revision, documentVersion: serverState.documentVersion, title: serverState.title, status: serverState.status, updatedBy: serverState.updatedBy, updatedPlatform: serverState.updatedPlatform, approvalsRevision: serverState.approvalsRevision }, null, 2));
   } catch {}
 }
 
@@ -259,10 +263,11 @@ function buildBanner({ isFinal, isCheckedOut, isOwner, checkedOutBy }) {
     return { state: 'final', title: 'Finalized', message: 'This document is finalized.' };
   }
   if (isCheckedOut) {
-    if (isOwner) return { state: 'checked_out_self', title: 'You\'ve got it checked out', message: 'You can edit. Remember to check in.' };
-    return { state: 'checked_out_other', title: 'Checked out', message: `Checked out by ${checkedOutBy}` };
+    // Disable banners for both self and other checkout cases
+    return null;
   }
-  return { state: 'available', title: 'Available to check out', message: 'Redline like you mean it!' };
+  // Suppress the generic available banner
+  return null;
 }
 
 // Approvals helpers
@@ -507,6 +512,8 @@ app.get('/api/v1/state-matrix', (req, res) => {
   const config = {
     documentId: DOCUMENT_ID,
     documentVersion: serverState.documentVersion,
+    title: serverState.title,
+    status: serverState.status,
     lastUpdated: serverState.lastUpdated,
     updatedBy: serverState.updatedBy,
     lastSaved: {
@@ -525,6 +532,9 @@ app.get('/api/v1/state-matrix', (req, res) => {
       sendVendorBtn: !!rolePerm.sendVendor && !serverState.isFinal,
       // Always show Back to OpenGov button (client-only UX)
       openGovBtn: true,
+      primaryLayout: {
+        mode: (!isCheckedOut ? 'not_checked_out' : (isOwner ? 'self' : 'other'))
+      }
     },
     finalize: {
       isFinal: serverState.isFinal,
@@ -535,7 +545,9 @@ app.get('/api/v1/state-matrix', (req, res) => {
     banner,
     // Ordered banners for rendering in sequence on the client
     banners: (() => {
-      const list = [banner];
+      const list = [];
+      // Skip the generic "available" banner entirely
+      if (banner && banner.state && banner.state !== 'available') list.push(banner);
       // Update-notification banner (server compose; client only renders)
       try {
         const clientLoaded = Number(req.query?.clientVersion || 0);
@@ -548,9 +560,7 @@ app.get('/api/v1/state-matrix', (req, res) => {
           list.unshift({ state: 'update_available', title: 'Update available', message: `${by} updated this document.` });
         }
       } catch {}
-      if (String(derivedRole).toLowerCase() === 'viewer') {
-        list.push({ state: 'view_only', title: 'View Only', message: 'You can look but do not touch!' });
-      }
+      // Disable viewer-only banner
       return list;
     })(),
     checkoutStatus: { isCheckedOut, checkedOutUserId: serverState.checkedOutBy },
@@ -632,6 +642,46 @@ app.post('/api/v1/unfinalize', (req, res) => {
   res.json({ ok: true });
 });
 
+// Update document title
+app.post('/api/v1/title', (req, res) => {
+  try {
+    const title = String(req.body?.title || '').trim();
+    if (!title) return res.status(400).json({ error: 'invalid_title' });
+    serverState.title = title.slice(0, 256);
+    // Record who updated the title
+    const userId = req.body?.userId || 'user1';
+    const platform = (req.body?.platform || req.query?.platform || '').toLowerCase();
+    const label = resolveUserLabel(userId) || userId;
+    serverState.updatedBy = { userId, label };
+    serverState.updatedPlatform = (platform === 'word' || platform === 'web') ? platform : serverState.updatedPlatform;
+    serverState.lastUpdated = new Date().toISOString();
+    persistState();
+    // Bump revision so clients pick up latest state via SSE-driven refresh
+    bumpRevision();
+    broadcast({ type: 'title', title: serverState.title, userId });
+    res.json({ ok: true, title: serverState.title });
+  } catch (e) {
+    res.status(500).json({ error: 'title_update_failed' });
+  }
+});
+
+// Cycle status: draft -> review -> final
+app.post('/api/v1/status/cycle', (req, res) => {
+  try {
+    const order = ['draft', 'review', 'final'];
+    const cur = String(serverState.status || 'draft').toLowerCase();
+    const i = order.indexOf(cur);
+    const next = order[(i >= 0 ? (i + 1) % order.length : 0)];
+    serverState.status = next;
+    serverState.lastUpdated = new Date().toISOString();
+    persistState();
+    broadcast({ type: 'status', status: next });
+    res.json({ ok: true, status: next });
+  } catch (e) {
+    res.status(500).json({ error: 'status_cycle_failed' });
+  }
+});
+
 app.post('/api/v1/document/upload', upload.single('file'), (req, res) => {
   // Normalize to default.docx working copy when name differs
   const uploaded = req.file?.path;
@@ -681,6 +731,11 @@ app.post('/api/v1/save-progress', (req, res) => {
     bumpRevision();
     bumpDocumentVersion(userId, platform || 'word');
     broadcast({ type: 'saveProgress', userId, size: bytes.length });
+    // Touch title if empty to encourage naming
+    if (!serverState.title || serverState.title === 'Untitled Document') {
+      serverState.title = 'Untitled Document';
+      persistState();
+    }
     return res.json({ ok: true, revision: serverState.revision });
   } catch (e) {
     return res.status(500).json({ error: 'save_progress_failed' });

@@ -451,10 +451,9 @@
       const banners = Array.isArray(config?.banners) ? config.banners : [];
       const API_BASE = getApiBase();
       const show = (b) => {
-        if (!b || b.state !== 'update_available') return true;
-        const serverVersion = Number(config?.documentVersion || 0);
-        if (dismissedVersion && dismissedVersion >= serverVersion) return false;
-        if (loadedVersion && loadedVersion >= serverVersion) return false;
+        if (!b) return false;
+        // Exclude update_available here; it is rendered in a custom location
+        if (b.state === 'update_available') return false;
         return true;
       };
       const refreshNow = async () => {
@@ -504,7 +503,7 @@
     }
 
     function ActionButtons() {
-      const { config, actions, revision, setDocumentSource, addLog, setLoadedVersion } = React.useContext(StateContext);
+      const { config, actions, revision, setDocumentSource, addLog, setLoadedVersion, users } = React.useContext(StateContext);
       const [confirm, setConfirm] = React.useState(null);
       const { tokens } = React.useContext(ThemeContext);
 
@@ -592,18 +591,10 @@
         }
       };
 
-      // Top: checkout cluster only
-      const topCluster = [
-        add('Checkout', actions.checkout, !!btns.checkoutBtn),
-        add('Check-in and Save', async () => { try { const ok = await actions.saveProgress(); if (ok) { await actions.checkin(); } } catch {} }, !!btns.checkinBtn),
-        add('Cancel Checkout', actions.cancel, !!btns.cancelBtn),
-        add('Save Progress', actions.saveProgress, !!btns.saveProgressBtn),
-        add('Override Checkout', actions.override, !!btns.overrideBtn),
-      ].filter(Boolean);
-
       // Menu state and nested actions
       const [menuOpen, setMenuOpen] = React.useState(false);
       const nestedActions = [
+        add('View Latest', viewLatest, true, 'primary'),
         add('Finalize', () => ask('Finalize?', 'This will lock the document.', actions.finalize), !!btns.finalizeBtn, 'primary'),
         add('Back to OpenGov', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'open-gov' } })); } catch {} }, !!btns.openGovBtn, 'primary'),
         add('Send to Vendor', () => { try { setTimeout(() => { try { actions.sendVendor({}); } catch {} }, 130); } catch {} }, !!btns.sendVendorBtn),
@@ -612,18 +603,90 @@
         add('Factory Reset', () => ask('Factory reset?', 'This will clear working data.', actions.factoryReset), true),
       ].filter(Boolean);
 
+      // Compute special case: only checkout is available (plus menu)
+      const onlyCheckout = !!btns.checkoutBtn && !btns.checkinBtn && !btns.cancelBtn && !btns.saveProgressBtn && !btns.overrideBtn;
+
+      // Top: checkout cluster with menu immediately adjacent (default)
+      const topCluster = [
+        add('Checkout', actions.checkout, !!btns.checkoutBtn),
+        React.createElement('div', { style: { position: 'relative' } }, [
+          add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '120px' } }),
+          nestedActions.length > 0 && menuOpen ? React.createElement('div', { style: { position: 'absolute', left: 0, top: '100%', minWidth: '150px', minHeight: '100px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, nestedActions) : null
+        ]),
+        add('Check-in and Save', async () => { try { const ok = await actions.saveProgress(); if (ok) { await actions.checkin(); } } catch {} }, !!btns.checkinBtn),
+        add('Cancel Checkout', actions.cancel, !!btns.cancelBtn),
+        add('Save Progress', actions.saveProgress, !!btns.saveProgressBtn),
+        add('Override Checkout', actions.override, !!btns.overrideBtn),
+      ].filter(Boolean);
+
       // Bottom: all other actions, with '...' for menu
       const bottomGrid = [
         add('Unfinalize', () => ask('Unlock?', 'This will unlock the document.', actions.unfinalize), !!btns.unfinalizeBtn),
-        React.createElement('div', { style: { position: 'relative' } }, [
-          add('...', () => setMenuOpen(!menuOpen), true, 'secondary'),
-          nestedActions.length > 0 && menuOpen ? React.createElement('div', { style: { position: 'absolute', left: 0, top: '100%', minWidth: '150px', minHeight: '100px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, nestedActions) : null
-        ]),
-        add('View Latest', viewLatest, true),
       ].filter(Boolean);
-   
+
+      // Read server-provided primary layout mode
+      const mode = (config && config.buttons && config.buttons.primaryLayout && config.buttons.primaryLayout.mode)
+        || (onlyCheckout ? 'not_checked_out' : (btns.checkinBtn ? 'self' : 'not_checked_out'));
+      const [checkinMenuOpen, setCheckinMenuOpen] = React.useState(false);
+      // Close any open dropdowns when mode changes (e.g., after Checkout)
+      React.useEffect(() => { try { setMenuOpen(false); setCheckinMenuOpen(false); } catch {} }, [mode]);
+
+      const topLayout = (function(){
+        if (mode === 'not_checked_out') {
+          return React.createElement('div', { className: 'd-flex items-center gap-8' }, [
+            add('Checkout', actions.checkout, !!btns.checkoutBtn, undefined, { style: { width: '90%' } }),
+            React.createElement('div', { style: { position: 'relative', flex: '0 0 auto' } }, [
+              add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary'),
+              nestedActions.length > 0 && menuOpen ? React.createElement('div', { style: { position: 'absolute', right: 0, top: '100%', minWidth: '150px', minHeight: '100px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, nestedActions) : null
+            ])
+          ]);
+        }
+        if (mode === 'self') {
+          return React.createElement('div', { className: 'd-flex items-center gap-8' }, [
+            add('Save', actions.saveProgress, !!btns.saveProgressBtn, 'primary', { style: { flex: '1 1 0', width: '100%' } }),
+            React.createElement('div', { style: { position: 'relative', flex: '1 1 0' } }, [
+              add('Check-in ▾', () => setCheckinMenuOpen(!checkinMenuOpen), !!btns.checkinBtn, 'secondary', { style: { width: '100%' } }),
+              (checkinMenuOpen ? React.createElement('div', { style: { position: 'absolute', left: 0, top: '100%', minWidth: '180px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, [
+                add('Check-in and Save', async () => { try { const ok = await actions.saveProgress(); if (ok) await actions.checkin(); } catch {} }, !!btns.checkinBtn),
+                add('Cancel Checkout', actions.cancel, !!btns.cancelBtn)
+              ]) : null)
+            ]),
+            React.createElement('div', { style: { position: 'relative' } }, [
+              add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '120px' } }),
+              nestedActions.length > 0 && menuOpen ? React.createElement('div', { style: { position: 'absolute', right: 0, top: '100%', minWidth: '150px', minHeight: '100px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, nestedActions) : null
+            ])
+          ]);
+        }
+        // mode === 'other'
+        return React.createElement('div', { className: 'd-flex items-center gap-8 flex-wrap' }, [
+          (function(){
+            try {
+              const uid = (config && config.checkoutStatus && config.checkoutStatus.checkedOutUserId) || '';
+              const match = (Array.isArray(users) ? users.find(u => (u && (u.id === uid || u.label === uid)) ) : null);
+              const name = (match && (match.label || match.id)) || uid || 'someone';
+              const when = (config && config.lastUpdated) ? new Date(config.lastUpdated).toLocaleDateString() : '';
+              const text = `Checked out by ${name}${when ? (' on ' + when) : ''}`;
+              return React.createElement('div', { className: 'text-sm text-gray-700' }, text);
+            } catch { return React.createElement('div', { className: 'text-sm text-gray-700' }, 'Checked out by someone'); }
+          })(),
+          React.createElement('div', { style: { position: 'relative', marginLeft: 'auto' } }, [
+            add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '120px' } }),
+            nestedActions.length > 0 && menuOpen ? React.createElement('div', { style: { position: 'absolute', right: 0, top: '100%', minWidth: '150px', minHeight: '100px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, nestedActions) : null
+          ])
+        ]);
+      })();
+
+      const showUpdateBanner = Array.isArray(config?.banners) && (config.banners || []).some(b => b && b.state === 'update_available');
+      const updateBannerText = (function(){
+        try {
+          const b = (config.banners || []).find(x => x && x.state === 'update_available');
+          return (b && (b.title && b.message ? `${b.title}: ${b.message}` : (b.title || b.message))) || '';
+        } catch { return ''; }
+      })();
+
       return React.createElement('div', { className: 'd-flex flex-column gap-6' },
-        React.createElement('div', { className: 'd-grid grid-cols-2 column-gap-8 row-gap-6 grid-auto-rows-minmax-27' }, topCluster),
+        topLayout,
+        (showUpdateBanner ? React.createElement('div', { className: 'update-banner' }, updateBannerText) : null),
         React.createElement('div', { className: 'd-grid grid-cols-2 column-gap-8 row-gap-6 grid-auto-rows-minmax-27' }, bottomGrid),
         confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null
       );
@@ -976,6 +1039,82 @@
       return React.createElement('div', null, [React.createElement('div', { key: 'hdr', className: 'font-semibold' }, 'Assistant'), wrap]);
     }
 
+    function LastUpdatedPrefix() {
+      const { config } = React.useContext(StateContext);
+      let when = '—';
+      let firstName = '';
+      try {
+        const ts = config && config.lastSaved && config.lastSaved.timestamp;
+        when = ts ? new Date(ts).toLocaleString() : '—';
+        const user = config && config.lastSaved && config.lastSaved.user;
+        const label = (user && (user.label || user.name || user.id)) || '';
+        const parts = String(label).trim().split(/\s+/);
+        firstName = parts && parts.length ? parts[0] : '';
+      } catch {}
+      const suffix = firstName ? ` by ${firstName}` : ' by';
+      return React.createElement('span', null, `Last updated on ${when}${suffix}`);
+    }
+
+    function InlineTitleEditor() {
+      const { config, addLog } = React.useContext(StateContext);
+      const API_BASE = getApiBase();
+      const [title, setTitle] = React.useState(config?.title || 'Untitled Document');
+      React.useEffect(() => { setTitle(config?.title || 'Untitled Document'); }, [config?.title]);
+      const onBlur = async () => {
+        const next = (title || '').trim();
+        if (!next) return;
+        try {
+          const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
+          const currentUser = (function(){ try { return (JSON.parse(localStorage.getItem('ogassist.userId')))||null; } catch { return null; } })();
+          const payload = { title: next };
+          try { payload.userId = (currentUser || (window?.OG_STATE?.currentUser) || null) || undefined; } catch {}
+          payload.platform = plat;
+          const r = await fetch(`${API_BASE}/api/v1/title`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+          if (!r.ok) throw new Error('title_update');
+          addLog && addLog('Title updated', 'document');
+        } catch {}
+      };
+      return React.createElement('textarea', {
+        value: title,
+        onChange: (e) => setTitle(e.target.value),
+        onBlur,
+        placeholder: 'Untitled Document',
+        className: 'font-semibold w-full',
+        rows: 1,
+        style: {
+          background: 'transparent',
+          border: 'none',
+          outline: 'none',
+          padding: '0',
+          margin: '0 0 5px 0',
+          fontSize: 'calc(var(--font-size-2xl) * 1.5)',
+          lineHeight: '1.15',
+          height: 'calc((var(--font-size-2xl) * 1.5) * 1.2)',
+          whiteSpace: 'normal',
+          overflowWrap: 'anywhere',
+          overflow: 'hidden',
+          resize: 'none'
+        }
+      });
+    }
+
+    function StatusBadge() {
+      const { config, addLog } = React.useContext(StateContext);
+      const API_BASE = getApiBase();
+      const [status, setStatus] = React.useState((config?.status || 'draft').toLowerCase());
+      React.useEffect(() => { setStatus((config?.status || 'draft').toLowerCase()); }, [config?.status]);
+      const cycle = async () => {
+        try { const r = await fetch(`${API_BASE}/api/v1/status/cycle`, { method: 'POST' }); if (r.ok) { const j = await r.json(); setStatus((j.status || 'draft').toLowerCase()); addLog && addLog(`Status: ${j.status}`, 'system'); } } catch {}
+      };
+      const label = (s => s === 'final' ? 'Final' : s === 'review' ? 'Review' : 'Draft')(status);
+      const cls = (function(s){
+        if (s === 'final') return 'ui-badge gray-verydark';
+        if (s === 'review') return 'ui-badge gray-dark';
+        return 'ui-badge gray-medium';
+      })(status);
+      return React.createElement('div', { className: 'mb-2' }, React.createElement('span', { className: cls, onClick: cycle, style: { cursor: 'pointer' } }, label));
+    }
+
     function UserCard() {
       const { users, currentUser, currentRole, actions } = React.useContext(StateContext);
       const [selected, setSelected] = React.useState(currentUser);
@@ -986,9 +1125,13 @@
         try { actions.setUser(nextId, u.role || 'editor'); } catch {}
         setSelected(nextId);
       };
-      const pill = React.createElement('span', { className: 'ui-pill' }, (currentRole || 'editor').toUpperCase());
-      const select = React.createElement('select', { value: selected || '', onChange, className: 'ml-2' }, (users || []).map((u, i) => React.createElement('option', { key: i, value: u.id || u.label }, u.label || u.id)));
-      return React.createElement('div', { className: 'd-flex items-center gap-8' }, [pill, select]);
+      const select = React.createElement('select', { value: selected || '', onChange }, (users || []).map((u, i) => {
+        const name = u.label || u.id;
+        const role = String(u.role || 'editor').toLowerCase();
+        const optionLabel = name ? `${name} (${role})` : `(${role})`;
+        return React.createElement('option', { key: i, value: u.id || u.label }, optionLabel);
+      }));
+      return React.createElement('div', { className: 'd-flex items-center' }, [select]);
     }
 
     function DocumentControls() {
@@ -1524,36 +1667,7 @@
         window.addEventListener('react:open-modal', onOpen);
         return () => window.removeEventListener('react:open-modal', onOpen);
       }, []);
-      // Update last saved text in header
-      React.useEffect(() => {
-        console.log('useEffect for last saved, config:', config);
-        if (config?.lastSaved && typeof document !== 'undefined') {
-          console.log('header found:', document.querySelector('header'));
-          console.log('header-actions found:', document.querySelector('.header-actions'));
-          console.log('all divs in header-actions:', Array.from(document.querySelector('.header-actions')?.children || []).map(c => c.tagName + ' ' + (c.id || c.className)));
-          let el = document.querySelector('.header-actions > div');
-          console.log('Element found by header-actions child:', el);
-          if (!el) {
-            // Create the div if not found (Office removed it)
-            const headerActions = document.querySelector('.header-actions');
-            if (headerActions) {
-              // Set flex direction to column to stack button and div vertically
-              headerActions.style.flexDirection = 'column';
-              headerActions.style.alignItems = 'flex-end';
-              el = document.createElement('div');
-              el.className = 'text-xs text-gray-400 mt-1';
-              el.id = 'last-saved-info';
-              headerActions.appendChild(el);
-              console.log('Created element:', el);
-            }
-          }
-          if (el) {
-            el.textContent = `Last saved by ${config.lastSaved.user?.label || 'Unknown'} at ${new Date(config.lastSaved.timestamp).toLocaleString()}`;
-            el.style.color = 'white';
-            console.log('Text set to:', el.textContent);
-          }
-        }
-      }, [config]);
+  
       const [confirm, setConfirm] = React.useState(null);
       const ask = (kind) => {
         if (kind === 'finalize') setConfirm({ title: 'Finalize?', message: 'This will lock the document.', onConfirm: actions.finalize });
@@ -1586,32 +1700,35 @@
         }
       };
 
-      const children = [
+      const topPanel = React.createElement('div', { className: 'panel panel--top' }, [
+        React.createElement('div', { className: 'd-flex items-center gap-6' }, [
+          React.createElement(NotificationsBell, { key: 'bell-top' }),
+          React.createElement(StatusBadge, { key: 'status' }),
+        ]),
+        React.createElement(InlineTitleEditor, { key: 'title' }),
         React.createElement(ErrorBanner, null),
         (typeof Office === 'undefined' ? React.createElement(SuperDocHost, { key: 'host', src: documentSource }) : null),
-        React.createElement(BannerStack, { key: 'banners' }),
-        React.createElement('div', { className: 'mt-2 border-t border-gray-200 pt-2' }, [
-          React.createElement('div', { key: 'hdr1', className: 'ui-section-header' }, 'User & Role'),
+        React.createElement('div', { className: '', style: { marginTop: 5 } }, [
           React.createElement('div', { className: 'd-flex items-center gap-8 flex-wrap' }, [
+            React.createElement(LastUpdatedPrefix, { key: 'last' }),
             React.createElement(UserCard, { key: 'user' }),
-            React.createElement(ConnectionBadge, { key: 'conn' }),
-            React.createElement(NotificationsBell, { key: 'bell' }),
           ]),
         ]),
-        React.createElement('div', { className: 'mt-2.5 border-t border-gray-200 pt-2' }, [
-          React.createElement('div', { key: 'hdr2', className: 'ui-section-header' }, 'Actions'),
-          React.createElement(ApprovalsPill, { key: 'approvals-pill' }),
+        React.createElement('div', { className: 'pt-2', style: { paddingTop: 9, marginTop: 0 } }, [
           React.createElement(ActionButtons, { key: 'actions' }),
         ]),
-        React.createElement('div', { className: 'mt-3 border-t border-gray-200 pt-2' }, [
-          React.createElement('div', { key: 'hdr3', className: 'ui-section-header' }, 'Assistant'),
+      ]);
+
+      const assistantPanel = React.createElement('div', { className: 'panel panel--assistant' }, [
+        React.createElement('div', { className: 'mt-3 pt-2' }, [
+          React.createElement(ApprovalsPill, { key: 'approvals-pill' }),
           React.createElement(ChatConsole, { key: 'chat' }),
         ]),
         renderModal(),
-        confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: onConfirmClose }) : null
-      ];
+        (confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: onConfirmClose }) : null)
+      ]);
 
-      return React.createElement(ThemeProvider, null, React.createElement(React.Fragment, null, children));
+      return React.createElement(ThemeProvider, null, React.createElement(React.Fragment, null, [topPanel, assistantPanel]));
     }
 
     const root = ReactDOM.createRoot(rootEl);
