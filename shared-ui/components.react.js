@@ -462,12 +462,12 @@
         setUser: (nextUserId, nextRole) => { try { setUserId(nextUserId); if (nextRole) setRole(nextRole); addLog(`Switched to user: ${nextUserId}`, 'user'); } catch {} },
       }), [API_BASE, refresh, userId, addLog]);
 
-      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, renderNotification, formatNotification } }, props.children);
+      return React.createElement(App, { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, renderNotification, formatNotification });
     }
 
-    function BannerStack() {
+    function BannerStack(props) {
       const { tokens } = React.useContext(ThemeContext);
-      const { config, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, revision, addLog, setDocumentSource } = React.useContext(StateContext);
+      const { config, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, revision, addLog, setDocumentSource } = props;
       const banners = Array.isArray(config?.banners) ? config.banners : [];
       const API_BASE = getApiBase();
       const show = (b) => {
@@ -1533,11 +1533,11 @@
       );
     }
 
-    function App() {
+    function App(props) {
       console.log('App render');
       const [modal, setModal] = React.useState(null);
-      const { documentSource, config } = React.useContext(StateContext);
-      console.log('App context, config:', config);
+      const { documentSource, config } = props;
+      console.log('App props, config:', config);
       React.useEffect(() => {
         function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); if (d && d.id === 'notifications') setModal({ id: 'notifications' }); if (d && d.id === 'request-review') setModal({ id: 'request-review' }); if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); } catch {} }
         window.addEventListener('react:open-modal', onOpen);
@@ -1569,7 +1569,7 @@
             // SuperDoc host only on web
             (typeof Office === 'undefined' ? React.createElement(SuperDocHost, { key: 'host', src: documentSource }) : null),
             // 2 - Banners (top)
-            React.createElement(BannerStack, { key: 'banners' }),
+            React.createElement(BannerStack, { key: 'banners', config, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, revision, addLog, setDocumentSource }),
             // 1 - User selection + role pill + status
             React.createElement('div', { className: 'mt-2 border-t border-gray-200 pt-2' }, [
               React.createElement('div', { key: 'hdr1', className: 'ui-section-header' }, 'User & Role'),
