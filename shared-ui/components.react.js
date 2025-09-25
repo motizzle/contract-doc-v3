@@ -1531,7 +1531,7 @@
           const el = document.getElementById('last-saved-info');
           console.log('Element found:', el);
           if (el) {
-            el.textContent = `${config.lastSaved.user} last saved the file at ${config.lastSaved.timestamp}`;
+            el.textContent = `Last saved by ${config.lastSaved.user} at ${new Date(config.lastSaved.timestamp).toLocaleString()}`;
             console.log('Text set to:', el.textContent);
           }
         }
