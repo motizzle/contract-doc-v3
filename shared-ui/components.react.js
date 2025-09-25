@@ -1528,7 +1528,7 @@
       React.useEffect(() => {
         console.log('useEffect for last saved, config:', config);
         if (config?.lastSaved && typeof document !== 'undefined') {
-          const el = document.getElementById('last-saved-info');
+          const el = document.querySelector('header .header-actions div');
           console.log('Element found:', el);
           if (el) {
             el.textContent = `Last saved by ${config.lastSaved.user} at ${new Date(config.lastSaved.timestamp).toLocaleString()}`;
