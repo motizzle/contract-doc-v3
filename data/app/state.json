@@ -1,9 +1,9 @@
 {
   "isFinal": false,
-  "checkedOutBy": null,
-  "lastUpdated": "2025-09-25T08:20:45.422Z",
-  "revision": 276,
-  "documentVersion": 207,
+  "checkedOutBy": "user1",
+  "lastUpdated": "2025-09-25T08:49:36.621Z",
+  "revision": 279,
+  "documentVersion": 208,
   "title": "Redlines & Deadlines",
   "status": "draft",
   "updatedBy": {
@@ -11,5 +11,5 @@
     "label": "Warren Peace"
   },
   "updatedPlatform": "word",
-  "approvalsRevision": 73
+  "approvalsRevision": 74
 }

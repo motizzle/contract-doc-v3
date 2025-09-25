@@ -506,6 +506,7 @@
       const { config, actions, revision, setDocumentSource, addLog, setLoadedVersion, users } = React.useContext(StateContext);
       const [confirm, setConfirm] = React.useState(null);
       const { tokens } = React.useContext(ThemeContext);
+      const rootRef = React.useRef(null);
 
       // Listen for open-new-document event from header button
       React.useEffect(() => {
@@ -611,7 +612,7 @@
         add('Checkout', actions.checkout, !!btns.checkoutBtn),
         React.createElement('div', { style: { position: 'relative' } }, [
           add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
-          nestedActions.length > 0 && menuOpen ? React.createElement('div', { style: { position: 'absolute', left: 0, top: '100%', minWidth: '150px', minHeight: '100px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, nestedActions) : null
+          nestedActions.length > 0 && menuOpen ? React.createElement('div', { style: { position: 'absolute', right: 0, top: '100%', minWidth: '150px', minHeight: '100px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, nestedActions) : null
         ]),
         add('Check-in and Save', async () => { try { const ok = await actions.saveProgress(); if (ok) { await actions.checkin(); } } catch {} }, !!btns.checkinBtn),
         add('Cancel Checkout', actions.cancel, !!btns.cancelBtn),
@@ -631,13 +632,37 @@
       // Close any open dropdowns when mode changes (e.g., after Checkout)
       React.useEffect(() => { try { setMenuOpen(false); setCheckinMenuOpen(false); } catch {} }, [mode]);
 
+      // Close menus when clicking outside of ActionButtons (web and add-in)
+      React.useEffect(() => {
+        const onOutside = (e) => {
+          try {
+            if (!menuOpen && !checkinMenuOpen) return;
+            const el = rootRef.current;
+            if (el && el.contains(e.target)) return; // click inside
+          } catch {}
+          try { setMenuOpen(false); } catch {}
+          try { setCheckinMenuOpen(false); } catch {}
+        };
+        document.addEventListener('mousedown', onOutside, true);
+        return () => { document.removeEventListener('mousedown', onOutside, true); };
+      }, [menuOpen, checkinMenuOpen]);
+
+      // Allow ESC to close any open menus
+      React.useEffect(() => {
+        const onKey = (e) => {
+          try { if (e && (e.key === 'Escape' || e.key === 'Esc')) { setMenuOpen(false); setCheckinMenuOpen(false); } } catch {}
+        };
+        document.addEventListener('keydown', onKey, true);
+        return () => { document.removeEventListener('keydown', onKey, true); };
+      }, []);
+
       const topLayout = (function(){
         if (mode === 'not_checked_out') {
           return React.createElement('div', { className: 'd-flex items-center gap-8' }, [
             add('Checkout', actions.checkout, !!btns.checkoutBtn, undefined, { style: { width: '90%' } }),
             React.createElement('div', { style: { position: 'relative', flex: '0 0 auto' } }, [
               add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
-              nestedActions.length > 0 && menuOpen ? React.createElement('div', { style: { position: 'absolute', left: 0, top: '100%', minWidth: '150px', minHeight: '100px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, nestedActions) : null
+              nestedActions.length > 0 && menuOpen ? React.createElement('div', { style: { position: 'absolute', right: 0, top: '100%', minWidth: '150px', minHeight: '100px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, nestedActions) : null
             ])
           ]);
         }
@@ -646,7 +671,7 @@
             add('Save', actions.saveProgress, !!btns.saveProgressBtn, 'primary', { style: { flex: '1 1 0', width: '100%' } }),
             React.createElement('div', { style: { position: 'relative', flex: '1 1 0' } }, [
               add('Check-in ▾', () => setCheckinMenuOpen(!checkinMenuOpen), !!btns.checkinBtn, 'secondary', { style: { width: '100%' } }),
-              (checkinMenuOpen ? React.createElement('div', { style: { position: 'absolute', left: 0, top: '100%', minWidth: '180px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, [
+              (checkinMenuOpen ? React.createElement('div', { style: { position: 'absolute', right: 0, top: '100%', minWidth: '180px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, [
                 add('Check-in and Save', async () => { try { const ok = await actions.saveProgress(); if (ok) await actions.checkin(); } catch {} }, !!btns.checkinBtn),
                 add('Cancel Checkout', actions.cancel, !!btns.cancelBtn)
               ]) : null)
@@ -684,7 +709,7 @@
         } catch { return ''; }
       })();
 
-      return React.createElement('div', { className: 'd-flex flex-column gap-6' },
+      return React.createElement('div', { ref: rootRef, className: 'd-flex flex-column gap-6' },
         topLayout,
         (showUpdateBanner ? React.createElement('div', { className: 'update-banner' }, updateBannerText) : null),
         React.createElement('div', { className: 'd-grid grid-cols-2 column-gap-8 row-gap-6 grid-auto-rows-minmax-27' }, bottomGrid),
@@ -1036,7 +1061,7 @@
       const inputRow = React.createElement('div', { className: 'd-flex gap-8 align-items-end' }, [input, btn]);
       const buttonRow = React.createElement('div', { className: 'd-flex gap-8' }, [resetBtn, refreshBtn]);
       const wrap = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [box, inputRow, buttonRow]);
-      return React.createElement('div', null, [React.createElement('div', { key: 'hdr', className: 'font-semibold' }, 'Assistant'), wrap]);
+      return React.createElement('div', null, [wrap]);
     }
 
     function LastUpdatedPrefix() {
@@ -1720,11 +1745,57 @@
         ]),
       ]);
 
-      const assistantPanel = React.createElement('div', { className: 'panel panel--assistant' }, [
-        React.createElement('div', { className: 'mt-3 pt-2' }, [
-          React.createElement(ApprovalsPill, { key: 'approvals-pill' }),
-          React.createElement(ChatConsole, { key: 'chat' }),
+      // Bottom section: two tabs - AI and Workflow
+      const [activeTab, setActiveTab] = React.useState('AI');
+      const [underline, setUnderline] = React.useState({ left: 0, width: 0 });
+      const tabbarRef = React.useRef(null);
+      const aiLabelRef = React.useRef(null);
+      const wfLabelRef = React.useRef(null);
+
+      const recalcUnderline = React.useCallback(() => {
+        try {
+          const bar = tabbarRef.current;
+          const labelEl = (activeTab === 'AI' ? aiLabelRef.current : wfLabelRef.current);
+          if (!bar || !labelEl) return;
+          const barRect = bar.getBoundingClientRect();
+          const labRect = labelEl.getBoundingClientRect();
+          const width = Math.max(24, Math.round(labRect.width));
+          const left = Math.round((labRect.left - barRect.left) + (labRect.width / 2) - (width / 2));
+          setUnderline({ left, width });
+        } catch {}
+      }, [activeTab]);
+
+      React.useEffect(() => { recalcUnderline(); }, [recalcUnderline]);
+      React.useEffect(() => {
+        const onResize = () => recalcUnderline();
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+      }, [recalcUnderline]);
+
+      const Tabs = React.createElement('div', { className: 'mt-3 pt-2' }, [
+        React.createElement('div', { key: 'tabbar', ref: tabbarRef, className: 'd-flex items-center gap-16 border-b border-gray-200', style: { position: 'relative', padding: '0 8px' } }, [
+          React.createElement('button', {
+            key: 'tab-ai',
+            className: activeTab === 'AI' ? 'tab tab--active' : 'tab',
+            onClick: () => setActiveTab('AI'),
+            style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'AI' ? '#111827' : '#6B7280', fontWeight: 600 }
+          }, React.createElement('span', { ref: aiLabelRef, style: { display: 'inline-block' } }, 'AI')),
+          React.createElement('button', {
+            key: 'tab-workflow',
+            className: activeTab === 'Workflow' ? 'tab tab--active' : 'tab',
+            onClick: () => setActiveTab('Workflow'),
+            style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Workflow' ? '#111827' : '#6B7280', fontWeight: 600 }
+          }, React.createElement('span', { ref: wfLabelRef, style: { display: 'inline-block' } }, 'Workflow')),
+          React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
+        React.createElement('div', { key: 'tabbody', className: 'mt-3' }, [
+          (activeTab === 'AI' ? React.createElement(ChatConsole, { key: 'chat' }) : null),
+          (activeTab === 'Workflow' ? React.createElement(ApprovalsPill, { key: 'approvals-pill' }) : null),
+        ])
+      ]);
+
+      const assistantPanel = React.createElement('div', { className: 'panel panel--assistant' }, [
+        Tabs,
         renderModal(),
         (confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: onConfirmClose }) : null)
       ]);
