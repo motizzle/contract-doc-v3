@@ -1543,23 +1543,26 @@
         if (kind === 'reset') setConfirm({ title: 'Factory reset?', message: 'This will clear working data.', onConfirm: actions.factoryReset });
       };
 
+      const onClose = () => setModal(null);
+      const onConfirmClose = () => setConfirm(null);
+
       const renderModal = () => {
         if (!modal) return null;
         switch (modal.id) {
           case 'send-vendor':
-            return React.createElement(SendVendorModal, { userId: modal.userId, onClose: () => setModal(null) });
+            return React.createElement(SendVendorModal, { userId: modal.userId, onClose });
           case 'approvals':
-            return React.createElement(ApprovalsModal, { onClose: () => setModal(null) });
+            return React.createElement(ApprovalsModal, { onClose });
           case 'compile':
-            return React.createElement(CompileModal, { onClose: () => setModal(null) });
+            return React.createElement(CompileModal, { onClose });
           case 'notifications':
-            return React.createElement(NotificationsModal, { onClose: () => setModal(null) });
+            return React.createElement(NotificationsModal, { onClose });
           case 'request-review':
-            return React.createElement(RequestReviewModal, { onClose: () => setModal(null) });
+            return React.createElement(RequestReviewModal, { onClose });
           case 'message':
-            return React.createElement(MessageModal, { toUserId: modal.toUserId, toUserName: modal.toUserName, onClose: () => setModal(null) });
+            return React.createElement(MessageModal, { toUserId: modal.toUserId, toUserName: modal.toUserName, onClose });
           case 'open-gov':
-            return React.createElement(OpenGovModal, { onClose: () => setModal(null) });
+            return React.createElement(OpenGovModal, { onClose });
           default:
             return null;
         }
@@ -1599,7 +1602,7 @@
                 title: confirm.title,
                 message: confirm.message,
                 onConfirm: confirm.onConfirm,
-                onClose: () => setConfirm(null)
+                onClose: onConfirmClose
               }
             ) : null
           ])
