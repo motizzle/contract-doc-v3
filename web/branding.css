@@ -1345,7 +1345,7 @@ body .brand-header-bg .pulse-pill {
 }
 .header-actions {
   display: flex !important;
-  justify-content: flex-end !important;
+  justify-content: flex-start !important;
   flex-direction: column !important;
   align-items: flex-end !important;
 }
