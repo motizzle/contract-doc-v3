@@ -1324,8 +1324,8 @@ body .brand-header-bg .pulse-pill {
 
 /* Header actions button overrides for visibility in Office add-ins */
 .header-actions button {
-  background: #5069ff !important;
-  color: white !important;
+  background: #5069ff;
+  color: white;
   border: 1px solid #111827;
   padding: 6px 12px;
   border-radius: 6px;
