@@ -677,6 +677,10 @@ body .brand-header-bg .pulse-pill {
 /* Button variants driven by CSS tokens */
 .btn--primary { background: var(--btn-primary-bg); color: var(--btn-primary-fg); }
 .btn--secondary { background: var(--btn-secondary-bg); color: var(--btn-secondary-fg); }
+.btn--tertiary { background: transparent; color: var(--btn-secondary-fg); border: none; padding: 0; height: auto; line-height: 1; }
+.btn--tertiary:hover { text-decoration: underline; }
+/* Ensure tertiary aligns cleanly when placed inline with status */
+.btn--tertiary { vertical-align: middle; }
 
 /* Generic section header helper */
 .ui-section-header {
@@ -1412,6 +1416,12 @@ body .brand-header-bg .pulse-pill {
 }
 .ui-menu__item.danger { color: #dc2626; }
 .ui-menu__item.danger:hover, .ui-menu__item.danger:focus { background: #FEF2F2; }
+/* Two-line menu items with icon */
+.ui-menu__item--two { display: grid; grid-template-columns: 24px 1fr; column-gap: 10px; align-items: center; padding: 10px 16px; }
+.ui-menu__icon { font-size: 16px; color: #6b7280; }
+.ui-menu__text { display: flex; flex-direction: column; }
+.ui-menu__title { font-size: 14px; color: #111827; font-weight: 600; line-height: 1.2; }
+.ui-menu__subtitle { font-size: 12px; color: #6b7280; line-height: 1.2; margin-top: 2px; }
 
 /* Workflow approvals cards */
 .workflow-card {

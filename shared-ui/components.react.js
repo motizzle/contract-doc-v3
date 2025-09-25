@@ -555,7 +555,7 @@
     }
 
     function ActionButtons() {
-      const { config, actions, revision, setDocumentSource, addLog, setLoadedVersion, users } = React.useContext(StateContext);
+      const { config, actions, revision, setDocumentSource, addLog, setLoadedVersion, users, currentUser } = React.useContext(StateContext);
       const [confirm, setConfirm] = React.useState(null);
       const { tokens } = React.useContext(ThemeContext);
       const rootRef = React.useRef(null);
@@ -653,10 +653,21 @@
         const onKey = (e) => { try { if (e && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handler(e); } } catch {} };
         return React.createElement('div', { key: label, role: 'menuitem', tabIndex: 0, className, onClick: handler, onKeyDown: onKey }, label);
       };
+      const menuItemTwo = (opts) => {
+        const { icon, title, subtitle, onClick, show, danger } = opts || {};
+        if (!show) return null;
+        const className = 'ui-menu__item ui-menu__item--two' + (danger ? ' danger' : '');
+        const handler = (e) => { try { e.stopPropagation?.(); } catch {} try { setMenuOpen(false); } catch {} try { setCheckinMenuOpen(false); } catch {} try { onClick?.(e); } catch {} };
+        const onKey = (e) => { try { if (e && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handler(e); } } catch {} };
+        const iconEl = React.createElement('span', { className: 'ui-menu__icon', 'aria-hidden': true }, icon || '•');
+        const titleEl = React.createElement('div', { className: 'ui-menu__title' }, title || '');
+        const subEl = React.createElement('div', { className: 'ui-menu__subtitle' }, subtitle || '');
+        const textEl = React.createElement('div', { className: 'ui-menu__text' }, [titleEl, subEl]);
+        return React.createElement('div', { key: (title || Math.random()), role: 'menuitem', tabIndex: 0, className, onClick: handler, onKeyDown: onKey }, [iconEl, textEl]);
+      };
       const nestedItems = [
         menuItem('View Latest', viewLatest, true),
         menuItem('Finalize', () => ask('Finalize?', 'This will lock the document.', actions.finalize), !!btns.finalizeBtn),
-        menuItem('Back to OpenGov', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'open-gov' } })); } catch {} }, !!btns.openGovBtn),
         menuItem('Send to Vendor', () => { try { setTimeout(() => { try { actions.sendVendor({}); } catch {} }, 130); } catch {} }, !!btns.sendVendorBtn),
         menuItem('Request review', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'request-review' } })); } catch {} }, true),
         menuItem('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true),
@@ -732,8 +743,20 @@
             React.createElement('div', { style: { position: 'relative', flex: '1 1 0' } }, [
               add('Check-in ▾', () => setCheckinMenuOpen(!checkinMenuOpen), !!btns.checkinBtn, 'secondary', { style: { width: '100%' } }),
               (checkinMenuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 100 } }, [
-                menuItem('Check-in and Save', async () => { try { const ok = await actions.saveProgress(); if (ok) await actions.checkin(); } catch {} }, !!btns.checkinBtn),
-                menuItem('Cancel Checkout', actions.cancel, !!btns.cancelBtn)
+                menuItemTwo({
+                  icon: '🗝️',
+                  title: 'Save and Check In',
+                  subtitle: 'Save your progress and check in the document.',
+                  onClick: async () => { try { const ok = await actions.saveProgress(); if (ok) await actions.checkin(); } catch {} },
+                  show: !!btns.checkinBtn
+                }),
+                menuItemTwo({
+                  icon: '➤',
+                  title: 'Cancel Checkout',
+                  subtitle: 'Cancel changes and check in the document.',
+                  onClick: async () => { try { await actions.cancel(); } catch {} },
+                  show: !!btns.checkinBtn
+                })
               ]) : null)
             ]),
             React.createElement('div', { style: { position: 'relative' } }, [
@@ -1904,12 +1927,14 @@
         }
       };
 
-      const topRowStyle = { gap: 5, paddingTop: (typeof Office === 'undefined' ? 8 : 0) };
+      const isWordHost = (typeof Office !== 'undefined');
+      const topRowStyle = { gap: 5, paddingTop: (isWordHost ? 0 : 8) };
       const topPanel = React.createElement('div', { className: 'panel panel--top' }, [
         React.createElement('div', { className: 'd-flex items-center', style: topRowStyle }, [
           React.createElement(NotificationsBell, { key: 'bell-top' }),
           React.createElement('div', { style: { width: 5, height: 1 } }),
           React.createElement(StatusBadge, { key: 'status' }),
+          (isWordHost ? React.createElement(UIButton, { key: 'open-og', label: 'Open in OpenGov ↗', onClick: () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'open-gov' } })); } catch {} }, variant: 'tertiary', style: { marginLeft: 'auto' } }) : null),
         ]),
         React.createElement(InlineTitleEditor, { key: 'title' }),
         React.createElement(ErrorBanner, null),
