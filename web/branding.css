@@ -1336,15 +1336,18 @@ body .brand-header-bg .pulse-pill {
 
 /* Header layout styles */
 .addin-header-layout {
-  justify-content: space-between;
+  display: flex !important;
+  justify-content: space-between !important;
 }
 .addin-header-left {
-  display: flex;
-  align-items: flex-start;
+  display: flex !important;
+  align-items: flex-start !important;
 }
 .header-actions {
-  display: flex;
-  justify-content: flex-end;
+  display: flex !important;
+  justify-content: flex-end !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
 }
 .header-actions div {
   color: white !important;
