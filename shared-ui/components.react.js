@@ -1529,12 +1529,21 @@
 
     function App() {
       const [modal, setModal] = React.useState(null);
-      const { documentSource } = React.useContext(StateContext);
+      const { documentSource, config } = React.useContext(StateContext);
       React.useEffect(() => {
         function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); if (d && d.id === 'notifications') setModal({ id: 'notifications' }); if (d && d.id === 'request-review') setModal({ id: 'request-review' }); if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); } catch {} }
         window.addEventListener('react:open-modal', onOpen);
         return () => window.removeEventListener('react:open-modal', onOpen);
       }, []);
+      // Update last saved text in header
+      React.useEffect(() => {
+        if (config?.lastSaved && typeof document !== 'undefined') {
+          const el = document.getElementById('last-saved-info');
+          if (el) {
+            el.textContent = `${config.lastSaved.user} last saved the file at ${config.lastSaved.timestamp}`;
+          }
+        }
+      }, [config]);
       const [confirm, setConfirm] = React.useState(null);
       const { actions } = React.useContext(StateContext);
       const ask = (kind) => {
