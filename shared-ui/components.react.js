@@ -610,7 +610,7 @@
       const topCluster = [
         add('Checkout', actions.checkout, !!btns.checkoutBtn),
         React.createElement('div', { style: { position: 'relative' } }, [
-          add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '120px' } }),
+          add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
           nestedActions.length > 0 && menuOpen ? React.createElement('div', { style: { position: 'absolute', left: 0, top: '100%', minWidth: '150px', minHeight: '100px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, nestedActions) : null
         ]),
         add('Check-in and Save', async () => { try { const ok = await actions.saveProgress(); if (ok) { await actions.checkin(); } } catch {} }, !!btns.checkinBtn),
@@ -636,8 +636,8 @@
           return React.createElement('div', { className: 'd-flex items-center gap-8' }, [
             add('Checkout', actions.checkout, !!btns.checkoutBtn, undefined, { style: { width: '90%' } }),
             React.createElement('div', { style: { position: 'relative', flex: '0 0 auto' } }, [
-              add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary'),
-              nestedActions.length > 0 && menuOpen ? React.createElement('div', { style: { position: 'absolute', right: 0, top: '100%', minWidth: '150px', minHeight: '100px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, nestedActions) : null
+              add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
+              nestedActions.length > 0 && menuOpen ? React.createElement('div', { style: { position: 'absolute', left: 0, top: '100%', minWidth: '150px', minHeight: '100px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, nestedActions) : null
             ])
           ]);
         }
@@ -652,7 +652,7 @@
               ]) : null)
             ]),
             React.createElement('div', { style: { position: 'relative' } }, [
-              add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '120px' } }),
+              add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
               nestedActions.length > 0 && menuOpen ? React.createElement('div', { style: { position: 'absolute', right: 0, top: '100%', minWidth: '150px', minHeight: '100px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, nestedActions) : null
             ])
           ]);
@@ -670,7 +670,7 @@
             } catch { return React.createElement('div', { className: 'text-sm text-gray-700' }, 'Checked out by someone'); }
           })(),
           React.createElement('div', { style: { position: 'relative', marginLeft: 'auto' } }, [
-            add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '120px' } }),
+            add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
             nestedActions.length > 0 && menuOpen ? React.createElement('div', { style: { position: 'absolute', right: 0, top: '100%', minWidth: '150px', minHeight: '100px', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100, padding: '12px' } }, nestedActions) : null
           ])
         ]);
@@ -1701,8 +1701,9 @@
       };
 
       const topPanel = React.createElement('div', { className: 'panel panel--top' }, [
-        React.createElement('div', { className: 'd-flex items-center gap-6' }, [
+        React.createElement('div', { className: 'd-flex items-center', style: { gap: 5 } }, [
           React.createElement(NotificationsBell, { key: 'bell-top' }),
+          React.createElement('div', { style: { width: 5, height: 1 } }),
           React.createElement(StatusBadge, { key: 'status' }),
         ]),
         React.createElement(InlineTitleEditor, { key: 'title' }),
