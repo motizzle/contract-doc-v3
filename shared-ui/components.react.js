@@ -1518,6 +1518,7 @@
       const [modal, setModal] = React.useState(null);
       const { config } = props;
       console.log('App props, config:', config);
+      const { documentSource, actions } = React.useContext(StateContext);
       React.useEffect(() => {
         function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); if (d && d.id === 'notifications') setModal({ id: 'notifications' }); if (d && d.id === 'request-review') setModal({ id: 'request-review' }); if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); } catch {} }
         window.addEventListener('react:open-modal', onOpen);
@@ -1536,7 +1537,6 @@
         }
       }, [config]);
       const [confirm, setConfirm] = React.useState(null);
-      const { actions } = React.useContext(StateContext);
       const ask = (kind) => {
         if (kind === 'finalize') setConfirm({ title: 'Finalize?', message: 'This will lock the document.', onConfirm: actions.finalize });
         if (kind === 'unfinalize') setConfirm({ title: 'Unlock?', message: 'This will unlock the document.', onConfirm: actions.unfinalize });
@@ -1568,46 +1568,32 @@
         }
       };
 
-      return React.createElement(ThemeProvider, null,
-        React.createElement(React.Fragment, null,
-            React.createElement(ErrorBanner, null),
-            // SuperDoc host only on web
-            (typeof Office === 'undefined' ? React.createElement(SuperDocHost, { key: 'host', src: documentSource }) : null),
-            // 2 - Banners (top)
-            React.createElement(BannerStack, { key: 'banners' }),
-            // 1 - User selection + role pill + status
-            React.createElement('div', { className: 'mt-2 border-t border-gray-200 pt-2' }, [
-              React.createElement('div', { key: 'hdr1', className: 'ui-section-header' }, 'User & Role'),
-              React.createElement('div', { className: 'd-flex items-center gap-8 flex-wrap' }, [
-              React.createElement(UserCard, { key: 'user' }),
-              React.createElement(ConnectionBadge, { key: 'conn' }),
-              React.createElement(NotificationsBell, { key: 'bell' }),
-              ])
-            ]),
-            // 3 - Buttons (actions)
-            React.createElement('div', { className: 'mt-2.5 border-t border-gray-200 pt-2' }, [
-              React.createElement('div', { key: 'hdr2', className: 'ui-section-header' }, 'Actions'),
-              React.createElement(ApprovalsPill, { key: 'approvals-pill' }),
-              React.createElement(ActionButtons, { key: 'actions' }),
-            ]),
-            // 4 - Chatbot (OG Assist)
-            React.createElement('div', { className: 'mt-3 border-t border-gray-200 pt-2' }, [
-              React.createElement('div', { key: 'hdr3', className: 'ui-section-header' }, 'Assistant'),
-              React.createElement(ChatConsole, { key: 'chat' }),
-            ]),
-            renderModal(),
-            confirm ? React.createElement(
-              ConfirmModal,
-              {
-                title: confirm.title,
-                message: confirm.message,
-                onConfirm: confirm.onConfirm,
-                onClose: onConfirmClose
-              }
-            ) : null
-          ])
-        )
-      );
+      const children = [
+        React.createElement(ErrorBanner, null),
+        (typeof Office === 'undefined' ? React.createElement(SuperDocHost, { key: 'host', src: documentSource }) : null),
+        React.createElement(BannerStack, { key: 'banners' }),
+        React.createElement('div', { className: 'mt-2 border-t border-gray-200 pt-2' }, [
+          React.createElement('div', { key: 'hdr1', className: 'ui-section-header' }, 'User & Role'),
+          React.createElement('div', { className: 'd-flex items-center gap-8 flex-wrap' }, [
+            React.createElement(UserCard, { key: 'user' }),
+            React.createElement(ConnectionBadge, { key: 'conn' }),
+            React.createElement(NotificationsBell, { key: 'bell' }),
+          ]),
+        ]),
+        React.createElement('div', { className: 'mt-2.5 border-t border-gray-200 pt-2' }, [
+          React.createElement('div', { key: 'hdr2', className: 'ui-section-header' }, 'Actions'),
+          React.createElement(ApprovalsPill, { key: 'approvals-pill' }),
+          React.createElement(ActionButtons, { key: 'actions' }),
+        ]),
+        React.createElement('div', { className: 'mt-3 border-t border-gray-200 pt-2' }, [
+          React.createElement('div', { key: 'hdr3', className: 'ui-section-header' }, 'Assistant'),
+          React.createElement(ChatConsole, { key: 'chat' }),
+        ]),
+        renderModal(),
+        confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: onConfirmClose }) : null
+      ];
+
+      return React.createElement(ThemeProvider, null, React.createElement(React.Fragment, null, children));
     }
 
     const root = ReactDOM.createRoot(rootEl);
