@@ -102,6 +102,10 @@
       const [approvalsRevision, setApprovalsRevision] = React.useState(0);
       const API_BASE = getApiBase();
 
+      React.useEffect(() => {
+        console.log('StateProvider config changed to:', config);
+      }, [config]);
+
       // Notification formatting system
       const NOTIFICATION_TYPES = {
         success: { icon: '✅', color: '#10b981', bgColor: '#d1fae5', borderColor: '#34d399' },
@@ -221,6 +225,7 @@
             if (r.ok) {
               const j = await r.json();
               console.log('Fetched config:', j.config);
+              console.log('Setting config to:', j.config);
               setConfig(j.config || null);
               if (typeof j.revision === 'number') setRevision(j.revision);
               try { const sum = j?.config?.approvals?.summary || null; setApprovalsSummary(sum); } catch {}
@@ -1531,6 +1536,7 @@
     function App() {
       const [modal, setModal] = React.useState(null);
       const { documentSource, config } = React.useContext(StateContext);
+      console.log('App context, config:', config);
       React.useEffect(() => {
         function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); if (d && d.id === 'notifications') setModal({ id: 'notifications' }); if (d && d.id === 'request-review') setModal({ id: 'request-review' }); if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); } catch {} }
         window.addEventListener('react:open-modal', onOpen);
