@@ -1089,6 +1089,26 @@ app.post('/api/v1/events/client', async (req, res) => {
           });
         }
       }
+      // Auto-reply for lightweight messaging threads
+      if (type === 'approvals:message') {
+        const text = String(payload?.text || '').trim();
+        const toUserId = String(payload?.to || '').trim();
+        if (text) {
+          try {
+            let replyText = '';
+            if (LLM_PROVIDER === 'ollama' || (LLM_PROVIDER === 'openai' && process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'mock')) {
+              const partnerLabel = (typeof resolveUserLabel === 'function') ? resolveUserLabel(toUserId || 'bot') : (toUserId || 'bot');
+              const sys = `${getSystemPrompt()}\n\nYou are ${partnerLabel} replying in a short, friendly, professional tone. Keep replies to 1-2 sentences.`;
+              const result = await generateReply({ messages: [{ role: 'user', content: text }], systemPrompt: sys });
+              if (result && result.ok && result.content) replyText = String(result.content).trim();
+            }
+            if (!replyText) replyText = 'Got it. Thanks!';
+            broadcast({ type: 'approvals:message', payload: { to: userId, text: replyText }, userId: toUserId || 'bot', role: 'assistant', platform: 'server' });
+          } catch (e) {
+            broadcast({ type: 'approvals:message', payload: { to: userId, text: 'Auto-reply failed.' }, userId: toUserId || 'bot', role: 'assistant', platform: 'server' });
+          }
+        }
+      }
   } catch {}
   res.json({ ok: true });
 });
