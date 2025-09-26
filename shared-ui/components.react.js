@@ -1385,7 +1385,7 @@
           window.removeEventListener('chat:reset', onChatReset);
         };
       }, [currentUser, getMsgsKey, getSeedKey]);
-      const box = React.createElement('div', { className: 'chat-container' }, messages.map((m, i) => React.createElement('div', { key: i, className: 'chat-message-spacing' }, m)));
+      const box = React.createElement('div', { className: 'chat-container', style: { width: '100%' } }, messages.map((m, i) => React.createElement('div', { key: i, className: 'chat-message-spacing' }, m)));
       const onKeyPress = (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
@@ -1455,7 +1455,10 @@
       };
       const resetBtn = React.createElement(UIButton, { label: 'Reset', onClick: reset, tone: 'secondary' });
       const refreshBtn = React.createElement(UIButton, { label: 'Refresh Doc', onClick: refreshDoc, tone: 'secondary' });
-      const inputRow = React.createElement('div', { className: 'd-flex gap-8 align-items-end' }, [input, btn]);
+      const inputRow = React.createElement('div', { className: 'd-flex gap-8 align-items-end', style: { width: '100%' } }, [
+        React.createElement('div', { style: { flex: 1 } }, input),
+        btn
+      ]);
       const buttonRow = React.createElement('div', { className: 'd-flex gap-8' }, [resetBtn, refreshBtn]);
       const wrap = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [box, inputRow, buttonRow]);
       return React.createElement('div', null, [wrap]);

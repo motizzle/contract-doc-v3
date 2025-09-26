@@ -498,6 +498,7 @@ body .brand-header-bg .pulse-pill {
   overflow-y: auto;
   border: none;
   background: transparent;
+  margin-bottom: 120px; /* reserve space so composer doesn't bounce */
 }
 
 /* Chat input styling */
@@ -517,6 +518,7 @@ body .brand-header-bg .pulse-pill {
   border-radius: 16px;
   padding: 8px;
   background: linear-gradient(135deg, rgba(109,94,241,0.35), rgba(251,146,60,0.35));
+  width: 100%;
 }
 .chat-composer > .inner {
   background: #fff;
