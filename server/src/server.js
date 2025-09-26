@@ -1107,9 +1107,12 @@ app.post('/api/v1/events/client', async (req, res) => {
               if (result && result.ok && result.content) replyText = String(result.content).trim();
             }
             if (!replyText) replyText = 'Got it. Thanks!';
-          // In a DM, reply as the single partner. In a group, reply as 'bot' so it's neutral
-          const replyUserId = (toList.length === 1 ? toList[0] : 'bot');
-          broadcast({ type: 'approvals:message', payload: { to: [userId], text: replyText, threadId }, userId: replyUserId, role: 'assistant', platform: 'server' });
+          // In a DM, reply as the single partner to the sender only.
+          // In a group, reply as 'bot' to the whole group + sender.
+          const isGroup = toList.length > 1;
+          const replyUserId = isGroup ? 'bot' : (toList[0] || 'bot');
+          const replyRecipients = isGroup ? Array.from(new Set([userId, ...toList])) : [userId];
+          broadcast({ type: 'approvals:message', payload: { to: replyRecipients, text: replyText, threadId }, userId: replyUserId, role: 'assistant', platform: 'server' });
           } catch (e) {
           broadcast({ type: 'approvals:message', payload: { to: [userId], text: 'Auto-reply failed.', threadId }, userId: 'bot', role: 'assistant', platform: 'server' });
           }
