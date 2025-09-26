@@ -294,6 +294,7 @@
                   // Skip logging: hello, saveProgress, chat events, sendVendor, and plain approvals:update
                 }
               }
+              // IMPORTANT: do not auto-refresh documentSource on SSE. User must click View Latest or reload.
               // Fan out chat messages to ChatConsole
               if (p && p.type === 'chat') {
                 try { window.dispatchEvent(new CustomEvent('chat:message', { detail: p })); } catch {}

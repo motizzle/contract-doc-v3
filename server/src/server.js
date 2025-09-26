@@ -551,10 +551,12 @@ app.get('/api/v1/state-matrix', (req, res) => {
       // Update-notification banner (server compose; client only renders)
       try {
         const clientLoaded = Number(req.query?.clientVersion || 0);
-        const clientPlatform = String(req.query?.platform || 'web').toLowerCase();
-        const lastPlatform = String(serverState.updatedPlatform || '').toLowerCase();
-        // Only notify opposite platform from where the last update was made
-        const shouldNotify = serverState.documentVersion > clientLoaded && (!lastPlatform || clientPlatform !== lastPlatform);
+        const requestingUserId = String(req.query?.userId || '');
+        const lastByUserId = (() => {
+          try { return String(serverState.updatedBy && (serverState.updatedBy.id || serverState.updatedBy.userId || serverState.updatedBy)); } catch { return ''; }
+        })();
+        // Notify ONLY if the document version advanced AND it was saved by another user
+        const shouldNotify = (serverState.documentVersion > clientLoaded) && (!!lastByUserId && requestingUserId && (lastByUserId !== requestingUserId));
         if (shouldNotify) {
           const by = serverState.updatedBy && (serverState.updatedBy.label || serverState.updatedBy.userId) || 'someone';
           list.unshift({ state: 'update_available', title: 'Update available', message: `${by} updated this document.` });
