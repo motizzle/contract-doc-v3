@@ -1083,7 +1083,7 @@
       const newChatView = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [
         React.createElement('div', { key: 'hdr', className: 'd-flex items-center justify-between', style: { padding: '4px 8px' } }, [
           React.createElement('div', { key: 'l', className: 'd-flex items-center gap-8' }, [
-            React.createElement('button', { key: 'back', onClick: () => setView('list'), style: { background: 'transparent', border: 'none', cursor: 'pointer' } }, '←'),
+            React.createElement('button', { key: 'back', onClick: () => setView('list'), style: { background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 18 } }, '⬅'),
             React.createElement('div', { key: 'lbl', className: 'font-semibold' }, 'New Chat')
           ]),
           React.createElement(UIButton, { key: 'start', label: 'Start', onClick: startNewChats, variant: 'primary', disabled: !newSelection.size })
@@ -1107,7 +1107,7 @@
 
       // Thread header and body
       const headerThread = React.createElement('div', { className: 'd-flex items-center gap-8', style: { padding: '4px 8px' } }, [
-        React.createElement('button', { key: 'back', onClick: () => setView('list'), style: { background: 'transparent', border: 'none', cursor: 'pointer' } }, '←'),
+        React.createElement('button', { key: 'back', onClick: () => setView('list'), style: { background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 18 } }, '⬅'),
         React.createElement('div', { key: 'lbl', className: 'font-semibold' }, (activePartnerId ? userLabel(activePartnerId) : (activeGroupIds || []).map(s => userLabelById(String(s).trim())).join(', ')))
       ]);
 
