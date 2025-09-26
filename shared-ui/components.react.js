@@ -978,36 +978,34 @@
         ])
       ]);
 
+      const listCards = (conversations.length ? conversations : (users || []).filter(u => (u?.id || u?.label) && (u.id || u.label) !== currentUser).map(u => ({ threadId: `dm:${u.id || u.label}`, lastMsg: { text: '', ts: 0 } })))
+        .map((c, i) => {
+          const tid = c.threadId;
+          const isGroup = String(tid || '').startsWith('group:');
+          const label = isGroup
+            ? (String(tid).slice(6).split(',').map(userLabel).join(', '))
+            : userLabel(String(tid).slice(3));
+          const preview = (c.lastMsg && c.lastMsg.text) ? c.lastMsg.text : '';
+          const time = c.lastMsg && c.lastMsg.ts ? new Date(c.lastMsg.ts).toLocaleTimeString() : '';
+          return React.createElement('div', { key: tid || i, onClick: () => {
+              if (isGroup) { setActivePartnerId(''); setActiveGroupIds(String(tid).slice(6).split(',').filter(Boolean)); }
+              else { setActiveGroupIds([]); setActivePartnerId(String(tid).slice(3)); }
+              setView('thread');
+            },
+            className: 'd-flex items-center',
+            style: { border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 12px', cursor: 'pointer', background: '#fff' } }, [
+              React.createElement('div', { key: 'av', className: 'avatar-initials', style: { marginRight: 10 } }, initialsOf(label)),
+              React.createElement('div', { key: 'txt', className: 'd-flex flex-column', style: { flex: 1, minWidth: 0 } }, [
+                React.createElement('div', { key: 'n', className: 'font-medium', style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, label),
+                React.createElement('div', { key: 'p', className: 'text-sm text-gray-600', style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, preview)
+              ]),
+              React.createElement('div', { key: 't', className: 'text-xs text-gray-500' }, time)
+            ]);
+        });
+
       const listView = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [
         headerList,
-        React.createElement('div', { key: 'list', style: { border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' } },
-          React.createElement('div', { style: { maxHeight: 320, overflowY: 'auto', background: '#fff' } },
-            (conversations.length ? conversations : (users || []).filter(u => (u?.id || u?.label) && (u.id || u.label) !== currentUser).map(u => ({ threadId: `dm:${u.id || u.label}`, lastMsg: { text: '', ts: 0 } })))
-              .map((c, i) => {
-                const tid = c.threadId;
-                const isGroup = String(tid || '').startsWith('group:');
-                const label = isGroup
-                  ? (String(tid).slice(6).split(',').map(userLabel).join(', '))
-                  : userLabel(String(tid).slice(3));
-                const preview = (c.lastMsg && c.lastMsg.text) ? c.lastMsg.text : '';
-                const time = c.lastMsg && c.lastMsg.ts ? new Date(c.lastMsg.ts).toLocaleTimeString() : '';
-                return React.createElement('div', { key: tid || i, onClick: () => {
-                    if (isGroup) { setActivePartnerId(''); setActiveGroupIds(String(tid).slice(6).split(',').filter(Boolean)); }
-                    else { setActiveGroupIds([]); setActivePartnerId(String(tid).slice(3)); }
-                    setView('thread');
-                  },
-                  className: 'd-flex items-center',
-                  style: { padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' } }, [
-                  React.createElement('div', { key: 'av', className: 'avatar-initials', style: { marginRight: 10 } }, initialsOf(label)),
-                  React.createElement('div', { key: 'txt', className: 'd-flex flex-column', style: { flex: 1, minWidth: 0 } }, [
-                    React.createElement('div', { key: 'n', className: 'font-medium', style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, label),
-                    React.createElement('div', { key: 'p', className: 'text-sm text-gray-600', style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, preview)
-                  ]),
-                  React.createElement('div', { key: 't', className: 'text-xs text-gray-500' }, time)
-                ]);
-              })
-          )
-        )
+        React.createElement('div', { key: 'cards', className: 'd-flex flex-column gap-8' }, listCards)
       ]);
 
       // Contact picker (New Chat)
@@ -1064,7 +1062,7 @@
         React.createElement('div', { key: 'lbl', className: 'font-semibold' }, (activePartnerId ? userLabel(activePartnerId) : (activeGroupIds || []).map(userLabel).join(', ')))
       ]);
 
-      const threadList = React.createElement('div', { ref: listRef, style: { height: 280, overflowY: 'auto', padding: 8, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' } },
+      const threadList = React.createElement('div', { ref: listRef, style: { padding: 8, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' } },
         threadMessages.map(m => {
           const mine = m.from === String(currentUser);
           const align = mine ? 'flex-end' : 'flex-start';
