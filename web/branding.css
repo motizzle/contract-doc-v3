@@ -514,6 +514,14 @@ body .brand-header-bg .pulse-pill {
   width: 100%;
 }
 
+/* Remove dotted/auto outlines that some browsers add on focus */
+.chat-input:focus,
+.chat-input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
 /* Chat composer wrapper (gradient ring look) */
 .chat-composer {
   border-radius: 16px;
