@@ -1078,8 +1078,13 @@
         })
       );
 
+      const onComposerKeyDown = (e) => {
+        try {
+          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+        } catch {}
+      };
       const composer = React.createElement('div', { className: 'd-flex items-center gap-8' }, [
-        React.createElement('input', { key: 'inp', type: 'text', placeholder: 'Write a message…', value: text, onChange: (e) => setText(e.target.value), className: 'input-padding input-border input-border-radius', style: { flex: 1 } }),
+        React.createElement('input', { key: 'inp', type: 'text', placeholder: 'Write a message…', value: text, onChange: (e) => setText(e.target.value), onKeyDown: onComposerKeyDown, className: 'input-padding input-border input-border-radius', style: { flex: 1 } }),
         React.createElement(UIButton, { key: 'send', label: 'Send', onClick: send, variant: 'primary', disabled: (!activePartnerId && (!(Array.isArray(activeGroupIds) && activeGroupIds.length))) })
       ]);
 
