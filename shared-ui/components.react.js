@@ -1089,7 +1089,7 @@
         React.createElement('div', { key: 'lbl', className: 'font-semibold' }, (activePartnerId ? userLabel(activePartnerId) : (activeGroupIds || []).map(userLabel).join(', ')))
       ]);
 
-      const threadList = React.createElement('div', { ref: listRef, style: { padding: 8, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' } },
+      const threadList = threadMessages.length ? React.createElement('div', { ref: listRef, style: { padding: 8, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' } },
         threadMessages.map(m => {
           const mine = m.from === String(currentUser);
           const align = mine ? 'flex-end' : 'flex-start';
@@ -1101,7 +1101,7 @@
             ])
           );
         })
-      );
+      ) : null;
 
       const onComposerKeyDown = (e) => {
         try {
@@ -1113,7 +1113,7 @@
         React.createElement(UIButton, { key: 'send', label: 'Send', onClick: send, variant: 'primary', disabled: (!activePartnerId && (!(Array.isArray(activeGroupIds) && activeGroupIds.length))) })
       ]);
 
-      const threadView = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [headerThread, threadList, composer]);
+      const threadView = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [headerThread, (threadList || null), composer]);
 
       return (view === 'list') ? listView : (view === 'new' ? newChatView : threadView);
     }
