@@ -307,6 +307,10 @@
               if (p && p.type === 'chat:reset') {
                 try { window.dispatchEvent(new CustomEvent('chat:reset', { detail: p })); } catch {}
               }
+              // Fan out lightweight user messaging events
+              if (p && p.type === 'approvals:message') {
+                try { window.dispatchEvent(new CustomEvent('messaging:message', { detail: p })); } catch {}
+              }
               // Do not auto-refresh document on save/revert; show banner via state-matrix
               refresh();
             } catch {}
@@ -856,6 +860,141 @@
       }, (logs || []).slice().reverse().map((log, index) => renderNotification(log, index)).filter(Boolean));
 
       return React.createElement('div', { className: 'd-flex flex-column gap-2' }, [btn, notificationsList]);
+    }
+
+    function MessagingPanel() {
+      const API_BASE = getApiBase();
+      const { currentUser, users } = React.useContext(StateContext);
+      const [messages, setMessages] = React.useState([]);
+      const [text, setText] = React.useState('');
+      const [toUserId, setToUserId] = React.useState('');
+      const listRef = React.useRef(null);
+
+      const storageKey = React.useCallback(() => `og.messaging.${String(currentUser || 'default')}`, [currentUser]);
+      const lastToKey = React.useCallback(() => `og.messaging.lastTo.${String(currentUser || 'default')}`, [currentUser]);
+
+      // Hydrate stored messages and last recipient
+      React.useEffect(() => {
+        try {
+          const raw = localStorage.getItem(storageKey());
+          const arr = raw ? JSON.parse(raw) : [];
+          if (Array.isArray(arr)) setMessages(arr);
+        } catch {}
+        try {
+          const v = localStorage.getItem(lastToKey());
+          if (v) setToUserId(v);
+        } catch {}
+      }, [storageKey, lastToKey]);
+
+      // Persist on change
+      React.useEffect(() => {
+        try { localStorage.setItem(storageKey(), JSON.stringify(messages)); } catch {}
+      }, [messages, storageKey]);
+
+      React.useEffect(() => {
+        try { if (toUserId) localStorage.setItem(lastToKey(), toUserId); } catch {}
+      }, [toUserId, lastToKey]);
+
+      // Auto-select first other user if none selected
+      React.useEffect(() => {
+        if (!toUserId) {
+          try {
+            const others = (users || []).filter(u => (u?.id || u?.label) && (u.id || u.label) !== currentUser);
+            if (others.length) setToUserId(others[0].id || others[0].label);
+          } catch {}
+        }
+      }, [toUserId, users, currentUser]);
+
+      // Handle inbound messages via SSE bridge
+      React.useEffect(() => {
+        const onMsg = (ev) => {
+          try {
+            const d = ev.detail || {};
+            if (!d || !d.payload) return;
+            const from = String(d.userId || '');
+            const to = String(d.payload.to || '');
+            const text = String(d.payload.text || '');
+            if (!text) return;
+            // Only store messages involving the current user
+            if (from === String(currentUser) || to === String(currentUser)) {
+              const item = { id: Date.now() + Math.random(), from, to, text, ts: Date.now() };
+              setMessages(prev => prev.concat(item));
+            }
+          } catch {}
+        };
+        try { window.addEventListener('messaging:message', onMsg); } catch {}
+        return () => { try { window.removeEventListener('messaging:message', onMsg); } catch {} };
+      }, [currentUser]);
+
+      // Scroll to bottom on new messages for the active conversation
+      React.useEffect(() => {
+        try {
+          const el = listRef.current;
+          if (el) el.scrollTop = el.scrollHeight;
+        } catch {}
+      }, [messages, toUserId]);
+
+      const send = async () => {
+        const trimmed = String(text || '').trim();
+        if (!trimmed || !toUserId) return;
+        setText('');
+        // Optimistic add
+        const mine = { id: Date.now() + Math.random(), from: String(currentUser), to: String(toUserId), text: trimmed, ts: Date.now() };
+        setMessages(prev => prev.concat(mine));
+        try {
+          await fetch(`${API_BASE}/api/v1/events/client`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'approvals:message', payload: { to: toUserId, text: trimmed }, userId: currentUser })
+          });
+        } catch {}
+      };
+
+      const userLabel = (uid) => {
+        try { const u = (users || []).find(x => (x && (x.id === uid || x.label === uid))); return (u && (u.label || u.id)) || uid; } catch { return uid; }
+      };
+
+      const partnerMessages = messages.filter(m =>
+        (m.from === String(currentUser) && m.to === String(toUserId)) ||
+        (m.to === String(currentUser) && m.from === String(toUserId))
+      );
+
+      const header = React.createElement('div', { className: 'd-flex items-center gap-8' }, [
+        React.createElement('label', { key: 'l', className: 'text-sm text-gray-600' }, 'To'),
+        React.createElement('select', {
+          key: 'sel', value: toUserId, onChange: (e) => setToUserId(e.target.value),
+          className: 'input-padding input-border input-border-radius'
+        }, (users || [])
+          .filter(u => (u?.id || u?.label) && (u.id || u.label) !== currentUser)
+          .map((u, i) => React.createElement('option', { key: i, value: u.id || u.label }, u.label || u.id)))
+      ]);
+
+      const list = React.createElement('div', {
+        ref: listRef,
+        style: { height: 280, overflowY: 'auto', padding: '8px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' }
+      }, partnerMessages.map((m) => {
+        const mine = m.from === String(currentUser);
+        const align = mine ? 'flex-end' : 'flex-start';
+        const bg = mine ? '#ede9fe' : '#f3f4f6';
+        const fg = '#111827';
+        return React.createElement('div', { key: m.id, className: 'd-flex', style: { justifyContent: align, marginBottom: 8 } },
+          React.createElement('div', { style: { maxWidth: '70%', background: bg, color: fg, padding: '8px 10px', borderRadius: 12 } }, [
+            React.createElement('div', { key: 't', className: 'text-xs text-gray-500', style: { marginBottom: 4 } }, mine ? 'You' : userLabel(m.from)),
+            React.createElement('div', { key: 'm' }, m.text)
+          ])
+        );
+      }));
+
+      const composer = React.createElement('div', { className: 'd-flex items-center gap-8' }, [
+        React.createElement('input', {
+          key: 'inp', type: 'text', placeholder: 'Write a message…', value: text,
+          onChange: (e) => setText(e.target.value), className: 'input-padding input-border input-border-radius',
+          style: { flex: 1 }
+        }),
+        React.createElement(UIButton, { key: 'send', label: 'Send', onClick: send, variant: 'primary' })
+      ]);
+
+      return React.createElement('div', { className: 'd-flex flex-column gap-8' }, [header, list, composer]);
     }
 
     // Notifications bell (standard icon) that opens a modal
@@ -2012,7 +2151,7 @@
         React.createElement('div', { key: 'tabbody', className: 'mt-3' }, [
           (activeTab === 'AI' ? React.createElement(ChatConsole, { key: 'chat' }) : null),
           (activeTab === 'Workflow' ? React.createElement(WorkflowApprovalsPanel, { key: 'workflow' }) : null),
-          (activeTab === 'Messaging' ? React.createElement(NotificationsPanel, { key: 'messaging' }) : null),
+          (activeTab === 'Messaging' ? React.createElement(MessagingPanel, { key: 'messaging' }) : null),
         ])
       ]);
 
