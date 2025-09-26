@@ -960,188 +960,48 @@ app.post('/api/v1/refresh-document', (req, res) => {
 
 // Client-originated events (prototype): accept and rebroadcast for parity
 app.post('/api/v1/events/client', async (req, res) => {
-  const { type = 'clientEvent', payload = {}, userId = 'user1', platform = 'web' } = req.body || {};
-  const role = getUserRole(userId);
-  const originPlatform = String(platform || 'web');
-  broadcast({ type, payload, userId, role, platform: originPlatform });
   try {
-    if (type === 'chat') {
-      const text = String(payload?.text || '').trim();
+    const { type = 'clientEvent', payload = {}, userId = 'user1', platform = 'web' } = req.body || {};
+    const role = getUserRole(userId);
+    const originPlatform = String(platform || 'web');
+    broadcast({ type, payload, userId, role, platform: originPlatform });
 
-      // Skip empty messages to prevent duplicate LLM calls
-      if (!text) {
-        console.log('🤖 Skipping empty chat message');
-        return;
-      }
-
-      if (LLM_PROVIDER === 'ollama' || (LLM_PROVIDER === 'openai' && process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'mock')) {
-        // Use real LLM with streaming support (Ollama or OpenAI)
-        try {
-          const streamCallback = (chunk) => {
-            if (chunk.type === 'delta' && chunk.content) {
-              // Send streaming delta to client
-              broadcast({
-                type: 'chat:delta',
-                payload: {
-                  text: chunk.content,
-                  threadPlatform: originPlatform
-                },
-                userId: 'bot',
-                role: 'assistant',
-                platform: 'server'
-              });
-            } else if (chunk.type === 'complete') {
-              // Send completion event
-              broadcast({
-                type: 'chat:complete',
-                payload: {
-                  fullText: chunk.fullContent,
-                  threadPlatform: originPlatform
-                },
-                userId: 'bot',
-                role: 'assistant',
-                platform: 'server'
-              });
-            }
-          };
-
-
-          console.log('🤖 About to call LLM for message:', text.substring(0, 50) + '...');
-
-          const result = await generateReply({
-            messages: [{ role: 'user', content: text }],
-            systemPrompt: getSystemPrompt(),
-            stream: streamCallback
-          });
-
-          console.log('🤖 LLM result received:', result.ok ? 'SUCCESS' : 'FAILED');
-
-
-          if (!result.ok) {
-            // LLM failed - show the actual error instead of falling back
-            console.error(`LLM (${LLM_PROVIDER}) failed:`, result.error);
-            const fs = require('fs');
-            const logDir = process.env.LOG_DIR || path.join(rootDir, 'server', 'logs');
-            try { if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true }); } catch {}
-            const errorLog = `[${new Date().toISOString()}] LLM Error: ${result.error || 'Unknown error'}\n`;
-            fs.appendFileSync(path.join(logDir, 'llm-errors.log'), errorLog);
-
-            const errorMessage = `LLM Error: ${result.error || 'Unknown error'}. Check llm-errors.log for details.`;
+    const text = String(payload?.text || '').trim();
+    if ((type === 'chat' || type === 'approvals:message') && text) {
+      try {
+        const result = await generateReply({ messages: [{ role: 'user', content: text }], systemPrompt: getSystemPrompt() });
+        if (result && result.ok && result.content) {
+          const replyText = String(result.content).trim();
+          if (type === 'chat') {
             broadcast({
               type: 'chat',
-              payload: { text: errorMessage, threadPlatform: originPlatform },
+              payload: { text: replyText, threadPlatform: originPlatform },
               userId: 'bot',
               role: 'assistant',
               platform: 'server'
             });
+          } else {
+            const toRaw = payload?.to;
+            const toList = Array.isArray(toRaw) ? toRaw.map(String) : [String(toRaw || '')];
+            const threadId = payload && payload.threadId ? String(payload.threadId) : undefined;
+            broadcast({ type: 'approvals:message', payload: { to: toList, text: replyText, threadId }, userId: 'bot', role: 'assistant', platform: 'server' });
           }
-        } catch (error) {
-          console.error(`Chat processing error (${LLM_PROVIDER}):`, error);
-          // Show actual error instead of falling back
-          const errorMessage = `Server Error: ${error.message}. LLM integration needs debugging.`;
-          broadcast({
-            type: 'chat',
-            payload: { text: errorMessage, threadPlatform: originPlatform },
-            userId: 'bot',
-            role: 'assistant',
-            platform: 'server'
-          });
+        } else {
+          const msg = `LLM error: ${result && result.error ? result.error : 'Unknown error'}`;
+          try { broadcast({ type: 'notification', payload: formatServerNotification(msg, 'error') }); } catch {}
         }
-      } else if (LLM_USE_OPENAI && process.env.OPENAI_API_KEY === 'mock') {
-          // MOCK STREAMING TEST - Demonstrates the streaming technology
-          console.log('🎭 Using mock streaming test (no API key required)');
-
-          const mockResponses = [
-            "Hello! How can I help you with your document today?",
-            "Hi there! I'm here to assist with your contract. What would you like to know?",
-            "Welcome! I can help you understand clauses, suggest improvements, or answer questions about your document.",
-            "Hello! Let's work on your contract together. What specific aspect would you like help with?",
-            "Hi! I have access to your document context. How can I assist you today?"
-          ];
-
-          const mockResponse = mockResponses[Math.floor(Math.random() * mockResponses.length)];
-
-          // Simulate streaming by sending chunks with realistic delays
-          let index = 0;
-          const streamInterval = setInterval(() => {
-            if (index < mockResponse.length) {
-              const chunk = mockResponse[index];
-              broadcast({
-                type: 'chat:delta',
-                payload: {
-                  text: chunk,
-                  threadPlatform: originPlatform
-                },
-                userId: 'bot',
-                role: 'assistant',
-                platform: 'server'
-              });
-              index++;
-      } else {
-              clearInterval(streamInterval);
-              // Send completion event
-              broadcast({
-                type: 'chat:complete',
-                payload: {
-                  fullText: mockResponse,
-                  threadPlatform: originPlatform
-                },
-                userId: 'bot',
-                role: 'assistant',
-                platform: 'server'
-              });
-            }
-          }, 40); // 40ms delay between characters for smoother, slower streaming (30% slower)
-        }
-      } else {
-        // Use scripted responses (existing logic)
-        const fallbackReply = getFallbackResponse(userId);
-        if (fallbackReply) {
-          broadcast({
-            type: 'chat',
-            payload: { text: fallbackReply, threadPlatform: originPlatform },
-            userId: 'bot',
-            role: 'assistant',
-            platform: 'server'
-          });
-        }
+      } catch (e) {
+        const msg = `LLM error: ${e && e.message ? e.message : 'Unknown error'}`;
+        try { broadcast({ type: 'notification', payload: formatServerNotification(msg, 'error') }); } catch {}
       }
     } else if (type === 'chat:stop') {
       try { broadcast({ type: 'chat:reset', payload: { reason: 'user_stop', threadPlatform: originPlatform }, userId, role: 'assistant', platform: 'server' }); } catch {}
     }
-    // Auto-reply for lightweight messaging threads (supports DM or group)
-    if (type === 'approvals:message') {
-      const text = String(payload?.text || '').trim();
-      const toRaw = payload?.to;
-      const toList = Array.isArray(toRaw) ? toRaw.map(String) : [String(toRaw || '')];
-      const clientId = payload && payload.clientId ? String(payload.clientId) : undefined;
-      const threadId = payload && payload.threadId ? String(payload.threadId) : undefined;
-        if (text) {
-          try {
-            let replyText = '';
-          if (LLM_PROVIDER === 'ollama' || (LLM_PROVIDER === 'openai' && process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'mock')) {
-            const labelList = (typeof resolveUserLabel === 'function') ? toList.map(u => resolveUserLabel(u)) : toList;
-            const partnerLabel = labelList.length > 1 ? `group (${labelList.join(', ')})` : (labelList[0] || 'bot');
-            const sys = `${getSystemPrompt()}\n\nYou are ${partnerLabel} replying in a short, friendly, professional tone. Keep replies to 1-2 sentences.`;
-              const result = await generateReply({ messages: [{ role: 'user', content: text }], systemPrompt: sys });
-              if (result && result.ok && result.content) replyText = String(result.content).trim();
-            }
-            if (!replyText) replyText = 'Got it. Thanks!';
-          // In a DM, reply as the single partner to the sender only.
-          // In a group, reply as 'bot' to the whole group + sender.
-          const isGroup = toList.length > 1;
-          const replyUserId = isGroup ? 'bot' : (toList[0] || 'bot');
-          const replyRecipients = isGroup ? Array.from(new Set([userId, ...toList])) : [userId];
-          broadcast({ type: 'approvals:message', payload: { to: replyRecipients, text: replyText, threadId }, userId: replyUserId, role: 'assistant', platform: 'server' });
-          } catch (e) {
-          broadcast({ type: 'approvals:message', payload: { to: [userId], text: 'Auto-reply failed.', threadId }, userId: 'bot', role: 'assistant', platform: 'server' });
-          }
-        }
-      // Echo the original message to other clients (preserve clientId so sender can de-dupe)
-      broadcast({ type: 'approvals:message', payload: { to: toList, text, clientId, threadId }, userId, role, platform: originPlatform });
-      }
-  } catch {}
-  res.json({ ok: true });
+
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'events_client_failed' });
+  }
 });
 
 // Helper function for fallback scripted responses

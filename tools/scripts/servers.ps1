@@ -86,14 +86,14 @@ function Start-AddinSideload() {
 }
 
 function Show-Status() {
-  $conns = Get-NetTCPConnection -LocalPort 4000,4001,4002 -State Listen -ErrorAction SilentlyContinue | Select-Object LocalAddress,LocalPort,OwningProcess,State
-  if ($conns) { $conns | Format-Table -AutoSize | Out-Host } else { Write-Host "No listeners on 4000/4001/4002" }
+  $conns = Get-NetTCPConnection -LocalPort 4000,4001,4002,11434 -State Listen -ErrorAction SilentlyContinue | Select-Object LocalAddress,LocalPort,OwningProcess,State
+  if ($conns) { $conns | Format-Table -AutoSize | Out-Host } else { Write-Host "No listeners on 4000/4001/4002/11434" }
 }
 
 switch ($Action) {
   'status'   { Show-Status }
   'stop'     {
-    Stop-Port 4000; Stop-Port 4001; Stop-Port 4002;
+    Stop-Port 4000; Stop-Port 4001; Stop-Port 4002; Stop-Port 11434;
     try {
       $root = Split-Path -Parent $PSCommandPath | Split-Path -Parent | Split-Path -Parent
       Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","cd '$root\addin'; npm run stop" -WindowStyle Minimized | Out-Null
@@ -101,7 +101,7 @@ switch ($Action) {
     Show-Status
   }
   'start'    {
-    Stop-Port 4000; Stop-Port 4001; Stop-Port 4002;
+    Stop-Port 4000; Stop-Port 4001; Stop-Port 4002; Stop-Port 11434;
     $c=Start-Collab; if (-not (Wait-Port -Port 4002 -TimeoutSeconds 60)) { Write-Host "WARN: 4002 not listening" -ForegroundColor Yellow }
     $b=Start-Backend; if (-not (Wait-Port -Port 4001 -TimeoutSeconds 60)) { Write-Host "WARN: 4001 not listening" -ForegroundColor Yellow }
     $d=Start-Dev; if (-not (Wait-Port -Port 4000 -TimeoutSeconds 60)) { Write-Host "WARN: 4000 not listening" -ForegroundColor Yellow }
@@ -110,7 +110,7 @@ switch ($Action) {
     Show-Status
   }
   'restart'  {
-    Stop-Port 4000; Stop-Port 4001; Stop-Port 4002;
+    Stop-Port 4000; Stop-Port 4001; Stop-Port 4002; Stop-Port 11434;
     $c=Start-Collab; if (-not (Wait-Port -Port 4002 -TimeoutSeconds 60)) { Write-Host "WARN: 4002 not listening" -ForegroundColor Yellow }
     $b=Start-Backend; if (-not (Wait-Port -Port 4001 -TimeoutSeconds 60)) { Write-Host "WARN: 4001 not listening" -ForegroundColor Yellow }
     $d=Start-Dev; if (-not (Wait-Port -Port 4000 -TimeoutSeconds 60)) { Write-Host "WARN: 4000 not listening" -ForegroundColor Yellow }
