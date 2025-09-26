@@ -306,6 +306,14 @@
               }
               if (p && p.type === 'chat:reset') {
                 try { window.dispatchEvent(new CustomEvent('chat:reset', { detail: p })); } catch {}
+                // Clear AI chat local storage when reset is global or for this user
+                try {
+                  const all = !!(p.payload && p.payload.all);
+                  if (all) {
+                    try { localStorage.removeItem(`ogassist.messages.${String(currentUser || 'default')}`); } catch {}
+                    try { localStorage.removeItem(`ogassist.seeded.${String(currentUser || 'default')}`); } catch {}
+                  }
+                } catch {}
               }
               // Fan out lightweight user messaging events
               if (p && p.type === 'approvals:message') {

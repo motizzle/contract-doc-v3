@@ -844,6 +844,15 @@ app.post('/api/v1/factory-reset', (req, res) => {
     if (fs.existsSync(snapDir)) {
       try { fs.rmSync(snapDir, { recursive: true, force: true }); } catch {}
     }
+    // Clear compiled outputs (merged PDFs)
+    if (fs.existsSync(compiledDir)) {
+      try {
+        for (const f of fs.readdirSync(compiledDir)) {
+          const p = path.join(compiledDir, f);
+          try { if (fs.statSync(p).isFile()) fs.rmSync(p); } catch {}
+        }
+      } catch {}
+    }
     // Reset state and bump revision so clients resync deterministically
     serverState.isFinal = false;
     serverState.checkedOutBy = null;
@@ -853,6 +862,8 @@ app.post('/api/v1/factory-reset', (req, res) => {
     broadcast({ type: 'documentRevert' });
     // Notify clients to clear local messaging state
     broadcast({ type: 'messaging:reset' });
+    // Notify all clients to clear AI chat state
+    broadcast({ type: 'chat:reset', payload: { all: true } });
     const approvals = loadApprovals();
     broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary: computeApprovalsSummary(approvals.approvers) });
     return res.json({ ok: true });
