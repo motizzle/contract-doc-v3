@@ -1106,6 +1106,9 @@ app.post('/api/v1/events/client', async (req, res) => {
           });
         }
       }
+    } else if (type === 'chat:stop') {
+      try { broadcast({ type: 'chat:reset', payload: { reason: 'user_stop', threadPlatform: originPlatform }, userId, role: 'assistant', platform: 'server' }); } catch {}
+    }
     // Auto-reply for lightweight messaging threads (supports DM or group)
     if (type === 'approvals:message') {
       const text = String(payload?.text || '').trim();

@@ -1433,6 +1433,8 @@
           const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
           console.log('📤 Sending reset request:', { platform: plat, userId: currentUser });
           const r = await fetch(`${API_BASE}/api/v1/chatbot/reset`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUser, platform: plat }) });
+          // Ask server and other clients to stop any in-flight streaming
+          try { await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat:stop', userId: currentUser, platform: plat }) }); } catch {}
           // Optimistically clear locally; SSE chat:reset will also arrive
           try { setMessages([]); } catch {}
           try {
