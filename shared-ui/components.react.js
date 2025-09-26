@@ -876,8 +876,9 @@
       );
     }
 
-    function NotificationsPanel() {
-      const { logs, renderNotification } = React.useContext(StateContext);
+    function ActivityPanel() {
+      const { logs, renderNotification, markNotificationsSeen, lastSeenLogCount } = React.useContext(StateContext);
+      React.useEffect(() => { try { markNotificationsSeen?.(); } catch {} }, [markNotificationsSeen]);
       const copy = async () => {
         try {
           const text = (logs || []).slice().reverse().map(log => {
@@ -887,13 +888,14 @@
           if (navigator?.clipboard?.writeText) await navigator.clipboard.writeText(text);
         } catch {}
       };
-      const btn = React.createElement(UIButton, { label: 'Copy', onClick: copy, className: 'self-end mb-2' });
-
-      const notificationsList = React.createElement('div', {
-        className: 'notifications-list'
-      }, (logs || []).slice().reverse().map((log, index) => renderNotification(log, index)).filter(Boolean));
-
-      return React.createElement('div', { className: 'd-flex flex-column gap-2' }, [btn, notificationsList]);
+      const header = React.createElement('div', { className: 'd-flex items-center justify-between', style: { padding: '4px 8px' } }, [
+        React.createElement('div', { key: 't', className: 'font-semibold' }, 'Activity'),
+        React.createElement(UIButton, { key: 'copy', label: 'Copy', onClick: copy, variant: 'secondary' })
+      ]);
+      const list = (logs || []).length
+        ? React.createElement('div', { className: 'notifications-list' }, (logs || []).slice().reverse().map((log, index) => renderNotification(log, index)).filter(Boolean))
+        : React.createElement('div', { className: 'text-gray-500', style: { padding: 8 } }, 'No activity yet.');
+      return React.createElement('div', { className: 'd-flex flex-column gap-2' }, [header, list]);
     }
 
     function MessagingPanel() {
@@ -2289,12 +2291,19 @@
             onClick: () => setActiveTab('Messaging'),
             style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Messaging' ? '#111827' : '#6B7280', fontWeight: 600 }
           }, React.createElement('span', { ref: msgLabelRef, style: { display: 'inline-block' } }, 'Messaging')),
+          React.createElement('button', {
+            key: 'tab-activity',
+            className: activeTab === 'Activity' ? 'tab tab--active' : 'tab',
+            onClick: () => setActiveTab('Activity'),
+            style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Activity' ? '#111827' : '#6B7280', fontWeight: 600 }
+          }, React.createElement('span', { style: { display: 'inline-block' } }, 'Activity')),
           React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
         React.createElement('div', { key: 'tabbody', className: 'mt-3' }, [
           (activeTab === 'AI' ? React.createElement(ChatConsole, { key: 'chat' }) : null),
           (activeTab === 'Workflow' ? React.createElement(WorkflowApprovalsPanel, { key: 'workflow' }) : null),
           (activeTab === 'Messaging' ? React.createElement(MessagingPanel, { key: 'messaging' }) : null),
+          (activeTab === 'Activity' ? React.createElement(ActivityPanel, { key: 'activity' }) : null),
         ])
       ]);
 
