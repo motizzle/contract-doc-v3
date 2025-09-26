@@ -1093,6 +1093,7 @@ app.post('/api/v1/events/client', async (req, res) => {
       if (type === 'approvals:message') {
         const text = String(payload?.text || '').trim();
         const toUserId = String(payload?.to || '').trim();
+        const clientId = payload && payload.clientId ? String(payload.clientId) : undefined;
         if (text) {
           try {
             let replyText = '';
@@ -1108,6 +1109,8 @@ app.post('/api/v1/events/client', async (req, res) => {
             broadcast({ type: 'approvals:message', payload: { to: userId, text: 'Auto-reply failed.' }, userId: toUserId || 'bot', role: 'assistant', platform: 'server' });
           }
         }
+        // Echo the original message to other clients (preserve clientId so sender can de-dupe)
+        broadcast({ type: 'approvals:message', payload: { to: toUserId, text, clientId }, userId, role, platform: originPlatform });
       }
   } catch {}
   res.json({ ok: true });

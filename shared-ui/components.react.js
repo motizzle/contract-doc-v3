@@ -903,15 +903,18 @@
             const from = String(d.userId || '');
             const to = String(d.payload.to || '');
             const text = String(d.payload.text || '');
+            const clientId = d.payload && d.payload.clientId ? String(d.payload.clientId) : '';
             if (!text) return;
             if (from === String(currentUser) || to === String(currentUser)) {
-              setMessages(prev => prev.concat({ id: Date.now() + Math.random(), from, to, text, ts: Date.now() }));
+              // Skip if we already have this client-sent message
+              if (clientId && Array.isArray(messages) && messages.some(m => m.clientId && String(m.clientId) === clientId)) return;
+              setMessages(prev => prev.concat({ id: Date.now() + Math.random(), from, to, text, ts: Date.now(), clientId: clientId || undefined }));
             }
           } catch {}
         };
         try { window.addEventListener('messaging:message', onMsg); } catch {}
         return () => { try { window.removeEventListener('messaging:message', onMsg); } catch {} };
-      }, [currentUser]);
+      }, [currentUser, messages]);
 
       // Do not auto-select a partner on New Chat; user must choose explicitly
 
@@ -924,10 +927,11 @@
         const trimmed = String(text || '').trim();
         if (!trimmed || !activePartnerId) return;
         setText('');
-        const mine = { id: Date.now() + Math.random(), from: String(currentUser), to: String(activePartnerId), text: trimmed, ts: Date.now() };
+        const clientId = `c_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const mine = { id: Date.now() + Math.random(), from: String(currentUser), to: String(activePartnerId), text: trimmed, ts: Date.now(), clientId };
         setMessages(prev => prev.concat(mine));
         try {
-          await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'approvals:message', payload: { to: activePartnerId, text: trimmed }, userId: currentUser }) });
+          await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'approvals:message', payload: { to: activePartnerId, text: trimmed, clientId }, userId: currentUser }) });
         } catch {}
       };
 
