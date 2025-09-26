@@ -19,3 +19,10 @@ addin/dist/
 # Guard against accidental nested server sandbox
 server/server/
 
+# Logs
+logs/
+server/logs/
+*.log
+# Local setup scripts not needed in repo root
+/setup-env.ps1
+

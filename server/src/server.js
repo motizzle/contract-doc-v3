@@ -1019,8 +1019,10 @@ app.post('/api/v1/events/client', async (req, res) => {
             // LLM failed - show the actual error instead of falling back
             console.error(`LLM (${LLM_PROVIDER}) failed:`, result.error);
             const fs = require('fs');
+            const logDir = process.env.LOG_DIR || path.join(rootDir, 'server', 'logs');
+            try { if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true }); } catch {}
             const errorLog = `[${new Date().toISOString()}] LLM Error: ${result.error || 'Unknown error'}\n`;
-            fs.appendFileSync('llm-errors.log', errorLog);
+            fs.appendFileSync(path.join(logDir, 'llm-errors.log'), errorLog);
 
             const errorMessage = `LLM Error: ${result.error || 'Unknown error'}. Check llm-errors.log for details.`;
             broadcast({
