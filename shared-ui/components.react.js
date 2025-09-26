@@ -914,6 +914,9 @@
       const userLabel = (uid) => {
         try { const u = (users || []).find(x => (x && (x.id === uid || x.label === uid))); return (u && (u.label || u.id)) || uid; } catch { return uid; }
       };
+      const userLabelById = (uid) => {
+        try { const u = (users || []).find(x => (x && x.id === uid)); return (u && (u.label || u.id)) || uid; } catch { return uid; }
+      };
       const initialsOf = (label) => {
         try { const parts = String(label || '').trim().split(/\s+/).filter(Boolean); if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase(); if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase(); return ''; } catch { return ''; }
       };
@@ -1027,7 +1030,7 @@
           const tid = c.threadId;
           const isGroup = String(tid || '').startsWith('group:');
           const label = isGroup
-            ? (String(tid).slice(6).split(',').map(userLabel).join(', '))
+            ? (String(tid).slice(6).split(',').map(s => userLabelById(String(s).trim())).join(', '))
             : userLabel(String(tid).slice(3));
           const preview = (c.lastMsg && c.lastMsg.text) ? c.lastMsg.text : '';
           const time = c.lastMsg && c.lastMsg.ts ? new Date(c.lastMsg.ts).toLocaleTimeString() : '';
@@ -1105,7 +1108,7 @@
       // Thread header and body
       const headerThread = React.createElement('div', { className: 'd-flex items-center gap-8', style: { padding: '4px 8px' } }, [
         React.createElement('button', { key: 'back', onClick: () => setView('list'), style: { background: 'transparent', border: 'none', cursor: 'pointer' } }, '←'),
-        React.createElement('div', { key: 'lbl', className: 'font-semibold' }, (activePartnerId ? userLabel(activePartnerId) : (activeGroupIds || []).map(userLabel).join(', ')))
+        React.createElement('div', { key: 'lbl', className: 'font-semibold' }, (activePartnerId ? userLabel(activePartnerId) : (activeGroupIds || []).map(s => userLabelById(String(s).trim())).join(', ')))
       ]);
 
       const threadList = threadMessages.length ? React.createElement('div', { ref: listRef, style: { padding: 8, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' } },
