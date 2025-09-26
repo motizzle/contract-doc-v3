@@ -1344,12 +1344,12 @@ body .brand-header-bg .pulse-pill {
 
 /* Add-in specific chat container (smaller for Word interface) */
 .ms-welcome .chat-container {
-  border: var(--border-width-1) var(--border-style-solid) var(--color-gray-300);
+  border: none !important;
   border-radius: var(--border-radius-md);
   padding: var(--space-8);
   height: 120px;  /* Keep original add-in height */
   overflow: auto;
-  background: var(--color-white);
+  background: transparent !important;
 }
 
 .chat-input {
@@ -1359,7 +1359,7 @@ body .brand-header-bg .pulse-pill {
   border-radius: var(--border-radius-sm);
 }
 
-.chat-message-spacing { margin-top: 6px; }
+.chat-message-spacing { margin-top: 6px; border: none !important; }
 .chat-message-spacing:first-child { margin-top: 0; }
 
 /* Ensure AI composer textarea has no border/background even if generic
