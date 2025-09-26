@@ -1020,7 +1020,7 @@
 
       // Header
       const headerList = React.createElement('div', { className: 'd-flex items-center justify-end', style: { padding: '4px 8px' } }, [
-        React.createElement(UIButton, { key: 'new', label: 'New Chat', variant: 'tertiary', onClick: () => { setActivePartnerId(''); setView('new'); } })
+        React.createElement(UIButton, { key: 'new', label: 'New Chat', variant: 'primary', onClick: () => { setActivePartnerId(''); setView('new'); } })
       ]);
 
       const listCards = (conversations || []).map((c, i) => {
