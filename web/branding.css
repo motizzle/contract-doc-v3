@@ -520,11 +520,7 @@ body .brand-header-bg .pulse-pill {
   background: linear-gradient(135deg, rgba(109,94,241,0.35), rgba(251,146,60,0.35));
   width: 100%;
 }
-.chat-composer > .inner {
-  background: #fff;
-  border-radius: 14px;
-  padding: 6px 8px;
-}
+/* inner wrapper removed; textarea now sits directly inside composer */
 
 /* Banner item styling */
 .banner-item {

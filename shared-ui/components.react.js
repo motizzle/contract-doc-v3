@@ -1393,16 +1393,14 @@
         }
       };
       const input = React.createElement('div', { className: 'chat-composer' },
-        React.createElement('div', { className: 'inner' },
-          React.createElement('textarea', {
-            value: text,
-            onChange: (e) => setText(e.target.value),
-            onKeyPress: onKeyPress,
-            placeholder: 'Type a message...',
-            className: 'chat-input',
-            rows: 2
-          })
-        )
+        React.createElement('textarea', {
+          value: text,
+          onChange: (e) => setText(e.target.value),
+          onKeyPress: onKeyPress,
+          placeholder: 'Type a message...',
+          className: 'chat-input',
+          rows: 2
+        })
       );
       const btn = React.createElement(UIButton, { label: 'Send', onClick: send });
       const reset = async () => {
