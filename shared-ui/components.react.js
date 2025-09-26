@@ -1019,11 +1019,8 @@
       });
 
       // Header
-      const headerList = React.createElement('div', { className: 'd-flex items-center justify-between', style: { padding: '4px 8px' } }, [
-        React.createElement('div', { key: 'title', className: 'font-semibold' }, 'Chats'),
-        React.createElement('div', { key: 'actions', className: 'd-flex items-center gap-8' }, [
-          React.createElement(UIButton, { key: 'new', label: 'New Chat', variant: 'tertiary', onClick: () => { setActivePartnerId(''); setView('new'); } })
-        ])
+      const headerList = React.createElement('div', { className: 'd-flex items-center justify-end', style: { padding: '4px 8px' } }, [
+        React.createElement(UIButton, { key: 'new', label: 'New Chat', variant: 'tertiary', onClick: () => { setActivePartnerId(''); setView('new'); } })
       ]);
 
       const listCards = (conversations || []).map((c, i) => {
