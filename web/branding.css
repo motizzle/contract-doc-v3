@@ -537,6 +537,9 @@ body .brand-header-bg .pulse-pill {
   background: linear-gradient(135deg, rgba(109,94,241,0.35), rgba(251,146,60,0.35));
   width: 100%;
   overflow: hidden; /* clip any inner focus ring */
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
 }
 /* inner wrapper removed; textarea now sits directly inside composer */
 
@@ -724,6 +727,7 @@ body .brand-header-bg .pulse-pill {
   display: inline-flex; align-items: center; justify-content: center;
   box-shadow: 0 2px 6px rgba(79,70,229,0.3);
 }
+.chat-send { margin-left: 8px; }
 .btn-circle-primary:hover { background: #4338ca; }
 .btn-circle-primary:active { background: #3730a3; }
 .btn-circle-primary:focus-visible { outline: 2px solid rgba(79,70,229,0.5); outline-offset: 2px; }

@@ -1392,7 +1392,12 @@
           send();
         }
       };
-      const input = React.createElement('div', { className: 'chat-composer' },
+      const sendIcon = React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', xmlns: 'http://www.w3.org/2000/svg', 'aria-hidden': true },
+        React.createElement('path', { d: 'M12 4l0 12', stroke: 'white', 'stroke-width': 2.5, 'stroke-linecap': 'round' }),
+        React.createElement('path', { d: 'M7.5 9.5L12 4l4.5 5.5', stroke: 'white', 'stroke-width': 2.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' })
+      );
+      const btn = React.createElement('button', { className: 'btn-circle-primary chat-send', onClick: send, title: 'Send' }, sendIcon);
+      const input = React.createElement('div', { className: 'chat-composer' }, [
         React.createElement('textarea', {
           value: text,
           onChange: (e) => setText(e.target.value),
@@ -1400,10 +1405,9 @@
           placeholder: 'Type a message...',
           className: 'chat-input',
           rows: 2
-        })
-      );
-      const arrowUp = React.createElement('span', { 'aria-hidden': true }, '↑');
-      const btn = React.createElement('button', { className: 'btn-circle-primary', onClick: send, title: 'Send' }, arrowUp);
+        }),
+        btn
+      ]);
       const reset = async () => {
         try {
           console.log('🔄 Starting reset process...');
@@ -1454,13 +1458,8 @@
       };
       const resetBtn = React.createElement(UIButton, { label: 'Reset', onClick: reset, tone: 'secondary' });
       const refreshBtn = React.createElement(UIButton, { label: 'Refresh Doc', onClick: refreshDoc, tone: 'secondary' });
-      const attachBtn = React.createElement('button', { className: 'btn-icon-ghost', title: 'Attach file', onClick: () => {} }, '📎');
-      const micBtn = React.createElement('button', { className: 'btn-icon-ghost', title: 'Start voice input', onClick: () => {} }, '🎤');
       const inputRow = React.createElement('div', { className: 'd-flex gap-8 align-items-end', style: { width: '100%' } }, [
-        attachBtn,
-        React.createElement('div', { style: { flex: 1 } }, input),
-        micBtn,
-        btn
+        React.createElement('div', { style: { flex: 1 } }, input)
       ]);
       const buttonRow = React.createElement('div', { className: 'd-flex gap-8' }, [resetBtn, refreshBtn]);
       const wrap = React.createElement('div', { className: 'd-flex flex-column gap-8', style: { width: '100%' } }, [box, inputRow, buttonRow]);
