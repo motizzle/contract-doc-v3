@@ -699,7 +699,7 @@
         add('Checkout', actions.checkout, !!btns.checkoutBtn),
         React.createElement('div', { style: { position: 'relative' } }, [
           add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
-          nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 100 } }, nestedItems) : null
+          nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 10000 } }, nestedItems) : null
         ]),
         add('Check-in and Save', async () => { try { const ok = await actions.saveProgress(); if (ok) { await actions.checkin(); } } catch {} }, !!btns.checkinBtn),
         add('Cancel Checkout', actions.cancel, !!btns.cancelBtn),
@@ -749,7 +749,7 @@
             add('Checkout', actions.checkout, !!btns.checkoutBtn, undefined, { style: { width: '90%' } }),
             React.createElement('div', { style: { position: 'relative', flex: '0 0 auto', marginLeft: 'auto' } }, [
           add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
-          nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 100 } }, nestedItems) : null
+          nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 10000 } }, nestedItems) : null
             ])
           ]);
         }
@@ -758,7 +758,7 @@
             add('Save', actions.saveProgress, !!btns.saveProgressBtn, 'primary', { style: { flex: '1 1 0', width: '100%' } }),
             React.createElement('div', { style: { position: 'relative', flex: '1 1 0' } }, [
               add('Check-in ▾', () => setCheckinMenuOpen(!checkinMenuOpen), !!btns.checkinBtn, 'secondary', { style: { width: '100%' } }),
-              (checkinMenuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 100 } }, [
+              (checkinMenuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 10000 } }, [
                 menuItemTwo({
                   icon: '🗝️',
                   title: 'Save and Check In',
@@ -777,7 +777,7 @@
             ]),
             React.createElement('div', { style: { position: 'relative', marginLeft: 'auto' } }, [
               add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
-              nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 100 } }, nestedItems) : null
+              nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 10000 } }, nestedItems) : null
             ])
           ]);
         }
@@ -795,7 +795,7 @@
           })(),
           React.createElement('div', { style: { position: 'relative', marginLeft: 'auto' } }, [
             add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
-            nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 100 } }, nestedItems) : null
+            nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 10000 } }, nestedItems) : null
           ])
         ]);
       })();
