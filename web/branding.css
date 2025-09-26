@@ -512,6 +512,11 @@ body .brand-header-bg .pulse-pill {
   background: transparent; /* interior empty */
   box-shadow: none;
   width: 100%;
+  display: block;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
 }
 
 /* Remove dotted/auto outlines that some browsers add on focus */
@@ -522,12 +527,17 @@ body .brand-header-bg .pulse-pill {
   border: none !important;
 }
 
+/* Firefox specific focus ring suppression */
+.chat-input:-moz-focusring { outline: none !important; }
+.chat-input::-moz-focus-inner { border: 0 !important; padding: 0 !important; }
+
 /* Chat composer wrapper (gradient ring look) */
 .chat-composer {
   border-radius: 16px;
   padding: 8px;
   background: linear-gradient(135deg, rgba(109,94,241,0.35), rgba(251,146,60,0.35));
   width: 100%;
+  overflow: hidden; /* clip any inner focus ring */
 }
 /* inner wrapper removed; textarea now sits directly inside composer */
 
@@ -1352,6 +1362,15 @@ body .brand-header-bg .pulse-pill {
 
 .chat-message-spacing { margin-top: 6px; }
 .chat-message-spacing:first-child { margin-top: 0; }
+
+/* Ensure AI composer textarea has no border/background even if generic
+   .chat-input styles are defined later for other contexts (e.g., add-in) */
+.chat-composer .chat-input {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
 
 /* Header actions button overrides for visibility in Office add-ins */
 .header-actions button {
