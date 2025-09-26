@@ -1458,7 +1458,7 @@
         btn
       ]);
       const buttonRow = React.createElement('div', { className: 'd-flex gap-8' }, [resetBtn, refreshBtn]);
-      const wrap = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [box, inputRow, buttonRow]);
+      const wrap = React.createElement('div', { className: 'd-flex flex-column gap-8', style: { width: '100%' } }, [box, inputRow, buttonRow]);
       return React.createElement('div', null, [wrap]);
     }
 

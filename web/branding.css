@@ -498,7 +498,7 @@ body .brand-header-bg .pulse-pill {
   overflow-y: auto;
   border: none;
   background: transparent;
-  margin-bottom: 120px; /* reserve space so composer doesn't bounce */
+  margin-bottom: 200px; /* reserve more space so composer doesn't bounce */
 }
 
 /* Chat input styling */
