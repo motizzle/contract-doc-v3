@@ -1200,7 +1200,7 @@
 
     function ChatConsole() {
       const API_BASE = getApiBase();
-      const { currentUser, isConnected } = React.useContext(StateContext);
+      const { currentUser, isConnected, users } = React.useContext(StateContext);
       const [messages, setMessages] = React.useState([]);
       const getMsgsKey = React.useCallback(() => `ogassist.messages.${String(currentUser || 'default')}`, [currentUser]);
       const getSeedKey = React.useCallback(() => `ogassist.seeded.${String(currentUser || 'default')}`, [currentUser]);
@@ -1215,10 +1215,19 @@
 
       const [text, setText] = React.useState('');
       const [isResetting, setIsResetting] = React.useState(false);
+      const displayNameOf = React.useCallback((uid) => {
+        try {
+          if (!uid) return '';
+          if (String(uid).toLowerCase() === 'bot') return 'bot';
+          const u = (users || []).find(x => x && (x.id === uid || x.label === uid));
+          return (u && (u.label || u.id)) || String(uid);
+        } catch { return String(uid); }
+      }, [users]);
+
       const send = async () => {
         const t = (text || '').trim();
         if (!t) return;
-        setMessages((m) => { const next = (m || []).concat(`[${currentUser}] ${t}`); try { localStorage.setItem(getMsgsKey(), JSON.stringify(next)); } catch {}; return next; });
+        setMessages((m) => { const next = (m || []).concat(`[${displayNameOf(currentUser)}] ${t}`); try { localStorage.setItem(getMsgsKey(), JSON.stringify(next)); } catch {}; return next; });
         setText('');
         try {
           const platform = getCurrentPlatform();
@@ -1280,7 +1289,7 @@
             try { if (typeof Office !== 'undefined') { if (threadPlatform && threadPlatform !== 'word') return; } else { if (threadPlatform && threadPlatform !== 'web') return; } } catch {}
             // Ignore echo of our own message (server broadcasts user messages too)
             if (!text || String(from) === String(currentUser)) return;
-            setMessages((m) => { const next = (m || []).concat(`[${from}] ${text}`); try { localStorage.setItem(getMsgsKey(), JSON.stringify(next)); } catch {}; return next; });
+            setMessages((m) => { const next = (m || []).concat(`[${displayNameOf(from)}] ${text}`); try { localStorage.setItem(getMsgsKey(), JSON.stringify(next)); } catch {}; return next; });
           } catch {}
         }
         function onChatReset(ev) {
