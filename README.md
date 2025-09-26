@@ -289,7 +289,7 @@ npx office-addin-dev-certs install
 #### 3. Environment Variables (for LLM features)
 ```powershell
 # Copy and customize environment variables
-cp setup-env.ps1.example setup-env.ps1
+cp tools/scripts/setup-env.ps1.example tools/scripts/setup-env.ps1
 
 # Edit with your preferences:
 $env:LLM_PROVIDER = "ollama"
