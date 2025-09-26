@@ -867,45 +867,34 @@
       const { currentUser, users } = React.useContext(StateContext);
       const [messages, setMessages] = React.useState([]);
       const [text, setText] = React.useState('');
-      const [toUserId, setToUserId] = React.useState('');
+      const [view, setView] = React.useState('list'); // 'list' | 'thread'
+      const [activePartnerId, setActivePartnerId] = React.useState('');
       const listRef = React.useRef(null);
 
       const storageKey = React.useCallback(() => `og.messaging.${String(currentUser || 'default')}`, [currentUser]);
-      const lastToKey = React.useCallback(() => `og.messaging.lastTo.${String(currentUser || 'default')}`, [currentUser]);
+      const activeKey = React.useCallback(() => `og.messaging.active.${String(currentUser || 'default')}`, [currentUser]);
+      const viewKey = React.useCallback(() => `og.messaging.view.${String(currentUser || 'default')}`, [currentUser]);
 
-      // Hydrate stored messages and last recipient
+      const userLabel = (uid) => {
+        try { const u = (users || []).find(x => (x && (x.id === uid || x.label === uid))); return (u && (u.label || u.id)) || uid; } catch { return uid; }
+      };
+      const initialsOf = (label) => {
+        try { const parts = String(label || '').trim().split(/\s+/).filter(Boolean); if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase(); if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase(); return ''; } catch { return ''; }
+      };
+
+      // Hydrate stored messages and last active conversation
       React.useEffect(() => {
-        try {
-          const raw = localStorage.getItem(storageKey());
-          const arr = raw ? JSON.parse(raw) : [];
-          if (Array.isArray(arr)) setMessages(arr);
-        } catch {}
-        try {
-          const v = localStorage.getItem(lastToKey());
-          if (v) setToUserId(v);
-        } catch {}
-      }, [storageKey, lastToKey]);
+        try { const raw = localStorage.getItem(storageKey()); const arr = raw ? JSON.parse(raw) : []; if (Array.isArray(arr)) setMessages(arr); } catch {}
+        try { const a = localStorage.getItem(activeKey()); if (a) setActivePartnerId(a); } catch {}
+        try { const v = localStorage.getItem(viewKey()); if (v === 'thread' || v === 'list') setView(v); } catch {}
+      }, [storageKey, activeKey, viewKey]);
 
-      // Persist on change
-      React.useEffect(() => {
-        try { localStorage.setItem(storageKey(), JSON.stringify(messages)); } catch {}
-      }, [messages, storageKey]);
+      // Persist
+      React.useEffect(() => { try { localStorage.setItem(storageKey(), JSON.stringify(messages)); } catch {} }, [messages, storageKey]);
+      React.useEffect(() => { try { if (activePartnerId) localStorage.setItem(activeKey(), activePartnerId); } catch {} }, [activePartnerId, activeKey]);
+      React.useEffect(() => { try { localStorage.setItem(viewKey(), view); } catch {} }, [view, viewKey]);
 
-      React.useEffect(() => {
-        try { if (toUserId) localStorage.setItem(lastToKey(), toUserId); } catch {}
-      }, [toUserId, lastToKey]);
-
-      // Auto-select first other user if none selected
-      React.useEffect(() => {
-        if (!toUserId) {
-          try {
-            const others = (users || []).filter(u => (u?.id || u?.label) && (u.id || u.label) !== currentUser);
-            if (others.length) setToUserId(others[0].id || others[0].label);
-          } catch {}
-        }
-      }, [toUserId, users, currentUser]);
-
-      // Handle inbound messages via SSE bridge
+      // Inbound messages
       React.useEffect(() => {
         const onMsg = (ev) => {
           try {
@@ -915,10 +904,8 @@
             const to = String(d.payload.to || '');
             const text = String(d.payload.text || '');
             if (!text) return;
-            // Only store messages involving the current user
             if (from === String(currentUser) || to === String(currentUser)) {
-              const item = { id: Date.now() + Math.random(), from, to, text, ts: Date.now() };
-              setMessages(prev => prev.concat(item));
+              setMessages(prev => prev.concat({ id: Date.now() + Math.random(), from, to, text, ts: Date.now() }));
             }
           } catch {}
         };
@@ -926,75 +913,113 @@
         return () => { try { window.removeEventListener('messaging:message', onMsg); } catch {} };
       }, [currentUser]);
 
-      // Scroll to bottom on new messages for the active conversation
+      // Auto-select first other user if no active partner when entering thread view via New Chat
       React.useEffect(() => {
-        try {
-          const el = listRef.current;
-          if (el) el.scrollTop = el.scrollHeight;
-        } catch {}
-      }, [messages, toUserId]);
+        if (!activePartnerId && view === 'thread') {
+          try {
+            const others = (users || []).filter(u => (u?.id || u?.label) && (u.id || u.label) !== currentUser);
+            if (others.length) setActivePartnerId(others[0].id || others[0].label);
+          } catch {}
+        }
+      }, [activePartnerId, view, users, currentUser]);
+
+      // Scroll thread to bottom
+      React.useEffect(() => {
+        try { const el = listRef.current; if (el) el.scrollTop = el.scrollHeight; } catch {}
+      }, [messages, activePartnerId, view]);
 
       const send = async () => {
         const trimmed = String(text || '').trim();
-        if (!trimmed || !toUserId) return;
+        if (!trimmed || !activePartnerId) return;
         setText('');
-        // Optimistic add
-        const mine = { id: Date.now() + Math.random(), from: String(currentUser), to: String(toUserId), text: trimmed, ts: Date.now() };
+        const mine = { id: Date.now() + Math.random(), from: String(currentUser), to: String(activePartnerId), text: trimmed, ts: Date.now() };
         setMessages(prev => prev.concat(mine));
         try {
-          await fetch(`${API_BASE}/api/v1/events/client`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'approvals:message', payload: { to: toUserId, text: trimmed }, userId: currentUser })
-          });
+          await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'approvals:message', payload: { to: activePartnerId, text: trimmed }, userId: currentUser }) });
         } catch {}
       };
 
-      const userLabel = (uid) => {
-        try { const u = (users || []).find(x => (x && (x.id === uid || x.label === uid))); return (u && (u.label || u.id)) || uid; } catch { return uid; }
-      };
+      // Derive conversations (partner -> last message)
+      const convMap = (() => {
+        const map = new Map();
+        for (const m of messages) {
+          if (m.from !== String(currentUser) && m.to !== String(currentUser)) continue;
+          const partner = m.from === String(currentUser) ? m.to : m.from;
+          const prev = map.get(partner);
+          if (!prev || (m.ts || 0) > (prev.ts || 0)) map.set(partner, m);
+        }
+        return map;
+      })();
+      const conversations = Array.from(convMap.entries())
+        .map(([partnerId, lastMsg]) => ({ partnerId, lastMsg }))
+        .sort((a, b) => (b.lastMsg.ts || 0) - (a.lastMsg.ts || 0));
 
-      const partnerMessages = messages.filter(m =>
-        (m.from === String(currentUser) && m.to === String(toUserId)) ||
-        (m.to === String(currentUser) && m.from === String(toUserId))
+      const threadMessages = messages.filter(m =>
+        (m.from === String(currentUser) && m.to === String(activePartnerId)) ||
+        (m.to === String(currentUser) && m.from === String(activePartnerId))
       );
 
-      const header = React.createElement('div', { className: 'd-flex items-center gap-8' }, [
-        React.createElement('label', { key: 'l', className: 'text-sm text-gray-600' }, 'To'),
-        React.createElement('select', {
-          key: 'sel', value: toUserId, onChange: (e) => setToUserId(e.target.value),
-          className: 'input-padding input-border input-border-radius'
-        }, (users || [])
-          .filter(u => (u?.id || u?.label) && (u.id || u.label) !== currentUser)
-          .map((u, i) => React.createElement('option', { key: i, value: u.id || u.label }, u.label || u.id)))
+      // Header
+      const headerList = React.createElement('div', { className: 'd-flex items-center justify-between', style: { padding: '4px 8px' } }, [
+        React.createElement('div', { key: 'title', className: 'font-semibold' }, 'Chats'),
+        React.createElement('div', { key: 'actions', className: 'd-flex items-center gap-8' }, [
+          React.createElement(UIButton, { key: 'new', label: 'New Chat', variant: 'tertiary', onClick: () => { setView('thread'); } })
+        ])
       ]);
 
-      const list = React.createElement('div', {
-        ref: listRef,
-        style: { height: 280, overflowY: 'auto', padding: '8px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' }
-      }, partnerMessages.map((m) => {
-        const mine = m.from === String(currentUser);
-        const align = mine ? 'flex-end' : 'flex-start';
-        const bg = mine ? '#ede9fe' : '#f3f4f6';
-        const fg = '#111827';
-        return React.createElement('div', { key: m.id, className: 'd-flex', style: { justifyContent: align, marginBottom: 8 } },
-          React.createElement('div', { style: { maxWidth: '70%', background: bg, color: fg, padding: '8px 10px', borderRadius: 12 } }, [
-            React.createElement('div', { key: 't', className: 'text-xs text-gray-500', style: { marginBottom: 4 } }, mine ? 'You' : userLabel(m.from)),
-            React.createElement('div', { key: 'm' }, m.text)
-          ])
-        );
-      }));
+      const listView = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [
+        headerList,
+        React.createElement('div', { key: 'list', style: { border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' } },
+          React.createElement('div', { style: { maxHeight: 320, overflowY: 'auto', background: '#fff' } },
+            (conversations.length ? conversations : (users || []).filter(u => (u?.id || u?.label) && (u.id || u.label) !== currentUser).map(u => ({ partnerId: u.id || u.label, lastMsg: { text: '', ts: 0 } })))
+              .map((c, i) => {
+                const pid = c.partnerId;
+                const label = userLabel(pid);
+                const preview = (c.lastMsg && c.lastMsg.text) ? c.lastMsg.text : '';
+                const time = c.lastMsg && c.lastMsg.ts ? new Date(c.lastMsg.ts).toLocaleTimeString() : '';
+                return React.createElement('div', { key: pid || i, onClick: () => { setActivePartnerId(pid); setView('thread'); },
+                  className: 'd-flex items-center',
+                  style: { padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' } }, [
+                  React.createElement('div', { key: 'av', className: 'avatar-initials', style: { marginRight: 10 } }, initialsOf(label)),
+                  React.createElement('div', { key: 'txt', className: 'd-flex flex-column', style: { flex: 1, minWidth: 0 } }, [
+                    React.createElement('div', { key: 'n', className: 'font-medium', style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, label),
+                    React.createElement('div', { key: 'p', className: 'text-sm text-gray-600', style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, preview)
+                  ]),
+                  React.createElement('div', { key: 't', className: 'text-xs text-gray-500' }, time)
+                ]);
+              })
+          )
+        )
+      ]);
+
+      // Thread header and body
+      const headerThread = React.createElement('div', { className: 'd-flex items-center gap-8', style: { padding: '4px 8px' } }, [
+        React.createElement('button', { key: 'back', onClick: () => setView('list'), style: { background: 'transparent', border: 'none', cursor: 'pointer' } }, '←'),
+        React.createElement('div', { key: 'lbl', className: 'font-semibold' }, userLabel(activePartnerId || ''))
+      ]);
+
+      const threadList = React.createElement('div', { ref: listRef, style: { height: 280, overflowY: 'auto', padding: 8, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' } },
+        threadMessages.map(m => {
+          const mine = m.from === String(currentUser);
+          const align = mine ? 'flex-end' : 'flex-start';
+          const bg = mine ? '#ede9fe' : '#f3f4f6';
+          const fg = '#111827';
+          return React.createElement('div', { key: m.id, className: 'd-flex', style: { justifyContent: align, marginBottom: 8 } },
+            React.createElement('div', { style: { maxWidth: '70%', background: bg, color: fg, padding: '8px 10px', borderRadius: 12 } }, [
+              React.createElement('div', { key: 'm' }, m.text)
+            ])
+          );
+        })
+      );
 
       const composer = React.createElement('div', { className: 'd-flex items-center gap-8' }, [
-        React.createElement('input', {
-          key: 'inp', type: 'text', placeholder: 'Write a message…', value: text,
-          onChange: (e) => setText(e.target.value), className: 'input-padding input-border input-border-radius',
-          style: { flex: 1 }
-        }),
-        React.createElement(UIButton, { key: 'send', label: 'Send', onClick: send, variant: 'primary' })
+        React.createElement('input', { key: 'inp', type: 'text', placeholder: 'Write a message…', value: text, onChange: (e) => setText(e.target.value), className: 'input-padding input-border input-border-radius', style: { flex: 1 } }),
+        React.createElement(UIButton, { key: 'send', label: 'Send', onClick: send, variant: 'primary', disabled: !activePartnerId })
       ]);
 
-      return React.createElement('div', { className: 'd-flex flex-column gap-8' }, [header, list, composer]);
+      const threadView = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [headerThread, threadList, composer]);
+
+      return (view === 'list') ? listView : threadView;
     }
 
     // Notifications bell (standard icon) that opens a modal
