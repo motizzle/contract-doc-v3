@@ -886,8 +886,8 @@
       React.useEffect(() => {
         try { const raw = localStorage.getItem(storageKey()); const arr = raw ? JSON.parse(raw) : []; if (Array.isArray(arr)) setMessages(arr); } catch {}
         try { const a = localStorage.getItem(activeKey()); if (a) setActivePartnerId(a); } catch {}
-        try { const v = localStorage.getItem(viewKey()); if (v === 'thread' || v === 'list') setView(v); } catch {}
-      }, [storageKey, activeKey, viewKey]);
+        // Intentionally ignore persisted view; default to chat list when opening tab
+      }, [storageKey, activeKey]);
 
       // Persist
       React.useEffect(() => { try { localStorage.setItem(storageKey(), JSON.stringify(messages)); } catch {} }, [messages, storageKey]);
