@@ -1402,7 +1402,8 @@
           rows: 2
         })
       );
-      const btn = React.createElement(UIButton, { label: 'Send', onClick: send });
+      const arrowUp = React.createElement('span', { 'aria-hidden': true }, '↑');
+      const btn = React.createElement('button', { className: 'btn-circle-primary', onClick: send, title: 'Send' }, arrowUp);
       const reset = async () => {
         try {
           console.log('🔄 Starting reset process...');
@@ -1453,8 +1454,12 @@
       };
       const resetBtn = React.createElement(UIButton, { label: 'Reset', onClick: reset, tone: 'secondary' });
       const refreshBtn = React.createElement(UIButton, { label: 'Refresh Doc', onClick: refreshDoc, tone: 'secondary' });
+      const attachBtn = React.createElement('button', { className: 'btn-icon-ghost', title: 'Attach file', onClick: () => {} }, '📎');
+      const micBtn = React.createElement('button', { className: 'btn-icon-ghost', title: 'Start voice input', onClick: () => {} }, '🎤');
       const inputRow = React.createElement('div', { className: 'd-flex gap-8 align-items-end', style: { width: '100%' } }, [
+        attachBtn,
         React.createElement('div', { style: { flex: 1 } }, input),
+        micBtn,
         btn
       ]);
       const buttonRow = React.createElement('div', { className: 'd-flex gap-8' }, [resetBtn, refreshBtn]);
