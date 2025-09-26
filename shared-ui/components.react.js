@@ -888,13 +888,13 @@
           if (navigator?.clipboard?.writeText) await navigator.clipboard.writeText(text);
         } catch {}
       };
-      const header = React.createElement('div', { className: 'd-flex items-center justify-end', style: { padding: '4px 8px' } }, [
-        React.createElement(UIButton, { key: 'copy', label: 'Copy', onClick: copy, variant: 'secondary' })
+      const footer = React.createElement('div', { className: 'd-flex items-center justify-end', style: { padding: '8px 0' } }, [
+        React.createElement(UIButton, { key: 'copy', label: 'Copy', onClick: copy, variant: 'primary' })
       ]);
       const list = (logs || []).length
         ? React.createElement('div', { className: 'notifications-list' }, (logs || []).slice().reverse().map((log, index) => renderNotification(log, index)).filter(Boolean))
         : React.createElement('div', { className: 'text-gray-500', style: { padding: 8 } }, 'No activity yet.');
-      return React.createElement('div', { className: 'd-flex flex-column gap-2' }, [header, list]);
+      return React.createElement('div', { className: 'd-flex flex-column gap-2' }, [list, footer]);
     }
 
     function MessagingPanel() {
