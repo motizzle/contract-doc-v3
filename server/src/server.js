@@ -851,6 +851,8 @@ app.post('/api/v1/factory-reset', (req, res) => {
     bumpDocumentVersion('system');
     broadcast({ type: 'factoryReset' });
     broadcast({ type: 'documentRevert' });
+    // Notify clients to clear local messaging state
+    broadcast({ type: 'messaging:reset' });
     const approvals = loadApprovals();
     broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary: computeApprovalsSummary(approvals.approvers) });
     return res.json({ ok: true });

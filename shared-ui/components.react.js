@@ -311,6 +311,10 @@
               if (p && p.type === 'approvals:message') {
                 try { window.dispatchEvent(new CustomEvent('messaging:message', { detail: p })); } catch {}
               }
+              // Bridge messaging reset to React app
+              if (p && p.type === 'messaging:reset') {
+                try { window.dispatchEvent(new CustomEvent('messaging:reset', { detail: p })); } catch {}
+              }
               // Do not auto-refresh document on save/revert; show banner via state-matrix
               refresh();
             } catch {}
@@ -917,9 +921,23 @@
             }
           } catch {}
         };
+        const onReset = () => {
+          try {
+            setMessages([]);
+            setActivePartnerId('');
+            setActiveGroupIds([]);
+            try { localStorage.removeItem(storageKey()); } catch {}
+            try { localStorage.removeItem(activeKey()); } catch {}
+            try { localStorage.removeItem(viewKey()); } catch {}
+          } catch {}
+        };
         try { window.addEventListener('messaging:message', onMsg); } catch {}
-        return () => { try { window.removeEventListener('messaging:message', onMsg); } catch {} };
-      }, [currentUser, messages]);
+        try { window.addEventListener('messaging:reset', onReset); } catch {}
+        return () => {
+          try { window.removeEventListener('messaging:message', onMsg); } catch {}
+          try { window.removeEventListener('messaging:reset', onReset); } catch {}
+        };
+      }, [currentUser, messages, storageKey, activeKey, viewKey]);
 
       // Do not auto-select a partner on New Chat; user must choose explicitly
 
