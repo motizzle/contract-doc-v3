@@ -869,6 +869,7 @@
       const [text, setText] = React.useState('');
       const [view, setView] = React.useState('list'); // 'list' | 'thread' | 'new'
       const [activePartnerId, setActivePartnerId] = React.useState('');
+      const [newSelection, setNewSelection] = React.useState(() => new Set());
       const listRef = React.useRef(null);
 
       const storageKey = React.useCallback(() => `og.messaging.${String(currentUser || 'default')}`, [currentUser]);
@@ -989,10 +990,32 @@
       ]);
 
       // Contact picker (New Chat)
+      const onToggleNewSelect = (pid) => {
+        setNewSelection(prev => {
+          const n = new Set(prev);
+          if (n.has(pid)) n.delete(pid); else n.add(pid);
+          return n;
+        });
+      };
+
+      const startNewChats = () => {
+        const ids = Array.from(newSelection);
+        if (!ids.length) return;
+        // Seed conversations so they appear, open first thread
+        const now = Date.now();
+        setMessages(prev => prev.concat(ids.map((pid, idx) => ({ id: now + idx + Math.random(), from: String(currentUser), to: String(pid), text: '', ts: now + idx }))));
+        setActivePartnerId(ids[0]);
+        setView('thread');
+        setNewSelection(new Set());
+      };
+
       const newChatView = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [
-        React.createElement('div', { key: 'hdr', className: 'd-flex items-center gap-8', style: { padding: '4px 8px' } }, [
-          React.createElement('button', { key: 'back', onClick: () => setView('list'), style: { background: 'transparent', border: 'none', cursor: 'pointer' } }, '←'),
-          React.createElement('div', { key: 'lbl', className: 'font-semibold' }, 'New Chat')
+        React.createElement('div', { key: 'hdr', className: 'd-flex items-center justify-between', style: { padding: '4px 8px' } }, [
+          React.createElement('div', { key: 'l', className: 'd-flex items-center gap-8' }, [
+            React.createElement('button', { key: 'back', onClick: () => setView('list'), style: { background: 'transparent', border: 'none', cursor: 'pointer' } }, '←'),
+            React.createElement('div', { key: 'lbl', className: 'font-semibold' }, 'New Chat')
+          ]),
+          React.createElement(UIButton, { key: 'start', label: 'Start', onClick: startNewChats, variant: 'primary', disabled: !newSelection.size })
         ]),
         React.createElement('div', { key: 'pick', style: { border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' } },
           React.createElement('div', { style: { maxHeight: 320, overflowY: 'auto', background: '#fff' } },
@@ -1000,9 +1023,9 @@
               .map((u, i) => {
                 const pid = u.id || u.label;
                 const label = userLabel(pid);
-                return React.createElement('div', { key: pid || i, onClick: () => { setActivePartnerId(pid); setView('thread'); },
-                  className: 'd-flex items-center',
-                  style: { padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' } }, [
+                const checked = newSelection.has(pid);
+                return React.createElement('label', { key: pid || i, className: 'd-flex items-center', style: { padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' } }, [
+                  React.createElement('input', { key: 'cb', type: 'checkbox', checked, onChange: () => onToggleNewSelect(pid), style: { marginRight: 10 } }),
                   React.createElement('div', { key: 'av', className: 'avatar-initials', style: { marginRight: 10 } }, initialsOf(label)),
                   React.createElement('div', { key: 'n', className: 'font-medium' }, label)
                 ]);
