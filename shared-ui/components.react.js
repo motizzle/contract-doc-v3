@@ -1022,10 +1022,13 @@
       const startNewChats = () => {
         const ids = Array.from(newSelection);
         if (!ids.length) return;
-        // Seed conversations so they appear, open first thread
-        const now = Date.now();
-        setMessages(prev => prev.concat(ids.map((pid, idx) => ({ id: now + idx + Math.random(), from: String(currentUser), to: String(pid), text: '', ts: now + idx }))));
-        setActivePartnerId(ids[0]);
+        if (ids.length === 1) {
+          setActiveGroupIds([]);
+          setActivePartnerId(ids[0]);
+        } else {
+          setActivePartnerId('');
+          setActiveGroupIds(ids);
+        }
         setView('thread');
         setNewSelection(new Set());
       };
