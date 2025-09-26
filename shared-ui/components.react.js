@@ -867,7 +867,7 @@
       const { currentUser, users } = React.useContext(StateContext);
       const [messages, setMessages] = React.useState([]);
       const [text, setText] = React.useState('');
-      const [view, setView] = React.useState('list'); // 'list' | 'thread'
+      const [view, setView] = React.useState('list'); // 'list' | 'thread' | 'new'
       const [activePartnerId, setActivePartnerId] = React.useState('');
       const listRef = React.useRef(null);
 
@@ -913,15 +913,7 @@
         return () => { try { window.removeEventListener('messaging:message', onMsg); } catch {} };
       }, [currentUser]);
 
-      // Auto-select first other user if no active partner when entering thread view via New Chat
-      React.useEffect(() => {
-        if (!activePartnerId && view === 'thread') {
-          try {
-            const others = (users || []).filter(u => (u?.id || u?.label) && (u.id || u.label) !== currentUser);
-            if (others.length) setActivePartnerId(others[0].id || others[0].label);
-          } catch {}
-        }
-      }, [activePartnerId, view, users, currentUser]);
+      // Do not auto-select a partner on New Chat; user must choose explicitly
 
       // Scroll thread to bottom
       React.useEffect(() => {
@@ -963,7 +955,7 @@
       const headerList = React.createElement('div', { className: 'd-flex items-center justify-between', style: { padding: '4px 8px' } }, [
         React.createElement('div', { key: 'title', className: 'font-semibold' }, 'Chats'),
         React.createElement('div', { key: 'actions', className: 'd-flex items-center gap-8' }, [
-          React.createElement(UIButton, { key: 'new', label: 'New Chat', variant: 'tertiary', onClick: () => { setView('thread'); } })
+          React.createElement(UIButton, { key: 'new', label: 'New Chat', variant: 'tertiary', onClick: () => { setActivePartnerId(''); setView('new'); } })
         ])
       ]);
 
@@ -986,6 +978,29 @@
                     React.createElement('div', { key: 'p', className: 'text-sm text-gray-600', style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, preview)
                   ]),
                   React.createElement('div', { key: 't', className: 'text-xs text-gray-500' }, time)
+                ]);
+              })
+          )
+        )
+      ]);
+
+      // Contact picker (New Chat)
+      const newChatView = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [
+        React.createElement('div', { key: 'hdr', className: 'd-flex items-center gap-8', style: { padding: '4px 8px' } }, [
+          React.createElement('button', { key: 'back', onClick: () => setView('list'), style: { background: 'transparent', border: 'none', cursor: 'pointer' } }, '←'),
+          React.createElement('div', { key: 'lbl', className: 'font-semibold' }, 'New Chat')
+        ]),
+        React.createElement('div', { key: 'pick', style: { border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' } },
+          React.createElement('div', { style: { maxHeight: 320, overflowY: 'auto', background: '#fff' } },
+            (users || []).filter(u => (u?.id || u?.label) && (u.id || u.label) !== currentUser)
+              .map((u, i) => {
+                const pid = u.id || u.label;
+                const label = userLabel(pid);
+                return React.createElement('div', { key: pid || i, onClick: () => { setActivePartnerId(pid); setView('thread'); },
+                  className: 'd-flex items-center',
+                  style: { padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' } }, [
+                  React.createElement('div', { key: 'av', className: 'avatar-initials', style: { marginRight: 10 } }, initialsOf(label)),
+                  React.createElement('div', { key: 'n', className: 'font-medium' }, label)
                 ]);
               })
           )
@@ -1019,7 +1034,7 @@
 
       const threadView = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [headerThread, threadList, composer]);
 
-      return (view === 'list') ? listView : threadView;
+      return (view === 'list') ? listView : (view === 'new' ? newChatView : threadView);
     }
 
     // Notifications bell (standard icon) that opens a modal
