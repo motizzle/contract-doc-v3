@@ -1956,11 +1956,14 @@
       const tabbarRef = React.useRef(null);
       const aiLabelRef = React.useRef(null);
       const wfLabelRef = React.useRef(null);
+      const msgLabelRef = React.useRef(null);
 
       const recalcUnderline = React.useCallback(() => {
         try {
           const bar = tabbarRef.current;
-          const labelEl = (activeTab === 'AI' ? aiLabelRef.current : wfLabelRef.current);
+          const labelEl = (activeTab === 'AI'
+            ? aiLabelRef.current
+            : (activeTab === 'Workflow' ? wfLabelRef.current : msgLabelRef.current));
           if (!bar || !labelEl) return;
           const barRect = bar.getBoundingClientRect();
           const labRect = labelEl.getBoundingClientRect();
@@ -1998,11 +2001,18 @@
               ? ` (${approvalsSummary.approved || 0}/${approvalsSummary.total})`
               : '')
           ])),
+          React.createElement('button', {
+            key: 'tab-messaging',
+            className: activeTab === 'Messaging' ? 'tab tab--active' : 'tab',
+            onClick: () => setActiveTab('Messaging'),
+            style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Messaging' ? '#111827' : '#6B7280', fontWeight: 600 }
+          }, React.createElement('span', { ref: msgLabelRef, style: { display: 'inline-block' } }, 'Messaging')),
           React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
         React.createElement('div', { key: 'tabbody', className: 'mt-3' }, [
           (activeTab === 'AI' ? React.createElement(ChatConsole, { key: 'chat' }) : null),
           (activeTab === 'Workflow' ? React.createElement(WorkflowApprovalsPanel, { key: 'workflow' }) : null),
+          (activeTab === 'Messaging' ? React.createElement(NotificationsPanel, { key: 'messaging' }) : null),
         ])
       ]);
 
