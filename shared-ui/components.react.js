@@ -1004,8 +1004,7 @@
         ])
       ]);
 
-      const listCards = (conversations.length ? conversations : (users || []).filter(u => (u?.id || u?.label) && (u.id || u.label) !== currentUser).map(u => ({ threadId: `dm:${u.id || u.label}`, lastMsg: { text: '', ts: 0 } })))
-        .map((c, i) => {
+      const listCards = (conversations || []).map((c, i) => {
           const tid = c.threadId;
           const isGroup = String(tid || '').startsWith('group:');
           const label = isGroup
@@ -1031,7 +1030,9 @@
 
       const listView = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [
         headerList,
-        React.createElement('div', { key: 'cards', className: 'd-flex flex-column gap-8' }, listCards)
+        (listCards.length
+          ? React.createElement('div', { key: 'cards', className: 'd-flex flex-column gap-8' }, listCards)
+          : React.createElement('div', { key: 'empty', className: 'text-gray-500', style: { padding: '8px' } }, 'No chats yet. Click New Chat to start.'))
       ]);
 
       // Contact picker (New Chat)
