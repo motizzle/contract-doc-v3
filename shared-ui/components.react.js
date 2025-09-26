@@ -869,6 +869,7 @@
       const [text, setText] = React.useState('');
       const [view, setView] = React.useState('list'); // 'list' | 'thread' | 'new'
       const [activePartnerId, setActivePartnerId] = React.useState('');
+      const [activeGroupIds, setActiveGroupIds] = React.useState([]);
       const [newSelection, setNewSelection] = React.useState(() => new Set());
       const listRef = React.useRef(null);
 
@@ -902,14 +903,17 @@
             const d = ev.detail || {};
             if (!d || !d.payload) return;
             const from = String(d.userId || '');
-            const to = String(d.payload.to || '');
+            const toRaw = d.payload?.to;
+            const to = Array.isArray(toRaw) ? toRaw.map(String) : String(toRaw || '');
             const text = String(d.payload.text || '');
             const clientId = d.payload && d.payload.clientId ? String(d.payload.clientId) : '';
+            const threadId = d.payload && d.payload.threadId ? String(d.payload.threadId) : '';
             if (!text) return;
-            if (from === String(currentUser) || to === String(currentUser)) {
+            const involvesMe = Array.isArray(to) ? (to.includes(String(currentUser)) || from === String(currentUser)) : (from === String(currentUser) || to === String(currentUser));
+            if (involvesMe) {
               // Skip if we already have this client-sent message
               if (clientId && Array.isArray(messages) && messages.some(m => m.clientId && String(m.clientId) === clientId)) return;
-              setMessages(prev => prev.concat({ id: Date.now() + Math.random(), from, to, text, ts: Date.now(), clientId: clientId || undefined }));
+              setMessages(prev => prev.concat({ id: Date.now() + Math.random(), from, to, text, ts: Date.now(), clientId: clientId || undefined, threadId: threadId || undefined }));
             }
           } catch {}
         };
@@ -926,13 +930,16 @@
 
       const send = async () => {
         const trimmed = String(text || '').trim();
-        if (!trimmed || !activePartnerId) return;
+        const isGroup = Array.isArray(activeGroupIds) && activeGroupIds.length > 0 && !activePartnerId;
+        if (!trimmed || (!activePartnerId && !isGroup)) return;
         setText('');
         const clientId = `c_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        const mine = { id: Date.now() + Math.random(), from: String(currentUser), to: String(activePartnerId), text: trimmed, ts: Date.now(), clientId };
+        const recipients = isGroup ? activeGroupIds.slice() : [String(activePartnerId)];
+        const threadId = isGroup ? `group:${recipients.slice().sort().join(',')}` : `dm:${String(activePartnerId)}`;
+        const mine = { id: Date.now() + Math.random(), from: String(currentUser), to: (isGroup ? recipients : String(activePartnerId)), text: trimmed, ts: Date.now(), clientId, threadId };
         setMessages(prev => prev.concat(mine));
         try {
-          await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'approvals:message', payload: { to: activePartnerId, text: trimmed, clientId }, userId: currentUser }) });
+          await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'approvals:message', payload: { to: recipients, text: trimmed, clientId, threadId }, userId: currentUser }) });
         } catch {}
       };
 
@@ -940,21 +947,28 @@
       const convMap = (() => {
         const map = new Map();
         for (const m of messages) {
-          if (m.from !== String(currentUser) && m.to !== String(currentUser)) continue;
-          const partner = m.from === String(currentUser) ? m.to : m.from;
-          const prev = map.get(partner);
-          if (!prev || (m.ts || 0) > (prev.ts || 0)) map.set(partner, m);
+          const me = String(currentUser);
+          const toArr = Array.isArray(m.to) ? m.to : [String(m.to || '')];
+          if (m.from !== me && !toArr.includes(me)) continue;
+          const tid = m.threadId ? String(m.threadId) : (Array.isArray(m.to) ? `group:${toArr.slice().sort().join(',')}` : `dm:${(m.from === me ? String(m.to) : String(m.from))}`);
+          const prev = map.get(tid);
+          if (!prev || (m.ts || 0) > (prev.ts || 0)) map.set(tid, m);
         }
         return map;
       })();
       const conversations = Array.from(convMap.entries())
-        .map(([partnerId, lastMsg]) => ({ partnerId, lastMsg }))
+        .map(([threadId, lastMsg]) => ({ threadId, lastMsg }))
         .sort((a, b) => (b.lastMsg.ts || 0) - (a.lastMsg.ts || 0));
 
-      const threadMessages = messages.filter(m =>
-        (m.from === String(currentUser) && m.to === String(activePartnerId)) ||
-        (m.to === String(currentUser) && m.from === String(activePartnerId))
-      );
+      const activeThreadId = (Array.isArray(activeGroupIds) && activeGroupIds.length > 0 && !activePartnerId)
+        ? `group:${activeGroupIds.slice().sort().join(',')}`
+        : (activePartnerId ? `dm:${String(activePartnerId)}` : '');
+
+      const threadMessages = messages.filter(m => {
+        const me = String(currentUser);
+        const tid = m.threadId ? String(m.threadId) : (Array.isArray(m.to) ? `group:${(m.to||[]).slice().sort().join(',')}` : `dm:${(m.from === me ? String(m.to) : String(m.from))}`);
+        return activeThreadId && tid === activeThreadId;
+      });
 
       // Header
       const headerList = React.createElement('div', { className: 'd-flex items-center justify-between', style: { padding: '4px 8px' } }, [
@@ -968,13 +982,20 @@
         headerList,
         React.createElement('div', { key: 'list', style: { border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' } },
           React.createElement('div', { style: { maxHeight: 320, overflowY: 'auto', background: '#fff' } },
-            (conversations.length ? conversations : (users || []).filter(u => (u?.id || u?.label) && (u.id || u.label) !== currentUser).map(u => ({ partnerId: u.id || u.label, lastMsg: { text: '', ts: 0 } })))
+            (conversations.length ? conversations : (users || []).filter(u => (u?.id || u?.label) && (u.id || u.label) !== currentUser).map(u => ({ threadId: `dm:${u.id || u.label}`, lastMsg: { text: '', ts: 0 } })))
               .map((c, i) => {
-                const pid = c.partnerId;
-                const label = userLabel(pid);
+                const tid = c.threadId;
+                const isGroup = String(tid || '').startsWith('group:');
+                const label = isGroup
+                  ? (String(tid).slice(6).split(',').map(userLabel).join(', '))
+                  : userLabel(String(tid).slice(3));
                 const preview = (c.lastMsg && c.lastMsg.text) ? c.lastMsg.text : '';
                 const time = c.lastMsg && c.lastMsg.ts ? new Date(c.lastMsg.ts).toLocaleTimeString() : '';
-                return React.createElement('div', { key: pid || i, onClick: () => { setActivePartnerId(pid); setView('thread'); },
+                return React.createElement('div', { key: tid || i, onClick: () => {
+                    if (isGroup) { setActivePartnerId(''); setActiveGroupIds(String(tid).slice(6).split(',').filter(Boolean)); }
+                    else { setActiveGroupIds([]); setActivePartnerId(String(tid).slice(3)); }
+                    setView('thread');
+                  },
                   className: 'd-flex items-center',
                   style: { padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' } }, [
                   React.createElement('div', { key: 'av', className: 'avatar-initials', style: { marginRight: 10 } }, initialsOf(label)),
@@ -1037,7 +1058,7 @@
       // Thread header and body
       const headerThread = React.createElement('div', { className: 'd-flex items-center gap-8', style: { padding: '4px 8px' } }, [
         React.createElement('button', { key: 'back', onClick: () => setView('list'), style: { background: 'transparent', border: 'none', cursor: 'pointer' } }, '←'),
-        React.createElement('div', { key: 'lbl', className: 'font-semibold' }, userLabel(activePartnerId || ''))
+        React.createElement('div', { key: 'lbl', className: 'font-semibold' }, (activePartnerId ? userLabel(activePartnerId) : (activeGroupIds || []).map(userLabel).join(', ')))
       ]);
 
       const threadList = React.createElement('div', { ref: listRef, style: { height: 280, overflowY: 'auto', padding: 8, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' } },
@@ -1056,7 +1077,7 @@
 
       const composer = React.createElement('div', { className: 'd-flex items-center gap-8' }, [
         React.createElement('input', { key: 'inp', type: 'text', placeholder: 'Write a message…', value: text, onChange: (e) => setText(e.target.value), className: 'input-padding input-border input-border-radius', style: { flex: 1 } }),
-        React.createElement(UIButton, { key: 'send', label: 'Send', onClick: send, variant: 'primary', disabled: !activePartnerId })
+        React.createElement(UIButton, { key: 'send', label: 'Send', onClick: send, variant: 'primary', disabled: (!activePartnerId && (!(Array.isArray(activeGroupIds) && activeGroupIds.length))) })
       ]);
 
       const threadView = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [headerThread, threadList, composer]);

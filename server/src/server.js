@@ -1089,28 +1089,33 @@ app.post('/api/v1/events/client', async (req, res) => {
           });
         }
       }
-      // Auto-reply for lightweight messaging threads
-      if (type === 'approvals:message') {
-        const text = String(payload?.text || '').trim();
-        const toUserId = String(payload?.to || '').trim();
-        const clientId = payload && payload.clientId ? String(payload.clientId) : undefined;
+    // Auto-reply for lightweight messaging threads (supports DM or group)
+    if (type === 'approvals:message') {
+      const text = String(payload?.text || '').trim();
+      const toRaw = payload?.to;
+      const toList = Array.isArray(toRaw) ? toRaw.map(String) : [String(toRaw || '')];
+      const clientId = payload && payload.clientId ? String(payload.clientId) : undefined;
+      const threadId = payload && payload.threadId ? String(payload.threadId) : undefined;
         if (text) {
           try {
             let replyText = '';
-            if (LLM_PROVIDER === 'ollama' || (LLM_PROVIDER === 'openai' && process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'mock')) {
-              const partnerLabel = (typeof resolveUserLabel === 'function') ? resolveUserLabel(toUserId || 'bot') : (toUserId || 'bot');
-              const sys = `${getSystemPrompt()}\n\nYou are ${partnerLabel} replying in a short, friendly, professional tone. Keep replies to 1-2 sentences.`;
+          if (LLM_PROVIDER === 'ollama' || (LLM_PROVIDER === 'openai' && process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'mock')) {
+            const labelList = (typeof resolveUserLabel === 'function') ? toList.map(u => resolveUserLabel(u)) : toList;
+            const partnerLabel = labelList.length > 1 ? `group (${labelList.join(', ')})` : (labelList[0] || 'bot');
+            const sys = `${getSystemPrompt()}\n\nYou are ${partnerLabel} replying in a short, friendly, professional tone. Keep replies to 1-2 sentences.`;
               const result = await generateReply({ messages: [{ role: 'user', content: text }], systemPrompt: sys });
               if (result && result.ok && result.content) replyText = String(result.content).trim();
             }
             if (!replyText) replyText = 'Got it. Thanks!';
-            broadcast({ type: 'approvals:message', payload: { to: userId, text: replyText }, userId: toUserId || 'bot', role: 'assistant', platform: 'server' });
+          // In a DM, reply as the single partner. In a group, reply as 'bot' so it's neutral
+          const replyUserId = (toList.length === 1 ? toList[0] : 'bot');
+          broadcast({ type: 'approvals:message', payload: { to: [userId], text: replyText, threadId }, userId: replyUserId, role: 'assistant', platform: 'server' });
           } catch (e) {
-            broadcast({ type: 'approvals:message', payload: { to: userId, text: 'Auto-reply failed.' }, userId: toUserId || 'bot', role: 'assistant', platform: 'server' });
+          broadcast({ type: 'approvals:message', payload: { to: [userId], text: 'Auto-reply failed.', threadId }, userId: 'bot', role: 'assistant', platform: 'server' });
           }
         }
-        // Echo the original message to other clients (preserve clientId so sender can de-dupe)
-        broadcast({ type: 'approvals:message', payload: { to: toUserId, text, clientId }, userId, role, platform: originPlatform });
+      // Echo the original message to other clients (preserve clientId so sender can de-dupe)
+      broadcast({ type: 'approvals:message', payload: { to: toList, text, clientId, threadId }, userId, role, platform: originPlatform });
       }
   } catch {}
   res.json({ ok: true });
