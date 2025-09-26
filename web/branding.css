@@ -492,8 +492,8 @@ body .brand-header-bg .pulse-pill {
 
 /* Chat container styling */
 .chat-container {
-  /* Fixed height to prevent layout shift while typing */
-  height: 420px;
+  /* Fixed height to prevent layout shift while typing (web +25%) */
+  height: 525px; /* 420px * 1.25 */
   overflow-y: auto;
   border: none;
   background: transparent;
@@ -1347,7 +1347,7 @@ body .brand-header-bg .pulse-pill {
   border: none !important;
   border-radius: var(--border-radius-md);
   padding: var(--space-8);
-  height: 120px;  /* Keep original add-in height */
+  height: 300px;  /* Add-in +150% (120px * 2.5) */
   overflow: auto;
   background: transparent !important;
 }
