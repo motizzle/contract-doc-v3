@@ -2241,13 +2241,16 @@
       const aiLabelRef = React.useRef(null);
       const wfLabelRef = React.useRef(null);
       const msgLabelRef = React.useRef(null);
+      const actLabelRef = React.useRef(null);
 
       const recalcUnderline = React.useCallback(() => {
         try {
           const bar = tabbarRef.current;
           const labelEl = (activeTab === 'AI'
             ? aiLabelRef.current
-            : (activeTab === 'Workflow' ? wfLabelRef.current : msgLabelRef.current));
+            : (activeTab === 'Workflow'
+              ? wfLabelRef.current
+              : (activeTab === 'Messaging' ? msgLabelRef.current : actLabelRef.current)));
           if (!bar || !labelEl) return;
           const barRect = bar.getBoundingClientRect();
           const labRect = labelEl.getBoundingClientRect();
@@ -2296,7 +2299,7 @@
             className: activeTab === 'Activity' ? 'tab tab--active' : 'tab',
             onClick: () => setActiveTab('Activity'),
             style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Activity' ? '#111827' : '#6B7280', fontWeight: 600 }
-          }, React.createElement('span', { style: { display: 'inline-block' } }, 'Activity')),
+          }, React.createElement('span', { ref: actLabelRef, style: { display: 'inline-block' } }, 'Activity')),
           React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
         React.createElement('div', { key: 'tabbody', className: 'mt-3' }, [
