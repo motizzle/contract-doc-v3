@@ -295,6 +295,13 @@
                 }
               }
               // IMPORTANT: do not auto-refresh documentSource on SSE. User must click View Latest or reload.
+              // Exception: after a Factory Reset, reload the canonical default document so the UI returns to baseline.
+              if (p && p.type === 'factoryReset') {
+                try {
+                  const canonical = `${API_BASE}/documents/canonical/default.docx?rev=${Date.now()}`;
+                  setDocumentSource(canonical);
+                } catch {}
+              }
               // Fan out chat messages to ChatConsole
               if (p && p.type === 'chat') {
                 try { window.dispatchEvent(new CustomEvent('chat:message', { detail: p })); } catch {}
