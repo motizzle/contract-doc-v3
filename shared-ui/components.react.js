@@ -1493,11 +1493,19 @@
         const ts = config && config.lastSaved && config.lastSaved.timestamp;
         when = ts ? new Date(ts).toLocaleString() : '—';
         const user = config && config.lastSaved && config.lastSaved.user;
-        const label = (user && (user.label || user.name || user.id)) || '';
-        const parts = String(label).trim().split(/\s+/);
-        firstName = parts && parts.length ? parts[0] : '';
+        let label = '';
+        if (user) {
+          if (typeof user === 'object') label = user.label || user.name || user.id || '';
+          else label = String(user);
+        }
+        label = String(label || '').trim();
+        // Only show user name if it is a real human label (not 'system' or 'Unknown User')
+        if (label && !/^system$/i.test(label) && !/^unknown\s+user$/i.test(label)) {
+          const parts = label.split(/\s+/);
+          firstName = parts && parts.length ? parts[0] : '';
+        }
       } catch {}
-      const suffix = firstName ? ` by ${firstName}` : ' by';
+      const suffix = firstName ? ` by ${firstName}` : '';
       return React.createElement('span', null, `Last updated on ${when}${suffix}`);
     }
 
