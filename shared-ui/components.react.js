@@ -888,8 +888,7 @@
           if (navigator?.clipboard?.writeText) await navigator.clipboard.writeText(text);
         } catch {}
       };
-      const header = React.createElement('div', { className: 'd-flex items-center justify-between', style: { padding: '4px 8px' } }, [
-        React.createElement('div', { key: 't', className: 'font-semibold' }, 'Activity'),
+      const header = React.createElement('div', { className: 'd-flex items-center justify-end', style: { padding: '4px 8px' } }, [
         React.createElement(UIButton, { key: 'copy', label: 'Copy', onClick: copy, variant: 'secondary' })
       ]);
       const list = (logs || []).length
@@ -2215,8 +2214,6 @@
       const topRowStyle = { gap: 5, paddingTop: (isWordHost ? 0 : 8) };
       const topPanel = React.createElement('div', { className: 'panel panel--top' }, [
         React.createElement('div', { className: 'd-flex items-center', style: topRowStyle }, [
-          React.createElement(NotificationsBell, { key: 'bell-top' }),
-          React.createElement('div', { style: { width: 5, height: 1 } }),
           React.createElement(StatusBadge, { key: 'status' }),
           (isWordHost ? React.createElement(UIButton, { key: 'open-og', label: 'Open in OpenGov ↗', onClick: () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'open-gov' } })); } catch {} }, variant: 'tertiary', style: { marginLeft: 'auto' } }) : null),
         ]),
