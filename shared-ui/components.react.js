@@ -716,6 +716,7 @@
       function PortalMenu(props) {
         const { anchorRef, open, children, onClose, align } = props || {};
         const [pos, setPos] = React.useState(null);
+        const menuRef = React.useRef(null);
         React.useLayoutEffect(() => {
           if (!open || !anchorRef || !anchorRef.current) return;
           try {
@@ -730,7 +731,9 @@
           const onDocClick = (e) => {
             try {
               const a = anchorRef && anchorRef.current;
+              const m = menuRef && menuRef.current;
               if (a && (a === e.target || a.contains(e.target))) return; // ignore clicks on anchor
+              if (m && (m === e.target || m.contains(e.target))) return; // ignore clicks inside menu
               onClose?.();
             } catch {}
           };
@@ -754,7 +757,7 @@
           transform: (align === 'left' ? 'translateX(0)' : 'translateX(-100%)'),
           zIndex: 10000
         };
-        return ReactDOM.createPortal(React.createElement('div', { style }, children), document.body);
+        return ReactDOM.createPortal(React.createElement('div', { style, ref: menuRef }, children), document.body);
       }
       const nestedItems = [
         menuItem('View Latest', viewLatest, true),
