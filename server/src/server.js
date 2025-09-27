@@ -859,6 +859,13 @@ app.post('/api/v1/factory-reset', (req, res) => {
         }
       } catch {}
     }
+    // Remove all saved versions (history)
+    try {
+      if (fs.existsSync(versionsDir)) {
+        try { fs.rmSync(versionsDir, { recursive: true, force: true }); } catch {}
+      }
+      if (!fs.existsSync(versionsDir)) fs.mkdirSync(versionsDir, { recursive: true });
+    } catch {}
     // Reset state to baseline and bump revision so clients resync deterministically
     serverState.isFinal = false;
     serverState.checkedOutBy = null;
@@ -874,6 +881,8 @@ app.post('/api/v1/factory-reset', (req, res) => {
     broadcast({ type: 'messaging:reset' });
     // Notify all clients to clear AI chat state
     broadcast({ type: 'chat:reset', payload: { all: true } });
+    // Notify clients that versions list changed (emptied)
+    broadcast({ type: 'versions:update' });
     const approvals = loadApprovals();
     broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary: computeApprovalsSummary(approvals.approvers) });
     return res.json({ ok: true });
