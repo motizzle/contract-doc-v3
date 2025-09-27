@@ -300,7 +300,20 @@
               if (p && p.type === 'factoryReset') {
                 try {
                   const canonical = `${API_BASE}/documents/canonical/default.docx?rev=${Date.now()}`;
-                  setDocumentSource(canonical);
+                  if (typeof Office !== 'undefined') {
+                    (async () => {
+                      try {
+                        const res = await fetch(canonical, { cache: 'no-store' });
+                        if (res && res.ok) {
+                          const buf = await res.arrayBuffer();
+                          const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
+                          await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
+                        }
+                      } catch {}
+                    })();
+                  } else {
+                    setDocumentSource(canonical);
+                  }
                 } catch {}
                 try { window.dispatchEvent(new CustomEvent('factoryReset', { detail: p })); } catch {}
               }
@@ -347,6 +360,14 @@
       const addError = React.useCallback((err) => {
         try { setLastError(err || null); if (err && err.message) addLog(`Error: ${err.message}`, 'error'); } catch {}
       }, [addLog]);
+
+      // Sync viewingVersion to the current document version after saves/check-ins
+      React.useEffect(() => {
+        try {
+          const v = Number(config?.documentVersion || 1);
+          if (Number.isFinite(v) && v > 0) setViewingVersion(v);
+        } catch {}
+      }, [config?.documentVersion]);
 
       // Compute initial document source on web (prefer working overlay)
       React.useEffect(() => {
@@ -496,7 +517,7 @@
         checkin: async () => { try { await fetch(`${API_BASE}/api/v1/checkin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Document checked in successfully', 'success'); await refresh(); } catch (e) { addLog(`Failed to check in document: ${e?.message||e}`, 'error'); } },
         cancel: async () => { try { await fetch(`${API_BASE}/api/v1/checkout/cancel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Checkout cancelled successfully', 'success'); await refresh(); } catch (e) { addLog(`Failed to cancel checkout: ${e?.message||e}`, 'error'); } },
         override: async () => { try { await fetch(`${API_BASE}/api/v1/checkout/override`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Checkout override successful', 'warning'); await refresh(); } catch (e) { addLog(`Failed to override checkout: ${e?.message||e}`, 'error'); } },
-        factoryReset: async () => { try { await fetch(`${API_BASE}/api/v1/factory-reset`, { method: 'POST' }); addLog('System reset completed successfully', 'system'); await refresh(); } catch (e) { addLog(`Failed to reset system: ${e?.message||e}`, 'error'); } },
+        factoryReset: async () => { try { await fetch(`${API_BASE}/api/v1/factory-reset`, { method: 'POST' }); addLog('System reset completed successfully', 'system'); try { window.dispatchEvent(new CustomEvent('versions:update')); } catch {} await refresh(); } catch (e) { addLog(`Failed to reset system: ${e?.message||e}`, 'error'); } },
         sendVendor: (opts) => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'send-vendor', options: { userId, ...(opts||{}) } } })); } catch {} },
         saveProgress: async () => { try { if (typeof Office !== 'undefined') { await saveProgressWord(); } else { await saveProgressWebViaDownload(); } addLog('Progress saved successfully', 'success'); await refresh(); return true; } catch (e) { addLog(`Failed to save progress: ${e?.message||e}`, 'error'); return false; } },
         setUser: (nextUserId, nextRole) => {
@@ -1593,12 +1614,20 @@
       const [items, setItems] = React.useState([]);
       const [confirm, setConfirm] = React.useState(null);
       const refresh = React.useCallback(async () => {
-        try { const r = await fetch(`${API_BASE}/api/v1/versions`); if (r.ok) { const j = await r.json(); const arr = Array.isArray(j.items) ? j.items : []; setItems(arr); } } catch {}
+        try {
+          const url = `${API_BASE}/api/v1/versions?rev=${Date.now()}`;
+          const r = await fetch(url, { cache: 'no-store' });
+          if (r.ok) {
+            const j = await r.json();
+            const arr = Array.isArray(j.items) ? j.items : [];
+            setItems(arr);
+          }
+        } catch {}
       }, [API_BASE]);
       React.useEffect(() => { refresh(); }, [refresh]);
       React.useEffect(() => {
         const onVersionsUpdate = () => { try { refresh(); } catch {} };
-        const onFactory = () => { try { refresh(); } catch {} };
+        const onFactory = () => { try { setViewingVersion(1); refresh(); } catch {} };
         const onVersionView = async (ev) => {
           try {
             const d = ev && ev.detail;
@@ -1644,21 +1673,36 @@
         const v = Number(it.version || 1);
         const who = (it.savedBy && (it.savedBy.label || it.savedBy.userId)) || 'Unknown';
         const when = it.savedAt ? new Date(it.savedAt).toLocaleString() : '—';
-        const pills = [];
-        if (isCurrent(v)) pills.push(React.createElement('span', { key: 'cur', className: 'ui-badge gray-medium', style: { marginLeft: 8 } }, 'current'));
-        if (isViewing(v)) pills.push(React.createElement('span', { key: 'view', className: 'ui-badge gray-dark', style: { marginLeft: 8 } }, 'viewing'));
-        return React.createElement('div', { key: `v-${v}-${i}`, className: 'd-flex items-center', onClick: () => onClickView(v), style: { border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 12px', cursor: 'pointer', background: '#fff' } }, [
-          React.createElement('div', { key: 'left', className: 'd-flex flex-column', style: { flex: 1, minWidth: 0 } }, [
-            React.createElement('div', { key: 'v', className: 'font-medium' }, `Version ${v}`),
-            React.createElement('div', { key: 'm', className: 'text-sm text-gray-600' }, `Last saved by ${who} at ${when}`),
-          ]),
-          React.createElement('div', { key: 'pills', className: 'd-flex items-center' }, pills)
+        const isView = isViewing(v);
+
+        const baseCardStyle = {
+          border: `1px solid ${isView ? '#6366F1' : '#E5E7EB'}`,
+          borderRadius: 12,
+          padding: '14px 16px',
+          cursor: 'pointer',
+          background: isView ? '#EEF2FF' : '#FFFFFF'
+        };
+
+        const titleRow = React.createElement('div', { key: 'title-row', className: 'd-flex items-center', style: { gap: 12 } }, [
+          React.createElement('div', { key: 't', style: { fontWeight: 600, fontSize: 16, color: '#111827' } }, `Version ${v}`),
+          (isView ? React.createElement('span', { key: 'view', style: { fontSize: 12, color: '#374151', fontWeight: 600 } }, 'Viewing') : null)
+        ]);
+
+        const metaRow = React.createElement('div', { key: 'meta', style: { marginTop: 6, fontSize: 14, color: '#6B7280' } }, `${who} at ${when}`);
+
+        return React.createElement('div', { key: `v-${v}-${i}`, onClick: () => onClickView(v), style: baseCardStyle }, [
+          titleRow,
+          metaRow
         ]);
       };
       const list = (items || []).map(card);
+      const scrollBox = list.length
+        ? React.createElement('div', { key: 'cards-wrap', style: { maxHeight: 360, overflowY: 'auto', padding: 0 } },
+            React.createElement('div', { className: 'd-flex flex-column gap-8' }, list)
+          )
+        : React.createElement('div', { key: 'empty', className: 'text-gray-500', style: { padding: 8 } }, 'No versions yet.');
       return React.createElement('div', { className: 'd-flex flex-column gap-8' }, [
-        (list.length ? React.createElement('div', { key: 'cards', className: 'd-flex flex-column gap-8' }, list)
-          : React.createElement('div', { key: 'empty', className: 'text-gray-500', style: { padding: '8px' } }, 'No versions yet.')),
+        scrollBox,
         (confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null)
       ]);
     }
@@ -2369,6 +2413,7 @@
       const aiLabelRef = React.useRef(null);
       const wfLabelRef = React.useRef(null);
       const msgLabelRef = React.useRef(null);
+      const verLabelRef = React.useRef(null);
       const actLabelRef = React.useRef(null);
 
       const recalcUnderline = React.useCallback(() => {
@@ -2378,7 +2423,9 @@
             ? aiLabelRef.current
             : (activeTab === 'Workflow'
               ? wfLabelRef.current
-              : (activeTab === 'Messaging' ? msgLabelRef.current : actLabelRef.current)));
+              : (activeTab === 'Messaging'
+                ? msgLabelRef.current
+                : (activeTab === 'Versions' ? verLabelRef.current : actLabelRef.current))));
           if (!bar || !labelEl) return;
           const barRect = bar.getBoundingClientRect();
           const labRect = labelEl.getBoundingClientRect();
@@ -2427,7 +2474,7 @@
             className: activeTab === 'Versions' ? 'tab tab--active' : 'tab',
             onClick: () => setActiveTab('Versions'),
             style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Versions' ? '#111827' : '#6B7280', fontWeight: 600 }
-          }, React.createElement('span', { style: { display: 'inline-block' } }, 'Versions')),
+          }, React.createElement('span', { ref: verLabelRef, style: { display: 'inline-block' } }, 'Versions')),
           React.createElement('button', {
             key: 'tab-activity',
             className: activeTab === 'Activity' ? 'tab tab--active' : 'tab',
