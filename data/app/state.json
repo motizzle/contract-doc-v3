@@ -1,15 +1,15 @@
 {
   "isFinal": false,
   "checkedOutBy": null,
-  "lastUpdated": "2025-09-26T04:00:42.564Z",
-  "revision": 325,
-  "documentVersion": 235,
-  "title": "Services_contract_ren",
+  "lastUpdated": "2025-09-27T09:17:47.488Z",
+  "revision": 528,
+  "documentVersion": 4,
+  "title": "Icahn tracked jokes",
   "status": "draft",
   "updatedBy": {
-    "userId": "user1",
-    "label": "Warren Peace"
+    "userId": "user2",
+    "label": "Fun E Guy"
   },
   "updatedPlatform": "word",
-  "approvalsRevision": 89
+  "approvalsRevision": 129
 }

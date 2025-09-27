@@ -136,12 +136,38 @@
 
       // Render formatted notification
       const renderNotification = React.useCallback((log, index) => {
+        // Standardized activity format: "<user> did <action> at <date/time> (vN)" plus context
+        const toStd = (obj) => {
+          try {
+            const ts = obj.ts ? new Date(obj.ts).toLocaleString() : new Date().toLocaleString();
+            const version = Number(obj.documentVersion || obj.payload?.documentVersion || 0);
+            const vStr = version > 0 ? ` (v${version})` : '';
+            const who = (function(){
+              try {
+                if (obj.userId === 'bot') return 'Assistant';
+                const id = String(obj.userId || '');
+                if (!id) return 'Unknown';
+                // Try resolving from loaded users list if available on window
+                try {
+                  const list = (window.__ogUsers || []);
+                  const match = Array.isArray(list) ? list.find(u => (u && (u.id === id || u.label === id))) : null;
+                  if (match) return match.label || match.id || id;
+                } catch {}
+                if (id === 'user1') return 'Warren Peace';
+                if (id === 'user2') return 'Fun E Guy';
+                return id;
+              } catch { return 'Unknown'; }
+            })();
+            const action = (function(){
+              const t = String(obj.type || '').replace(/:/g, ' ');
+              if (!t) return 'did something';
+              return t;
+            })();
+            return { stdText: `${who} did ${action} at ${ts}${vStr}`, ts };
+          } catch { return null; }
+        };
         if (typeof log === 'string') {
-          // Legacy plain text notification
-          return React.createElement('div', {
-            key: index,
-            className: 'notification-item notification-legacy'
-          }, log);
+          return React.createElement('div', { key: index, className: 'notification-item notification-legacy' }, log);
         } else if (log.formatted) {
           // Formatted notification object
           const { message, timestamp, type, style } = log;
@@ -150,29 +176,16 @@
             backgroundColor: style.bgColor,
             color: style.color
           };
-          return React.createElement('div', {
-            key: log.id || index,
-            className: 'notification-item notification-formatted',
-            style: dynamicStyle
-          }, [
-            React.createElement('span', {
-              key: 'icon',
-              className: 'notification-icon'
-            }, style.icon),
-            React.createElement('div', {
-              key: 'content',
-              className: 'notification-content'
-            }, [
-              React.createElement('div', {
-                key: 'message',
-                className: 'notification-message'
-              }, message),
-              React.createElement('div', {
-                key: 'timestamp',
-                className: 'notification-timestamp'
-              }, timestamp)
+          return React.createElement('div', { key: log.id || index, className: 'notification-item notification-formatted', style: dynamicStyle }, [
+            React.createElement('span', { key: 'icon', className: 'notification-icon' }, style.icon),
+            React.createElement('div', { key: 'content', className: 'notification-content' }, [
+              React.createElement('div', { key: 'message', className: 'notification-message' }, message),
+              React.createElement('div', { key: 'timestamp', className: 'notification-timestamp' }, timestamp)
             ])
           ]);
+        } else if (log && typeof log === 'object' && (log.type || log.userId || log.ts)) {
+          const std = toStd(log);
+          if (std) return React.createElement('div', { key: index, className: 'notification-item notification-legacy' }, std.stdText);
         }
         return null;
       }, []);
@@ -361,13 +374,7 @@
         try { setLastError(err || null); if (err && err.message) addLog(`Error: ${err.message}`, 'error'); } catch {}
       }, [addLog]);
 
-      // Sync viewingVersion to the current document version after saves/check-ins
-      React.useEffect(() => {
-        try {
-          const v = Number(config?.documentVersion || 1);
-          if (Number.isFinite(v) && v > 0) setViewingVersion(v);
-        } catch {}
-      }, [config?.documentVersion]);
+      // Do not auto-sync viewingVersion to server documentVersion; viewing changes only on local actions
 
       // Compute initial document source on web (prefer working overlay)
       React.useEffect(() => {
@@ -383,7 +390,10 @@
               if (r.ok) {
                 const j = await r.json();
                 const v = Number(j?.config?.documentVersion || 1);
-                setLoadedVersion(Number.isFinite(v) && v > 0 ? v : 1);
+                const ver = Number.isFinite(v) && v > 0 ? v : 1;
+                setLoadedVersion(ver);
+                try { setViewingVersion(ver); } catch {}
+                try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: ver, payload: { threadPlatform: 'web' } } })); } catch {}
               }
             } catch {}
           } catch (e) { addError({ kind: 'doc_init', message: 'Failed to choose initial document', cause: String(e) }); }
@@ -519,7 +529,32 @@
         override: async () => { try { await fetch(`${API_BASE}/api/v1/checkout/override`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Checkout override successful', 'warning'); await refresh(); } catch (e) { addLog(`Failed to override checkout: ${e?.message||e}`, 'error'); } },
         factoryReset: async () => { try { await fetch(`${API_BASE}/api/v1/factory-reset`, { method: 'POST' }); addLog('System reset completed successfully', 'system'); try { window.dispatchEvent(new CustomEvent('versions:update')); } catch {} await refresh(); } catch (e) { addLog(`Failed to reset system: ${e?.message||e}`, 'error'); } },
         sendVendor: (opts) => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'send-vendor', options: { userId, ...(opts||{}) } } })); } catch {} },
-        saveProgress: async () => { try { if (typeof Office !== 'undefined') { await saveProgressWord(); } else { await saveProgressWebViaDownload(); } addLog('Progress saved successfully', 'success'); await refresh(); return true; } catch (e) { addLog(`Failed to save progress: ${e?.message||e}`, 'error'); return false; } },
+        saveProgress: async () => {
+          try {
+            const isWordHost = (typeof Office !== 'undefined');
+            if (isWordHost) { await saveProgressWord(); } else { await saveProgressWebViaDownload(); }
+            addLog('Progress saved successfully', 'success');
+            await refresh();
+            // After refresh, fetch the latest matrix and update viewingVersion to the new current
+            try {
+              const plat = isWordHost ? 'word' : 'web';
+              const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&userId=${encodeURIComponent(userId)}`;
+              const r = await fetch(u);
+              if (r && r.ok) {
+                const j = await r.json();
+                const v = Number(j?.config?.documentVersion || 0);
+                if (Number.isFinite(v) && v > 0) {
+                  try { setViewingVersion(v); } catch {}
+                  try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
+                }
+              }
+            } catch {}
+            return true;
+          } catch (e) {
+            addLog(`Failed to save progress: ${e?.message||e}`, 'error');
+            return false;
+          }
+        },
         setUser: (nextUserId, nextRole) => {
           try {
             const plat = (typeof Office !== 'undefined') ? 'word' : 'web';
@@ -536,6 +571,14 @@
                   try { console.log('[user switch] Buttons:', j?.config?.buttons, 'Checkout:', j?.config?.checkoutStatus); } catch {}
                   setConfig(j.config || null);
                   if (typeof j.revision === 'number') setRevision(j.revision);
+                  // Update viewingVersion to the newest version loaded for this user
+                  try {
+                    const v = Number(j?.config?.documentVersion || 0);
+                    if (Number.isFinite(v) && v > 0) {
+                      setViewingVersion(v);
+                      try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
+                    }
+                  } catch {}
                 }
               } catch {}
             })();
@@ -548,7 +591,7 @@
 
     function BannerStack(props) {
       const { tokens } = React.useContext(ThemeContext);
-      const { config, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, revision, addLog, setDocumentSource } = React.useContext(StateContext);
+      const { config, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, revision, addLog, setDocumentSource, setViewingVersion } = React.useContext(StateContext);
       const banners = Array.isArray(config?.banners) ? config.banners : [];
       const API_BASE = getApiBase();
       const show = (b) => {
@@ -580,7 +623,14 @@
             addLog(`doc src refreshNow -> ${withRev}`);
           }
           const serverVersion = Number(config?.documentVersion || 0);
-          if (Number.isFinite(serverVersion) && serverVersion > 0) setLoadedVersion(serverVersion);
+          if (Number.isFinite(serverVersion) && serverVersion > 0) {
+            setLoadedVersion(serverVersion);
+            try { setViewingVersion(serverVersion); } catch {}
+            try {
+              const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
+              window.dispatchEvent(new CustomEvent('version:view', { detail: { version: serverVersion, payload: { threadPlatform: plat } } }));
+            } catch {}
+          }
         } catch {}
       };
       return React.createElement('div', { className: 'd-flex flex-column gap-6 items-center' },
@@ -654,7 +704,7 @@
                 if (Number.isFinite(len) && len > MIN_DOCX_SIZE) url = w;
               }
             } catch {}
-            const withRev = `${url}?rev=${revision || Date.now()}`;
+            const withRev = `${url}?rev=${Date.now()}`;
             const res = await fetch(withRev, { cache: 'no-store' }); if (!res.ok) throw new Error('download');
             const buf = await res.arrayBuffer();
             const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
@@ -672,11 +722,15 @@
             } catch {}
             try {
               const plat = 'word';
-              const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent('user1')}`;
+              const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent(String(currentUser||'user1'))}`;
               const r = await fetch(u);
               const j = await r.json();
               const v = Number(j?.config?.documentVersion || 0);
-              if (v > 0) setLoadedVersion(v);
+              if (v > 0) {
+                setLoadedVersion(v);
+                try { setViewingVersion(v); } catch {}
+                try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
+              }
             } catch {}
           } catch {}
         } else {
@@ -689,7 +743,7 @@
                 if (Number.isFinite(len) && len > MIN_DOCX_SIZE) url = w;
               }
             } catch {}
-            const finalUrl = `${url}?rev=${revision || Date.now()}`;
+            const finalUrl = `${url}?rev=${Date.now()}`;
             setDocumentSource(finalUrl);
             addLog(`doc src viewLatest -> ${finalUrl}`);
             // Clear local client caches after swapping document
@@ -705,11 +759,15 @@
             } catch {}
             try {
               const plat = 'web';
-              const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent('user1')}`;
+              const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent(String(currentUser||'user1'))}`;
               const r = await fetch(u);
               const j = await r.json();
               const v = Number(j?.config?.documentVersion || 0);
-              if (v > 0) setLoadedVersion(v);
+              if (v > 0) {
+                setLoadedVersion(v);
+                try { setViewingVersion(v); } catch {}
+                try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
+              }
             } catch {}
           } catch {}
         }
@@ -1633,6 +1691,11 @@
             const d = ev && ev.detail;
             const n = Number(d && d.version);
             if (!Number.isFinite(n) || n < 1) return;
+            const threadPlatform = d && d.payload && d.payload.threadPlatform;
+            // Keep platforms separate: ignore view events from the other platform
+            try { if (typeof Office !== 'undefined') { if (threadPlatform && threadPlatform !== 'word') return; } else { if (threadPlatform && threadPlatform !== 'web') return; } } catch {}
+            // Ensure the list reflects the newest versions
+            try { await refresh(); } catch {}
             setViewingVersion(n);
             const url = `${API_BASE}/api/v1/versions/${n}?rev=${Date.now()}`;
             if (typeof Office !== 'undefined') {
@@ -1659,12 +1722,13 @@
       }, [API_BASE, addLog, setDocumentSource, setViewingVersion]);
       const isCurrent = (v) => { try { const cur = Number(config?.documentVersion || 1); return Number(v) === cur; } catch { return false; } };
       const isViewing = (v) => { try { return Number(v) === Number(viewingVersion || 0); } catch { return false; } };
-      const onClickView = (v) => {
+        const onClickView = (v) => {
         const n = Number(v);
         if (!Number.isFinite(n) || n < 1) return;
         setConfirm({ title: 'View this version?', message: `You are about to view version ${n}. Continue?`, onConfirm: async () => {
           try {
-            await fetch(`${API_BASE}/api/v1/versions/view`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version: n }) });
+            const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
+            await fetch(`${API_BASE}/api/v1/versions/view`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version: n, platform: plat }) });
             try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: n } })); } catch {}
           } catch {}
         } });
@@ -1791,7 +1855,11 @@
               const r = await fetch(u);
               const j = await r.json();
               const v = Number(j?.config?.documentVersion || 0);
-              if (v > 0) setLoadedVersion(v);
+              if (v > 0) {
+                setLoadedVersion(v);
+                try { setViewingVersion(v); } catch {}
+                try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
+              }
             } catch {}
           } catch {}
         }

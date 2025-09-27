@@ -305,7 +305,14 @@ function computeApprovalsSummary(list) {
 // SSE clients
 const sseClients = new Set();
 function broadcast(event) {
-  const payload = `data: ${JSON.stringify({ documentId: DOCUMENT_ID, revision: serverState.revision, ...event, ts: Date.now() })}\n\n`;
+  const enriched = {
+    documentId: DOCUMENT_ID,
+    revision: serverState.revision,
+    documentVersion: Number(serverState.documentVersion) || 1,
+    ts: Date.now(),
+    ...event
+  };
+  const payload = `data: ${JSON.stringify(enriched)}\n\n`;
   for (const res of sseClients) {
     try {
       res.write(payload);
@@ -553,15 +560,17 @@ app.get('/api/v1/state-matrix', (req, res) => {
       try {
         const clientLoaded = Number(req.query?.clientVersion || 0);
         const requestingUserId = String(req.query?.userId || '');
+        const originPlatform = String(req.query?.platform || 'web');
         const lastByUserId = (() => {
           try { return String(serverState.updatedBy && (serverState.updatedBy.id || serverState.updatedBy.userId || serverState.updatedBy)); } catch { return ''; }
         })();
         // Notify ONLY if: client has a known version (>0), server advanced, and it was saved by another user
-        // Treat clientLoaded <= 1 as unknown/initial (common default on first mount)
-        const hasKnownClientVersion = Number.isFinite(clientLoaded) && clientLoaded > 1;
+        // Treat only clientLoaded <= 0 as unknown/initial. Version 1 is a valid, loaded baseline.
+        const clientKnown = Number.isFinite(clientLoaded) && clientLoaded > 0;
         const serverAdvanced = serverState.documentVersion > clientLoaded;
         const updatedByAnother = (!!lastByUserId && requestingUserId && (lastByUserId !== requestingUserId));
-        const shouldNotify = hasKnownClientVersion && serverAdvanced && updatedByAnother;
+        const differentPlatform = !!serverState.updatedPlatform && serverState.updatedPlatform !== originPlatform;
+        const shouldNotify = clientKnown && serverAdvanced && (updatedByAnother || differentPlatform);
         if (shouldNotify) {
           const by = serverState.updatedBy && (serverState.updatedBy.label || serverState.updatedBy.userId) || 'someone';
           list.unshift({ state: 'update_available', title: 'Update available', message: `${by} updated this document.` });
@@ -801,7 +810,8 @@ app.post('/api/v1/versions/view', (req, res) => {
   try {
     const n = Number(req.body?.version);
     if (!Number.isFinite(n) || n < 1) return res.status(400).json({ error: 'invalid_version' });
-    broadcast({ type: 'version:view', version: n });
+    const originPlatform = String(req.body?.platform || req.query?.platform || 'web');
+    broadcast({ type: 'version:view', version: n, payload: { version: n, threadPlatform: originPlatform } });
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'version_view_failed' }); }
 });
