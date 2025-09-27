@@ -14,6 +14,7 @@
     - `version` (int)
     - `savedBy` { `userId`, `label` }
     - `savedAt` (ISO string)
+    - `note` (string)
 - Version 1 represents the canonical default document and will appear in the list even if no working versions exist.
 - Factory reset clears `data/working/versions/*` entirely.
 
@@ -30,7 +31,6 @@
 
 - GET `/api/v1/versions`
   - Returns newest-first list of versions with `{ version, savedBy, savedAt, note }`.
-  - Returns newest-first list of versions with `{ version, savedBy, savedAt }`.
   - Includes inferred Version 1:
     - `version: 1`
     - `savedBy: { userId: 'system', label: 'System' }`
@@ -66,7 +66,7 @@
 - Interactions:
   - Clicking a card opens a confirmation modal: "Are you sure you want to view this version?"
     - Confirm loads that version into the editor (without changing current/default).
-  - Save flow: when the user clicks Save, persist the snapshot automatically; upon success, refresh versions list.
+  - Save flow: when the user clicks Save, prompt for optional note; include it in the `/api/v1/save-progress` request; upon success, refresh versions list.
 
 ### Client State
 - Add `viewingVersion` to UI state (defaults to `config.documentVersion` on load).
