@@ -2334,10 +2334,10 @@
           React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
         React.createElement('div', { key: 'tabbody', className: 'mt-3' }, [
-          (activeTab === 'AI' ? React.createElement(ChatConsole, { key: 'chat' }) : null),
-          (activeTab === 'Workflow' ? React.createElement(WorkflowApprovalsPanel, { key: 'workflow' }) : null),
-          (activeTab === 'Messaging' ? React.createElement(MessagingPanel, { key: 'messaging' }) : null),
-          (activeTab === 'Activity' ? React.createElement(ActivityPanel, { key: 'activity' }) : null),
+          React.createElement('div', { key: 'wrap-ai', style: { display: (activeTab === 'AI' ? 'block' : 'none') } }, React.createElement(ChatConsole, { key: 'chat' })),
+          React.createElement('div', { key: 'wrap-workflow', style: { display: (activeTab === 'Workflow' ? 'block' : 'none') } }, React.createElement(WorkflowApprovalsPanel, { key: 'workflow' })),
+          React.createElement('div', { key: 'wrap-messaging', style: { display: (activeTab === 'Messaging' ? 'block' : 'none') } }, React.createElement(MessagingPanel, { key: 'messaging' })),
+          React.createElement('div', { key: 'wrap-activity', style: { display: (activeTab === 'Activity' ? 'block' : 'none') } }, React.createElement(ActivityPanel, { key: 'activity' })),
         ])
       ]);
 
