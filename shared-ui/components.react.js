@@ -69,7 +69,6 @@
       const [revision, setRevision] = React.useState(0);
       const [loadedVersion, setLoadedVersion] = React.useState(1);
       const [dismissedVersion, setDismissedVersion] = React.useState(0);
-      const [viewingVersion, setViewingVersion] = React.useState(1);
       const [isConnected, setIsConnected] = React.useState(false);
       const [lastTs, setLastTs] = React.useState(0);
       const [userId, setUserId] = React.useState('user1');
@@ -302,10 +301,7 @@
                   const canonical = `${API_BASE}/documents/canonical/default.docx?rev=${Date.now()}`;
                   setDocumentSource(canonical);
                 } catch {}
-                try { window.dispatchEvent(new CustomEvent('factoryReset', { detail: p })); } catch {}
               }
-              if (p && p.type === 'versions:update') { try { window.dispatchEvent(new CustomEvent('versions:update', { detail: p })); } catch {} }
-              if (p && p.type === 'version:view') { try { window.dispatchEvent(new CustomEvent('version:view', { detail: p })); } catch {} }
               // Fan out chat messages to ChatConsole
               if (p && p.type === 'chat') {
                 try { window.dispatchEvent(new CustomEvent('chat:message', { detail: p })); } catch {}
@@ -522,7 +518,7 @@
         },
       }), [API_BASE, refresh, userId, addLog]);
 
-      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, renderNotification, formatNotification, viewingVersion, setViewingVersion } }, React.createElement(App, { config }));
+      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, renderNotification, formatNotification } }, React.createElement(App, { config }));
     }
 
     function BannerStack(props) {
@@ -1587,82 +1583,6 @@
       return React.createElement('div', { className: 'mb-2' }, React.createElement('span', { className: cls, onClick: cycle, style: { cursor: 'pointer' } }, label));
     }
 
-    function VersionsPanel() {
-      const API_BASE = getApiBase();
-      const { config, addLog, viewingVersion, setViewingVersion, setDocumentSource } = React.useContext(StateContext);
-      const [items, setItems] = React.useState([]);
-      const [confirm, setConfirm] = React.useState(null);
-      const refresh = React.useCallback(async () => {
-        try { const r = await fetch(`${API_BASE}/api/v1/versions`); if (r.ok) { const j = await r.json(); const arr = Array.isArray(j.items) ? j.items : []; setItems(arr); } } catch {}
-      }, [API_BASE]);
-      React.useEffect(() => { refresh(); }, [refresh]);
-      React.useEffect(() => {
-        const onVersionsUpdate = () => { try { refresh(); } catch {} };
-        const onFactory = () => { try { refresh(); } catch {} };
-        const onVersionView = async (ev) => {
-          try {
-            const d = ev && ev.detail;
-            const n = Number(d && d.version);
-            if (!Number.isFinite(n) || n < 1) return;
-            setViewingVersion(n);
-            const url = `${API_BASE}/api/v1/versions/${n}?rev=${Date.now()}`;
-            if (typeof Office !== 'undefined') {
-              try {
-                const res = await fetch(url, { cache: 'no-store' }); if (!res.ok) throw new Error('download');
-                const buf = await res.arrayBuffer();
-                const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
-                await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
-              } catch {}
-            } else {
-              setDocumentSource(url);
-              addLog(`doc src versions:view -> ${url}`);
-            }
-          } catch {}
-        };
-        try { window.addEventListener('versions:update', onVersionsUpdate); } catch {}
-        try { window.addEventListener('factoryReset', onFactory); } catch {}
-        try { window.addEventListener('version:view', onVersionView); } catch {}
-        return () => {
-          try { window.removeEventListener('versions:update', onVersionsUpdate); } catch {}
-          try { window.removeEventListener('factoryReset', onFactory); } catch {}
-          try { window.removeEventListener('version:view', onVersionView); } catch {}
-        };
-      }, [API_BASE, addLog, setDocumentSource, setViewingVersion]);
-      const isCurrent = (v) => { try { const cur = Number(config?.documentVersion || 1); return Number(v) === cur; } catch { return false; } };
-      const isViewing = (v) => { try { return Number(v) === Number(viewingVersion || 0); } catch { return false; } };
-      const onClickView = (v) => {
-        const n = Number(v);
-        if (!Number.isFinite(n) || n < 1) return;
-        setConfirm({ title: 'View this version?', message: `You are about to view version ${n}. Continue?`, onConfirm: async () => {
-          try {
-            await fetch(`${API_BASE}/api/v1/versions/view`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version: n }) });
-            try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: n } })); } catch {}
-          } catch {}
-        } });
-      };
-      const card = (it, i) => {
-        const v = Number(it.version || 1);
-        const who = (it.savedBy && (it.savedBy.label || it.savedBy.userId)) || 'Unknown';
-        const when = it.savedAt ? new Date(it.savedAt).toLocaleString() : '—';
-        const pills = [];
-        if (isCurrent(v)) pills.push(React.createElement('span', { key: 'cur', className: 'ui-badge gray-medium', style: { marginLeft: 8 } }, 'current'));
-        if (isViewing(v)) pills.push(React.createElement('span', { key: 'view', className: 'ui-badge gray-dark', style: { marginLeft: 8 } }, 'viewing'));
-        return React.createElement('div', { key: `v-${v}-${i}`, className: 'd-flex items-center', onClick: () => onClickView(v), style: { border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 12px', cursor: 'pointer', background: '#fff' } }, [
-          React.createElement('div', { key: 'left', className: 'd-flex flex-column', style: { flex: 1, minWidth: 0 } }, [
-            React.createElement('div', { key: 'v', className: 'font-medium' }, `Version ${v}`),
-            React.createElement('div', { key: 'm', className: 'text-sm text-gray-600' }, `Last saved by ${who} at ${when}`),
-          ]),
-          React.createElement('div', { key: 'pills', className: 'd-flex items-center' }, pills)
-        ]);
-      };
-      const list = (items || []).map(card);
-      return React.createElement('div', { className: 'd-flex flex-column gap-8' }, [
-        (list.length ? React.createElement('div', { key: 'cards', className: 'd-flex flex-column gap-8' }, list)
-          : React.createElement('div', { key: 'empty', className: 'text-gray-500', style: { padding: '8px' } }, 'No versions yet.')),
-        (confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null)
-      ]);
-    }
-
     function UserCard() {
       const { users, currentUser, currentRole, actions } = React.useContext(StateContext);
       const [selected, setSelected] = React.useState(currentUser);
@@ -2423,12 +2343,6 @@
             style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Messaging' ? '#111827' : '#6B7280', fontWeight: 600 }
           }, React.createElement('span', { ref: msgLabelRef, style: { display: 'inline-block' } }, 'Messaging')),
           React.createElement('button', {
-            key: 'tab-versions',
-            className: activeTab === 'Versions' ? 'tab tab--active' : 'tab',
-            onClick: () => setActiveTab('Versions'),
-            style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Versions' ? '#111827' : '#6B7280', fontWeight: 600 }
-          }, React.createElement('span', { style: { display: 'inline-block' } }, 'Versions')),
-          React.createElement('button', {
             key: 'tab-activity',
             className: activeTab === 'Activity' ? 'tab tab--active' : 'tab',
             onClick: () => setActiveTab('Activity'),
@@ -2440,7 +2354,6 @@
           React.createElement('div', { key: 'wrap-ai', style: { display: (activeTab === 'AI' ? 'block' : 'none') } }, React.createElement(ChatConsole, { key: 'chat' })),
           React.createElement('div', { key: 'wrap-workflow', style: { display: (activeTab === 'Workflow' ? 'block' : 'none') } }, React.createElement(WorkflowApprovalsPanel, { key: 'workflow' })),
           React.createElement('div', { key: 'wrap-messaging', style: { display: (activeTab === 'Messaging' ? 'block' : 'none') } }, React.createElement(MessagingPanel, { key: 'messaging' })),
-          React.createElement('div', { key: 'wrap-versions', style: { display: (activeTab === 'Versions' ? 'block' : 'none') } }, React.createElement(VersionsPanel, { key: 'versions' })),
           React.createElement('div', { key: 'wrap-activity', style: { display: (activeTab === 'Activity' ? 'block' : 'none') } }, React.createElement(ActivityPanel, { key: 'activity' })),
         ])
       ]);
