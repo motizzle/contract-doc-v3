@@ -1294,9 +1294,11 @@
               bubbleCls += ' other-gray';
             }
           }
-          return React.createElement('div', { key: m.id, className: rowCls },
-            React.createElement('div', { className: bubbleCls }, String(m.text || ''))
-          );
+          const ts = m.ts ? new Date(m.ts).toLocaleTimeString() : '';
+          return React.createElement('div', { key: m.id, className: rowCls }, [
+            React.createElement('div', { key: 'ts', className: 'chat-timestamp ' + (mine ? 'mine' : 'other') }, ts),
+            React.createElement('div', { key: 'b', className: bubbleCls }, String(m.text || ''))
+          ]);
         })
       ) : null;
 
@@ -1512,11 +1514,16 @@
         };
       }, [currentUser]);
       const box = React.createElement('div', { className: 'chat-container', style: { width: '100%' } }, messages.map((m, i) => {
-        const isMine = typeof m === 'string' ? /^\[/.test(m) && m.includes(`[${displayNameOf(currentUser)}]`) : false;
+        const who = (typeof m === 'string' && /^\[/.test(m)) ? (m.match(/^\[([^\]]+)\]/)?.[1] || '') : '';
+        const isMine = who && who === displayNameOf(currentUser);
+        const ts = new Date().toLocaleTimeString();
         const text = typeof m === 'string' ? m.replace(/^\[[^\]]+\]\s*/, '') : String(m);
         const rowCls = 'chat-bubble-row ' + (isMine ? 'mine' : 'other');
         const bubbleCls = 'chat-bubble ' + (isMine ? 'mine' : 'other');
-        return React.createElement('div', { key: i, className: rowCls }, React.createElement('div', { className: bubbleCls }, text));
+        return React.createElement('div', { key: i, className: rowCls }, [
+          React.createElement('div', { key: 'ts', className: 'chat-timestamp ' + (isMine ? 'mine' : 'other') }, ts),
+          React.createElement('div', { key: 'b', className: bubbleCls }, text)
+        ]);
       }));
       const onKeyPress = (e) => {
         if (e.key === 'Enter') {
