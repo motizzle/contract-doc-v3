@@ -711,6 +711,54 @@
         const textEl = React.createElement('div', { className: 'ui-menu__text' }, [titleEl, subEl]);
         return React.createElement('div', { key: (title || Math.random()), role: 'menuitem', tabIndex: 0, className, onClick: handler, onKeyDown: onKey }, [iconEl, textEl]);
       };
+
+      // Portal menu to escape overflow clipping
+      function PortalMenu(props) {
+        const { anchorRef, open, children, onClose, align, menuElRef } = props || {};
+        const [pos, setPos] = React.useState(null);
+        const menuRef = React.useRef(null);
+        React.useLayoutEffect(() => {
+          if (!open || !anchorRef || !anchorRef.current) return;
+          try {
+            const r = anchorRef.current.getBoundingClientRect();
+            const coords = { top: r.bottom, left: (align === 'left' ? r.left : r.right), width: undefined };
+            setPos(coords);
+          } catch {}
+        }, [open, anchorRef, align]);
+        React.useEffect(() => {
+          if (!open) return;
+          const onKey = (e) => { try { if (e.key === 'Escape') onClose?.(); } catch {} };
+          const onDocClick = (e) => {
+            try {
+              const a = anchorRef && anchorRef.current;
+              const m = menuRef && menuRef.current;
+              if (a && (a === e.target || a.contains(e.target))) return; // ignore clicks on anchor
+              if (m && (m === e.target || m.contains(e.target))) return; // ignore clicks inside menu
+              onClose?.();
+            } catch {}
+          };
+          const onScroll = () => { try { onClose?.(); } catch {} };
+          window.addEventListener('keydown', onKey);
+          window.addEventListener('click', onDocClick, true);
+          window.addEventListener('scroll', onScroll, true);
+          window.addEventListener('resize', onScroll);
+          return () => {
+            window.removeEventListener('keydown', onKey);
+            window.removeEventListener('click', onDocClick, true);
+            window.removeEventListener('scroll', onScroll, true);
+            window.removeEventListener('resize', onScroll);
+          };
+        }, [open, anchorRef, onClose]);
+        if (!open || !pos) return null;
+        const style = {
+          position: 'fixed',
+          top: pos.top,
+          left: pos.left,
+          transform: (align === 'left' ? 'translateX(0)' : 'translateX(-100%)'),
+          zIndex: 10000
+        };
+        return ReactDOM.createPortal(React.createElement('div', { style, ref: (el) => { menuRef.current = el; try { if (menuElRef) menuElRef.current = el; } catch {} } }, children), document.body);
+      }
       const nestedItems = [
         menuItem('View Latest', viewLatest, true),
         menuItem('Finalize', () => ask('Finalize?', 'This will lock the document.', actions.finalize), !!btns.finalizeBtn),
@@ -725,11 +773,16 @@
       const onlyCheckout = !!btns.checkoutBtn && !btns.checkinBtn && !btns.cancelBtn && !btns.saveProgressBtn && !btns.overrideBtn;
 
       // Top: checkout cluster with menu immediately adjacent (default)
+      const menuAnchorRef = React.useRef(null);
       const topCluster = [
         add('Checkout', actions.checkout, !!btns.checkoutBtn),
         React.createElement('div', { style: { position: 'relative' } }, [
-          add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
-          nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 10000 } }, nestedItems) : null
+          React.createElement('span', { key: 'anchor', ref: menuAnchorRef },
+            add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } })
+          ),
+          React.createElement(PortalMenu, { key: 'menu', anchorRef: menuAnchorRef, open: !!(nestedItems.length && menuOpen), onClose: () => setMenuOpen(false), align: 'right' },
+            React.createElement('div', { className: 'ui-menu', role: 'menu' }, nestedItems)
+          )
         ]),
         add('Check-in and Save', async () => { try { const ok = await actions.saveProgress(); if (ok) { await actions.checkin(); } } catch {} }, !!btns.checkinBtn),
         add('Cancel Checkout', actions.cancel, !!btns.cancelBtn),
@@ -746,22 +799,28 @@
       const mode = (config && config.buttons && config.buttons.primaryLayout && config.buttons.primaryLayout.mode)
         || (onlyCheckout ? 'not_checked_out' : (btns.checkinBtn ? 'self' : 'not_checked_out'));
       const [checkinMenuOpen, setCheckinMenuOpen] = React.useState(false);
+      const portalMenuRef = React.useRef(null);
+      const checkinPortalMenuRef = React.useRef(null);
       // Close any open dropdowns when mode changes (e.g., after Checkout)
       React.useEffect(() => { try { setMenuOpen(false); setCheckinMenuOpen(false); } catch {} }, [mode]);
 
-      // Close menus when clicking outside of ActionButtons (web and add-in)
+      // Close menus when clicking outside of ActionButtons or the portal menus (web and add-in)
       React.useEffect(() => {
         const onOutside = (e) => {
           try {
             if (!menuOpen && !checkinMenuOpen) return;
             const el = rootRef.current;
-            if (el && el.contains(e.target)) return; // click inside
+            const menuEl = portalMenuRef && portalMenuRef.current;
+            const checkinEl = checkinPortalMenuRef && checkinPortalMenuRef.current;
+            if (el && el.contains(e.target)) return; // click inside the toolbar area
+            if (menuEl && menuEl.contains(e.target)) return; // click inside portal menu
+            if (checkinEl && checkinEl.contains(e.target)) return; // click inside check-in portal menu
           } catch {}
           try { setMenuOpen(false); } catch {}
           try { setCheckinMenuOpen(false); } catch {}
         };
-        document.addEventListener('mousedown', onOutside, true);
-        return () => { document.removeEventListener('mousedown', onOutside, true); };
+        document.addEventListener('click', onOutside, false);
+        return () => { document.removeEventListener('click', onOutside, false); };
       }, [menuOpen, checkinMenuOpen]);
 
       // Allow ESC to close any open menus
@@ -778,8 +837,12 @@
           return React.createElement('div', { className: 'd-flex items-center gap-8' }, [
             add('Checkout', actions.checkout, !!btns.checkoutBtn, undefined, { style: { width: '90%' } }),
             React.createElement('div', { style: { position: 'relative', flex: '0 0 auto', marginLeft: 'auto' } }, [
-          add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
-          nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 10000 } }, nestedItems) : null
+              React.createElement('span', { key: 'anchor_nc', ref: menuAnchorRef },
+                add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } })
+              ),
+              React.createElement(PortalMenu, { key: 'menu_nc', anchorRef: menuAnchorRef, open: !!(nestedItems.length && menuOpen), onClose: () => setMenuOpen(false), align: 'right', menuElRef: portalMenuRef },
+                React.createElement('div', { className: 'ui-menu', role: 'menu' }, nestedItems)
+              )
             ])
           ]);
         }
@@ -787,8 +850,10 @@
           return React.createElement('div', { className: 'd-flex items-center gap-8' }, [
             add('Save', actions.saveProgress, !!btns.saveProgressBtn, 'primary', { style: { flex: '1 1 0', width: '100%' } }),
             React.createElement('div', { style: { position: 'relative', flex: '1 1 0' } }, [
-              add('Check-in ▾', () => setCheckinMenuOpen(!checkinMenuOpen), !!btns.checkinBtn, 'secondary', { style: { width: '100%' } }),
-              (checkinMenuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 10000 } }, [
+              React.createElement('span', { key: 'anchor_ci', ref: menuAnchorRef },
+                add('Check-in ▾', () => setCheckinMenuOpen(!checkinMenuOpen), !!btns.checkinBtn, 'secondary', { style: { width: '100%' } })
+              ),
+              (checkinMenuOpen ? React.createElement(PortalMenu, { anchorRef: menuAnchorRef, open: true, onClose: () => setCheckinMenuOpen(false), align: 'right', menuElRef: checkinPortalMenuRef }, React.createElement('div', { className: 'ui-menu', role: 'menu' }, [
                 menuItemTwo({
                   icon: '🗝️',
                   title: 'Save and Check In',
@@ -803,11 +868,15 @@
                   onClick: async () => { try { await actions.cancel(); } catch {} },
                   show: !!btns.checkinBtn
                 })
-              ]) : null)
+              ])) : null)
             ]),
             React.createElement('div', { style: { position: 'relative', marginLeft: 'auto' } }, [
-              add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
-              nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 10000 } }, nestedItems) : null
+              React.createElement('span', { key: 'anchor_r', ref: menuAnchorRef },
+                add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } })
+              ),
+              React.createElement(PortalMenu, { key: 'menu_r', anchorRef: menuAnchorRef, open: !!(nestedItems.length && menuOpen), onClose: () => setMenuOpen(false), align: 'right', menuElRef: portalMenuRef },
+                React.createElement('div', { className: 'ui-menu', role: 'menu' }, nestedItems)
+              )
             ])
           ]);
         }
@@ -824,8 +893,12 @@
             } catch { return React.createElement('div', { className: 'text-sm text-gray-700' }, 'Checked out by someone'); }
           })(),
           React.createElement('div', { style: { position: 'relative', marginLeft: 'auto' } }, [
-            add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } }),
-            nestedItems.length > 0 && menuOpen ? React.createElement('div', { className: 'ui-menu', role: 'menu', style: { position: 'absolute', right: 0, top: '100%', zIndex: 10000 } }, nestedItems) : null
+            React.createElement('span', { key: 'anchor_o', ref: menuAnchorRef },
+              add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } })
+            ),
+            React.createElement(PortalMenu, { key: 'menu_o', anchorRef: menuAnchorRef, open: !!(nestedItems.length && menuOpen), onClose: () => setMenuOpen(false), align: 'right', menuElRef: portalMenuRef },
+              React.createElement('div', { className: 'ui-menu', role: 'menu' }, nestedItems)
+            )
           ])
         ]);
       })();
@@ -861,7 +934,7 @@
                   title: 'View latest',
                   style: {
                     background: 'transparent', border: 'none', padding: 0, margin: 0,
-                    color: 'inherit', cursor: 'pointer', font: 'inherit', textDecoration: 'underline', alignSelf: 'start'
+                    color: 'inherit', cursor: 'pointer', font: 'inherit', textDecoration: 'underline', alignSelf: 'center', marginTop: 2
                   }
                 }, 'View latest')
               ])
@@ -930,17 +1003,14 @@
         try { const parts = String(label || '').trim().split(/\s+/).filter(Boolean); if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase(); if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase(); return ''; } catch { return ''; }
       };
 
-      // Hydrate stored messages and last active conversation
+      // Initialize blank on load and user change (no local persistence)
       React.useEffect(() => {
-        try { const raw = localStorage.getItem(storageKey()); const arr = raw ? JSON.parse(raw) : []; if (Array.isArray(arr)) setMessages(arr); } catch {}
-        try { const a = localStorage.getItem(activeKey()); if (a) setActivePartnerId(a); } catch {}
-        // Intentionally ignore persisted view; default to chat list when opening tab
-      }, [storageKey, activeKey]);
-
-      // Persist
-      React.useEffect(() => { try { localStorage.setItem(storageKey(), JSON.stringify(messages)); } catch {} }, [messages, storageKey]);
-      React.useEffect(() => { try { if (activePartnerId) localStorage.setItem(activeKey(), activePartnerId); } catch {} }, [activePartnerId, activeKey]);
-      React.useEffect(() => { try { localStorage.setItem(viewKey(), view); } catch {} }, [view, viewKey]);
+        try { setMessages([]); setActivePartnerId(''); setActiveGroupIds([]); setView('list'); } catch {}
+      }, [currentUser]);
+      // No-op effects to avoid localStorage persistence
+      React.useEffect(() => {}, [messages]);
+      React.useEffect(() => {}, [activePartnerId]);
+      React.useEffect(() => {}, [view]);
 
       // Inbound messages
       React.useEffect(() => {
@@ -968,9 +1038,7 @@
             setMessages([]);
             setActivePartnerId('');
             setActiveGroupIds([]);
-            try { localStorage.removeItem(storageKey()); } catch {}
-            try { localStorage.removeItem(activeKey()); } catch {}
-            try { localStorage.removeItem(viewKey()); } catch {}
+            setText('');
           } catch {}
         };
         try { window.addEventListener('messaging:message', onMsg); } catch {}
@@ -1120,16 +1188,31 @@
         React.createElement('div', { key: 'lbl', className: 'font-semibold' }, (activePartnerId ? userLabel(activePartnerId) : (activeGroupIds || []).map(s => userLabelById(String(s).trim())).join(', ')))
       ]);
 
+      const isGroupThread = !!(activeThreadId && String(activeThreadId).startsWith('group:'));
+      function colorClassForUser(uid) {
+        try {
+          const palette = ['alt-1','alt-2','alt-3','alt-4'];
+          let sum = 0; const s = String(uid || '');
+          for (let i = 0; i < s.length; i++) sum = (sum + s.charCodeAt(i)) | 0;
+          const idx = Math.abs(sum) % palette.length;
+          return palette[idx];
+        } catch { return 'alt-1'; }
+      }
       const threadList = threadMessages.length ? React.createElement('div', { ref: listRef, style: { padding: 8, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' } },
         threadMessages.map(m => {
-          const mine = m.from === String(currentUser);
-          const align = mine ? 'flex-end' : 'flex-start';
-          const bg = mine ? '#ede9fe' : '#f3f4f6';
-          const fg = '#111827';
-          return React.createElement('div', { key: m.id, className: 'd-flex', style: { justifyContent: align, marginBottom: 8 } },
-            React.createElement('div', { style: { maxWidth: '70%', background: bg, color: fg, padding: '8px 10px', borderRadius: 12 } }, [
-              React.createElement('div', { key: 'm' }, m.text)
-            ])
+          const mine = String(m.from) === String(currentUser);
+          const rowCls = 'chat-bubble-row ' + (mine ? 'mine' : 'other');
+          let bubbleCls = 'chat-bubble ' + (mine ? 'mine' : 'other');
+          if (!mine) {
+            // DM: light gray; Group: deterministic alternating palette per participant
+            if (isGroupThread) {
+              bubbleCls += (' ' + colorClassForUser(m.from));
+            } else {
+              bubbleCls += ' other-gray';
+            }
+          }
+          return React.createElement('div', { key: m.id, className: rowCls },
+            React.createElement('div', { className: bubbleCls }, String(m.text || ''))
           );
         })
       ) : null;
@@ -1202,19 +1285,17 @@
       const API_BASE = getApiBase();
       const { currentUser, isConnected, users } = React.useContext(StateContext);
       const [messages, setMessages] = React.useState([]);
-      const getMsgsKey = React.useCallback(() => `ogassist.messages.${String(currentUser || 'default')}`, [currentUser]);
-      const getSeedKey = React.useCallback(() => `ogassist.seeded.${String(currentUser || 'default')}`, [currentUser]);
-      // Hydrate from localStorage on mount/user change
-      React.useEffect(() => {
-        try { const raw = localStorage.getItem(getMsgsKey()); const arr = raw ? JSON.parse(raw) : []; if (Array.isArray(arr)) setMessages(arr.map(String)); } catch {}
-      }, [getMsgsKey]);
+      const DEFAULT_AI_GREETING = 'Shall we...contract?';
       // Helper function to detect current platform
       const getCurrentPlatform = () => {
         try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; }
       };
 
       const [text, setText] = React.useState('');
-      const [isResetting, setIsResetting] = React.useState(false);
+      // Initialize with greeting from bot on mount/user change
+      React.useEffect(() => {
+        try { setMessages(['[bot] ' + DEFAULT_AI_GREETING]); setText(''); } catch {}
+      }, [currentUser]);
       const displayNameOf = React.useCallback((uid) => {
         try {
           if (!uid) return '';
@@ -1227,57 +1308,13 @@
       const send = async () => {
         const t = (text || '').trim();
         if (!t) return;
-        setMessages((m) => { const next = (m || []).concat(`[${displayNameOf(currentUser)}] ${t}`); try { localStorage.setItem(getMsgsKey(), JSON.stringify(next)); } catch {}; return next; });
+        setMessages((m) => { const next = (m || []).concat(`[${displayNameOf(currentUser)}] ${t}`); return next; });
         setText('');
         try {
           const platform = getCurrentPlatform();
           await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat', payload: { text: t }, userId: currentUser, platform }) });
         } catch {}
       };
-      // Seed first message once after SSE connects, web only (avoid add-in), only if no local messages and not resetting
-      const [justReset, setJustReset] = React.useState(false);
-      React.useEffect(() => {
-        console.log('🔄 Seeding effect running:', { isConnected, isResetting, messagesLength: (messages || []).length, platform: typeof Office !== 'undefined' ? 'word' : 'web', justReset });
-        if (!isConnected || isResetting || justReset) {
-          console.log('🔄 Skipping seeding:', { isConnected, isResetting, justReset });
-          return;
-        }
-        try { if (typeof Office !== 'undefined') {
-          console.log('🔄 Skipping seeding - Word platform detected');
-          return;
-        } } catch {}
-        // Check messages length inside effect without depending on it
-        const currentMessages = messages || [];
-        if (currentMessages.length > 0) {
-          console.log('🔄 Skipping seeding - messages already exist');
-          return;
-        }
-        const seedKey = getSeedKey();
-        console.log('🔄 Checking seed key:', seedKey);
-        try {
-          const existingSeed = localStorage.getItem(seedKey);
-          console.log('🔄 Existing seed value:', existingSeed);
-          if (existingSeed) {
-            console.log('🔄 Skipping seeding - already seeded');
-            return;
-          }
-          console.log('🔄 Setting seed key for first time');
-          localStorage.setItem(seedKey, '1');
-        } catch (error) {
-          console.error('🔄 localStorage error:', error);
-        }
-        console.log('🚀 Starting seeding process...');
-        (async () => {
-          try {
-            const platform = getCurrentPlatform();
-            console.log('📤 Sending seed message:', { platform, userId: currentUser });
-            await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat', payload: { text: 'Hi' }, userId: currentUser, platform }) });
-            console.log('✅ Seed message sent');
-          } catch (error) {
-            console.error('❌ Seed message failed:', error);
-          }
-        })();
-      }, [API_BASE, currentUser, isConnected, getSeedKey, isResetting, justReset]);
       React.useEffect(() => {
         function onInboundChat(ev) {
           try {
@@ -1289,16 +1326,24 @@
             try { if (typeof Office !== 'undefined') { if (threadPlatform && threadPlatform !== 'word') return; } else { if (threadPlatform && threadPlatform !== 'web') return; } } catch {}
             // Ignore echo of our own message (server broadcasts user messages too)
             if (!text || String(from) === String(currentUser)) return;
-            setMessages((m) => { const next = (m || []).concat(`[${displayNameOf(from)}] ${text}`); try { localStorage.setItem(getMsgsKey(), JSON.stringify(next)); } catch {}; return next; });
+            setMessages((m) => { const next = (m || []).concat(`[${displayNameOf(from)}] ${text}`); return next; });
           } catch {}
         }
         function onChatReset(ev) {
           try {
             const d = ev.detail;
+            const isGlobal = !!(d && d.payload && d.payload.all);
             const forUser = String(d && d.userId || 'default');
             const threadPlatform = d && d.payload && d.payload.threadPlatform;
             const currentPlatform = typeof Office !== 'undefined' ? 'word' : 'web';
             console.log('📨 SSE reset received:', { forUser, threadPlatform, currentPlatform, currentUser });
+
+            if (isGlobal) {
+              // Factory reset or global reset: clear completely, do NOT seed greeting
+              setMessages([]);
+              setText('');
+              return;
+            }
 
             // Ignore resets from other platforms
             try {
@@ -1321,25 +1366,8 @@
             }
 
             console.log('🔄 Processing reset for current user/platform');
-            setIsResetting(true); // Prevent seeding during reset
-            setJustReset(true); // Prevent immediate seeding after reset
-            setMessages([]);
-            try {
-              console.log('🧹 SSE reset clearing localStorage');
-              localStorage.removeItem(getMsgsKey());
-              localStorage.removeItem(getSeedKey());
-            } catch (error) {
-              console.error('🧹 SSE reset localStorage error:', error);
-            }
-            // Re-enable seeding after a short delay
-            setTimeout(() => {
-              setIsResetting(false);
-              console.log('🔄 SSE reset state cleared');
-            }, 100);
-            // Clear justReset flag after a longer delay to ensure reset is fully complete
-            setTimeout(() => {
-              setJustReset(false);
-            }, 500);
+            setMessages(['[bot] ' + DEFAULT_AI_GREETING]);
+            setText('');
           } catch (error) {
             console.error('❌ SSE reset error:', error);
           }
@@ -1364,7 +1392,6 @@
                 // Append to existing bot message
                 next[next.length - 1] = next[next.length - 1] + text;
               }
-              try { localStorage.setItem(getMsgsKey(), JSON.stringify(next)); } catch {};
               return next;
             });
           } catch {}
@@ -1386,7 +1413,6 @@
               } else {
                 next.push('[bot] ' + fullText);
               }
-              try { localStorage.setItem(getMsgsKey(), JSON.stringify(next)); } catch {};
               return next;
             });
           } catch {}
@@ -1401,8 +1427,14 @@
           window.removeEventListener('chat:complete', onChatComplete);
           window.removeEventListener('chat:reset', onChatReset);
         };
-      }, [currentUser, getMsgsKey, getSeedKey]);
-      const box = React.createElement('div', { className: 'chat-container', style: { width: '100%' } }, messages.map((m, i) => React.createElement('div', { key: i, className: 'chat-message-spacing' }, m)));
+      }, [currentUser]);
+      const box = React.createElement('div', { className: 'chat-container', style: { width: '100%' } }, messages.map((m, i) => {
+        const isMine = typeof m === 'string' ? /^\[/.test(m) && m.includes(`[${displayNameOf(currentUser)}]`) : false;
+        const text = typeof m === 'string' ? m.replace(/^\[[^\]]+\]\s*/, '') : String(m);
+        const rowCls = 'chat-bubble-row ' + (isMine ? 'mine' : 'other');
+        const bubbleCls = 'chat-bubble ' + (isMine ? 'mine' : 'other');
+        return React.createElement('div', { key: i, className: rowCls }, React.createElement('div', { className: bubbleCls }, text));
+      }));
       const onKeyPress = (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
@@ -1428,36 +1460,19 @@
       const reset = async () => {
         try {
           console.log('🔄 Starting reset process...');
-          setIsResetting(true); // Prevent seeding during reset
-          setJustReset(true); // Prevent immediate seeding after reset
           const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
           console.log('📤 Sending reset request:', { platform: plat, userId: currentUser });
           const r = await fetch(`${API_BASE}/api/v1/chatbot/reset`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUser, platform: plat }) });
           // Ask server and other clients to stop any in-flight streaming
           try { await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat:stop', userId: currentUser, platform: plat }) }); } catch {}
           // Optimistically clear locally; SSE chat:reset will also arrive
-          try { setMessages([]); } catch {}
-          try {
-            console.log('🧹 Clearing localStorage keys');
-            localStorage.removeItem(getMsgsKey());
-            localStorage.removeItem(getSeedKey());
-          } catch (error) {
-            console.error('🧹 Error clearing localStorage:', error);
-          }
+          try { setMessages(['[bot] ' + DEFAULT_AI_GREETING]); } catch {}
+          try { setText(''); } catch {}
           console.log('✅ Reset completed locally');
           return r;
         } catch (error) {
           console.error('❌ Reset failed:', error);
-        } finally {
-          setTimeout(() => {
-            setIsResetting(false); // Re-enable seeding after reset
-            console.log('🔄 Reset state cleared, seeding re-enabled');
-          }, 100);
-          // Clear justReset flag after a longer delay to ensure reset is fully complete
-          setTimeout(() => {
-            setJustReset(false);
-          }, 500);
-        }
+        } finally {}
       };
       const refreshDoc = async () => {
         try {
@@ -2336,10 +2351,10 @@
           React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
         React.createElement('div', { key: 'tabbody', className: 'mt-3' }, [
-          (activeTab === 'AI' ? React.createElement(ChatConsole, { key: 'chat' }) : null),
-          (activeTab === 'Workflow' ? React.createElement(WorkflowApprovalsPanel, { key: 'workflow' }) : null),
-          (activeTab === 'Messaging' ? React.createElement(MessagingPanel, { key: 'messaging' }) : null),
-          (activeTab === 'Activity' ? React.createElement(ActivityPanel, { key: 'activity' }) : null),
+          React.createElement('div', { key: 'wrap-ai', style: { display: (activeTab === 'AI' ? 'block' : 'none') } }, React.createElement(ChatConsole, { key: 'chat' })),
+          React.createElement('div', { key: 'wrap-workflow', style: { display: (activeTab === 'Workflow' ? 'block' : 'none') } }, React.createElement(WorkflowApprovalsPanel, { key: 'workflow' })),
+          React.createElement('div', { key: 'wrap-messaging', style: { display: (activeTab === 'Messaging' ? 'block' : 'none') } }, React.createElement(MessagingPanel, { key: 'messaging' })),
+          React.createElement('div', { key: 'wrap-activity', style: { display: (activeTab === 'Activity' ? 'block' : 'none') } }, React.createElement(ActivityPanel, { key: 'activity' })),
         ])
       ]);
 
