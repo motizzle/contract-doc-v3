@@ -1332,10 +1332,18 @@
         function onChatReset(ev) {
           try {
             const d = ev.detail;
+            const isGlobal = !!(d && d.payload && d.payload.all);
             const forUser = String(d && d.userId || 'default');
             const threadPlatform = d && d.payload && d.payload.threadPlatform;
             const currentPlatform = typeof Office !== 'undefined' ? 'word' : 'web';
             console.log('📨 SSE reset received:', { forUser, threadPlatform, currentPlatform, currentUser });
+
+            if (isGlobal) {
+              // Factory reset or global reset: clear completely, do NOT seed greeting
+              setMessages([]);
+              setText('');
+              return;
+            }
 
             // Ignore resets from other platforms
             try {

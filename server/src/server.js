@@ -859,11 +859,15 @@ app.post('/api/v1/factory-reset', (req, res) => {
         }
       } catch {}
     }
-    // Reset state and bump revision so clients resync deterministically
+    // Reset state to baseline and bump revision so clients resync deterministically
     serverState.isFinal = false;
     serverState.checkedOutBy = null;
+    serverState.documentVersion = 1;
+    serverState.updatedBy = null;
+    serverState.updatedPlatform = null;
+    serverState.lastUpdated = new Date().toISOString();
     bumpRevision();
-    bumpDocumentVersion('system');
+    persistState();
     broadcast({ type: 'factoryReset' });
     broadcast({ type: 'documentRevert' });
     // Notify clients to clear local messaging state
