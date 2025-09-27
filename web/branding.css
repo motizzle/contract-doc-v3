@@ -546,6 +546,26 @@ body .brand-header-bg .pulse-pill {
 }
 /* inner wrapper removed; textarea now sits directly inside composer */
 
+/* Chat bubbles and alignment */
+.chat-bubble-row { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }
+.chat-bubble-row.mine { align-items: flex-end; }
+.chat-bubble-row.other { align-items: flex-start; }
+
+.chat-timestamp { font-size: 11px; color: #6b7280; line-height: 1; }
+.chat-timestamp.mine { text-align: right; }
+.chat-timestamp.other { text-align: left; }
+
+.chat-bubble { max-width: 78%; padding: 8px 12px; border-radius: 14px; word-break: break-word; box-sizing: border-box; }
+.chat-bubble.mine { background: var(--btn-primary-bg); color: var(--btn-primary-fg); }
+.chat-bubble.other { background: #ffffff; color: #111827; border: none; }
+
+/* Optional alternate palettes for group chats */
+.chat-bubble.alt-1 { background: #f3f4f6; color: #111827; }
+.chat-bubble.alt-2 { background: #e5e7eb; color: #111827; }
+.chat-bubble.alt-3 { background: #e0e7ff; color: #111827; }
+.chat-bubble.alt-4 { background: #dcfce7; color: #111827; }
+.chat-bubble.other-gray { background: #f3f4f6; color: #111827; }
+
 /* Banner item styling */
 .banner-item {
   margin-top: 0px;
@@ -688,10 +708,10 @@ body .brand-header-bg .pulse-pill {
    Ensures toolbar wraps cleanly within the editor column
    without reserving right-side space or overflow menus.
 ------------------------------------------------------- */
-#layout { display: grid; grid-template-columns: 1fr 437px; overflow-x: hidden; height: calc(100vh - var(--banner-h)); }
+#layout { display: grid; grid-template-columns: 1fr auto; overflow-x: hidden; height: calc(100vh - var(--banner-h)); }
 #editor-col { min-width: 0; padding: 0 16px; box-sizing: border-box; overflow-x: auto; }
 #superdoc-toolbar, #superdoc { min-width: 1100px; }
-#pane { width: 437px; max-width: 437px; }
+#pane { width: 576px; max-width: 576px; }
 #superdoc-toolbar {
   position: relative;
   z-index: 100;
