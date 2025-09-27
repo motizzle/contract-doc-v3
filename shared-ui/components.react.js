@@ -714,7 +714,7 @@
 
       // Portal menu to escape overflow clipping
       function PortalMenu(props) {
-        const { anchorRef, open, children, onClose, align } = props || {};
+        const { anchorRef, open, children, onClose, align, menuElRef } = props || {};
         const [pos, setPos] = React.useState(null);
         const menuRef = React.useRef(null);
         React.useLayoutEffect(() => {
@@ -757,7 +757,7 @@
           transform: (align === 'left' ? 'translateX(0)' : 'translateX(-100%)'),
           zIndex: 10000
         };
-        return ReactDOM.createPortal(React.createElement('div', { style, ref: menuRef }, children), document.body);
+        return ReactDOM.createPortal(React.createElement('div', { style, ref: (el) => { menuRef.current = el; try { if (menuElRef) menuElRef.current = el; } catch {} } }, children), document.body);
       }
       const nestedItems = [
         menuItem('View Latest', viewLatest, true),
@@ -799,22 +799,28 @@
       const mode = (config && config.buttons && config.buttons.primaryLayout && config.buttons.primaryLayout.mode)
         || (onlyCheckout ? 'not_checked_out' : (btns.checkinBtn ? 'self' : 'not_checked_out'));
       const [checkinMenuOpen, setCheckinMenuOpen] = React.useState(false);
+      const portalMenuRef = React.useRef(null);
+      const checkinPortalMenuRef = React.useRef(null);
       // Close any open dropdowns when mode changes (e.g., after Checkout)
       React.useEffect(() => { try { setMenuOpen(false); setCheckinMenuOpen(false); } catch {} }, [mode]);
 
-      // Close menus when clicking outside of ActionButtons (web and add-in)
+      // Close menus when clicking outside of ActionButtons or the portal menus (web and add-in)
       React.useEffect(() => {
         const onOutside = (e) => {
           try {
             if (!menuOpen && !checkinMenuOpen) return;
             const el = rootRef.current;
-            if (el && el.contains(e.target)) return; // click inside
+            const menuEl = portalMenuRef && portalMenuRef.current;
+            const checkinEl = checkinPortalMenuRef && checkinPortalMenuRef.current;
+            if (el && el.contains(e.target)) return; // click inside the toolbar area
+            if (menuEl && menuEl.contains(e.target)) return; // click inside portal menu
+            if (checkinEl && checkinEl.contains(e.target)) return; // click inside check-in portal menu
           } catch {}
           try { setMenuOpen(false); } catch {}
           try { setCheckinMenuOpen(false); } catch {}
         };
-        document.addEventListener('mousedown', onOutside, true);
-        return () => { document.removeEventListener('mousedown', onOutside, true); };
+        document.addEventListener('click', onOutside, false);
+        return () => { document.removeEventListener('click', onOutside, false); };
       }, [menuOpen, checkinMenuOpen]);
 
       // Allow ESC to close any open menus
@@ -834,7 +840,7 @@
               React.createElement('span', { key: 'anchor_nc', ref: menuAnchorRef },
                 add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } })
               ),
-              React.createElement(PortalMenu, { key: 'menu_nc', anchorRef: menuAnchorRef, open: !!(nestedItems.length && menuOpen), onClose: () => setMenuOpen(false), align: 'right' },
+              React.createElement(PortalMenu, { key: 'menu_nc', anchorRef: menuAnchorRef, open: !!(nestedItems.length && menuOpen), onClose: () => setMenuOpen(false), align: 'right', menuElRef: portalMenuRef },
                 React.createElement('div', { className: 'ui-menu', role: 'menu' }, nestedItems)
               )
             ])
@@ -847,7 +853,7 @@
               React.createElement('span', { key: 'anchor_ci', ref: menuAnchorRef },
                 add('Check-in ▾', () => setCheckinMenuOpen(!checkinMenuOpen), !!btns.checkinBtn, 'secondary', { style: { width: '100%' } })
               ),
-              (checkinMenuOpen ? React.createElement(PortalMenu, { anchorRef: menuAnchorRef, open: true, onClose: () => setCheckinMenuOpen(false), align: 'right' }, React.createElement('div', { className: 'ui-menu', role: 'menu' }, [
+              (checkinMenuOpen ? React.createElement(PortalMenu, { anchorRef: menuAnchorRef, open: true, onClose: () => setCheckinMenuOpen(false), align: 'right', menuElRef: checkinPortalMenuRef }, React.createElement('div', { className: 'ui-menu', role: 'menu' }, [
                 menuItemTwo({
                   icon: '🗝️',
                   title: 'Save and Check In',
@@ -868,7 +874,7 @@
               React.createElement('span', { key: 'anchor_r', ref: menuAnchorRef },
                 add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } })
               ),
-              React.createElement(PortalMenu, { key: 'menu_r', anchorRef: menuAnchorRef, open: !!(nestedItems.length && menuOpen), onClose: () => setMenuOpen(false), align: 'right' },
+              React.createElement(PortalMenu, { key: 'menu_r', anchorRef: menuAnchorRef, open: !!(nestedItems.length && menuOpen), onClose: () => setMenuOpen(false), align: 'right', menuElRef: portalMenuRef },
                 React.createElement('div', { className: 'ui-menu', role: 'menu' }, nestedItems)
               )
             ])
@@ -890,7 +896,7 @@
             React.createElement('span', { key: 'anchor_o', ref: menuAnchorRef },
               add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } })
             ),
-            React.createElement(PortalMenu, { key: 'menu_o', anchorRef: menuAnchorRef, open: !!(nestedItems.length && menuOpen), onClose: () => setMenuOpen(false), align: 'right' },
+            React.createElement(PortalMenu, { key: 'menu_o', anchorRef: menuAnchorRef, open: !!(nestedItems.length && menuOpen), onClose: () => setMenuOpen(false), align: 'right', menuElRef: portalMenuRef },
               React.createElement('div', { className: 'ui-menu', role: 'menu' }, nestedItems)
             )
           ])
