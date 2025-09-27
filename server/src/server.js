@@ -555,8 +555,12 @@ app.get('/api/v1/state-matrix', (req, res) => {
         const lastByUserId = (() => {
           try { return String(serverState.updatedBy && (serverState.updatedBy.id || serverState.updatedBy.userId || serverState.updatedBy)); } catch { return ''; }
         })();
-        // Notify ONLY if the document version advanced AND it was saved by another user
-        const shouldNotify = (serverState.documentVersion > clientLoaded) && (!!lastByUserId && requestingUserId && (lastByUserId !== requestingUserId));
+        // Notify ONLY if: client has a known version (>0), server advanced, and it was saved by another user
+        // Treat clientLoaded <= 1 as unknown/initial (common default on first mount)
+        const hasKnownClientVersion = Number.isFinite(clientLoaded) && clientLoaded > 1;
+        const serverAdvanced = serverState.documentVersion > clientLoaded;
+        const updatedByAnother = (!!lastByUserId && requestingUserId && (lastByUserId !== requestingUserId));
+        const shouldNotify = hasKnownClientVersion && serverAdvanced && updatedByAnother;
         if (shouldNotify) {
           const by = serverState.updatedBy && (serverState.updatedBy.label || serverState.updatedBy.userId) || 'someone';
           list.unshift({ state: 'update_available', title: 'Update available', message: `${by} updated this document.` });
