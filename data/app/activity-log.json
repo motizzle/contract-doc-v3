@@ -338,5 +338,115 @@
       "channel": "approvals"
     },
     "message": "bot sent a message to Fun E Guy"
+  },
+  {
+    "id": "act_1759188156493_tbzr92odh",
+    "timestamp": 1759188156493,
+    "type": "document:status-change",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "changed status",
+    "target": "document",
+    "details": {
+      "from": "review",
+      "to": "final"
+    },
+    "message": "Warren Peace changed document status from review to final"
+  },
+  {
+    "id": "act_1759188159370_57wlp6e53",
+    "timestamp": 1759188159370,
+    "type": "document:status-change",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "changed status",
+    "target": "document",
+    "details": {
+      "from": "final",
+      "to": "draft"
+    },
+    "message": "Warren Peace changed document status from final to draft"
+  },
+  {
+    "id": "act_1759188160337_doypphtg4",
+    "timestamp": 1759188160337,
+    "type": "document:status-change",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "changed status",
+    "target": "document",
+    "details": {
+      "from": "draft",
+      "to": "review"
+    },
+    "message": "Warren Peace changed document status from draft to review"
+  },
+  {
+    "id": "act_1759188173442_jpmtpp42q",
+    "timestamp": 1759188173442,
+    "type": "document:checkout",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {},
+    "message": "Warren Peace checked out document"
+  },
+  {
+    "id": "act_1759188174358_2b9fs4cgn",
+    "timestamp": 1759188174358,
+    "type": "document:save",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 2
+    },
+    "message": "Warren Peace saved a new version of the document (v2)"
+  },
+  {
+    "id": "act_1759188178750_am3pp4z70",
+    "timestamp": 1759188178750,
+    "type": "document:checkout:cancel",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "cancelled checkout",
+    "target": "document",
+    "details": {},
+    "message": "Warren Peace cancelled document checkout"
+  },
+  {
+    "id": "act_1759188183755_tf7vuwsun",
+    "timestamp": 1759188183755,
+    "type": "document:checkout",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {},
+    "message": "Warren Peace checked out document"
   }
 ]

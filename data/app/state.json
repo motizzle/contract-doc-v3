@@ -1,11 +1,14 @@
 {
-  "checkedOutBy": null,
-  "lastUpdated": "2025-09-29T23:20:58.482Z",
-  "revision": 582,
-  "documentVersion": 1,
+  "checkedOutBy": "user1",
+  "lastUpdated": "2025-09-29T23:23:03.753Z",
+  "revision": 583,
+  "documentVersion": 2,
   "title": "Contract of the Future",
   "status": "review",
-  "updatedBy": null,
-  "updatedPlatform": null,
+  "updatedBy": {
+    "userId": "user1",
+    "label": "Warren Peace"
+  },
+  "updatedPlatform": "web",
   "approvalsRevision": 185
 }

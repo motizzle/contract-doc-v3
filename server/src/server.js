@@ -1170,10 +1170,25 @@ app.post('/api/v1/factory-reset', (req, res) => {
 // Checkout/Checkin endpoints
 app.post('/api/v1/checkout', (req, res) => {
   const userId = req.body?.userId || 'user1';
+  const clientVersion = req.body?.clientVersion || 0;
   
   if (serverState.checkedOutBy && serverState.checkedOutBy !== userId) {
     return res.status(409).json({ error: `Already checked out by ${serverState.checkedOutBy}` });
   }
+  
+  // Check if client is on current version
+  const currentVersion = serverState.documentVersion || 1;
+  const isOutdated = clientVersion < currentVersion;
+  
+  if (isOutdated && !req.body?.forceCheckout) {
+    return res.status(409).json({ 
+      error: 'version_outdated', 
+      currentVersion, 
+      clientVersion,
+      message: 'Document has been updated. Do you want to check out the most recent version?'
+    });
+  }
+  
   serverState.checkedOutBy = userId;
   serverState.lastUpdated = new Date().toISOString();
   persistState();

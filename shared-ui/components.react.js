@@ -609,7 +609,42 @@
 
       const actions = React.useMemo(() => ({
         // finalize/unfinalize removed
-        checkout: async () => { try { await fetch(`${API_BASE}/api/v1/checkout`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Document checked out successfully', 'success'); await refresh(); } catch (e) { addLog(`Failed to check out document: ${e?.message||e}`, 'error'); } },
+        checkout: async () => { 
+          try { 
+            const response = await fetch(`${API_BASE}/api/v1/checkout`, { 
+              method: 'POST', 
+              headers: { 'Content-Type': 'application/json' }, 
+              body: JSON.stringify({ userId, clientVersion: loadedVersion || 0 }) 
+            });
+            
+            if (response.ok) {
+              addLog('Document checked out successfully', 'success'); 
+              await refresh(); 
+            } else {
+              const errorData = await response.json();
+              if (errorData.error === 'version_outdated') {
+                // Show modal for version outdated
+                try { 
+                  window.dispatchEvent(new CustomEvent('react:open-modal', { 
+                    detail: { 
+                      id: 'version-outdated-checkout', 
+                      options: { 
+                        currentVersion: errorData.currentVersion,
+                        clientVersion: errorData.clientVersion,
+                        message: errorData.message,
+                        userId: userId
+                      } 
+                    } 
+                  })); 
+                } catch {}
+              } else {
+                addLog(`Failed to check out document: ${errorData.error || 'Unknown error'}`, 'error');
+              }
+            }
+          } catch (e) { 
+            addLog(`Failed to check out document: ${e?.message||e}`, 'error'); 
+          } 
+        },
         checkin: async () => { try { await fetch(`${API_BASE}/api/v1/checkin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Document checked in successfully', 'success'); await refresh(); } catch (e) { addLog(`Failed to check in document: ${e?.message||e}`, 'error'); } },
         cancel: async () => { try { await fetch(`${API_BASE}/api/v1/checkout/cancel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Checkout cancelled successfully', 'success'); await refresh(); } catch (e) { addLog(`Failed to cancel checkout: ${e?.message||e}`, 'error'); } },
         override: async () => { try { await fetch(`${API_BASE}/api/v1/checkout/override`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Checkout override successful', 'warning'); await refresh(); } catch (e) { addLog(`Failed to override checkout: ${e?.message||e}`, 'error'); } },
@@ -2369,6 +2404,54 @@
       );
     }
 
+    function VersionOutdatedCheckoutModal(props) {
+      const { onClose, currentVersion, clientVersion, message, userId } = props || {};
+      const { tokens } = React.useContext(ThemeContext);
+      const { actions, addLog, refresh } = React.useContext(StateContext);
+      const t = tokens && tokens.modal ? tokens.modal : {};
+      
+      const handleCheckoutLatest = async () => {
+        try {
+          const response = await fetch(`${getApiBase()}/api/v1/checkout`, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ userId, clientVersion: currentVersion, forceCheckout: true }) 
+          });
+          
+          if (response.ok) {
+            addLog('Document checked out successfully', 'success'); 
+            await refresh(); 
+            onClose?.();
+          } else {
+            const errorData = await response.json();
+            addLog(`Failed to check out document: ${errorData.error || 'Unknown error'}`, 'error');
+          }
+        } catch (e) { 
+          addLog(`Failed to check out document: ${e?.message||e}`, 'error'); 
+        }
+      };
+
+      return React.createElement('div', { className: 'modal-overlay', onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
+        React.createElement('div', { className: 'modal-panel' }, [
+          React.createElement('div', { key: 'h', className: 'modal-header' }, [
+            React.createElement('div', { key: 't', className: 'font-bold' }, 'Document Updated'),
+            React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: onClose }, '✕')
+          ]),
+          React.createElement('div', { key: 'b', className: 'modal-body' }, [
+            React.createElement('p', { key: 'msg', style: { marginBottom: '16px' } }, message || 'Document has been updated. Do you want to check out the most recent version?'),
+            React.createElement('div', { key: 'info', style: { marginBottom: '20px', padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '4px' } }, [
+              React.createElement('div', { key: 'current', style: { marginBottom: '4px' } }, `Current version: ${currentVersion || 'Unknown'}`),
+              React.createElement('div', { key: 'client' }, `Your version: ${clientVersion || 'Unknown'}`)
+            ])
+          ]),
+          React.createElement('div', { key: 'f', className: 'modal-footer' }, [
+            React.createElement('button', { key: 'cancel', className: 'ui-button ui-button--secondary', onClick: onClose, style: { marginRight: '8px' } }, 'Cancel'),
+            React.createElement('button', { key: 'checkout', className: 'ui-button ui-button--primary', onClick: handleCheckoutLatest }, 'Check Out Latest Version')
+          ])
+        ])
+      );
+    }
+
     function ConfirmModal(props) {
       const { title, message, onConfirm, onClose } = props || {};
       const { tokens } = React.useContext(ThemeContext);
@@ -2593,7 +2676,7 @@
       const { config } = props;
       const { documentSource, actions, approvalsSummary, activities, lastSeenActivityId } = React.useContext(StateContext);
       React.useEffect(() => {
-        function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); if (d && d.id === 'notifications') setModal({ id: 'notifications' }); if (d && d.id === 'request-review') setModal({ id: 'request-review' }); if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); } catch {} }
+        function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); if (d && d.id === 'notifications') setModal({ id: 'notifications' }); if (d && d.id === 'request-review') setModal({ id: 'request-review' }); if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); if (d && d.id === 'version-outdated-checkout') setModal({ id: 'version-outdated-checkout', currentVersion: d.options?.currentVersion, clientVersion: d.options?.clientVersion, message: d.options?.message, userId: d.options?.userId }); } catch {} }
         window.addEventListener('react:open-modal', onOpen);
         return () => window.removeEventListener('react:open-modal', onOpen);
       }, []);
@@ -2624,6 +2707,8 @@
             return React.createElement(MessageModal, { toUserId: modal.toUserId, toUserName: modal.toUserName, onClose });
           case 'open-gov':
             return React.createElement(OpenGovModal, { onClose });
+          case 'version-outdated-checkout':
+            return React.createElement(VersionOutdatedCheckoutModal, { currentVersion: modal.currentVersion, clientVersion: modal.clientVersion, message: modal.message, userId: modal.userId, onClose });
           default:
             return null;
         }
