@@ -614,7 +614,7 @@
             const response = await fetch(`${API_BASE}/api/v1/checkout`, { 
               method: 'POST', 
               headers: { 'Content-Type': 'application/json' }, 
-              body: JSON.stringify({ userId, clientVersion: loadedVersion || 0 }) 
+              body: JSON.stringify({ userId, clientVersion: viewingVersion || loadedVersion || 0 }) 
             });
             
             if (response.ok) {
@@ -631,6 +631,7 @@
                       options: { 
                         currentVersion: errorData.currentVersion,
                         clientVersion: errorData.clientVersion,
+                        viewingVersion: viewingVersion || loadedVersion || 0,
                         message: errorData.message,
                         userId: userId
                       } 
@@ -2405,7 +2406,7 @@
     }
 
     function VersionOutdatedCheckoutModal(props) {
-      const { onClose, currentVersion, clientVersion, message, userId } = props || {};
+      const { onClose, currentVersion, clientVersion, viewingVersion, message, userId } = props || {};
       const { tokens } = React.useContext(ThemeContext);
       const { actions, addLog, refresh } = React.useContext(StateContext);
       const t = tokens && tokens.modal ? tokens.modal : {};
@@ -2433,14 +2434,15 @@
 
       const handleCheckoutCurrent = async () => {
         try {
+          const versionToUse = viewingVersion || clientVersion;
           const response = await fetch(`${getApiBase()}/api/v1/checkout`, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ userId, clientVersion: clientVersion, forceCheckout: true }) 
+            body: JSON.stringify({ userId, clientVersion: versionToUse, forceCheckout: true }) 
           });
           
           if (response.ok) {
-            addLog(`Document checked out successfully (version ${clientVersion})`, 'success'); 
+            addLog(`Document checked out successfully (version ${versionToUse})`, 'success'); 
             await refresh(); 
             onClose?.();
           } else {
@@ -2462,12 +2464,12 @@
             React.createElement('p', { key: 'msg', style: { marginBottom: '16px' } }, 'Document has been updated. Which version would you like to check out?'),
             React.createElement('div', { key: 'info', style: { marginBottom: '20px', padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '4px' } }, [
               React.createElement('div', { key: 'current', style: { marginBottom: '4px' } }, `Latest version: ${currentVersion || 'Unknown'}`),
-              React.createElement('div', { key: 'client' }, `Your current version: ${clientVersion || 'Unknown'}`)
+              React.createElement('div', { key: 'viewing' }, `You're viewing version: ${viewingVersion || clientVersion || 'Unknown'}`)
             ])
           ]),
           React.createElement('div', { key: 'f', className: 'modal-footer' }, [
             React.createElement('button', { key: 'cancel', className: 'ui-button ui-button--secondary', onClick: onClose, style: { marginRight: '8px' } }, 'Cancel'),
-            React.createElement('button', { key: 'checkout-current', className: 'ui-button ui-button--tertiary', onClick: handleCheckoutCurrent, style: { marginRight: '8px' } }, `Check Out Version ${clientVersion}`),
+            React.createElement('button', { key: 'checkout-current', className: 'ui-button ui-button--tertiary', onClick: handleCheckoutCurrent, style: { marginRight: '8px' } }, `Check Out Version ${viewingVersion || clientVersion}`),
             React.createElement('button', { key: 'checkout-latest', className: 'ui-button ui-button--primary', onClick: handleCheckoutLatest }, 'Check Out Latest Version')
           ])
         ])
@@ -2698,7 +2700,7 @@
       const { config } = props;
       const { documentSource, actions, approvalsSummary, activities, lastSeenActivityId } = React.useContext(StateContext);
       React.useEffect(() => {
-        function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); if (d && d.id === 'notifications') setModal({ id: 'notifications' }); if (d && d.id === 'request-review') setModal({ id: 'request-review' }); if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); if (d && d.id === 'version-outdated-checkout') setModal({ id: 'version-outdated-checkout', currentVersion: d.options?.currentVersion, clientVersion: d.options?.clientVersion, message: d.options?.message, userId: d.options?.userId }); } catch {} }
+        function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); if (d && d.id === 'notifications') setModal({ id: 'notifications' }); if (d && d.id === 'request-review') setModal({ id: 'request-review' }); if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); if (d && d.id === 'version-outdated-checkout') setModal({ id: 'version-outdated-checkout', currentVersion: d.options?.currentVersion, clientVersion: d.options?.clientVersion, viewingVersion: d.options?.viewingVersion, message: d.options?.message, userId: d.options?.userId }); } catch {} }
         window.addEventListener('react:open-modal', onOpen);
         return () => window.removeEventListener('react:open-modal', onOpen);
       }, []);
@@ -2730,7 +2732,7 @@
           case 'open-gov':
             return React.createElement(OpenGovModal, { onClose });
           case 'version-outdated-checkout':
-            return React.createElement(VersionOutdatedCheckoutModal, { currentVersion: modal.currentVersion, clientVersion: modal.clientVersion, message: modal.message, userId: modal.userId, onClose });
+            return React.createElement(VersionOutdatedCheckoutModal, { currentVersion: modal.currentVersion, clientVersion: modal.clientVersion, viewingVersion: modal.viewingVersion, message: modal.message, userId: modal.userId, onClose });
           default:
             return null;
         }
