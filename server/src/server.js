@@ -165,7 +165,11 @@ function buildActivityMessage(type, details = {}) {
         action: 'approved',
         target: 'workflow',
         details: { targetUserId: details.targetUserId, notes: details.notes },
-        message: `${userLabel} approved${details.targetUserId ? ` (${details.targetUserId})` : ''}`
+        message: (function(){
+          if (!details.targetUserId) return `${userLabel} approved`;
+          const target = resolveUserLabel(details.targetUserId);
+          return `${userLabel} approved (${target})`;
+        })()
       };
 
     case 'workflow:reject':
@@ -173,7 +177,11 @@ function buildActivityMessage(type, details = {}) {
         action: 'rejected',
         target: 'workflow',
         details: { targetUserId: details.targetUserId, notes: details.notes },
-        message: `${userLabel} rejected${details.targetUserId ? ` (${details.targetUserId})` : ''}`
+        message: (function(){
+          if (!details.targetUserId) return `${userLabel} rejected`;
+          const target = resolveUserLabel(details.targetUserId);
+          return `${userLabel} rejected (${target})`;
+        })()
       };
 
     case 'workflow:reset':
