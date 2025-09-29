@@ -205,7 +205,14 @@ function buildActivityMessage(type, details = {}) {
         action: 'sent message',
         target: 'message',
         details: { to: details.to, channel: details.channel },
-        message: `${userLabel} sent a message${Array.isArray(details.to) && details.to.length ? ` to ${details.to.length}` : ''}`.trim()
+        message: (function(){
+          const to = Array.isArray(details.to) ? details.to : (details.to ? [details.to] : []);
+          const labels = to.map((id) => resolveUserLabel(id)).filter(Boolean);
+          if (labels.length === 0) return `${userLabel} sent a message`;
+          if (labels.length === 1) return `${userLabel} sent a message to ${labels[0]}`;
+          if (labels.length === 2) return `${userLabel} sent a message to ${labels[0]} and ${labels[1]}`;
+          return `${userLabel} sent a message to ${labels[0]}, ${labels[1]} +${labels.length - 2} more`;
+        })()
       };
     case 'document:save':
       return {
