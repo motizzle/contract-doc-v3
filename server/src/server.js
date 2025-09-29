@@ -178,7 +178,7 @@ function buildActivityMessage(type, details = {}) {
         action: 'saved progress',
         target: 'document',
         details: { autoSave: details.autoSave || false },
-        message: `${userLabel} saved document progress`
+        message: `${userLabel} saved a new version of the document`
       };
 
     case 'document:checkin':
@@ -763,6 +763,10 @@ app.post('/api/v1/finalize', (req, res) => {
   serverState.checkedOutBy = null;
   serverState.lastUpdated = new Date().toISOString();
   persistState();
+
+  // Log activity
+  logActivity('document:finalize', userId, {});
+
   broadcast({ type: 'finalize', value: true, userId });
   res.json({ ok: true });
 });
@@ -776,6 +780,10 @@ app.post('/api/v1/unfinalize', (req, res) => {
   serverState.isFinal = false;
   serverState.lastUpdated = new Date().toISOString();
   persistState();
+
+  // Log activity
+  logActivity('document:unfinalize', userId, {});
+
   broadcast({ type: 'finalize', value: false, userId });
   res.json({ ok: true });
 });
@@ -877,6 +885,14 @@ app.post('/api/v1/save-progress', (req, res) => {
       fs.writeFileSync(path.join(versionsDir, `v${ver}.json`), JSON.stringify(meta, null, 2));
       broadcast({ type: 'versions:update' });
     } catch {}
+
+    // Log activity
+    logActivity('document:save', userId, {
+      autoSave: false,
+      size: bytes.length,
+      version: serverState.documentVersion
+    });
+
     broadcast({ type: 'saveProgress', userId, size: bytes.length });
     // Touch title if empty to encourage naming
     if (!serverState.title || serverState.title === 'Untitled Document') {
@@ -1099,6 +1115,10 @@ app.post('/api/v1/checkout', (req, res) => {
   serverState.checkedOutBy = userId;
   serverState.lastUpdated = new Date().toISOString();
   persistState();
+
+  // Log activity
+  logActivity('document:checkout', userId, {});
+
   broadcast({ type: 'checkout', userId });
   res.json({ ok: true, checkedOutBy: userId });
 });
@@ -1115,6 +1135,12 @@ app.post('/api/v1/checkin', (req, res) => {
   serverState.checkedOutBy = null;
   serverState.lastUpdated = new Date().toISOString();
   persistState();
+
+  // Log activity
+  logActivity('document:checkin', userId, {
+    version: serverState.documentVersion
+  });
+
   broadcast({ type: 'checkin', userId });
   res.json({ ok: true });
 });
@@ -1132,6 +1158,10 @@ app.post('/api/v1/checkout/cancel', (req, res) => {
   serverState.checkedOutBy = null;
   serverState.lastUpdated = new Date().toISOString();
   persistState();
+
+  // Log activity
+  logActivity('document:checkout:cancel', userId, {});
+
   broadcast({ type: 'checkoutCancel', userId });
   res.json({ ok: true });
 });
