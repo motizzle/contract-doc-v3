@@ -160,6 +160,53 @@ function buildActivityMessage(type, details = {}) {
   const userLabel = details.userLabel || details.user?.label || details.userId || 'Unknown User';
 
   switch (type) {
+    case 'workflow:approve':
+      return {
+        action: 'approved',
+        target: 'workflow',
+        details: { targetUserId: details.targetUserId, notes: details.notes },
+        message: `${userLabel} approved${details.targetUserId ? ` (${details.targetUserId})` : ''}`
+      };
+
+    case 'workflow:reject':
+      return {
+        action: 'rejected',
+        target: 'workflow',
+        details: { targetUserId: details.targetUserId, notes: details.notes },
+        message: `${userLabel} rejected${details.targetUserId ? ` (${details.targetUserId})` : ''}`
+      };
+
+    case 'workflow:reset':
+      return {
+        action: 'reset approvals',
+        target: 'workflow',
+        details: {},
+        message: `${userLabel} reset approvals`
+      };
+
+    case 'workflow:request-review':
+      return {
+        action: 'requested review',
+        target: 'workflow',
+        details: {},
+        message: `${userLabel} requested review from approvers`
+      };
+
+    case 'workflow:complete':
+      return {
+        action: 'completed approvals',
+        target: 'workflow',
+        details: { total: details.total, approved: details.approved },
+        message: `All approvals completed`
+      };
+
+    case 'message:send':
+      return {
+        action: 'sent message',
+        target: 'message',
+        details: { to: details.to, channel: details.channel },
+        message: `${userLabel} sent a message${Array.isArray(details.to) && details.to.length ? ` to ${details.to.length}` : ''}`.trim()
+      };
     case 'document:save':
       return {
         action: 'saved progress',
@@ -995,10 +1042,14 @@ app.post('/api/v1/approvals/set', (req, res) => {
     saveApprovals(list);
     const summary = computeApprovalsSummary(list);
     broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary });
+    // Log workflow activity
+    logActivity('workflow:approve', actorUserId, { targetUserId, notes });
     
     // Check if all approvals are complete and trigger celebration
     if (summary.approved === summary.total && summary.total > 0) {
       broadcast({ type: 'approval:complete', completedBy: actorUserId, timestamp: Date.now() });
+      // Log workflow completion
+      logActivity('workflow:complete', actorUserId, { total: summary.total, approved: summary.approved });
     }
     
     res.json({ approvers: list, summary, revision: serverState.approvalsRevision });
@@ -1016,6 +1067,8 @@ app.post('/api/v1/approvals/reset', (req, res) => {
     saveApprovals(list);
     const summary = computeApprovalsSummary(list);
     broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary, notice: { type: 'reset', by: actorUserId } });
+    // Log workflow reset
+    logActivity('workflow:reset', actorUserId, {});
     res.json({ approvers: list, summary, revision: serverState.approvalsRevision });
   } catch (e) {
     res.status(500).json({ error: 'approvals_reset_failed' });
@@ -1028,6 +1081,8 @@ app.post('/api/v1/approvals/notify', (req, res) => {
     const data = loadApprovals();
     const summary = computeApprovalsSummary(data.approvers);
     broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary, notice: { type: 'request_review', by: actorUserId } });
+    // Log review request
+    logActivity('workflow:request-review', actorUserId, {});
     res.json({ approvers: data.approvers, summary, revision: serverState.approvalsRevision });
   } catch (e) {
     res.status(500).json({ error: 'approvals_notify_failed' });
@@ -1242,6 +1297,8 @@ app.post('/api/v1/events/client', async (req, res) => {
             const toList = Array.isArray(toRaw) ? toRaw.map(String) : [String(toRaw || '')];
             const threadId = payload && payload.threadId ? String(payload.threadId) : undefined;
             broadcast({ type: 'approvals:message', payload: { to: toList, text: replyText, threadId }, userId: 'bot', role: 'assistant', platform: 'server' });
+            // Log message send
+            logActivity('message:send', 'bot', { to: toList, channel: 'approvals' });
           }
         } else {
           const msg = `LLM error: ${result && result.error ? result.error : 'Unknown error'}`;
