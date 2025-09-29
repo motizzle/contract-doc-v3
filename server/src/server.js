@@ -109,7 +109,7 @@ const dataUsersDir = path.join(dataAppDir, 'users');
 function logActivity(type, userId, details = {}) {
   try {
     const resolvedLabel = resolveUserLabel(userId);
-    const platform = 'web'; // TODO: thread through origin platform
+    const platform = (details && details.platform) ? String(details.platform) : 'web';
     // Enrich details with user context so message formatting has access
     const detailsWithUser = { ...details, userId, user: { id: userId, label: resolvedLabel, platform } };
     // Build the activity object
@@ -1278,6 +1278,15 @@ app.post('/api/v1/events/client', async (req, res) => {
     const originPlatform = String(platform || 'web');
     broadcast({ type, payload, userId, role, platform: originPlatform });
 
+    // Log human-sent messages as activities
+    if (type === 'approvals:message') {
+      try {
+        const toRaw = payload?.to;
+        const toList = Array.isArray(toRaw) ? toRaw.map(String) : [String(toRaw || '')];
+        logActivity('message:send', userId, { to: toList, channel: 'approvals', platform: originPlatform });
+      } catch {}
+    }
+
     const text = String(payload?.text || '').trim();
     if ((type === 'chat' || type === 'approvals:message') && text) {
       try {
@@ -1297,8 +1306,8 @@ app.post('/api/v1/events/client', async (req, res) => {
             const toList = Array.isArray(toRaw) ? toRaw.map(String) : [String(toRaw || '')];
             const threadId = payload && payload.threadId ? String(payload.threadId) : undefined;
             broadcast({ type: 'approvals:message', payload: { to: toList, text: replyText, threadId }, userId: 'bot', role: 'assistant', platform: 'server' });
-            // Log message send
-            logActivity('message:send', 'bot', { to: toList, channel: 'approvals' });
+            // Log bot message send
+            logActivity('message:send', 'bot', { to: toList, channel: 'approvals', platform: 'server' });
           }
         } else {
           const msg = `LLM error: ${result && result.error ? result.error : 'Unknown error'}`;

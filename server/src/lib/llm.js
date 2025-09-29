@@ -66,7 +66,7 @@ async function generateReply(options = {}) {
   try {
     // Use appropriate model based on provider
     const selectedModel = LLM_PROVIDER === 'ollama'
-      ? (process.env.OLLAMA_MODEL || 'llama3.2:3b')
+      ? (process.env.OLLAMA_MODEL || 'gemma3:1b')
       : model;
 
     const response = await callLLM({
@@ -238,7 +238,14 @@ function callLLM(options) {
           });
         }
       } else {
-        resolve({ ok: false, error: `API error: ${statusCode}` });
+        const chunks = [];
+        res.on('data', (c) => chunks.push(c));
+        res.on('end', () => {
+          const body = Buffer.concat(chunks).toString();
+          let detail = '';
+          try { detail = JSON.parse(body)?.error || body; } catch { detail = body; }
+          resolve({ ok: false, error: `API error: ${statusCode}${detail ? ` - ${String(detail).slice(0,200)}` : ''}` });
+        });
       }
     });
 
