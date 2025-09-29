@@ -1777,6 +1777,7 @@
         (confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null)
       ]);
     }
+
     function UserCard() {
       const { users, currentUser, currentRole, actions } = React.useContext(StateContext);
       const [selected, setSelected] = React.useState(currentUser);
