@@ -448,5 +448,117 @@
     "target": "document",
     "details": {},
     "message": "Warren Peace checked out document"
+  },
+  {
+    "id": "act_1759188193603_dfasfmgw8",
+    "timestamp": 1759188193603,
+    "type": "document:checkout:cancel",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "cancelled checkout",
+    "target": "document",
+    "details": {},
+    "message": "Warren Peace cancelled document checkout"
+  },
+  {
+    "id": "act_1759188194873_rinpzenx3",
+    "timestamp": 1759188194873,
+    "type": "document:checkout",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {},
+    "message": "Warren Peace checked out document"
+  },
+  {
+    "id": "act_1759188205078_1ajq1gevy",
+    "timestamp": 1759188205078,
+    "type": "document:checkout:cancel",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "cancelled checkout",
+    "target": "document",
+    "details": {},
+    "message": "Warren Peace cancelled document checkout"
+  },
+  {
+    "id": "act_1759188292329_c2k6lly53",
+    "timestamp": 1759188292329,
+    "type": "document:checkout",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {},
+    "message": "Warren Peace checked out document"
+  },
+  {
+    "id": "act_1759188295489_ars031aic",
+    "timestamp": 1759188295489,
+    "type": "document:checkout:cancel",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "cancelled checkout",
+    "target": "document",
+    "details": {},
+    "message": "Warren Peace cancelled document checkout"
+  },
+  {
+    "id": "act_1759188302074_ikyexe87l",
+    "timestamp": 1759188302074,
+    "type": "document:checkout",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {},
+    "message": "Warren Peace checked out document"
+  },
+  {
+    "id": "act_1759188309041_qlo6wbc2a",
+    "timestamp": 1759188309041,
+    "type": "document:checkout:cancel",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "cancelled checkout",
+    "target": "document",
+    "details": {},
+    "message": "Warren Peace cancelled document checkout"
+  },
+  {
+    "id": "act_1759188315652_01ft5kuza",
+    "timestamp": 1759188315652,
+    "type": "document:checkout",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {},
+    "message": "Warren Peace checked out document"
   }
 ]

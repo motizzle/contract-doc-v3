@@ -2419,7 +2419,28 @@
           });
           
           if (response.ok) {
-            addLog('Document checked out successfully', 'success'); 
+            addLog('Document checked out successfully (latest version)', 'success'); 
+            await refresh(); 
+            onClose?.();
+          } else {
+            const errorData = await response.json();
+            addLog(`Failed to check out document: ${errorData.error || 'Unknown error'}`, 'error');
+          }
+        } catch (e) { 
+          addLog(`Failed to check out document: ${e?.message||e}`, 'error'); 
+        }
+      };
+
+      const handleCheckoutCurrent = async () => {
+        try {
+          const response = await fetch(`${getApiBase()}/api/v1/checkout`, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ userId, clientVersion: clientVersion, forceCheckout: true }) 
+          });
+          
+          if (response.ok) {
+            addLog(`Document checked out successfully (version ${clientVersion})`, 'success'); 
             await refresh(); 
             onClose?.();
           } else {
@@ -2438,15 +2459,16 @@
             React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: onClose }, '✕')
           ]),
           React.createElement('div', { key: 'b', className: 'modal-body' }, [
-            React.createElement('p', { key: 'msg', style: { marginBottom: '16px' } }, message || 'Document has been updated. Do you want to check out the most recent version?'),
+            React.createElement('p', { key: 'msg', style: { marginBottom: '16px' } }, 'Document has been updated. Which version would you like to check out?'),
             React.createElement('div', { key: 'info', style: { marginBottom: '20px', padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '4px' } }, [
-              React.createElement('div', { key: 'current', style: { marginBottom: '4px' } }, `Current version: ${currentVersion || 'Unknown'}`),
-              React.createElement('div', { key: 'client' }, `Your version: ${clientVersion || 'Unknown'}`)
+              React.createElement('div', { key: 'current', style: { marginBottom: '4px' } }, `Latest version: ${currentVersion || 'Unknown'}`),
+              React.createElement('div', { key: 'client' }, `Your current version: ${clientVersion || 'Unknown'}`)
             ])
           ]),
           React.createElement('div', { key: 'f', className: 'modal-footer' }, [
             React.createElement('button', { key: 'cancel', className: 'ui-button ui-button--secondary', onClick: onClose, style: { marginRight: '8px' } }, 'Cancel'),
-            React.createElement('button', { key: 'checkout', className: 'ui-button ui-button--primary', onClick: handleCheckoutLatest }, 'Check Out Latest Version')
+            React.createElement('button', { key: 'checkout-current', className: 'ui-button ui-button--tertiary', onClick: handleCheckoutCurrent, style: { marginRight: '8px' } }, `Check Out Version ${clientVersion}`),
+            React.createElement('button', { key: 'checkout-latest', className: 'ui-button ui-button--primary', onClick: handleCheckoutLatest }, 'Check Out Latest Version')
           ])
         ])
       );
