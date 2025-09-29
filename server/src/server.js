@@ -133,10 +133,11 @@ const canonicalExhibitsDir = path.join(dataAppDir, 'exhibits');
 const workingDocumentsDir = path.join(dataWorkingDir, 'documents');
 const workingExhibitsDir = path.join(dataWorkingDir, 'exhibits');
 const compiledDir = path.join(dataWorkingDir, 'compiled');
+const versionsDir = path.join(dataWorkingDir, 'versions');
 const approvalsFilePath = path.join(dataAppDir, 'approvals.json');
 
 // Ensure working directories exist
-for (const dir of [dataWorkingDir, workingDocumentsDir, workingExhibitsDir, compiledDir]) {
+for (const dir of [dataWorkingDir, workingDocumentsDir, workingExhibitsDir, compiledDir, versionsDir]) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
@@ -304,7 +305,14 @@ function computeApprovalsSummary(list) {
 // SSE clients
 const sseClients = new Set();
 function broadcast(event) {
-  const payload = `data: ${JSON.stringify({ documentId: DOCUMENT_ID, revision: serverState.revision, ...event, ts: Date.now() })}\n\n`;
+  const enriched = {
+    documentId: DOCUMENT_ID,
+    revision: serverState.revision,
+    documentVersion: Number(serverState.documentVersion) || 1,
+    ts: Date.now(),
+    ...event
+  };
+  const payload = `data: ${JSON.stringify(enriched)}\n\n`;
   for (const res of sseClients) {
     try {
       res.write(payload);
@@ -552,15 +560,17 @@ app.get('/api/v1/state-matrix', (req, res) => {
       try {
         const clientLoaded = Number(req.query?.clientVersion || 0);
         const requestingUserId = String(req.query?.userId || '');
+        const originPlatform = String(req.query?.platform || 'web');
         const lastByUserId = (() => {
           try { return String(serverState.updatedBy && (serverState.updatedBy.id || serverState.updatedBy.userId || serverState.updatedBy)); } catch { return ''; }
         })();
         // Notify ONLY if: client has a known version (>0), server advanced, and it was saved by another user
-        // Treat clientLoaded <= 1 as unknown/initial (common default on first mount)
-        const hasKnownClientVersion = Number.isFinite(clientLoaded) && clientLoaded > 1;
+        // Treat only clientLoaded <= 0 as unknown/initial. Version 1 is a valid, loaded baseline.
+        const clientKnown = Number.isFinite(clientLoaded) && clientLoaded > 0;
         const serverAdvanced = serverState.documentVersion > clientLoaded;
         const updatedByAnother = (!!lastByUserId && requestingUserId && (lastByUserId !== requestingUserId));
-        const shouldNotify = hasKnownClientVersion && serverAdvanced && updatedByAnother;
+        const differentPlatform = !!serverState.updatedPlatform && serverState.updatedPlatform !== originPlatform;
+        const shouldNotify = clientKnown && serverAdvanced && (updatedByAnother || differentPlatform);
         if (shouldNotify) {
           const by = serverState.updatedBy && (serverState.updatedBy.label || serverState.updatedBy.userId) || 'someone';
           list.unshift({ state: 'update_available', title: 'Update available', message: `${by} updated this document.` });
@@ -736,6 +746,15 @@ app.post('/api/v1/save-progress', (req, res) => {
     try { fs.writeFileSync(dest, bytes); } catch { return res.status(500).json({ error: 'write_failed' }); }
     bumpRevision();
     bumpDocumentVersion(userId, platform || 'word');
+    // Save versioned snapshot and metadata
+    try {
+      const ver = Number(serverState.documentVersion) || 1;
+      const vDoc = path.join(versionsDir, `v${ver}.docx`);
+      fs.writeFileSync(vDoc, bytes);
+      const meta = { version: ver, savedBy: serverState.updatedBy || { userId, label: userId }, savedAt: new Date().toISOString() };
+      fs.writeFileSync(path.join(versionsDir, `v${ver}.json`), JSON.stringify(meta, null, 2));
+      broadcast({ type: 'versions:update' });
+    } catch {}
     broadcast({ type: 'saveProgress', userId, size: bytes.length });
     // Touch title if empty to encourage naming
     if (!serverState.title || serverState.title === 'Untitled Document') {
@@ -746,6 +765,55 @@ app.post('/api/v1/save-progress', (req, res) => {
   } catch (e) {
     return res.status(500).json({ error: 'save_progress_failed' });
   }
+});
+
+// List versions (newest first) with inferred Version 1
+app.get('/api/v1/versions', (req, res) => {
+  try {
+    const items = [];
+    try {
+      if (fs.existsSync(versionsDir)) {
+        for (const f of fs.readdirSync(versionsDir)) {
+          const m = /^v(\d+)\.json$/i.exec(f);
+          if (!m) continue;
+          const ver = Number(m[1]);
+          try { const j = JSON.parse(fs.readFileSync(path.join(versionsDir, f), 'utf8')); items.push({ version: ver, savedBy: j.savedBy || null, savedAt: j.savedAt || null }); } catch {}
+        }
+      }
+    } catch {}
+    const hasV1 = items.some(it => Number(it.version) === 1);
+    if (!hasV1) items.push({ version: 1, savedBy: { userId: 'system', label: 'System' }, savedAt: serverState.lastUpdated || null });
+    items.sort((a, b) => (b.version || 0) - (a.version || 0));
+    res.json({ items });
+  } catch { res.status(500).json({ error: 'versions_list_failed' }); }
+});
+
+// Stream a specific version (1 = canonical; otherwise working snapshot)
+app.get('/api/v1/versions/:n', (req, res) => {
+  try {
+    const n = Number(req.params.n);
+    if (!Number.isFinite(n) || n < 1) return res.status(400).json({ error: 'invalid_version' });
+    let p = null;
+    if (n === 1) p = path.join(canonicalDocumentsDir, 'default.docx');
+    else {
+      const vDoc = path.join(versionsDir, `v${n}.docx`);
+      if (fs.existsSync(vDoc)) p = vDoc;
+    }
+    if (!p || !fs.existsSync(p)) return res.status(404).json({ error: 'not_found' });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    fs.createReadStream(p).pipe(res);
+  } catch { res.status(500).json({ error: 'version_stream_failed' }); }
+});
+
+// Broadcast-only view selection
+app.post('/api/v1/versions/view', (req, res) => {
+  try {
+    const n = Number(req.body?.version);
+    if (!Number.isFinite(n) || n < 1) return res.status(400).json({ error: 'invalid_version' });
+    const originPlatform = String(req.body?.platform || req.query?.platform || 'web');
+    broadcast({ type: 'version:view', version: n, payload: { version: n, threadPlatform: originPlatform } });
+    res.json({ ok: true });
+  } catch { res.status(500).json({ error: 'version_view_failed' }); }
 });
 
 // Approvals API
@@ -859,6 +927,13 @@ app.post('/api/v1/factory-reset', (req, res) => {
         }
       } catch {}
     }
+    // Remove all saved versions (history)
+    try {
+      if (fs.existsSync(versionsDir)) {
+        try { fs.rmSync(versionsDir, { recursive: true, force: true }); } catch {}
+      }
+      if (!fs.existsSync(versionsDir)) fs.mkdirSync(versionsDir, { recursive: true });
+    } catch {}
     // Reset state to baseline and bump revision so clients resync deterministically
     serverState.isFinal = false;
     serverState.checkedOutBy = null;
@@ -874,6 +949,8 @@ app.post('/api/v1/factory-reset', (req, res) => {
     broadcast({ type: 'messaging:reset' });
     // Notify all clients to clear AI chat state
     broadcast({ type: 'chat:reset', payload: { all: true } });
+    // Notify clients that versions list changed (emptied)
+    broadcast({ type: 'versions:update' });
     const approvals = loadApprovals();
     broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary: computeApprovalsSummary(approvals.approvers) });
     return res.json({ ok: true });
