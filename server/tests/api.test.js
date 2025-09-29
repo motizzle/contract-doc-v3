@@ -25,9 +25,13 @@ async function ensureServerRunning() {
   // Start server as child
   try {
     const cwd = path.join(__dirname, '..');
-    serverChild = spawn(process.execPath, ['src/server.js'], { cwd, stdio: 'ignore' });
-    // Wait for health
-    for (let i = 0; i < 20; i++) {
+    serverChild = spawn(process.execPath, ['src/server.js'], {
+      cwd,
+      stdio: 'ignore',
+      env: { ...process.env, NODE_ENV: 'test', ALLOW_HTTP: 'true' }
+    });
+    // Wait for health (up to 10s)
+    for (let i = 0; i < 40; i++) {
       await sleep(250);
       try { const r = await fetchJson('/api/v1/health'); if (r && r.status === 200) return true; } catch {}
     }
