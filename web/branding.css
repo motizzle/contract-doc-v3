@@ -1071,6 +1071,7 @@ body .brand-header-bg .pulse-pill {
   outline: none;
   padding: 0;
   margin: 0;
+  font-family: var(--font-family-system);
   font-size: calc(var(--font-size-2xl) * 1.5);
   line-height: 1.15;
   height: calc((var(--font-size-2xl) * 1.5) * 1.2);
