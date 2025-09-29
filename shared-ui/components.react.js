@@ -69,6 +69,7 @@
       const [revision, setRevision] = React.useState(0);
       const [loadedVersion, setLoadedVersion] = React.useState(1);
       const [dismissedVersion, setDismissedVersion] = React.useState(0);
+      const [viewingVersion, setViewingVersion] = React.useState(1);
       const [isConnected, setIsConnected] = React.useState(false);
       const [lastTs, setLastTs] = React.useState(0);
       const [userId, setUserId] = React.useState('user1');
@@ -327,7 +328,10 @@
                     setDocumentSource(canonical);
                   }
                 } catch {}
+                try { window.dispatchEvent(new CustomEvent('factoryReset', { detail: p })); } catch {}
               }
+              if (p && p.type === 'versions:update') { try { window.dispatchEvent(new CustomEvent('versions:update', { detail: p })); } catch {} }
+              if (p && p.type === 'version:view') { try { window.dispatchEvent(new CustomEvent('version:view', { detail: p })); } catch {} }
               // Fan out chat messages to ChatConsole
               if (p && p.type === 'chat') {
                 try { window.dispatchEvent(new CustomEvent('chat:message', { detail: p })); } catch {}
@@ -582,7 +586,7 @@
         },
       }), [API_BASE, refresh, userId, addLog]);
 
-      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, renderNotification, formatNotification } }, React.createElement(App, { config }));
+      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, renderNotification, formatNotification, viewingVersion, setViewingVersion } }, React.createElement(App, { config }));
     }
 
     function BannerStack(props) {
@@ -1668,7 +1672,7 @@
       })(status);
       return React.createElement('div', { className: 'mb-2' }, React.createElement('span', { className: cls, onClick: cycle, style: { cursor: 'pointer' } }, label));
     }
-    
+
     function VersionsPanel() {
       const API_BASE = getApiBase();
       const { config, addLog, viewingVersion, setViewingVersion, setDocumentSource } = React.useContext(StateContext);
@@ -1773,7 +1777,7 @@
         (confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null)
       ]);
     }
-    
+
     function UserCard() {
       const { users, currentUser, currentRole, actions } = React.useContext(StateContext);
       const [selected, setSelected] = React.useState(currentUser);
