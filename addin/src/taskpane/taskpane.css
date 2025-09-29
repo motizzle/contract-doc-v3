@@ -9,6 +9,20 @@
      height: 100%;
      margin: 0;
      padding: 0;
+     font-family: var(--font-family-system);
+ }
+
+ /* Reset inherited fonts */
+ * {
+     font-family: var(--font-family-system);
+ }
+
+ /* Specifically target the title textarea and all text inputs */
+ textarea,
+ input,
+ .font-semibold,
+ .document-title {
+     font-family: var(--font-family-system);
  }
  
  ul {
