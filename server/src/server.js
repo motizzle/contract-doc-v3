@@ -569,8 +569,9 @@ app.get('/api/v1/state-matrix', (req, res) => {
         const clientKnown = Number.isFinite(clientLoaded) && clientLoaded > 0;
         const serverAdvanced = serverState.documentVersion > clientLoaded;
         const updatedByAnother = (!!lastByUserId && requestingUserId && (lastByUserId !== requestingUserId));
-        const differentPlatform = !!serverState.updatedPlatform && serverState.updatedPlatform !== originPlatform;
-        const shouldNotify = clientKnown && serverAdvanced && (updatedByAnother || differentPlatform);
+        // Only show banner for different platform if it was also saved by a different user
+        const differentPlatformAndUser = !!serverState.updatedPlatform && serverState.updatedPlatform !== originPlatform && updatedByAnother;
+        const shouldNotify = clientKnown && serverAdvanced && (updatedByAnother || differentPlatformAndUser);
         if (shouldNotify) {
           const by = serverState.updatedBy && (serverState.updatedBy.label || serverState.updatedBy.userId) || 'someone';
           list.unshift({ state: 'update_available', title: 'Update available', message: `${by} updated this document.` });
@@ -847,6 +848,12 @@ app.post('/api/v1/approvals/set', (req, res) => {
     saveApprovals(list);
     const summary = computeApprovalsSummary(list);
     broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary });
+    
+    // Check if all approvals are complete and trigger celebration
+    if (summary.approved === summary.total && summary.total > 0) {
+      broadcast({ type: 'approval:complete', completedBy: actorUserId, timestamp: Date.now() });
+    }
+    
     res.json({ approvers: list, summary, revision: serverState.approvalsRevision });
   } catch (e) {
     res.status(500).json({ error: 'approvals_set_failed' });

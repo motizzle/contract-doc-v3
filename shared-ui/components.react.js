@@ -23,6 +23,14 @@
       return; // Graceful no-op
     }
 
+    // Load confetti.js library
+    const confettiScript = document.createElement('script');
+    confettiScript.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js';
+    confettiScript.onload = () => {
+      console.log('Confetti.js loaded successfully');
+    };
+    document.head.appendChild(confettiScript);
+
     const React = win.React;
     const ReactDOM = win.ReactDOM;
     const MIN_DOCX_SIZE = 8192; // bytes; reject tiny/invalid working overlays
@@ -268,6 +276,12 @@
                     addLog('Review requested for approvals', 'info');
                   }
                 }
+              }
+              // Handle approval completion celebration
+              if (p && p.type === 'approval:complete') {
+                try {
+                  window.dispatchEvent(new CustomEvent('approval:complete', { detail: p }));
+                } catch {}
               }
               // Only log user-relevant events as notifications
               if (p && p.type) {
@@ -535,7 +549,7 @@
             if (isWordHost) { await saveProgressWord(); } else { await saveProgressWebViaDownload(); }
             addLog('Progress saved successfully', 'success');
             await refresh();
-            // After refresh, fetch the latest matrix and update viewingVersion to the new current
+            // After refresh, fetch the latest matrix and update both viewingVersion AND loadedVersion to the new current
             try {
               const plat = isWordHost ? 'word' : 'web';
               const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&userId=${encodeURIComponent(userId)}`;
@@ -545,6 +559,7 @@
                 const v = Number(j?.config?.documentVersion || 0);
                 if (Number.isFinite(v) && v > 0) {
                   try { setViewingVersion(v); } catch {}
+                  try { setLoadedVersion(v); } catch {} // Fix: Update loadedVersion to prevent banner showing for same user
                   try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
                 }
               }
@@ -561,23 +576,54 @@
             setUserId(nextUserId);
             if (nextRole) setRole(nextRole);
             addLog(`Switched to user: ${nextUserId}`, 'user');
+            // Reset loadedVersion to 0 when switching users to avoid stale banner state
+            setLoadedVersion(0);
             // Immediately fetch matrix for the new user so buttons (override) reflect correctly
             (async () => {
               try {
-                const qs = `platform=${encodeURIComponent(plat)}&userId=${encodeURIComponent(nextUserId)}&clientVersion=${encodeURIComponent(loadedVersion||0)}`;
+                const qs = `platform=${encodeURIComponent(plat)}&userId=${encodeURIComponent(nextUserId)}&clientVersion=0`;
                 const r = await fetch(`${API_BASE}/api/v1/state-matrix?${qs}`);
                 if (r.ok) {
                   const j = await r.json();
                   try { console.log('[user switch] Buttons:', j?.config?.buttons, 'Checkout:', j?.config?.checkoutStatus); } catch {}
                   setConfig(j.config || null);
                   if (typeof j.revision === 'number') setRevision(j.revision);
-                  // Update viewingVersion to the newest version loaded for this user
+                  // Update both viewingVersion and loadedVersion to the newest version for this user
                   try {
                     const v = Number(j?.config?.documentVersion || 0);
                     if (Number.isFinite(v) && v > 0) {
                       setViewingVersion(v);
+                      setLoadedVersion(v); // Reset loadedVersion to current document version for new user
                       try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
                     }
+                  } catch {}
+                  
+                  // Load the latest document for the new user (no banner needed)
+                  try {
+                    const w = `${API_BASE}/documents/working/default.docx`;
+                    const c = `${API_BASE}/documents/canonical/default.docx`;
+                    let url = c;
+                    try {
+                      const h = await fetch(w, { method: 'HEAD' });
+                      if (h.ok) {
+                        const len = Number(h.headers.get('content-length') || '0');
+                        if (Number.isFinite(len) && len > 1024) url = w; // Use working if it exists and is valid
+                      }
+                    } catch {}
+                    const finalUrl = `${url}?rev=${Date.now()}`;
+                    if (plat === 'word') {
+                      // Load latest document in Word
+                      const res = await fetch(finalUrl, { cache: 'no-store' });
+                      if (res && res.ok) {
+                        const buf = await res.arrayBuffer();
+                        const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
+                        await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
+                      }
+                    } else {
+                      // Load latest document in Web
+                      setDocumentSource(finalUrl);
+                    }
+                    addLog(`Loaded latest document for user: ${nextUserId}`, 'success');
                   } catch {}
                 }
               } catch {}
@@ -1038,6 +1084,73 @@
         React.createElement('div', { className: 'font-semibold mt-2' }, 'Exhibits'),
         items.length ? React.createElement('ul', null, items.map((it, i) => React.createElement('li', { key: i }, React.createElement('a', { href: it.url, target: '_blank' }, it.name)))) : React.createElement('div', null, '(none)')
       );
+    }
+
+    function ApprovalCelebration() {
+      const [showCelebration, setShowCelebration] = React.useState(false);
+
+      // Listen for approval completion events
+      React.useEffect(() => {
+        const handleApprovalComplete = (event) => {
+          try {
+            const data = event.detail || {};
+            if (data.type === 'approval:complete') {
+              setShowCelebration(true);
+              
+              // Trigger confetti.js celebration
+              if (window.confetti) {
+                // Multiple bursts for epic celebration
+                const duration = 5000;
+                const animationEnd = Date.now() + duration;
+                
+                const randomInRange = (min, max) => Math.random() * (max - min) + min;
+                
+                const interval = setInterval(() => {
+                  const timeLeft = animationEnd - Date.now();
+                  
+                  if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    setShowCelebration(false);
+                    return;
+                  }
+                  
+                  // Random confetti bursts
+                  const particleCount = randomInRange(50, 200);
+                  const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3', '#54a0ff', '#ff4757', '#2ed573', '#ffa502'];
+                  
+                  window.confetti({
+                    particleCount: particleCount,
+                    angle: randomInRange(45, 135),
+                    spread: randomInRange(50, 120),
+                    origin: { x: randomInRange(0.1, 0.9), y: randomInRange(0.1, 0.3) },
+                    colors: colors,
+                    shapes: ['circle', 'square'],
+                    scalar: randomInRange(0.5, 2)
+                  });
+                  
+                  // Side bursts
+                  if (Math.random() > 0.7) {
+                    window.confetti({
+                      particleCount: randomInRange(30, 100),
+                      angle: randomInRange(60, 120),
+                      spread: randomInRange(30, 80),
+                      origin: { x: Math.random() > 0.5 ? 0 : 1, y: randomInRange(0.3, 0.7) },
+                      colors: colors,
+                      shapes: ['circle', 'square'],
+                      scalar: randomInRange(0.5, 1.5)
+                    });
+                  }
+                }, 200);
+              }
+            }
+          } catch {}
+        };
+
+        window.addEventListener('approval:complete', handleApprovalComplete);
+        return () => window.removeEventListener('approval:complete', handleApprovalComplete);
+      }, []);
+
+      return null; // No DOM elements needed - confetti.js handles everything
     }
 
     function ActivityPanel() {
@@ -2573,7 +2686,7 @@
         (confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: onConfirmClose }) : null)
       ]);
 
-      return React.createElement(ThemeProvider, null, React.createElement(React.Fragment, null, [topPanel, assistantPanel]));
+      return React.createElement(ThemeProvider, null, React.createElement(React.Fragment, null, [topPanel, assistantPanel, React.createElement(ApprovalCelebration, { key: 'celebration' })]));
     }
 
     const root = ReactDOM.createRoot(rootEl);
