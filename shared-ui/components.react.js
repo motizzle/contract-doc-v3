@@ -364,9 +364,6 @@
                   case 'compile':
                     addLog(`Document compiled as "${p.name}"`, 'success');
                     break;
-                  case 'finalize':
-                    addLog(p.value ? 'Document finalized' : 'Document unfinalized', 'system');
-                    break;
                   case 'checkout':
                     addLog('Document checked out', 'info');
                     break;
@@ -611,8 +608,7 @@
       }
 
       const actions = React.useMemo(() => ({
-        finalize: async () => { try { await fetch(`${API_BASE}/api/v1/finalize`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Document finalized successfully', 'success'); await refresh(); } catch (e) { addLog(`Failed to finalize document: ${e?.message||e}`, 'error'); } },
-        unfinalize: async () => { try { await fetch(`${API_BASE}/api/v1/unfinalize`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Document unfinalized successfully', 'success'); await refresh(); } catch (e) { addLog(`Failed to unfinalize document: ${e?.message||e}`, 'error'); } },
+        // finalize/unfinalize removed
         checkout: async () => { try { await fetch(`${API_BASE}/api/v1/checkout`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Document checked out successfully', 'success'); await refresh(); } catch (e) { addLog(`Failed to check out document: ${e?.message||e}`, 'error'); } },
         checkin: async () => { try { await fetch(`${API_BASE}/api/v1/checkin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Document checked in successfully', 'success'); await refresh(); } catch (e) { addLog(`Failed to check in document: ${e?.message||e}`, 'error'); } },
         cancel: async () => { try { await fetch(`${API_BASE}/api/v1/checkout/cancel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Checkout cancelled successfully', 'success'); await refresh(); } catch (e) { addLog(`Failed to cancel checkout: ${e?.message||e}`, 'error'); } },
@@ -966,7 +962,7 @@
       }
       const nestedItems = [
         menuItem('View Latest', viewLatest, true),
-        menuItem('Finalize', () => ask('Finalize?', 'This will lock the document.', actions.finalize), !!btns.finalizeBtn),
+        
         menuItem('Send to Vendor', () => { try { setTimeout(() => { try { actions.sendVendor({}); } catch {} }, 130); } catch {} }, !!btns.sendVendorBtn),
         menuItem('Request review', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'request-review' } })); } catch {} }, true),
         menuItem('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true),
@@ -997,7 +993,7 @@
 
       // Bottom: all other actions, with '...' for menu
       const bottomGrid = [
-        add('Unfinalize', () => ask('Unlock?', 'This will unlock the document.', actions.unfinalize), !!btns.unfinalizeBtn),
+        
       ].filter(Boolean);
 
       // Read server-provided primary layout mode
@@ -2604,8 +2600,7 @@
   
       const [confirm, setConfirm] = React.useState(null);
       const ask = (kind) => {
-        if (kind === 'finalize') setConfirm({ title: 'Finalize?', message: 'This will lock the document.', onConfirm: actions.finalize });
-        if (kind === 'unfinalize') setConfirm({ title: 'Unlock?', message: 'This will unlock the document.', onConfirm: actions.unfinalize });
+        
         if (kind === 'reset') setConfirm({ title: 'Factory reset?', message: 'This will clear working data.', onConfirm: actions.factoryReset });
       };
 

@@ -254,21 +254,7 @@ function buildActivityMessage(type, details = {}) {
         message: `${userLabel} cancelled document checkout`
       };
 
-    case 'document:finalize':
-      return {
-        action: 'finalized',
-        target: 'document',
-        details: {},
-        message: `${userLabel} finalized document`
-      };
-
-    case 'document:unfinalize':
-      return {
-        action: 'unfinalized',
-        target: 'document',
-        details: {},
-        message: `${userLabel} unfinalized document`
-      };
+    // finalize/unfinalize removed
 
     case 'system:error':
       return {
@@ -307,7 +293,7 @@ for (const dir of [dataWorkingDir, workingDocumentsDir, workingExhibitsDir, comp
 // In-memory state (prototype)
 const DOCUMENT_ID = process.env.DOCUMENT_ID || 'default';
 const serverState = {
-  isFinal: false,
+  // isFinal removed
   checkedOutBy: null,
   lastUpdated: new Date().toISOString(),
   revision: 1,
@@ -325,7 +311,7 @@ const stateFilePath = path.join(dataAppDir, 'state.json');
 try {
   if (fs.existsSync(stateFilePath)) {
     const saved = JSON.parse(fs.readFileSync(stateFilePath, 'utf8'));
-    if (typeof saved.isFinal === 'boolean') serverState.isFinal = saved.isFinal;
+    // isFinal removed
     if (saved.checkedOutBy === null || typeof saved.checkedOutBy === 'string') serverState.checkedOutBy = saved.checkedOutBy;
     if (typeof saved.lastUpdated === 'string') serverState.lastUpdated = saved.lastUpdated;
     if (typeof saved.revision === 'number') serverState.revision = saved.revision;
@@ -340,7 +326,7 @@ try {
 
 function persistState() {
   try {
-    fs.writeFileSync(stateFilePath, JSON.stringify({ isFinal: serverState.isFinal, checkedOutBy: serverState.checkedOutBy, lastUpdated: serverState.lastUpdated, revision: serverState.revision, documentVersion: serverState.documentVersion, title: serverState.title, status: serverState.status, updatedBy: serverState.updatedBy, updatedPlatform: serverState.updatedPlatform, approvalsRevision: serverState.approvalsRevision }, null, 2));
+    fs.writeFileSync(stateFilePath, JSON.stringify({ checkedOutBy: serverState.checkedOutBy, lastUpdated: serverState.lastUpdated, revision: serverState.revision, documentVersion: serverState.documentVersion, title: serverState.title, status: serverState.status, updatedBy: serverState.updatedBy, updatedPlatform: serverState.updatedPlatform, approvalsRevision: serverState.approvalsRevision }, null, 2));
   } catch {}
 }
 
@@ -422,15 +408,12 @@ function loadChatbotResponses() {
 // Track sequential reply index per user to keep each user's conversation ordered
 const chatbotStateByUser = new Map();
 
-function buildBanner({ isFinal, isCheckedOut, isOwner, checkedOutBy }) {
-  if (isFinal) {
-    return { state: 'final', title: 'Finalized', message: 'This document is finalized.' };
-  }
+function buildBanner({ isCheckedOut, isOwner, checkedOutBy }) {
   if (isCheckedOut) {
     // Disable banners for both self and other checkout cases
     return null;
   }
-  // Suppress the generic available banner
+  // Suppress other banners for now
   return null;
 }
 
@@ -700,7 +683,7 @@ app.get('/api/v1/state-matrix', (req, res) => {
   // Derive role from users.json
   const derivedRole = getUserRole(userId);
   const roleMap = loadRoleMap();
-  const defaultPerms = { finalize: true, unfinalize: true, checkout: true, checkin: true, override: true, sendVendor: true };
+  const defaultPerms = { checkout: true, checkin: true, override: true, sendVendor: true };
   const isCheckedOut = !!serverState.checkedOutBy;
   const isOwner = serverState.checkedOutBy === userId;
   // Resolve display label for checked-out user (fallbacks to raw id)
@@ -723,14 +706,12 @@ app.get('/api/v1/state-matrix', (req, res) => {
     },
     buttons: {
       replaceDefaultBtn: true,
-      finalizeBtn: !!rolePerm.finalize && !serverState.isFinal && canWrite,
-      unfinalizeBtn: !!rolePerm.unfinalize && serverState.isFinal && canWrite,
-      checkoutBtn: !!rolePerm.checkout && !isCheckedOut && !serverState.isFinal,
-      checkinBtn: !!rolePerm.checkin && isOwner && !serverState.isFinal,
-      cancelBtn: !!rolePerm.checkin && isOwner && !serverState.isFinal,
-      saveProgressBtn: !!rolePerm.checkin && isOwner && !serverState.isFinal,
-      overrideBtn: !!rolePerm.override && isCheckedOut && !isOwner && !serverState.isFinal,
-      sendVendorBtn: !!rolePerm.sendVendor && !serverState.isFinal,
+      checkoutBtn: !!rolePerm.checkout && !isCheckedOut,
+      checkinBtn: !!rolePerm.checkin && isOwner,
+      cancelBtn: !!rolePerm.checkin && isOwner,
+      saveProgressBtn: !!rolePerm.checkin && isOwner,
+      overrideBtn: !!rolePerm.override && isCheckedOut && !isOwner,
+      sendVendorBtn: !!rolePerm.sendVendor,
       // Always show Back to OpenGov button (client-only UX)
       openGovBtn: true,
       primaryLayout: {
@@ -738,8 +719,7 @@ app.get('/api/v1/state-matrix', (req, res) => {
       }
     },
     finalize: {
-      isFinal: serverState.isFinal,
-      banner: serverState.isFinal
+      banner: null
         ? { title: 'Finalized', message: 'This document is finalized. Non-owners are read-only.' }
         : { title: 'Draft', message: 'This document is in draft.' }
     },
@@ -823,42 +803,6 @@ app.get('/api/v1/approvals/state', (req, res) => {
   res.json({ documentId: 'default', approvers: [] });
 });
 
-app.post('/api/v1/finalize', (req, res) => {
-  const userId = req.body?.userId || 'user1';
-  // Finalize allowed even if someone else has checkout? For safety, require not held by another user.
-  if (serverState.checkedOutBy && serverState.checkedOutBy !== userId) {
-    const by = resolveUserLabel(serverState.checkedOutBy);
-    return res.status(409).json({ error: `Checked out by ${by}` });
-  }
-  serverState.isFinal = true;
-  // Clear any existing checkout
-  serverState.checkedOutBy = null;
-  serverState.lastUpdated = new Date().toISOString();
-  persistState();
-
-  // Log activity
-  logActivity('document:finalize', userId, {});
-
-  broadcast({ type: 'finalize', value: true, userId });
-  res.json({ ok: true });
-});
-
-app.post('/api/v1/unfinalize', (req, res) => {
-  const userId = req.body?.userId || 'user1';
-  if (serverState.checkedOutBy && serverState.checkedOutBy !== userId) {
-    const by = resolveUserLabel(serverState.checkedOutBy);
-    return res.status(409).json({ error: `Checked out by ${by}` });
-  }
-  serverState.isFinal = false;
-  serverState.lastUpdated = new Date().toISOString();
-  persistState();
-
-  // Log activity
-  logActivity('document:unfinalize', userId, {});
-
-  broadcast({ type: 'finalize', value: false, userId });
-  res.json({ ok: true });
-});
 
 // Update document title
 app.post('/api/v1/title', (req, res) => {
@@ -938,7 +882,7 @@ app.post('/api/v1/save-progress', (req, res) => {
     if (!(bytes[0] === 0x50 && bytes[1] === 0x4b)) return res.status(400).json({ error: 'invalid_docx_magic' });
     if (bytes.length < 1024) return res.status(400).json({ error: 'invalid_docx_small', size: bytes.length });
     // Then enforce document state
-    if (serverState.isFinal) return res.status(409).json({ error: 'Finalized' });
+    // finalization removed
     if (!serverState.checkedOutBy) return res.status(409).json({ error: 'Not checked out' });
     if (serverState.checkedOutBy !== userId) {
       const by = resolveUserLabel(serverState.checkedOutBy);
@@ -1190,9 +1134,7 @@ app.post('/api/v1/factory-reset', (req, res) => {
 // Checkout/Checkin endpoints
 app.post('/api/v1/checkout', (req, res) => {
   const userId = req.body?.userId || 'user1';
-  if (serverState.isFinal) {
-    return res.status(409).json({ error: 'Finalized' });
-  }
+  // finalization removed
   if (serverState.checkedOutBy && serverState.checkedOutBy !== userId) {
     return res.status(409).json({ error: `Already checked out by ${serverState.checkedOutBy}` });
   }
@@ -1256,7 +1198,7 @@ app.post('/api/v1/checkout/override', (req, res) => {
   const derivedRole = getUserRole(userId);
   const roleMap = loadRoleMap();
   const canOverride = !!(roleMap[derivedRole] && roleMap[derivedRole].override);
-  if (serverState.isFinal) return res.status(409).json({ error: 'Finalized' });
+  // finalization removed
   if (!canOverride) return res.status(403).json({ error: 'Forbidden' });
   // Override: clear any existing checkout, reverting to Available to check out
   if (serverState.checkedOutBy) {
