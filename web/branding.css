@@ -20,7 +20,7 @@
   --brand-logo-height: 31px;
 
   /* Title */
-  --brand-title-font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --brand-title-font-family: Arial;
   --brand-title-font-weight: 700;
   --brand-title-font-size: 18px;
   --brand-title-line-height: 48px;
@@ -106,7 +106,7 @@
 
   /* Typography */
   --font-family-mono: 'Consolas, monospace';
-  --font-family-system: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-family-system: Arial;
   --font-size-xs: 9px;
   --font-size-sm: 11px;
   --font-size-base: 13px;
@@ -1063,6 +1063,22 @@ body .brand-header-bg .pulse-pill {
 /* Typography */
 .font-mono { font-family: var(--font-family-mono); }
 .font-system { font-family: var(--font-family-system); }
+.document-title { font-family: var(--font-family-system); }
+
+.document-title-textarea {
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  font-size: calc(var(--font-size-2xl) * 1.5);
+  line-height: 1.15;
+  height: calc((var(--font-size-2xl) * 1.5) * 1.2);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  resize: none;
+}
 
 .text-xs { font-size: var(--font-size-xs); }
 .text-sm { font-size: var(--font-size-sm); }

@@ -91,9 +91,7 @@
       const [approvalsRevision, setApprovalsRevision] = React.useState(0);
       const API_BASE = getApiBase();
 
-      React.useEffect(() => {
-        console.log('StateProvider config changed to:', config);
-      }, [config]);
+      // Removed excessive logging
 
       // Notification formatting system
       const NOTIFICATION_TYPES = {
@@ -226,15 +224,19 @@
           const r = await fetch(`${API_BASE}/api/v1/state-matrix?${qs}`);
             if (r.ok) {
               const j = await r.json();
-            console.log('Fetched config:', j.config);
-            try { console.log('Buttons:', j?.config?.buttons, 'Checkout:', j?.config?.checkoutStatus); } catch {}
-            console.log('Setting config to:', j.config);
               setConfig(j.config || null);
               if (typeof j.revision === 'number') setRevision(j.revision);
               try { const sum = j?.config?.approvals?.summary || null; setApprovalsSummary(sum); } catch {}
             }
         } catch {}
       }, [API_BASE, userId, loadedVersion]);
+
+      // Refresh state-matrix when revision changes to show banners for new versions
+      React.useEffect(() => {
+        if (revision > 0) { // Only refresh after initial load
+          refresh();
+        }
+      }, [revision]); // Remove refresh from deps to avoid loops
 
       React.useEffect(() => {
         // Load users for selector (role comes from users.json)
@@ -1749,23 +1751,9 @@
         value: title,
         onChange: (e) => setTitle(e.target.value),
         onBlur,
-        placeholder: 'Untitled Document',
-        className: 'font-semibold w-full',
-        rows: 1,
-        style: {
-          background: 'transparent',
-          border: 'none',
-          outline: 'none',
-          padding: '0',
-          margin: '0',
-          fontSize: 'calc(var(--font-size-2xl) * 1.5)',
-          lineHeight: '1.15',
-          height: 'calc((var(--font-size-2xl) * 1.5) * 1.2)',
-          whiteSpace: 'normal',
-          overflowWrap: 'anywhere',
-          overflow: 'hidden',
-          resize: 'none'
-        }
+        placeholder: 'Wut Contract?',
+        className: 'font-semibold w-full document-title document-title-textarea',
+        rows: 1
       });
     }
 
@@ -2530,10 +2518,8 @@
     }
 
     function App(props) {
-      console.log('App render');
       const [modal, setModal] = React.useState(null);
       const { config } = props;
-      console.log('App props, config:', config);
       const { documentSource, actions, approvalsSummary } = React.useContext(StateContext);
       React.useEffect(() => {
         function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); if (d && d.id === 'notifications') setModal({ id: 'notifications' }); if (d && d.id === 'request-review') setModal({ id: 'request-review' }); if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); } catch {} }

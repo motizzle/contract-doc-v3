@@ -564,14 +564,14 @@ app.get('/api/v1/state-matrix', (req, res) => {
         const lastByUserId = (() => {
           try { return String(serverState.updatedBy && (serverState.updatedBy.id || serverState.updatedBy.userId || serverState.updatedBy)); } catch { return ''; }
         })();
-        // Notify ONLY if: client has a known version (>0), server advanced, and it was saved by another user
+        // Notify if: client has a known version (>0), server advanced, and update was from different user or different platform
         // Treat only clientLoaded <= 0 as unknown/initial. Version 1 is a valid, loaded baseline.
         const clientKnown = Number.isFinite(clientLoaded) && clientLoaded > 0;
         const serverAdvanced = serverState.documentVersion > clientLoaded;
         const updatedByAnother = (!!lastByUserId && requestingUserId && (lastByUserId !== requestingUserId));
-        // Only show banner for different platform if it was also saved by a different user
-        const differentPlatformAndUser = !!serverState.updatedPlatform && serverState.updatedPlatform !== originPlatform && updatedByAnother;
-        const shouldNotify = clientKnown && serverAdvanced && (updatedByAnother || differentPlatformAndUser);
+        const differentPlatform = !!serverState.updatedPlatform && serverState.updatedPlatform !== originPlatform;
+        const shouldNotify = clientKnown && serverAdvanced && (updatedByAnother || differentPlatform);
+
         if (shouldNotify) {
           const by = serverState.updatedBy && (serverState.updatedBy.label || serverState.updatedBy.userId) || 'someone';
           list.unshift({ state: 'update_available', title: 'Update available', message: `${by} updated this document.` });
