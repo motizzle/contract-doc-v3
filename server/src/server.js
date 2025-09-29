@@ -293,7 +293,7 @@ for (const dir of [dataWorkingDir, workingDocumentsDir, workingExhibitsDir, comp
 // In-memory state (prototype)
 const DOCUMENT_ID = process.env.DOCUMENT_ID || 'default';
 const serverState = {
-  // isFinal removed
+  
   checkedOutBy: null,
   lastUpdated: new Date().toISOString(),
   revision: 1,
@@ -718,7 +718,7 @@ app.get('/api/v1/state-matrix', (req, res) => {
         mode: (!isCheckedOut ? 'not_checked_out' : (isOwner ? 'self' : 'other'))
       }
     },
-    // finalize section removed
+    
     banner,
     // Ordered banners for rendering in sequence on the client
     banners: (() => {
@@ -878,7 +878,6 @@ app.post('/api/v1/save-progress', (req, res) => {
     if (!(bytes[0] === 0x50 && bytes[1] === 0x4b)) return res.status(400).json({ error: 'invalid_docx_magic' });
     if (bytes.length < 1024) return res.status(400).json({ error: 'invalid_docx_small', size: bytes.length });
     // Then enforce document state
-    // finalization removed
     if (!serverState.checkedOutBy) return res.status(409).json({ error: 'Not checked out' });
     if (serverState.checkedOutBy !== userId) {
       const by = resolveUserLabel(serverState.checkedOutBy);
@@ -1130,7 +1129,7 @@ app.post('/api/v1/factory-reset', (req, res) => {
 // Checkout/Checkin endpoints
 app.post('/api/v1/checkout', (req, res) => {
   const userId = req.body?.userId || 'user1';
-  // finalization removed
+  
   if (serverState.checkedOutBy && serverState.checkedOutBy !== userId) {
     return res.status(409).json({ error: `Already checked out by ${serverState.checkedOutBy}` });
   }
@@ -1537,7 +1536,8 @@ function tryCreateHttpsServer() {
       return https.createServer(opts, app);
     }
   } catch { /* ignore */ }
-  if (String(process.env.ALLOW_HTTP || '').toLowerCase() === 'true') return null;
+  const allowHttp = String(process.env.ALLOW_HTTP || '').toLowerCase() === 'true' || String(process.env.NODE_ENV || '').toLowerCase() === 'test';
+  if (allowHttp) return null;
   throw new Error('No HTTPS certificate available. Install Office dev certs or provide server/config/dev-cert.pfx. Set ALLOW_HTTP=true to use HTTP for dev only.');
 }
 
