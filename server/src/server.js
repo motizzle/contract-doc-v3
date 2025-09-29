@@ -690,7 +690,7 @@ app.get('/api/v1/state-matrix', (req, res) => {
   const checkedOutLabel = resolveUserLabel(serverState.checkedOutBy);
   const canWrite = !isCheckedOut || isOwner;
   const rolePerm = roleMap[derivedRole] || defaultPerms;
-  const banner = buildBanner({ isFinal: serverState.isFinal, isCheckedOut, isOwner, checkedOutBy: checkedOutLabel });
+  const banner = buildBanner({ isCheckedOut, isOwner, checkedOutBy: checkedOutLabel });
   const approvals = loadApprovals();
   const approvalsSummary = computeApprovalsSummary(approvals.approvers);
   const config = {
@@ -718,11 +718,7 @@ app.get('/api/v1/state-matrix', (req, res) => {
         mode: (!isCheckedOut ? 'not_checked_out' : (isOwner ? 'self' : 'other'))
       }
     },
-    finalize: {
-      banner: null
-        ? { title: 'Finalized', message: 'This document is finalized. Non-owners are read-only.' }
-        : { title: 'Draft', message: 'This document is in draft.' }
-    },
+    // finalize section removed
     banner,
     // Ordered banners for rendering in sequence on the client
     banners: (() => {
@@ -1501,7 +1497,7 @@ app.get('/api/v1/events', (req, res) => {
       documentId: DOCUMENT_ID,
       revision: serverState.revision,
       type: 'hello',
-      state: { isFinal: serverState.isFinal, checkedOutBy: serverState.checkedOutBy },
+      state: { checkedOutBy: serverState.checkedOutBy },
       ts: Date.now(),
     };
     res.write(`data: ${JSON.stringify(initial)}\n\n`);
