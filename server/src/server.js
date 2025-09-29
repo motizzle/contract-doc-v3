@@ -127,6 +127,111 @@ function formatServerNotification(message, type = 'info') {
     style: notificationType
   };
 }
+
+function logActivity(type, userId, details = {}) {
+  try {
+    // Build the activity object
+    const activity = {
+      id: `act_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: Date.now(),
+      type,
+      user: {
+        id: userId,
+        label: resolveUserLabel(userId),
+        platform: 'web' // TODO: Pass platform from request context
+      },
+      ...buildActivityMessage(type, details)
+    };
+
+    // Load existing activities
+    let activities = [];
+    if (fs.existsSync(activityLogFilePath)) {
+      try {
+        activities = JSON.parse(fs.readFileSync(activityLogFilePath, 'utf8'));
+        if (!Array.isArray(activities)) activities = [];
+      } catch (e) {
+        console.error('Error reading activity log for append:', e);
+        activities = [];
+      }
+    }
+
+    // Add new activity and save
+    activities.push(activity);
+    fs.writeFileSync(activityLogFilePath, JSON.stringify(activities, null, 2));
+
+    // Broadcast to all connected clients
+    broadcast({ type: 'activity:new', activity });
+
+    return activity;
+  } catch (e) {
+    console.error('Error logging activity:', e);
+    return null;
+  }
+}
+
+function buildActivityMessage(type, details = {}) {
+  const userLabel = details.userLabel || 'Unknown User';
+
+  switch (type) {
+    case 'document:save':
+      return {
+        action: 'saved progress',
+        target: 'document',
+        details: { autoSave: details.autoSave || false },
+        message: `${userLabel} saved document progress`
+      };
+
+    case 'document:checkin':
+      return {
+        action: 'checked in',
+        target: 'document',
+        details: { version: details.version, size: details.size },
+        message: `${userLabel} checked in document${details.version ? ` (v${details.version})` : ''}`
+      };
+
+    case 'document:checkout':
+      return {
+        action: 'checked out',
+        target: 'document',
+        details: {},
+        message: `${userLabel} checked out document`
+      };
+
+    case 'document:checkout:cancel':
+      return {
+        action: 'cancelled checkout',
+        target: 'document',
+        details: {},
+        message: `${userLabel} cancelled document checkout`
+      };
+
+    case 'document:finalize':
+      return {
+        action: 'finalized',
+        target: 'document',
+        details: {},
+        message: `${userLabel} finalized document`
+      };
+
+    case 'document:unfinalize':
+      return {
+        action: 'unfinalized',
+        target: 'document',
+        details: {},
+        message: `${userLabel} unfinalized document`
+      };
+
+    // Add more activity types as needed
+    default:
+      return {
+        action: 'performed action',
+        target: 'document',
+        details,
+        message: `${userLabel} performed ${type.replace(':', ' ')}`
+      };
+  }
+}
+
 const dataWorkingDir = path.join(rootDir, 'data', 'working');
 const canonicalDocumentsDir = path.join(dataAppDir, 'documents');
 const canonicalExhibitsDir = path.join(dataAppDir, 'exhibits');
@@ -135,6 +240,7 @@ const workingExhibitsDir = path.join(dataWorkingDir, 'exhibits');
 const compiledDir = path.join(dataWorkingDir, 'compiled');
 const versionsDir = path.join(dataWorkingDir, 'versions');
 const approvalsFilePath = path.join(dataAppDir, 'approvals.json');
+const activityLogFilePath = path.join(dataAppDir, 'activity-log.json');
 
 // Ensure working directories exist
 for (const dir of [dataWorkingDir, workingDocumentsDir, workingExhibitsDir, compiledDir, versionsDir]) {
@@ -487,6 +593,21 @@ app.get('/api/v1/users', (req, res) => {
     return res.json({ items: norm, roles });
   } catch (e) {
     return res.json({ items: [ { id: 'user1', label: 'user1', role: 'editor' } ], roles: { editor: {} } });
+  }
+});
+
+app.get('/api/v1/activity', (req, res) => {
+  try {
+    if (!fs.existsSync(activityLogFilePath)) {
+      return res.json({ activities: [] });
+    }
+    const activities = JSON.parse(fs.readFileSync(activityLogFilePath, 'utf8'));
+    // Ensure we return an array, filter out any malformed entries
+    const validActivities = Array.isArray(activities) ? activities.filter(a => a && typeof a === 'object' && a.id) : [];
+    return res.json({ activities: validActivities });
+  } catch (e) {
+    console.error('Error reading activity log:', e);
+    return res.status(500).json({ error: 'Failed to read activity log' });
   }
 });
 
