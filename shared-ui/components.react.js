@@ -83,6 +83,7 @@
       const [userId, setUserId] = React.useState('user1');
       const [role, setRole] = React.useState('editor');
       const [users, setUsers] = React.useState([]);
+      const [logs, setLogs] = React.useState([]);
       const [activities, setActivities] = React.useState([]);
       const [lastSeenActivityId, setLastSeenActivityId] = React.useState(
         typeof localStorage !== 'undefined' ? localStorage.getItem('lastSeenActivityId') || null : null
