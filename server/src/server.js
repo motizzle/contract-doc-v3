@@ -102,31 +102,9 @@ const dataAppDir = path.join(rootDir, 'data', 'app');
 const dataUsersDir = path.join(dataAppDir, 'users');
 
 // Notification types for consistent formatting across clients
-const NOTIFICATION_TYPES = {
-  success: { icon: '✅', color: '#10b981', bgColor: '#d1fae5', borderColor: '#34d399' },
-  error: { icon: '❌', color: '#ef4444', bgColor: '#fee2e2', borderColor: '#f87171' },
-  warning: { icon: '⚠️', color: '#f59e0b', bgColor: '#fef3c7', borderColor: '#fbbf24' },
-  info: { icon: 'ℹ️', color: '#3b82f6', bgColor: '#dbeafe', borderColor: '#60a5fa' },
-  system: { icon: '🔧', color: '#6b7280', bgColor: '#f9fafb', borderColor: '#d1d5db' },
-  user: { icon: '👤', color: '#8b5cf6', bgColor: '#ede9fe', borderColor: '#a78bfa' },
-  document: { icon: '📄', color: '#059669', bgColor: '#d1fae5', borderColor: '#34d399' },
-  network: { icon: '🌐', color: '#0891b2', bgColor: '#cffafe', borderColor: '#06b6d4' }
-};
-
-// Server-side notification formatter
-function formatServerNotification(message, type = 'info') {
-  const ts = new Date().toLocaleTimeString();
-  const notificationType = NOTIFICATION_TYPES[type] || NOTIFICATION_TYPES.info;
-
-  return {
-    id: Date.now() + Math.random(),
-    timestamp: ts,
-    message: typeof message === 'string' ? message : String(message),
-    type: type,
-    formatted: true,
-    style: notificationType
-  };
-}
+// NOTE: Legacy notification system removed - replaced with activity system
+// const NOTIFICATION_TYPES = { ... };
+// function formatServerNotification(message, type = 'info') { ... };
 
 function logActivity(type, userId, details = {}) {
   try {
@@ -219,6 +197,14 @@ function buildActivityMessage(type, details = {}) {
         target: 'document',
         details: {},
         message: `${userLabel} unfinalized document`
+      };
+
+    case 'system:error':
+      return {
+        action: 'encountered error',
+        target: 'system',
+        details,
+        message: `System error: ${details.error || 'Unknown error'}`
       };
 
     // Add more activity types as needed
@@ -1235,11 +1221,11 @@ app.post('/api/v1/events/client', async (req, res) => {
           }
         } else {
           const msg = `LLM error: ${result && result.error ? result.error : 'Unknown error'}`;
-          try { broadcast({ type: 'notification', payload: formatServerNotification(msg, 'error') }); } catch {}
+          logActivity('system:error', 'system', { error: msg, source: 'llm' });
         }
       } catch (e) {
         const msg = `LLM error: ${e && e.message ? e.message : 'Unknown error'}`;
-        try { broadcast({ type: 'notification', payload: formatServerNotification(msg, 'error') }); } catch {}
+        logActivity('system:error', 'system', { error: msg, source: 'llm' });
       }
     } else if (type === 'chat:stop') {
       try { broadcast({ type: 'chat:reset', payload: { reason: 'user_stop', threadPlatform: originPlatform }, userId, role: 'assistant', platform: 'server' }); } catch {}
