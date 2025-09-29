@@ -421,6 +421,14 @@
               if (p && p.type === 'activity:new' && p.activity) {
                 setActivities(prev => [...prev, p.activity]);
               }
+              // Handle activity reset
+              if (p && p.type === 'activity:reset') {
+                setActivities([]);
+                setLastSeenActivityId(null);
+                if (typeof localStorage !== 'undefined') {
+                  localStorage.removeItem('lastSeenActivityId');
+                }
+              }
               // Do not auto-refresh document on save/revert; show banner via state-matrix
               refresh();
             } catch {}

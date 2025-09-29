@@ -1057,6 +1057,8 @@ app.post('/api/v1/factory-reset', (req, res) => {
     // Also clear approvals data
     try { if (fs.existsSync(approvalsFilePath)) fs.rmSync(approvalsFilePath); } catch {}
     bumpApprovalsRevision();
+    // Clear activity log
+    try { if (fs.existsSync(activityLogFilePath)) fs.rmSync(activityLogFilePath); } catch {}
     // Remove snapshots entirely
     const snapDir = path.join(dataWorkingDir, 'snapshots');
     if (fs.existsSync(snapDir)) {
@@ -1091,6 +1093,8 @@ app.post('/api/v1/factory-reset', (req, res) => {
     broadcast({ type: 'documentRevert' });
     // Notify clients to clear local messaging state
     broadcast({ type: 'messaging:reset' });
+    // Notify clients to clear activity state
+    broadcast({ type: 'activity:reset' });
     // Notify all clients to clear AI chat state
     broadcast({ type: 'chat:reset', payload: { all: true } });
     // Notify clients that versions list changed (emptied)
