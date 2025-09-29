@@ -164,11 +164,37 @@ function buildActivityMessage(type, details = {}) {
       return {
         action: 'approved',
         target: 'workflow',
-        details: { targetUserId: details.targetUserId, notes: details.notes },
+        details: { targetUserId: details.targetUserId, notes: details.notes, progress: details.progress },
         message: (function(){
           if (!details.targetUserId) return `${userLabel} approved`;
           const target = resolveUserLabel(details.targetUserId);
-          return `${userLabel} approved (${target})`;
+          const progress = details.progress ? ` (${details.progress.approved}/${details.progress.total})` : '';
+          
+          // Check if actor is approving on behalf of someone else
+          if (details.actorUserId && details.actorUserId !== details.targetUserId) {
+            return `${userLabel} approved on behalf of ${target}${progress}`;
+          }
+          
+          return `${userLabel} approved${progress}`;
+        })()
+      };
+
+    case 'workflow:remove-approval':
+      return {
+        action: 'removed approval',
+        target: 'workflow',
+        details: { targetUserId: details.targetUserId, notes: details.notes, progress: details.progress },
+        message: (function(){
+          if (!details.targetUserId) return `${userLabel} removed approval`;
+          const target = resolveUserLabel(details.targetUserId);
+          const progress = details.progress ? ` (${details.progress.approved}/${details.progress.total})` : '';
+          
+          // Check if actor is removing approval on behalf of someone else
+          if (details.actorUserId && details.actorUserId !== details.targetUserId) {
+            return `${userLabel} removed approval on behalf of ${target}${progress}`;
+          }
+          
+          return `${userLabel} removed approval${progress}`;
         })()
       };
 
@@ -254,7 +280,13 @@ function buildActivityMessage(type, details = {}) {
         message: `${userLabel} cancelled document checkout`
       };
 
-    // finalize/unfinalize removed
+    case 'document:status-change':
+      return {
+        action: 'changed status',
+        target: 'document',
+        details: { from: details.from, to: details.to },
+        message: `${userLabel} changed document status from ${details.from} to ${details.to}`
+      };
 
     case 'system:error':
       return {
@@ -311,7 +343,6 @@ const stateFilePath = path.join(dataAppDir, 'state.json');
 try {
   if (fs.existsSync(stateFilePath)) {
     const saved = JSON.parse(fs.readFileSync(stateFilePath, 'utf8'));
-    // isFinal removed
     if (saved.checkedOutBy === null || typeof saved.checkedOutBy === 'string') serverState.checkedOutBy = saved.checkedOutBy;
     if (typeof saved.lastUpdated === 'string') serverState.lastUpdated = saved.lastUpdated;
     if (typeof saved.revision === 'number') serverState.revision = saved.revision;
@@ -834,6 +865,11 @@ app.post('/api/v1/status/cycle', (req, res) => {
     serverState.lastUpdated = new Date().toISOString();
     persistState();
     broadcast({ type: 'status', status: next });
+    
+    // Log activity
+    const userId = req.body?.userId || 'user1';
+    logActivity('document:status-change', userId, { from: cur, to: next });
+    
     res.json({ ok: true, status: next });
   } catch (e) {
     res.status(500).json({ error: 'status_cycle_failed' });
@@ -996,8 +1032,14 @@ app.post('/api/v1/approvals/set', (req, res) => {
     saveApprovals(list);
     const summary = computeApprovalsSummary(list);
     broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary });
-    // Log workflow activity
-    logActivity('workflow:approve', actorUserId, { targetUserId, notes });
+    // Log workflow activity with progress and actor info
+    const activityType = approved ? 'workflow:approve' : 'workflow:remove-approval';
+    logActivity(activityType, actorUserId, { 
+      targetUserId, 
+      notes, 
+      progress: summary,
+      actorUserId: actorUserId
+    });
     
     // Check if all approvals are complete and trigger celebration
     if (summary.approved === summary.total && summary.total > 0) {
@@ -1100,7 +1142,6 @@ app.post('/api/v1/factory-reset', (req, res) => {
       if (!fs.existsSync(versionsDir)) fs.mkdirSync(versionsDir, { recursive: true });
     } catch {}
     // Reset state to baseline and bump revision so clients resync deterministically
-    serverState.isFinal = false;
     serverState.checkedOutBy = null;
     serverState.documentVersion = 1;
     serverState.updatedBy = null;

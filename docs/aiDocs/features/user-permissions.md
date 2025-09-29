@@ -28,8 +28,8 @@ Relevant server logic (excerpt):
 const rolePerm = roleMap[userRole] || {};
 const config = {
   buttons: {
-    finalizeBtn: !!rolePerm.finalize && !serverState.isFinal && canWrite,
-    unfinalizeBtn: !!rolePerm.unfinalize && serverState.isFinal && canWrite,
+    finalizeBtn: !!rolePerm.finalize && canWrite,
+    unfinalizeBtn: !!rolePerm.unfinalize && canWrite,
     checkoutBtn: !!rolePerm.checkout && !isCheckedOut,
     checkinBtn: !!rolePerm.checkin && isOwner,
   },

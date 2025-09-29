@@ -25,7 +25,6 @@ Exact permissions flow through the state matrix and can be tuned in `data/app/us
 ### State model
 - Tracked in memory with JSON persistence at `data/app/state.json`.
 - Key fields (illustrative):
-  - `isFinal: boolean`
   - `checkedOutBy: string | null` (userId)
   - `lastUpdated: number` (epoch ms)
 
