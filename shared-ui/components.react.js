@@ -83,7 +83,10 @@
       const [userId, setUserId] = React.useState('user1');
       const [role, setRole] = React.useState('editor');
       const [users, setUsers] = React.useState([]);
-      const [logs, setLogs] = React.useState([]);
+      const [activities, setActivities] = React.useState([]);
+      const [lastSeenActivityId, setLastSeenActivityId] = React.useState(
+        typeof localStorage !== 'undefined' ? localStorage.getItem('lastSeenActivityId') || null : null
+      );
       const [lastSeenLogCount, setLastSeenLogCount] = React.useState(0);
       const [documentSource, setDocumentSource] = React.useState(null);
       const [lastError, setLastError] = React.useState(null);
@@ -140,6 +143,32 @@
         try { setLastSeenLogCount((logs || []).length); } catch {}
       }, [logs]);
 
+      // Load activities from server
+      const loadActivities = React.useCallback(async () => {
+        try {
+          const response = await fetch(`${API_BASE}/api/v1/activity`);
+          if (response.ok) {
+            const data = await response.json();
+            setActivities(data.activities || []);
+          }
+        } catch (e) {
+          console.error('Failed to load activities:', e);
+        }
+      }, [API_BASE]);
+
+      // Mark activities as seen
+      const markActivitiesSeen = React.useCallback(() => {
+        try {
+          const latestId = activities.length > 0 ? activities[activities.length - 1]?.id : null;
+          setLastSeenActivityId(latestId);
+          if (typeof localStorage !== 'undefined' && latestId) {
+            localStorage.setItem('lastSeenActivityId', latestId);
+          }
+        } catch (e) {
+          console.error('Failed to mark activities seen:', e);
+        }
+      }, [activities]);
+
       // Render formatted notification
       const renderNotification = React.useCallback((log, index) => {
         // Standardized activity format: "<user> did <action> at <date/time> (vN)" plus context
@@ -188,6 +217,17 @@
               React.createElement('div', { key: 'message', className: 'notification-message' }, message),
               React.createElement('div', { key: 'timestamp', className: 'notification-timestamp' }, timestamp)
             ])
+          ]);
+        } else if (log && typeof log === 'object' && log.message && log.timestamp) {
+          // New activity format
+          const timestamp = new Date(log.timestamp).toLocaleString();
+          const userLabel = log.user?.label || 'Unknown User';
+          const action = log.action || 'performed action';
+          const message = log.message;
+
+          return React.createElement('div', { key: log.id || index, className: 'notification-item notification-activity' }, [
+            React.createElement('div', { key: 'message', className: 'notification-message' }, message),
+            React.createElement('div', { key: 'timestamp', className: 'notification-timestamp' }, timestamp)
           ]);
         } else if (log && typeof log === 'object' && (log.type || log.userId || log.ts)) {
           const std = toStd(log);
@@ -377,14 +417,22 @@
               if (p && p.type === 'messaging:reset') {
                 try { window.dispatchEvent(new CustomEvent('messaging:reset', { detail: p })); } catch {}
               }
+              // Handle activity updates
+              if (p && p.type === 'activity:new' && p.activity) {
+                setActivities(prev => [...prev, p.activity]);
+              }
               // Do not auto-refresh document on save/revert; show banner via state-matrix
               refresh();
             } catch {}
           };
           sse.onerror = () => { setIsConnected(false); addLog('Lost connection to server', 'error'); };
         } catch {}
+
+        // Load initial activities
+        loadActivities();
+
         return () => { try { sse && sse.close(); } catch {} };
-      }, [API_BASE, refresh, addLog]);
+      }, [API_BASE, refresh, addLog, loadActivities]);
 
       const addError = React.useCallback((err) => {
         try { setLastError(err || null); if (err && err.message) addLog(`Error: ${err.message}`, 'error'); } catch {}
@@ -634,7 +682,7 @@
         },
       }), [API_BASE, refresh, userId, addLog]);
 
-      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, renderNotification, formatNotification, viewingVersion, setViewingVersion } }, React.createElement(App, { config }));
+      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, activities, lastSeenActivityId, markActivitiesSeen, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, renderNotification, formatNotification, viewingVersion, setViewingVersion } }, React.createElement(App, { config }));
     }
 
     function BannerStack(props) {
@@ -1156,13 +1204,14 @@
     }
 
     function ActivityPanel() {
-      const { logs, renderNotification, markNotificationsSeen, lastSeenLogCount } = React.useContext(StateContext);
-      React.useEffect(() => { try { markNotificationsSeen?.(); } catch {} }, [markNotificationsSeen]);
+      const { activities, renderNotification, markActivitiesSeen } = React.useContext(StateContext);
+      React.useEffect(() => { try { markActivitiesSeen?.(); } catch {} }, [markActivitiesSeen]);
       const copy = async () => {
         try {
-          const text = (logs || []).slice().reverse().map(log => {
-            if (typeof log === 'string') return log;
-            return `[${log.timestamp}] ${log.message}`;
+          const text = (activities || []).slice().reverse().map(activity => {
+            if (typeof activity === 'string') return activity;
+            const timestamp = activity.timestamp ? new Date(activity.timestamp).toLocaleString() : 'Unknown';
+            return `[${timestamp}] ${activity.message || activity.action || 'Unknown activity'}`;
           }).join('\n');
           if (navigator?.clipboard?.writeText) await navigator.clipboard.writeText(text);
         } catch {}
@@ -1170,8 +1219,8 @@
       const footer = React.createElement('div', { className: 'd-flex items-center justify-end', style: { padding: '8px 0' } }, [
         React.createElement(UIButton, { key: 'copy', label: 'Copy', onClick: copy, variant: 'primary' })
       ]);
-      const list = (logs || []).length
-        ? React.createElement('div', { className: 'notifications-list' }, (logs || []).slice().reverse().map((log, index) => renderNotification(log, index)).filter(Boolean))
+      const list = (activities || []).length
+        ? React.createElement('div', { className: 'notifications-list' }, (activities || []).slice().reverse().map((activity, index) => renderNotification(activity, index)).filter(Boolean))
         : React.createElement('div', { className: 'text-gray-500', style: { padding: 8 } }, 'No activity yet.');
       return React.createElement('div', { className: 'd-flex flex-column gap-2' }, [list, footer]);
     }
@@ -2520,7 +2569,7 @@
     function App(props) {
       const [modal, setModal] = React.useState(null);
       const { config } = props;
-      const { documentSource, actions, approvalsSummary } = React.useContext(StateContext);
+      const { documentSource, actions, approvalsSummary, activities, lastSeenActivityId } = React.useContext(StateContext);
       React.useEffect(() => {
         function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); if (d && d.id === 'notifications') setModal({ id: 'notifications' }); if (d && d.id === 'request-review') setModal({ id: 'request-review' }); if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); } catch {} }
         window.addEventListener('react:open-modal', onOpen);
@@ -2653,8 +2702,30 @@
             key: 'tab-activity',
             className: activeTab === 'Activity' ? 'tab tab--active' : 'tab',
             onClick: () => setActiveTab('Activity'),
-            style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Activity' ? '#111827' : '#6B7280', fontWeight: 600 }
-          }, React.createElement('span', { ref: actLabelRef, style: { display: 'inline-block' } }, 'Activity')),
+            style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Activity' ? '#111827' : '#6B7280', fontWeight: 600, position: 'relative' }
+          }, [
+            React.createElement('span', { key: 'label', ref: actLabelRef, style: { display: 'inline-block' } }, 'Activity'),
+            activities && lastSeenActivityId ? (() => {
+              const unseenCount = activities.filter(a => !lastSeenActivityId || a.id > lastSeenActivityId).length;
+              return unseenCount > 0 ? React.createElement('span', {
+                key: 'badge',
+                className: 'ui-badge badge-activity',
+                style: {
+                  position: 'absolute',
+                  top: '-8px',
+                  right: '-8px',
+                  background: '#ef4444',
+                  color: 'white',
+                  borderRadius: '10px',
+                  padding: '2px 6px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  minWidth: '16px',
+                  textAlign: 'center'
+                }
+              }, String(unseenCount)) : null;
+            })() : null
+          ]),
           React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
         React.createElement('div', { key: 'tabbody', className: 'mt-3' }, [
