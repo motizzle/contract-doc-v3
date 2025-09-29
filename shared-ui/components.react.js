@@ -220,15 +220,32 @@
             ])
           ]);
         } else if (log && typeof log === 'object' && log.message && log.timestamp) {
-          // New activity format
+          // New activity format (card style)
           const timestamp = new Date(log.timestamp).toLocaleString();
           const userLabel = log.user?.label || 'Unknown User';
           const action = log.action || 'performed action';
+          const type = String(log.type || '').split(':')[0];
+          const icon = (function(){
+            switch (type) {
+              case 'document': return '📄';
+              case 'system': return '🔧';
+              case 'workflow': return '✅';
+              case 'version': return '🕘';
+              case 'status': return '🏷️';
+              default: return 'ℹ️';
+            }
+          })();
+
           const message = log.message;
 
-          return React.createElement('div', { key: log.id || index, className: 'notification-item notification-activity' }, [
-            React.createElement('div', { key: 'message', className: 'notification-message' }, message),
-            React.createElement('div', { key: 'timestamp', className: 'notification-timestamp' }, timestamp)
+          return React.createElement('div', { key: log.id || index, className: 'activity-card' }, [
+            React.createElement('div', { key: 'row', className: 'activity-card__row' }, [
+              React.createElement('span', { key: 'icon', className: 'activity-card__icon' }, icon),
+              React.createElement('div', { key: 'body', className: 'activity-card__body' }, [
+                React.createElement('div', { key: 'title', className: 'activity-card__title' }, message),
+                React.createElement('div', { key: 'meta', className: 'activity-card__meta' }, `${userLabel} • ${timestamp}`)
+              ])
+            ])
           ]);
         } else if (log && typeof log === 'object' && (log.type || log.userId || log.ts)) {
           const std = toStd(log);

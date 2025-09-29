@@ -108,6 +108,10 @@ const dataUsersDir = path.join(dataAppDir, 'users');
 
 function logActivity(type, userId, details = {}) {
   try {
+    const resolvedLabel = resolveUserLabel(userId);
+    const platform = 'web'; // TODO: thread through origin platform
+    // Enrich details with user context so message formatting has access
+    const detailsWithUser = { ...details, userId, user: { id: userId, label: resolvedLabel, platform } };
     // Build the activity object
     const activity = {
       id: `act_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -115,20 +119,25 @@ function logActivity(type, userId, details = {}) {
       type,
       user: {
         id: userId,
-        label: resolveUserLabel(userId),
-        platform: 'web' // TODO: Pass platform from request context
+        label: resolvedLabel,
+        platform
       },
-      ...buildActivityMessage(type, details)
+      ...buildActivityMessage(type, detailsWithUser)
     };
 
     // Load existing activities
     let activities = [];
     if (fs.existsSync(activityLogFilePath)) {
       try {
-        activities = JSON.parse(fs.readFileSync(activityLogFilePath, 'utf8'));
+        const content = fs.readFileSync(activityLogFilePath, 'utf8');
+        // Handle potential BOM
+        const cleanContent = content.replace(/^\uFEFF/, '');
+        activities = JSON.parse(cleanContent);
         if (!Array.isArray(activities)) activities = [];
       } catch (e) {
-        console.error('Error reading activity log for append:', e);
+        console.error('Error reading activity log for append, reinitializing:', e);
+        // Reinitialize corrupted file
+        fs.writeFileSync(activityLogFilePath, '[]', 'utf8');
         activities = [];
       }
     }
@@ -148,15 +157,15 @@ function logActivity(type, userId, details = {}) {
 }
 
 function buildActivityMessage(type, details = {}) {
-  const userLabel = details.userLabel || 'Unknown User';
+  const userLabel = details.userLabel || details.user?.label || details.userId || 'Unknown User';
 
   switch (type) {
     case 'document:save':
       return {
         action: 'saved progress',
         target: 'document',
-        details: { autoSave: details.autoSave || false },
-        message: `${userLabel} saved a new version of the document`
+        details: { autoSave: details.autoSave || false, version: details.version },
+        message: `${userLabel} saved a new version of the document${details.version ? ` (v${details.version})` : ''}`
       };
 
     case 'document:checkin':
@@ -585,9 +594,24 @@ app.get('/api/v1/users', (req, res) => {
 app.get('/api/v1/activity', (req, res) => {
   try {
     if (!fs.existsSync(activityLogFilePath)) {
+      // Initialize empty file if it doesn't exist
+      fs.writeFileSync(activityLogFilePath, '[]', 'utf8');
       return res.json({ activities: [] });
     }
-    const activities = JSON.parse(fs.readFileSync(activityLogFilePath, 'utf8'));
+
+    let activities = [];
+    try {
+      const content = fs.readFileSync(activityLogFilePath, 'utf8');
+      // Handle potential BOM
+      const cleanContent = content.replace(/^\uFEFF/, '');
+      activities = JSON.parse(cleanContent);
+    } catch (parseError) {
+      console.error('Error parsing activity log, reinitializing:', parseError);
+      // Reinitialize corrupted file
+      fs.writeFileSync(activityLogFilePath, '[]', 'utf8');
+      activities = [];
+    }
+
     // Ensure we return an array, filter out any malformed entries
     const validActivities = Array.isArray(activities) ? activities.filter(a => a && typeof a === 'object' && a.id) : [];
     return res.json({ activities: validActivities });

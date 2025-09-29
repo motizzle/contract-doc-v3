@@ -1081,6 +1081,21 @@ body .brand-header-bg .pulse-pill {
   resize: none;
 }
 
+/* Activity cards */
+.activity-card {
+  border: 1px solid #e5e7eb; /* gray-200 */
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.activity-card__row { display: flex; align-items: flex-start; gap: 10px; }
+.activity-card__icon { font-size: 18px; line-height: 1; margin-top: 2px; }
+.activity-card__body { flex: 1; min-width: 0; }
+.activity-card__title { font-weight: 600; color: #111827; /* gray-900 */ }
+.activity-card__meta { margin-top: 2px; font-size: 12px; color: #6b7280; /* gray-500 */ }
+
 .text-xs { font-size: var(--font-size-xs); }
 .text-sm { font-size: var(--font-size-sm); }
 .text-base { font-size: var(--font-size-base); }
