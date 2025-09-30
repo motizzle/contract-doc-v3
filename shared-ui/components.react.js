@@ -450,6 +450,12 @@
               }
               if (p && p.type === 'versions:update') { try { window.dispatchEvent(new CustomEvent('versions:update', { detail: p })); } catch {} }
               if (p && p.type === 'version:view') { try { window.dispatchEvent(new CustomEvent('version:view', { detail: p })); } catch {} }
+              if (p && p.type === 'document:navigate') {
+                try {
+                  console.log('[SSE] document:navigate ←', p && p.payload ? { textLen: String(p.payload.text||'').length, changeType: p.payload.changeType, hasCtx: !!(p.payload.contextBefore||p.payload.contextAfter) } : {});
+                  window.dispatchEvent(new CustomEvent('document:navigate', { detail: (p && p.payload) ? p.payload : {} }));
+                } catch {}
+              }
               // Fan out chat messages to ChatConsole
               if (p && p.type === 'chat') {
                 try { window.dispatchEvent(new CustomEvent('chat:message', { detail: p })); } catch {}
@@ -1611,11 +1617,44 @@
             const detail = event && event.detail ? event.detail : (event && event.payload ? event.payload : {});
             const text = String(detail && (detail.text || ''));
             const changeType = String(detail && (detail.changeType || 'change'));
+            const contextBefore = String(detail && (detail.contextBefore || ''));
+            const contextAfter = String(detail && (detail.contextAfter || ''));
+            console.log('[UI] document:navigate event', { textLen: text.length, changeType, hasCtx: !!(contextBefore || contextAfter) });
             if (!text || typeof Office === 'undefined' || typeof Word === 'undefined') return;
             await Word.run(async (context) => {
-              const searchResults = context.document.body.search(text, { matchCase: false, matchWholeWord: false });
+              const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+              const searchText = norm(text);
+              const beforeNorm = norm(contextBefore);
+              const afterNorm = norm(contextAfter);
+              const opts = { matchCase: false, matchWholeWord: false, ignorePunct: true, ignoreSpace: true };
+
+              let searchResults = context.document.body.search(searchText, opts);
               searchResults.load('items');
               await context.sync();
+              if (!(searchResults.items && searchResults.items.length > 0) && (beforeNorm || afterNorm)) {
+                const contextWindow = `${beforeNorm} ${searchText} ${afterNorm}`.slice(0, 500);
+                searchResults = context.document.body.search(contextWindow, opts);
+                searchResults.load('items');
+                await context.sync();
+              }
+              if (!(searchResults.items && searchResults.items.length > 0) && beforeNorm) {
+                const beforeOnly = String(beforeNorm).slice(-200);
+                searchResults = context.document.body.search(beforeOnly, opts);
+                searchResults.load('items');
+                await context.sync();
+              }
+              if (!(searchResults.items && searchResults.items.length > 0) && afterNorm) {
+                const afterOnly = String(afterNorm).slice(0, 200);
+                searchResults = context.document.body.search(afterOnly, opts);
+                searchResults.load('items');
+                await context.sync();
+              }
+              if (!(searchResults.items && searchResults.items.length > 0)) {
+                const token = (searchText.split(/\s+/).find(t => t && t.length >= 4)) || searchText;
+                searchResults = context.document.body.search(token, opts);
+                searchResults.load('items');
+                await context.sync();
+              }
               if (searchResults.items && searchResults.items.length > 0) {
                 const range = searchResults.items[0];
                 range.select();
@@ -1664,8 +1703,19 @@
 
       const jump = async (diff) => {
         try {
-          await fetch(`${API_BASE}/api/v1/document/navigate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: String(diff.text || ''), changeType: (diff.type === 1 ? 'addition' : (diff.type === -1 ? 'deletion' : 'change')) }) });
-        } catch {}
+          const body = {
+            text: String(diff.text || ''),
+            changeType: (diff.type === 1 ? 'addition' : (diff.type === -1 ? 'deletion' : 'change')),
+            position: (typeof diff.position === 'number' ? diff.position : undefined),
+            contextBefore: String(diff.contextBefore || ''),
+            contextAfter: String(diff.contextAfter || ''),
+            targetVersion: (typeof diff.targetVersion === 'number' ? diff.targetVersion : undefined)
+          };
+          console.log('[UI] jump →', body);
+          const r = await fetch(`${API_BASE}/api/v1/document/navigate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          const ok = r && r.ok; let j = null; try { j = await r.json(); } catch {}
+          console.log('[UI] jump ←', { ok, response: j });
+        } catch (e) { console.error('[UI] jump error:', e); }
       };
 
       const picker = (label, val, setVal) => React.createElement('div', { className: 'd-flex items-center gap-6' }, [

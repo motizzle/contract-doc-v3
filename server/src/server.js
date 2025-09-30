@@ -1358,19 +1358,47 @@ app.post('/api/v1/versions/compare', async (req, res) => {
     // Build concise difference entries
     const differences = [];
     let id = 1;
+    let aIndex = 0; // cursor in A
+    let bIndex = 0; // cursor in B
+    const STR_A = String(textA || '');
+    const STR_B = String(textB || '');
+    const CONTEXT = 80;
+    const AVG_CHARS_PER_PAGE = Number(process.env.DIFF_AVG_CHARS_PER_PAGE || 2500);
     for (const [op, chunk] of diffs) {
-      if (op === 0) continue; // skip equal
+      const piece = String(chunk || '');
+      const pieceLen = piece.length;
+      if (op === 0) {
+        aIndex += pieceLen;
+        bIndex += pieceLen;
+        continue;
+      }
       const type = op; // -1 deletion, 1 insertion
-      const snippet = String(chunk || '').replace(/\s+/g, ' ').slice(0, 300);
-      if (!snippet) continue;
-      differences.push({
-        id: id++,
-        type,
-        text: snippet,
-        pageNumber: 1,
-        summary: (type === 1 ? 'Added' : 'Removed') + ' text'
-      });
-      if (differences.length >= 50) break; // cap to avoid overwhelming UI
+      const isInsert = (type === 1);
+      const isDelete = (type === -1);
+      const baseIndex = isInsert ? bIndex : aIndex;
+      const baseStr = isInsert ? STR_B : STR_A;
+      const contextBefore = baseStr.slice(Math.max(0, baseIndex - CONTEXT), baseIndex);
+      const contextAfter = baseStr.slice(baseIndex + pieceLen, baseIndex + pieceLen + CONTEXT);
+      const snippet = piece.replace(/\s+/g, ' ').slice(0, 300);
+      if (snippet) {
+        differences.push({
+          id: id++,
+          type,
+          text: snippet,
+          pageNumber: (AVG_CHARS_PER_PAGE > 0 ? (Math.floor(baseIndex / AVG_CHARS_PER_PAGE) + 1) : 1),
+          summary: (type === 1 ? 'Added' : 'Removed') + ' text',
+          position: baseIndex,
+          targetVersion: (type === 1 ? Number(versionB) : Number(versionA)),
+          contextBefore,
+          contextAfter
+        });
+        if (differences.length >= 50) break;
+      }
+      if (isInsert) {
+        bIndex += pieceLen;
+      } else if (isDelete) {
+        aIndex += pieceLen;
+      }
     }
 
     const debug = {
@@ -1392,6 +1420,29 @@ app.post('/api/v1/versions/compare', async (req, res) => {
   } catch (e) {
     try { console.error('[versions/compare] failed:', e && e.message ? e.message : e); } catch {}
     return res.status(500).json({ error: 'compare_failed' });
+  }
+});
+
+// Document navigation request → broadcast SSE for clients (Word add-in will handle)
+app.post('/api/v1/document/navigate', async (req, res) => {
+  try {
+    const { text, changeType, position, contextBefore, contextAfter, targetVersion } = req.body || {};
+    const cleanText = String(text || '').replace(/<[^>]*>/g, '').slice(0, 500);
+    const payload = {
+      text: cleanText,
+      changeType: (changeType === 'addition' || changeType === 'deletion' || changeType === 'change') ? changeType : 'change',
+      position: Number.isFinite(Number(position)) ? Number(position) : undefined,
+      contextBefore: String(contextBefore || ''),
+      contextAfter: String(contextAfter || ''),
+      targetVersion: Number.isFinite(Number(targetVersion)) ? Number(targetVersion) : undefined,
+      platform: 'word'
+    };
+    try { console.log('[document:navigate] broadcast', { len: cleanText.length, changeType, position, hasCtx: !!(payload.contextBefore || payload.contextAfter) }); } catch {}
+    broadcast({ type: 'document:navigate', payload });
+    return res.json({ ok: true });
+  } catch (e) {
+    try { console.error('document:navigate failed:', e && e.message ? e.message : e); } catch {}
+    return res.status(500).json({ ok: false, error: 'navigate_failed' });
   }
 });
 
