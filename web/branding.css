@@ -498,7 +498,8 @@ body .brand-header-bg .pulse-pill {
   flex-direction: column !important;
   padding: 0 !important;
   align-items: stretch !important;
-  background: rgba(255, 0, 0, 0.1) !important; /* Debug: light red background */
+  overflow: hidden !important; /* Prevent content from growing beyond viewport */
+  box-sizing: border-box !important;
 }
 
 .chat-container {
