@@ -1977,7 +1977,7 @@
         try { const el = listRef.current; if (el) el.scrollTop = el.scrollHeight; } catch {}
       }, []);
       React.useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
-      const box = React.createElement('div', { style: { width: '100%' } }, messages.map((m, i) => {
+      const box = React.createElement('div', { style: { } }, messages.map((m, i) => {
         const who = (typeof m === 'string' && /^\[/.test(m)) ? (m.match(/^\[([^\]]+)\]/)?.[1] || '') : '';
         const isMine = who && who === displayNameOf(currentUser);
         const ts = new Date().toLocaleTimeString();
@@ -2052,9 +2052,9 @@
         ]),
         React.createElement('div', { className: 'd-flex gap-8' }, [resetBtn, refreshBtn])
       ]);
-      const wrap = React.createElement('div', { className: 'd-flex flex-column', style: { width: '100%', height: '100%', minHeight: 0 } }, [
-        React.createElement('div', { ref: listRef, style: { flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' } }, [box]),
-        footerBar
+      const wrap = React.createElement('div', { style: { width: '100%', height: '100%', minHeight: 0, position: 'relative' } }, [
+        React.createElement('div', { ref: listRef, style: { height: '100%', paddingBottom: '140px', overflowY: 'auto', overflowX: 'hidden' } }, [box]),
+        React.createElement('div', { style: { position: 'absolute', bottom: 0, left: 0, right: 0 } }, [footerBar])
       ]);
       return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', height: '100%' } }, [wrap]);
     }
