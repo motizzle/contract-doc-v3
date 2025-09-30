@@ -491,6 +491,13 @@ body .brand-header-bg .pulse-pill {
 }
 
 /* Chat container styling */
+/* Fix Office add-in layout conflicts */
+.ms-welcome main.ms-welcome__main {
+  align-items: stretch !important;  /* Override center alignment */
+  padding: 0 !important;           /* Remove padding */
+  flex: 1 !important;              /* Keep flex behavior */
+}
+
 .chat-container {
   /* Flexible height for flexbox layout */
   height: auto;
