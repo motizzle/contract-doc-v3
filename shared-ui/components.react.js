@@ -1596,6 +1596,36 @@
       return (view === 'list') ? listView : (view === 'new' ? newChatView : threadView);
     }
 
+    // Word add-in: listen for navigation events and jump to text
+    try {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener && window.removeEventListener('document:navigate', window.__ogDocNavigateHandler || (()=>{}));
+        const handler = async (event) => {
+          try {
+            const detail = event && event.detail ? event.detail : (event && event.payload ? event.payload : {});
+            const text = String(detail && (detail.text || ''));
+            const changeType = String(detail && (detail.changeType || 'change'));
+            if (!text || typeof Office === 'undefined' || typeof Word === 'undefined') return;
+            await Word.run(async (context) => {
+              const searchResults = context.document.body.search(text, { matchCase: false, matchWholeWord: false });
+              searchResults.load('items');
+              await context.sync();
+              if (searchResults.items && searchResults.items.length > 0) {
+                const range = searchResults.items[0];
+                range.select();
+                range.scrollIntoView();
+                if (changeType === 'addition') range.font.highlightColor = 'lightGreen';
+                else if (changeType === 'deletion') range.font.highlightColor = 'lightPink';
+                else range.font.highlightColor = 'yellow';
+              }
+            });
+          } catch {}
+        };
+        window.__ogDocNavigateHandler = handler;
+        window.addEventListener('document:navigate', handler);
+      }
+    } catch {}
+
     // Comparison Tab
     function ComparisonTab() {
       const API_BASE = getApiBase();
