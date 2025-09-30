@@ -2052,9 +2052,9 @@
         ]),
         React.createElement('div', { className: 'd-flex gap-8' }, [resetBtn, refreshBtn])
       ]);
-      const wrap = React.createElement('div', { style: { width: '100%', height: '100%', minHeight: 0, position: 'relative' } }, [
-        React.createElement('div', { ref: listRef, style: { height: '100%', paddingBottom: '120px', overflowY: 'auto', overflowX: 'hidden' } }, [box]),
-        React.createElement('div', { style: { position: 'absolute', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid #e5e7eb' } }, [footerBar])
+      const wrap = React.createElement('div', { style: { width: '100%', height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' } }, [
+        React.createElement('div', { ref: listRef, style: { flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' } }, [box]),
+        React.createElement('div', { style: { flexShrink: 0, background: '#fff', borderTop: '1px solid #e5e7eb' } }, [footerBar])
       ]);
       return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', height: '100%' } }, [wrap]);
     }
