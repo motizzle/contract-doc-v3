@@ -896,7 +896,11 @@ app.post('/api/v1/document/revert', (req, res) => {
   const working = path.join(workingDocumentsDir, 'default.docx');
   if (fs.existsSync(working)) fs.rmSync(working);
   bumpRevision();
-  bumpDocumentVersion(req.body?.userId || 'system', req.query?.platform || req.body?.platform || null);
+  const actorUserId = req.body?.userId || 'system';
+  const platform = req.query?.platform || req.body?.platform || null;
+  bumpDocumentVersion(actorUserId, platform);
+  // Log activity: document reverted to prior version (new version created)
+  try { logActivity('version:restore', actorUserId, { platform }); } catch {}
   broadcast({ type: 'documentRevert' });
   res.json({ ok: true });
 });
@@ -996,6 +1000,9 @@ app.post('/api/v1/versions/view', (req, res) => {
     const n = Number(req.body?.version);
     if (!Number.isFinite(n) || n < 1) return res.status(400).json({ error: 'invalid_version' });
     const originPlatform = String(req.body?.platform || req.query?.platform || 'web');
+    const actorUserId = req.body?.userId || 'user1';
+    // Log activity: user viewed a specific version
+    try { logActivity('version:view', actorUserId, { version: n, platform: originPlatform }); } catch {}
     broadcast({ type: 'version:view', version: n, payload: { version: n, threadPlatform: originPlatform } });
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'version_view_failed' }); }
