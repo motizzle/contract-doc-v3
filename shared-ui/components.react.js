@@ -1331,13 +1331,19 @@
           if (navigator?.clipboard?.writeText) await navigator.clipboard.writeText(text);
         } catch {}
       };
-      const footer = React.createElement('div', { className: 'd-flex items-center justify-end', style: { padding: '8px 0' } }, [
-        React.createElement(UIButton, { key: 'copy', label: 'Copy', onClick: copy, variant: 'primary' })
-      ]);
       const list = (activities || []).length
         ? React.createElement('div', { className: 'notifications-list', style: { maxHeight: 'none', overflow: 'visible' } }, (activities || []).slice().reverse().map((activity, index) => renderNotification(activity, index)).filter(Boolean))
         : React.createElement('div', { className: 'text-gray-500', style: { padding: 8 } }, 'No activity yet.');
-      return React.createElement('div', { className: 'd-flex flex-column gap-2' }, [list, footer]);
+      // Layout: column fills available height; only the list area scrolls
+      const containerStyle = { display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 };
+      const listWrapStyle = { flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 0 8px 0' };
+      const footer = React.createElement('div', { className: 'd-flex items-center justify-end', style: { padding: '10px 8px', background: '#fff', borderTop: '1px solid #e5e7eb' } }, [
+        React.createElement(UIButton, { key: 'copy', label: 'Copy', onClick: copy, variant: 'primary' })
+      ]);
+      return React.createElement('div', { style: containerStyle }, [
+        React.createElement('div', { key: 'list-wrap', style: listWrapStyle }, list),
+        footer
+      ]);
     }
 
     function MessagingPanel() {
@@ -1634,15 +1640,25 @@
       const [list, setList] = React.useState([]);
       const [busy, setBusy] = React.useState(false);
       const [error, setError] = React.useState('');
+      const [hasCompared, setHasCompared] = React.useState(false);
 
       const compare = async () => {
         setBusy(true); setError('');
         try {
-          const r = await fetch(`${API_BASE}/api/v1/versions/compare`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ versionA: Number(versionA), versionB: Number(versionB) }) });
+          console.log('[UI] compare →', { versionA: Number(versionA), versionB: Number(versionB) });
+          const r = await fetch(`${API_BASE}/api/v1/versions/compare?debug=true`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ versionA: Number(versionA), versionB: Number(versionB) }) });
           if (!r.ok) throw new Error('compare');
           const j = await r.json();
-          setList(Array.isArray(j.differences) ? j.differences.filter(Boolean) : []);
-        } catch { setError('Comparison failed'); }
+          const diffs = Array.isArray(j.differences) ? j.differences.filter(Boolean) : [];
+          if (j && j.debug) console.log('[UI] compare debug ←', j.debug);
+          console.log('[UI] compare ←', { count: diffs.length, sample: diffs.slice(0, 3) });
+          setList(diffs);
+          try {
+            const msg = (j && j.message) ? String(j.message) : '';
+            if (msg) console.log('[UI] compare info:', msg);
+          } catch {}
+          setHasCompared(true);
+        } catch (e) { console.error('[UI] compare error:', e); setError('Comparison failed'); }
         finally { setBusy(false); }
       };
 
@@ -1673,10 +1689,16 @@
         React.createElement('div', { key: 'f', className: 'd-flex justify-end', style: { marginTop: 8 } }, React.createElement(UIButton, { label: 'Jump to location', onClick: () => jump(d), variant: 'secondary' }))
       ]));
 
+      const identicalBanner = (hasCompared && (!list || list.length === 0))
+        ? React.createElement('div', { className: 'bg-gray-50 text-gray-700 p-2 border border-gray-200 rounded' }, 'These versions are identical')
+        : null;
+      const hasItems = Array.isArray(list) && list.length > 0;
+
       return React.createElement('div', { className: 'd-flex flex-column gap-12' }, [
         header,
         (error ? React.createElement('div', { className: 'bg-error-50 text-error-700 p-2 border border-error-200 rounded' }, error) : null),
-        React.createElement('div', { className: 'd-flex flex-column gap-8' }, items)
+        identicalBanner,
+        (hasItems ? React.createElement('div', { className: 'd-flex flex-column gap-8' }, items) : null)
       ]);
     }
 
@@ -2118,13 +2140,13 @@
         ]);
       };
       const list = (items || []).map(card);
-      const scrollBox = list.length
-         ? React.createElement('div', { key: 'cards-wrap', style: { padding: 0 } },
-            React.createElement('div', { className: 'd-flex flex-column gap-8' }, list)
-          )
-        : React.createElement('div', { key: 'empty', className: 'text-gray-500', style: { padding: 8 } }, 'No versions yet.');
-      return React.createElement('div', { className: 'd-flex flex-column gap-8' }, [
-        scrollBox,
+      const inner = list.length
+        ? React.createElement('div', { className: 'd-flex flex-column gap-8' }, list)
+        : React.createElement('div', { className: 'text-gray-500', style: { padding: 8 } }, 'No versions yet.');
+      // Ensure enough bottom padding so the last card isn't hidden beneath the container edge
+      const containerStyle = { paddingBottom: 16 };
+      return React.createElement('div', { className: 'd-flex flex-column gap-8', style: containerStyle }, [
+        inner,
         (confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null)
       ]);
     }
@@ -2992,7 +3014,7 @@
         return () => window.removeEventListener('resize', onResize);
       }, [recalcUnderline]);
 
-      const Tabs = React.createElement('div', { className: 'mt-3 pt-2' }, [
+      const Tabs = React.createElement('div', { className: 'mt-3 pt-2', style: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } }, [
         React.createElement('div', { key: 'tabbar', ref: tabbarRef, className: 'd-flex items-center gap-16 border-b border-gray-200', style: { position: 'relative', padding: '0 8px' } }, [
           React.createElement('button', {
             key: 'tab-ai',
@@ -3058,9 +3080,9 @@
             onClick: () => setActiveTab('Comparison'),
             style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Comparison' ? '#111827' : '#6B7280', fontWeight: 600 }
           }, 'Comparison'),
-          React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
+        React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
-        React.createElement('div', { key: 'tabbody', className: 'mt-3', style: (typeof Office === 'undefined') ? { maxHeight: 'calc(100vh - 200px)', overflowY: 'auto', overscrollBehavior: 'contain' } : undefined }, [
+        React.createElement('div', { key: 'tabbody', className: 'mt-3', style: { flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', padding: '0 8px 112px 8px' } }, [
           React.createElement('div', { key: 'wrap-ai', style: { display: (activeTab === 'AI' ? 'block' : 'none') } }, React.createElement(ChatConsole, { key: 'chat' })),
           React.createElement('div', { key: 'wrap-workflow', style: { display: (activeTab === 'Workflow' ? 'block' : 'none') } }, React.createElement(WorkflowApprovalsPanel, { key: 'workflow' })),
           React.createElement('div', { key: 'wrap-messaging', style: { display: (activeTab === 'Messaging' ? 'block' : 'none') } }, React.createElement(MessagingPanel, { key: 'messaging' })),
@@ -3070,15 +3092,16 @@
         ])
       ]);
 
-      // On web, confine scroll to the sidebar to avoid scrolling the document
-      // Single sidebar scrollbar on web: apply to tab body, not header container
-      const assistantPanel = React.createElement('div', { className: 'panel panel--assistant', style: (typeof Office === 'undefined') ? { overflow: 'hidden', maxHeight: '100vh' } : undefined }, [
+      // Confine scroll to the sidebar body; header and underline remain fixed
+      const assistantPanel = React.createElement('div', { className: 'panel panel--assistant', style: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } }, [
         Tabs,
         renderModal(),
         (confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: onConfirmClose }) : null)
       ]);
 
-      return React.createElement(ThemeProvider, null, React.createElement(React.Fragment, null, [topPanel, assistantPanel, React.createElement(ApprovalCelebration, { key: 'celebration' })]));
+      const container = React.createElement('div', { style: { display: 'flex', flexDirection: 'column', height: ((typeof Office === 'undefined') ? '100vh' : '100%'), minHeight: 0 } }, [topPanel, assistantPanel]);
+
+      return React.createElement(ThemeProvider, null, React.createElement(React.Fragment, null, [container, React.createElement(ApprovalCelebration, { key: 'celebration' })]));
     }
 
     const root = ReactDOM.createRoot(rootEl);

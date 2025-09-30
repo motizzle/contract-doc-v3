@@ -1315,7 +1315,7 @@ app.post('/api/v1/refresh-document', (req, res) => {
   }
 });
 
-// Version comparison (simple stub diff) - Word-first
+// Version comparison (Phase 0: plain text diff) - Word-first
 app.post('/api/v1/versions/compare', async (req, res) => {
   try {
     const versionA = Number(req.body?.versionA);
@@ -1323,29 +1323,74 @@ app.post('/api/v1/versions/compare', async (req, res) => {
     if (!Number.isFinite(versionA) || !Number.isFinite(versionB)) {
       return res.status(400).json({ error: 'invalid_versions' });
     }
-    // Load text for the two versions (fallback to empty if missing)
-    function readVersionText(v) {
-      try {
-        const p = (v === 1)
-          ? path.join(canonicalDocumentsDir, 'default.docx')
-          : path.join(versionsDir, `v${v}.docx`);
-        if (!fs.existsSync(p)) return '';
-        // Placeholder: real implementation should extract text from docx
-        // For now, return filename as stand-in so UI can render
-        return `DOCX(v${v})`;
-      } catch { return ''; }
-    }
-    const textA = readVersionText(versionA);
-    const textB = readVersionText(versionB);
 
-    // Naive diff: if different, return two entries (added/removed)
-    const differences = [];
-    if (textA !== textB) {
-      differences.push({ id: 1, type: -1, text: textA, pageNumber: 1, summary: `Removed content from v${versionA}` });
-      differences.push({ id: 2, type: 1, text: textB, pageNumber: 1, summary: `Added content from v${versionB}` });
+    const DiffMatchPatch = require('diff-match-patch');
+    const mammoth = require('mammoth');
+
+    async function getDocxPath(v) {
+      const p = (v === 1)
+        ? path.join(canonicalDocumentsDir, 'default.docx')
+        : path.join(versionsDir, `v${v}.docx`);
+      return p;
     }
-    return res.json({ versionA, versionB, differences });
+
+    async function extractPlainText(filePath) {
+      try {
+        if (!filePath || !fs.existsSync(filePath)) return '';
+        const result = await mammoth.extractRawText({ path: filePath });
+        return String(result && result.value ? result.value : '').trim();
+      } catch {
+        return '';
+      }
+    }
+
+    const pathA = await getDocxPath(versionA);
+    const pathB = await getDocxPath(versionB);
+    const [textA, textB] = await Promise.all([
+      extractPlainText(pathA),
+      extractPlainText(pathB)
+    ]);
+
+    const dmp = new DiffMatchPatch();
+    const diffs = dmp.diff_main(String(textA || ''), String(textB || ''));
+    try { dmp.diff_cleanupSemantic(diffs); } catch {}
+
+    // Build concise difference entries
+    const differences = [];
+    let id = 1;
+    for (const [op, chunk] of diffs) {
+      if (op === 0) continue; // skip equal
+      const type = op; // -1 deletion, 1 insertion
+      const snippet = String(chunk || '').replace(/\s+/g, ' ').slice(0, 300);
+      if (!snippet) continue;
+      differences.push({
+        id: id++,
+        type,
+        text: snippet,
+        pageNumber: 1,
+        summary: (type === 1 ? 'Added' : 'Removed') + ' text'
+      });
+      if (differences.length >= 50) break; // cap to avoid overwhelming UI
+    }
+
+    const debug = {
+      pathA,
+      pathB,
+      existsA: !!(pathA && fs.existsSync(pathA)),
+      existsB: !!(pathB && fs.existsSync(pathB)),
+      lengthA: (textA || '').length,
+      lengthB: (textB || '').length,
+      diffs: differences.length
+    };
+    try {
+      console.log('[versions/compare] A vs B:', versionA, versionB, '| paths:', pathA, pathB, '| diffs:', differences.length, '| lenA:', debug.lengthA, '| lenB:', debug.lengthB);
+    } catch {}
+    const includeDebug = String(req.query?.debug || req.body?.debug || '').toLowerCase() === 'true';
+    const base = { versionA, versionB, differences };
+    if (!differences.length) base.message = 'These versions are identical';
+    return res.json(includeDebug ? Object.assign({}, base, { debug }) : base);
   } catch (e) {
+    try { console.error('[versions/compare] failed:', e && e.message ? e.message : e); } catch {}
     return res.status(500).json({ error: 'compare_failed' });
   }
 });
