@@ -3033,6 +3033,7 @@
       const msgLabelRef = React.useRef(null);
       const verLabelRef = React.useRef(null);
       const actLabelRef = React.useRef(null);
+      const cmpLabelRef = React.useRef(null);
 
       const recalcUnderline = React.useCallback(() => {
         try {
@@ -3043,7 +3044,11 @@
               ? wfLabelRef.current
               : (activeTab === 'Messaging'
                 ? msgLabelRef.current
-                : (activeTab === 'Versions' ? verLabelRef.current : actLabelRef.current))));
+                : (activeTab === 'Versions'
+                  ? verLabelRef.current
+                  : (activeTab === 'Activity'
+                    ? actLabelRef.current
+                    : cmpLabelRef.current)))));
           if (!bar || !labelEl) return;
           const barRect = bar.getBoundingClientRect();
           const labRect = labelEl.getBoundingClientRect();
@@ -3127,7 +3132,7 @@
             className: activeTab === 'Comparison' ? 'tab tab--active' : 'tab',
             onClick: () => setActiveTab('Comparison'),
             style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Comparison' ? '#111827' : '#6B7280', fontWeight: 600 }
-          }, 'Comparison'),
+          }, React.createElement('span', { ref: cmpLabelRef, style: { display: 'inline-block' } }, 'Comparison')),
         React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
         React.createElement('div', { key: 'tabbody', className: 'mt-3', style: { flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', padding: '0 8px 112px 8px' } }, [
