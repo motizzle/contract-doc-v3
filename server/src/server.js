@@ -288,6 +288,22 @@ function buildActivityMessage(type, details = {}) {
         message: `${userLabel} changed document status from ${details.from} to ${details.to}`
       };
 
+    case 'version:view':
+      return {
+        action: 'viewed version',
+        target: 'version',
+        details: { version: details.version, platform: details.platform },
+        message: `${userLabel} viewed version v${details.version}`
+      };
+
+    case 'version:restore':
+      return {
+        action: 'restored version',
+        target: 'version',
+        details: { version: details.version, platform: details.platform },
+        message: `${userLabel} restored document (v${details.version || '—'})`
+      };
+
     case 'system:error':
       return {
         action: 'encountered error',
@@ -899,8 +915,9 @@ app.post('/api/v1/document/revert', (req, res) => {
   const actorUserId = req.body?.userId || 'system';
   const platform = req.query?.platform || req.body?.platform || null;
   bumpDocumentVersion(actorUserId, platform);
+  const versionNow = serverState.documentVersion;
   // Log activity: document reverted to prior version (new version created)
-  try { logActivity('version:restore', actorUserId, { platform }); } catch {}
+  try { logActivity('version:restore', actorUserId, { platform, version: versionNow }); } catch {}
   broadcast({ type: 'documentRevert' });
   res.json({ ok: true });
 });
