@@ -2046,15 +2046,15 @@
       };
       const resetBtn = React.createElement(UIButton, { label: 'Reset', onClick: reset, tone: 'secondary' });
       const refreshBtn = React.createElement(UIButton, { label: 'Refresh Doc', onClick: refreshDoc, tone: 'secondary' });
-      const footerBar = React.createElement('div', { className: 'd-flex flex-column gap-8', style: { flexShrink: 0, width: '100%', boxSizing: 'border-box', background: '#fff', paddingTop: 8, paddingBottom: 12, borderTop: '1px solid #e5e7eb' } }, [
+      const footerBar = React.createElement('div', { className: 'd-flex flex-column gap-8', style: { width: '100%', boxSizing: 'border-box', paddingTop: 8, paddingBottom: 12 } }, [
         React.createElement('div', { className: 'd-flex gap-8 align-items-end', style: { width: '100%', boxSizing: 'border-box' } }, [
           React.createElement('div', { style: { flex: 1 } }, input)
         ]),
         React.createElement('div', { className: 'd-flex gap-8' }, [resetBtn, refreshBtn])
       ]);
       const wrap = React.createElement('div', { style: { width: '100%', height: '100%', minHeight: 0, position: 'relative' } }, [
-        React.createElement('div', { ref: listRef, style: { height: '100%', paddingBottom: '140px', overflowY: 'auto', overflowX: 'hidden' } }, [box]),
-        React.createElement('div', { style: { position: 'absolute', bottom: 0, left: 0, right: 0 } }, [footerBar])
+        React.createElement('div', { ref: listRef, style: { height: '100%', paddingBottom: '100px', overflowY: 'auto', overflowX: 'hidden' } }, [box]),
+        React.createElement('div', { style: { position: 'absolute', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid #e5e7eb', zIndex: 10 } }, [footerBar])
       ]);
       return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', height: '100%' } }, [wrap]);
     }
@@ -3172,7 +3172,7 @@
         React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
         React.createElement('div', { key: 'tabbody', className: 'mt-3', style: { flex: 1, minHeight: 0, overflowY: activeTab === 'AI' ? 'hidden' : 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', padding: activeTab === 'AI' ? '0 8px 0 8px' : '0 8px 112px 8px' } }, [
-          React.createElement('div', { key: 'wrap-ai', style: { display: (activeTab === 'AI' ? 'block' : 'none') } }, React.createElement(ChatConsole, { key: 'chat' })),
+          React.createElement('div', { key: 'wrap-ai', style: { display: (activeTab === 'AI' ? 'block' : 'none'), height: '100%' } }, React.createElement(ChatConsole, { key: 'chat' })),
           React.createElement('div', { key: 'wrap-workflow', style: { display: (activeTab === 'Workflow' ? 'block' : 'none') } }, React.createElement(WorkflowApprovalsPanel, { key: 'workflow' })),
           React.createElement('div', { key: 'wrap-messaging', style: { display: (activeTab === 'Messaging' ? 'block' : 'none') } }, React.createElement(MessagingPanel, { key: 'messaging' })),
           React.createElement('div', { key: 'wrap-versions', style: { display: (activeTab === 'Versions' ? 'block' : 'none') } }, React.createElement(VersionsPanel, { key: 'versions' })),
