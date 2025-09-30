@@ -1700,12 +1700,32 @@
     // Comparison Tab
     function ComparisonTab() {
       const API_BASE = getApiBase();
-      const [versionA, setVersionA] = React.useState('');
+      const [versions, setVersions] = React.useState([]);
+      const [versionA, setVersionA] = React.useState('1');
       const [versionB, setVersionB] = React.useState('');
       const [list, setList] = React.useState([]);
       const [busy, setBusy] = React.useState(false);
       const [error, setError] = React.useState('');
       const [hasCompared, setHasCompared] = React.useState(false);
+      
+      // Fetch versions list
+      React.useEffect(() => {
+        (async () => {
+          try {
+            const r = await fetch(`${API_BASE}/api/v1/versions?rev=${Date.now()}`, { cache: 'no-store' });
+            if (r.ok) {
+              const j = await r.json();
+              const arr = Array.isArray(j.items) ? j.items : [];
+              setVersions(arr);
+              // Default to version 1 and latest
+              if (arr.length > 0) {
+                setVersionA('1');
+                setVersionB(String(arr.length));
+              }
+            }
+          } catch {}
+        })();
+      }, [API_BASE]);
 
       const compare = async () => {
         setBusy(true); setError('');
@@ -1744,33 +1764,108 @@
         } catch (e) { console.error('[UI] jump error:', e); }
       };
 
-      const picker = (label, val, setVal) => React.createElement('div', { className: 'd-flex items-center gap-6' }, [
-        React.createElement('label', { key: 'l', className: 'text-sm text-gray-600' }, label),
-        React.createElement('input', { key: 'i', type: 'number', min: 1, value: val, onChange: (e) => setVal(e.target.value), className: 'input-padding input-border input-border-radius', style: { width: 100 } })
+      const picker = (label, val, setVal) => React.createElement('div', { className: 'd-flex flex-column gap-4', style: { flex: 1 } }, [
+        React.createElement('label', { key: 'l', style: { fontSize: '13px', fontWeight: 600, color: '#374151' } }, label),
+        React.createElement('select', { 
+          key: 's', 
+          value: val, 
+          onChange: (e) => setVal(e.target.value), 
+          style: { 
+            padding: '8px 12px',
+            borderRadius: '6px',
+            border: '1px solid #d1d5db',
+            fontSize: '14px',
+            color: '#111827',
+            backgroundColor: '#ffffff',
+            cursor: 'pointer'
+          }
+        }, versions.map((v, i) => React.createElement('option', { key: i, value: String(i + 1) }, `Version ${i + 1}${v.label ? ` - ${v.label}` : ''}`)))
       ]);
 
-      const header = React.createElement('div', { className: 'd-flex items-center gap-12' }, [
-        picker('Version A', versionA, setVersionA),
-        picker('Version B', versionB, setVersionB),
-        React.createElement(UIButton, { key: 'go', label: (busy ? 'Comparing…' : 'Compare'), onClick: compare, disabled: !!busy, variant: 'primary' })
-      ]);
-
-      const items = (list || []).map((d, i) => React.createElement('div', { key: d.id || i, className: 'difference-card', style: { border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 12px' } }, [
-        React.createElement('div', { key: 'h', className: 'd-flex items-center justify-between' }, [
-          React.createElement('span', { key: 't', className: 'text-sm' }, (d.type === 1 ? 'Added' : (d.type === -1 ? 'Removed' : 'Changed')))
+      const header = React.createElement('div', { className: 'd-flex flex-column gap-12', style: { padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' } }, [
+        React.createElement('div', { key: 'pickers', className: 'd-flex gap-12' }, [
+          picker('Version A', versionA, setVersionA),
+          picker('Version B', versionB, setVersionB)
         ]),
-        React.createElement('div', { key: 'x', className: 'text-xs text-gray-600', style: { marginTop: 6 } }, String(d.text || '')),
-        React.createElement('div', { key: 'f', className: 'd-flex justify-end', style: { marginTop: 8 } }, React.createElement(UIButton, { label: 'Jump to location', onClick: () => jump(d), variant: 'secondary' }))
-      ]));
+        React.createElement('div', { key: 'btn-row', className: 'd-flex' }, [
+          React.createElement(UIButton, { key: 'go', label: (busy ? 'Comparing…' : 'Compare'), onClick: compare, disabled: !!busy, variant: 'primary' })
+        ])
+      ]);
+
+      const isAddin = typeof Office !== 'undefined';
+      
+      const items = (list || []).map((d, i) => {
+        const typeLabel = d.type === 1 ? 'Added' : (d.type === -1 ? 'Removed' : 'Changed');
+        const typeColor = d.type === 1 ? '#10b981' : (d.type === -1 ? '#ef4444' : '#f59e0b');
+        
+        return React.createElement('div', { 
+          key: d.id || i, 
+          className: 'difference-card', 
+          style: { 
+            border: '1px solid #e5e7eb', 
+            borderRadius: '8px', 
+            padding: '12px', 
+            backgroundColor: '#ffffff',
+            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+          } 
+        }, [
+          React.createElement('div', { key: 'h', className: 'd-flex items-center justify-between', style: { marginBottom: '8px' } }, [
+            React.createElement('span', { 
+              key: 't', 
+              style: { 
+                fontSize: '13px', 
+                fontWeight: 600, 
+                color: typeColor,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              } 
+            }, typeLabel)
+          ]),
+          React.createElement('div', { 
+            key: 'x', 
+            style: { 
+              fontSize: '14px', 
+              color: '#4b5563', 
+              lineHeight: '1.5',
+              marginBottom: isAddin ? '12px' : '0'
+            } 
+          }, String(d.text || '')),
+          isAddin ? React.createElement('div', { key: 'f', className: 'd-flex justify-end' }, 
+            React.createElement(UIButton, { label: 'Jump to location', onClick: () => jump(d), variant: 'secondary' })
+          ) : null
+        ].filter(Boolean));
+      });
 
       const identicalBanner = (hasCompared && (!list || list.length === 0))
-        ? React.createElement('div', { className: 'bg-gray-50 text-gray-700 p-2 border border-gray-200 rounded' }, 'These versions are identical')
+        ? React.createElement('div', { 
+            style: { 
+              padding: '12px 16px', 
+              backgroundColor: '#f0fdf4', 
+              color: '#166534', 
+              border: '1px solid #bbf7d0',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: 500
+            } 
+          }, '✓ These versions are identical')
         : null;
       const hasItems = Array.isArray(list) && list.length > 0;
 
+      const errorBanner = error ? React.createElement('div', { 
+        style: { 
+          padding: '12px 16px', 
+          backgroundColor: '#fef2f2', 
+          color: '#991b1b', 
+          border: '1px solid #fecaca',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: 500
+        } 
+      }, '⚠ ' + error) : null;
+      
       return React.createElement('div', { className: 'd-flex flex-column gap-12' }, [
         header,
-        (error ? React.createElement('div', { className: 'bg-error-50 text-error-700 p-2 border border-error-200 rounded' }, error) : null),
+        errorBanner,
         identicalBanner,
         (hasItems ? React.createElement('div', { className: 'd-flex flex-column gap-8' }, items) : null)
       ]);
@@ -2046,7 +2141,7 @@
       };
       const resetBtn = React.createElement(UIButton, { label: 'Reset', onClick: reset, tone: 'secondary' });
       const refreshBtn = React.createElement(UIButton, { label: 'Refresh Doc', onClick: refreshDoc, tone: 'secondary' });
-      const footerBar = React.createElement('div', { className: 'd-flex flex-column gap-8', style: { width: '100%', boxSizing: 'border-box', padding: '8px 12px 16px 12px' } }, [
+      const footerBar = React.createElement('div', { className: 'd-flex flex-column gap-8', style: { width: '100%', boxSizing: 'border-box', paddingTop: 8, paddingBottom: 12 } }, [
         React.createElement('div', { className: 'd-flex gap-8 align-items-end', style: { width: '100%', boxSizing: 'border-box' } }, [
           React.createElement('div', { style: { flex: 1 } }, input)
         ]),

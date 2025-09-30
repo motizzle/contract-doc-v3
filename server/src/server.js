@@ -1363,7 +1363,18 @@ app.post('/api/v1/versions/compare', async (req, res) => {
     const STR_A = String(textA || '');
     const STR_B = String(textB || '');
     const CONTEXT = 80;
-    const AVG_CHARS_PER_PAGE = Number(process.env.DIFF_AVG_CHARS_PER_PAGE || 2500);
+    const AVG_CHARS_PER_PAGE = Number(process.env.DIFF_AVG_CHARS_PER_PAGE || 1200);
+    const PARAS_PER_PAGE = Number(process.env.DIFF_PARAS_PER_PAGE || 8);
+    function estimatePageNumberFromIndex(index, baseStr) {
+      try {
+        const byChars = AVG_CHARS_PER_PAGE > 0 ? (Math.floor(index / AVG_CHARS_PER_PAGE) + 1) : 1;
+        const upto = String(baseStr || '').slice(0, Math.max(0, index));
+        const breaks = upto.match(/(?:\r?\n\s*\r?\n)+/g);
+        const paraCount = 1 + (breaks ? breaks.length : 0);
+        const byParas = PARAS_PER_PAGE > 0 ? (Math.floor((paraCount - 1) / PARAS_PER_PAGE) + 1) : 1;
+        return Math.max(byChars, byParas);
+      } catch { return 1; }
+    }
     for (const [op, chunk] of diffs) {
       const piece = String(chunk || '');
       const pieceLen = piece.length;
@@ -1385,7 +1396,7 @@ app.post('/api/v1/versions/compare', async (req, res) => {
           id: id++,
           type,
           text: snippet,
-          pageNumber: (AVG_CHARS_PER_PAGE > 0 ? (Math.floor(baseIndex / AVG_CHARS_PER_PAGE) + 1) : 1),
+          pageNumber: estimatePageNumberFromIndex(baseIndex, baseStr),
           summary: (type === 1 ? 'Added' : 'Removed') + ' text',
           position: baseIndex,
           targetVersion: (type === 1 ? Number(versionB) : Number(versionA)),

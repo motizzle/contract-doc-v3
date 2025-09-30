@@ -71,5 +71,1555 @@
     "target": "document",
     "details": {},
     "message": "Warren Peace cancelled document checkout"
+  },
+  {
+    "id": "act_1759213616290_ksg312qcm",
+    "timestamp": 1759213616290,
+    "type": "workflow:remove-approval",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "removed approval",
+    "target": "workflow",
+    "details": {
+      "targetUserId": "user1",
+      "progress": {
+        "approved": 4,
+        "total": 5
+      }
+    },
+    "message": "Warren Peace removed approval (4/5)"
+  },
+  {
+    "id": "act_1759213618404_4koap5o8h",
+    "timestamp": 1759213618404,
+    "type": "workflow:approve",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "approved",
+    "target": "workflow",
+    "details": {
+      "targetUserId": "user1",
+      "progress": {
+        "approved": 5,
+        "total": 5
+      }
+    },
+    "message": "Warren Peace approved (5/5)"
+  },
+  {
+    "id": "act_1759213618406_0cdr9tams",
+    "timestamp": 1759213618406,
+    "type": "workflow:complete",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "completed approvals",
+    "target": "workflow",
+    "details": {
+      "total": 5,
+      "approved": 5
+    },
+    "message": "All approvals completed"
+  },
+  {
+    "id": "act_1759213625759_12g7y3sxv",
+    "timestamp": 1759213625759,
+    "type": "workflow:remove-approval",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "removed approval",
+    "target": "workflow",
+    "details": {
+      "targetUserId": "user1",
+      "progress": {
+        "approved": 4,
+        "total": 5
+      }
+    },
+    "message": "Warren Peace removed approval (4/5)"
+  },
+  {
+    "id": "act_1759213626792_1blp0avbc",
+    "timestamp": 1759213626792,
+    "type": "workflow:approve",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "approved",
+    "target": "workflow",
+    "details": {
+      "targetUserId": "user1",
+      "progress": {
+        "approved": 5,
+        "total": 5
+      }
+    },
+    "message": "Warren Peace approved (5/5)"
+  },
+  {
+    "id": "act_1759213626793_6ta8pxxgm",
+    "timestamp": 1759213626793,
+    "type": "workflow:complete",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "completed approvals",
+    "target": "workflow",
+    "details": {
+      "total": 5,
+      "approved": 5
+    },
+    "message": "All approvals completed"
+  },
+  {
+    "id": "act_1759214980908_v6tajyh9c",
+    "timestamp": 1759214980908,
+    "type": "document:status-change",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "changed status",
+    "target": "document",
+    "details": {
+      "from": "final",
+      "to": "draft"
+    },
+    "message": "Warren Peace changed document status from final to draft"
+  },
+  {
+    "id": "act_1759248217753_xt4w30ue7",
+    "timestamp": 1759248217753,
+    "type": "document:checkout",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {},
+    "message": "Warren Peace checked out document"
+  },
+  {
+    "id": "act_1759248401307_h7hz068l5",
+    "timestamp": 1759248401307,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 10,
+      "platform": "web"
+    },
+    "message": "Warren Peace viewed version v10"
+  },
+  {
+    "id": "act_1759248404373_zdbgo1jh8",
+    "timestamp": 1759248404373,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 11,
+      "platform": "web"
+    },
+    "message": "Warren Peace viewed version v11"
+  },
+  {
+    "id": "act_1759248408276_0w5ten7ep",
+    "timestamp": 1759248408276,
+    "type": "document:save",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 12
+    },
+    "message": "Warren Peace saved a new version of the document (v12)"
+  },
+  {
+    "id": "act_1759249594590_o2p1feekp",
+    "timestamp": 1759249594590,
+    "type": "message:send",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "sent message",
+    "target": "message",
+    "details": {
+      "to": [
+        "user2"
+      ],
+      "channel": "approvals"
+    },
+    "message": "Warren Peace sent a message to Fun E Guy"
+  },
+  {
+    "id": "act_1759249614862_xx2b4h9ex",
+    "timestamp": 1759249614862,
+    "type": "message:send",
+    "user": {
+      "id": "bot",
+      "label": "bot",
+      "platform": "server"
+    },
+    "action": "sent message",
+    "target": "message",
+    "details": {
+      "to": [
+        "user2"
+      ],
+      "channel": "approvals"
+    },
+    "message": "bot sent a message to Fun E Guy"
+  },
+  {
+    "id": "act_1759249724830_6jhwpwu6u",
+    "timestamp": 1759249724830,
+    "type": "document:save",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 13
+    },
+    "message": "Warren Peace saved a new version of the document (v13)"
+  },
+  {
+    "id": "act_1759253235752_n3ygmt61e",
+    "timestamp": 1759253235752,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 12,
+      "platform": "web"
+    },
+    "message": "Warren Peace viewed version v12"
+  },
+  {
+    "id": "act_1759253238057_16dc6hhsg",
+    "timestamp": 1759253238057,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 11,
+      "platform": "web"
+    },
+    "message": "Warren Peace viewed version v11"
+  },
+  {
+    "id": "act_1759253241170_i94apjggu",
+    "timestamp": 1759253241170,
+    "type": "document:save",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 14
+    },
+    "message": "Warren Peace saved a new version of the document (v14)"
+  },
+  {
+    "id": "act_1759254345634_cr0uj92p2",
+    "timestamp": 1759254345634,
+    "type": "document:save",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 15
+    },
+    "message": "Warren Peace saved a new version of the document (v15)"
+  },
+  {
+    "id": "act_1759254409618_3v80u2ey5",
+    "timestamp": 1759254409619,
+    "type": "document:save",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 16
+    },
+    "message": "Warren Peace saved a new version of the document (v16)"
+  },
+  {
+    "id": "act_1759256647806_jcayqmnu7",
+    "timestamp": 1759256647806,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "word"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 16,
+      "platform": "word"
+    },
+    "message": "Warren Peace viewed version v16"
+  },
+  {
+    "id": "act_1759256650637_u6wdzv5e0",
+    "timestamp": 1759256650637,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "word"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 15,
+      "platform": "word"
+    },
+    "message": "Warren Peace viewed version v15"
+  },
+  {
+    "id": "act_1759256652687_m4x4d1njj",
+    "timestamp": 1759256652687,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "word"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 14,
+      "platform": "word"
+    },
+    "message": "Warren Peace viewed version v14"
+  },
+  {
+    "id": "act_1759256654855_xhg65wdfd",
+    "timestamp": 1759256654855,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "word"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 13,
+      "platform": "word"
+    },
+    "message": "Warren Peace viewed version v13"
+  },
+  {
+    "id": "act_1759258655024_yq6vnb6t1",
+    "timestamp": 1759258655024,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "word"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 16,
+      "platform": "word"
+    },
+    "message": "Warren Peace viewed version v16"
+  },
+  {
+    "id": "act_1759258713339_vjboz7kr4",
+    "timestamp": 1759258713339,
+    "type": "document:save",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 17
+    },
+    "message": "Warren Peace saved a new version of the document (v17)"
+  },
+  {
+    "id": "act_1759262143268_j7cftyr1n",
+    "timestamp": 1759262143268,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "word"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 17,
+      "platform": "word"
+    },
+    "message": "Warren Peace viewed version v17"
+  },
+  {
+    "id": "act_1759262154780_1tryl7xi4",
+    "timestamp": 1759262154780,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "word"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 1,
+      "platform": "word"
+    },
+    "message": "Warren Peace viewed version v1"
+  },
+  {
+    "id": "act_1759262190662_6dd0pkw1r",
+    "timestamp": 1759262190662,
+    "type": "workflow:remove-approval",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "removed approval",
+    "target": "workflow",
+    "details": {
+      "targetUserId": "user1",
+      "progress": {
+        "approved": 4,
+        "total": 5
+      }
+    },
+    "message": "Warren Peace removed approval (4/5)"
+  },
+  {
+    "id": "act_1759262193836_3tt80tmq4",
+    "timestamp": 1759262193836,
+    "type": "workflow:approve",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "approved",
+    "target": "workflow",
+    "details": {
+      "targetUserId": "user1",
+      "progress": {
+        "approved": 5,
+        "total": 5
+      }
+    },
+    "message": "Warren Peace approved (5/5)"
+  },
+  {
+    "id": "act_1759262193841_n222fieox",
+    "timestamp": 1759262193841,
+    "type": "workflow:complete",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "completed approvals",
+    "target": "workflow",
+    "details": {
+      "total": 5,
+      "approved": 5
+    },
+    "message": "All approvals completed"
+  },
+  {
+    "id": "act_1759262203011_10rnleff2",
+    "timestamp": 1759262203011,
+    "type": "document:status-change",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "changed status",
+    "target": "document",
+    "details": {
+      "from": "draft",
+      "to": "review"
+    },
+    "message": "Warren Peace changed document status from draft to review"
+  },
+  {
+    "id": "act_1759262203820_r5zl88zk0",
+    "timestamp": 1759262203820,
+    "type": "document:status-change",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "changed status",
+    "target": "document",
+    "details": {
+      "from": "review",
+      "to": "final"
+    },
+    "message": "Warren Peace changed document status from review to final"
+  },
+  {
+    "id": "act_1759262206655_fhojn3vs2",
+    "timestamp": 1759262206655,
+    "type": "document:status-change",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "changed status",
+    "target": "document",
+    "details": {
+      "from": "final",
+      "to": "draft"
+    },
+    "message": "Warren Peace changed document status from final to draft"
+  },
+  {
+    "id": "act_1759262303709_ivcc6sjp6",
+    "timestamp": 1759262303709,
+    "type": "document:checkout:override",
+    "user": {
+      "id": "user2",
+      "label": "Fun E Guy",
+      "platform": "web"
+    },
+    "action": "overrode checkout",
+    "target": "document",
+    "details": {
+      "previousUserId": "user1"
+    },
+    "message": "Fun E Guy overrode Warren Peace's checkout"
+  },
+  {
+    "id": "act_1759262344322_aqj2hdi3z",
+    "timestamp": 1759262344322,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "word"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 16,
+      "platform": "word"
+    },
+    "message": "Warren Peace viewed version v16"
+  },
+  {
+    "id": "act_1759262347459_moa9lmzy7",
+    "timestamp": 1759262347459,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "word"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 10,
+      "platform": "word"
+    },
+    "message": "Warren Peace viewed version v10"
+  },
+  {
+    "id": "act_1759262627213_fhpq9yqaq",
+    "timestamp": 1759262627213,
+    "type": "message:send",
+    "user": {
+      "id": "user2",
+      "label": "Fun E Guy",
+      "platform": "web"
+    },
+    "action": "sent message",
+    "target": "message",
+    "details": {
+      "to": [
+        "user1",
+        "user3"
+      ],
+      "channel": "approvals"
+    },
+    "message": "Fun E Guy sent a message to Warren Peace and Yuri Lee Laffed"
+  },
+  {
+    "id": "act_1759262658147_warvqqxzp",
+    "timestamp": 1759262658147,
+    "type": "message:send",
+    "user": {
+      "id": "bot",
+      "label": "bot",
+      "platform": "server"
+    },
+    "action": "sent message",
+    "target": "message",
+    "details": {
+      "to": [
+        "user1",
+        "user3"
+      ],
+      "channel": "approvals"
+    },
+    "message": "bot sent a message to Warren Peace and Yuri Lee Laffed"
+  },
+  {
+    "id": "act_1759262844061_goa57dzui",
+    "timestamp": 1759262844061,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "word"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 1,
+      "platform": "word"
+    },
+    "message": "Warren Peace viewed version v1"
+  },
+  {
+    "id": "act_1759262857435_absl8rfuc",
+    "timestamp": 1759262857435,
+    "type": "document:checkout",
+    "user": {
+      "id": "user2",
+      "label": "Fun E Guy",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {},
+    "message": "Fun E Guy checked out document"
+  },
+  {
+    "id": "act_1759262859543_5k1zfre07",
+    "timestamp": 1759262859543,
+    "type": "document:save",
+    "user": {
+      "id": "user2",
+      "label": "Fun E Guy",
+      "platform": "web"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 18
+    },
+    "message": "Fun E Guy saved a new version of the document (v18)"
+  },
+  {
+    "id": "act_1759266849049_78l5ijjbf",
+    "timestamp": 1759266849049,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759266854543_ynh9pdnew",
+    "timestamp": 1759266854543,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759269382734_5urvjp6rp",
+    "timestamp": 1759269382735,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759269656906_xmaxf5vzx",
+    "timestamp": 1759269656906,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759269673673_elubj7pc7",
+    "timestamp": 1759269673673,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759271027578_mfcrqirnb",
+    "timestamp": 1759271027578,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "word"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 18,
+      "platform": "word"
+    },
+    "message": "Warren Peace viewed version v18"
+  },
+  {
+    "id": "act_1759271693967_1c02fl9sg",
+    "timestamp": 1759271693967,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759271694622_am0va763t",
+    "timestamp": 1759271694622,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759271815758_m3p4pna5t",
+    "timestamp": 1759271815758,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759271816350_axfqteu06",
+    "timestamp": 1759271816350,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759271876386_vwvdlepr1",
+    "timestamp": 1759271876386,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759271951542_nwegs29ur",
+    "timestamp": 1759271951542,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759271951547_3j0qf31dk",
+    "timestamp": 1759271951547,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759271951551_6jliwjhtr",
+    "timestamp": 1759271951551,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759271970599_v5bnpa424",
+    "timestamp": 1759271970599,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759271997687_ppvwrzf36",
+    "timestamp": 1759271997687,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759271997941_5rfouphje",
+    "timestamp": 1759271997941,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759272000178_g3rhyd2og",
+    "timestamp": 1759272000178,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759272598979_49ieooogh",
+    "timestamp": 1759272598979,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759272599214_mj6aqxu2r",
+    "timestamp": 1759272599214,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759272599464_yhe7lo8th",
+    "timestamp": 1759272599464,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759272613810_5ybujtqd2",
+    "timestamp": 1759272613810,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759272614158_knhqilolr",
+    "timestamp": 1759272614158,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759272614393_koiww1i7n",
+    "timestamp": 1759272614393,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759272619185_42h4b2las",
+    "timestamp": 1759272619185,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759272635081_sn5mn1iti",
+    "timestamp": 1759272635081,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759272659259_8gqf5msv5",
+    "timestamp": 1759272659259,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759272659511_vzet0na31",
+    "timestamp": 1759272659511,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759272673852_ykkln50v0",
+    "timestamp": 1759272673852,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759272674193_cv26wft4e",
+    "timestamp": 1759272674193,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759272674419_5y01vaknw",
+    "timestamp": 1759272674419,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759272679227_9copv6eg6",
+    "timestamp": 1759272679227,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759272719312_f0263mbzv",
+    "timestamp": 1759272719312,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759272719573_1gstjmwho",
+    "timestamp": 1759272719573,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759272751588_8pl23f8oi",
+    "timestamp": 1759272751588,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759273361183_fhghb58ck",
+    "timestamp": 1759273361183,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 11,
+      "platform": "web"
+    },
+    "message": "Warren Peace viewed version v11"
+  },
+  {
+    "id": "act_1759273365269_67ms5dgof",
+    "timestamp": 1759273365269,
+    "type": "document:checkout:override",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "overrode checkout",
+    "target": "document",
+    "details": {
+      "previousUserId": "user2"
+    },
+    "message": "Warren Peace overrode Fun E Guy's checkout"
   }
 ]

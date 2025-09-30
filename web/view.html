@@ -21,11 +21,11 @@
     #banner { min-height: 60px; display: flex; align-items: center; justify-content: flex-end; padding: 0 12px; color: #fff; border-bottom: 0; }
     .banner-inner { display: flex; justify-content: flex-end; width: 100%; }
     /* Push the app layout below the fixed nav and preserve full height */
-    #layout { position: relative; height: calc(100vh - 48px); margin-top: 48px; }
-    #editor-col { position: relative; z-index: 1; display: flex; flex-direction: column; min-width: 0; }
+    #layout { position: relative; height: calc(100vh - 48px); margin-top: 48px; display: flex; }
+    #editor-col { position: relative; z-index: 1; display: flex; flex-direction: column; min-width: 0; flex: 1; }
     #superdoc { position: relative; z-index: 1; flex: 1; min-height: 0; }
-    #pane { position: relative; z-index: 5; width: 480px; max-width: 480px; border-left: 1px solid #eee; display: flex; flex-direction: column; background: #fff; box-shadow: -2px 0 8px rgba(0,0,0,0.08); height: 100%; }
-    #app-root { background: #fff; display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+    #pane { position: relative; z-index: 5; width: 480px; max-width: 480px; border-left: 1px solid #eee; display: flex; flex-direction: column; background: #fff; box-shadow: -2px 0 8px rgba(0,0,0,0.08); }
+    #app-root { background: #fff; display: flex; flex-direction: column; flex: 1; min-height: 0; }
   </style>
   <!-- React UMD (local) and React entry (shared) -->
   <script defer src="/vendor/react/react.production.min.js"></script>
