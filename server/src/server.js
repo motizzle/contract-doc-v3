@@ -102,31 +102,238 @@ const dataAppDir = path.join(rootDir, 'data', 'app');
 const dataUsersDir = path.join(dataAppDir, 'users');
 
 // Notification types for consistent formatting across clients
-const NOTIFICATION_TYPES = {
-  success: { icon: '✅', color: '#10b981', bgColor: '#d1fae5', borderColor: '#34d399' },
-  error: { icon: '❌', color: '#ef4444', bgColor: '#fee2e2', borderColor: '#f87171' },
-  warning: { icon: '⚠️', color: '#f59e0b', bgColor: '#fef3c7', borderColor: '#fbbf24' },
-  info: { icon: 'ℹ️', color: '#3b82f6', bgColor: '#dbeafe', borderColor: '#60a5fa' },
-  system: { icon: '🔧', color: '#6b7280', bgColor: '#f9fafb', borderColor: '#d1d5db' },
-  user: { icon: '👤', color: '#8b5cf6', bgColor: '#ede9fe', borderColor: '#a78bfa' },
-  document: { icon: '📄', color: '#059669', bgColor: '#d1fae5', borderColor: '#34d399' },
-  network: { icon: '🌐', color: '#0891b2', bgColor: '#cffafe', borderColor: '#06b6d4' }
-};
+// NOTE: Legacy notification system removed - replaced with activity system
+// const NOTIFICATION_TYPES = { ... };
+// function formatServerNotification(message, type = 'info') { ... };
 
-// Server-side notification formatter
-function formatServerNotification(message, type = 'info') {
-  const ts = new Date().toLocaleTimeString();
-  const notificationType = NOTIFICATION_TYPES[type] || NOTIFICATION_TYPES.info;
+function logActivity(type, userId, details = {}) {
+  try {
+    const resolvedLabel = resolveUserLabel(userId);
+    const platform = (details && details.platform) ? String(details.platform) : 'web';
+    // Enrich details with user context so message formatting has access
+    const detailsWithUser = { ...details, userId, user: { id: userId, label: resolvedLabel, platform } };
+    // Build the activity object
+    const activity = {
+      id: `act_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: Date.now(),
+      type,
+      user: {
+        id: userId,
+        label: resolvedLabel,
+        platform
+      },
+      ...buildActivityMessage(type, detailsWithUser)
+    };
 
-  return {
-    id: Date.now() + Math.random(),
-    timestamp: ts,
-    message: typeof message === 'string' ? message : String(message),
-    type: type,
-    formatted: true,
-    style: notificationType
-  };
+    // Load existing activities
+    let activities = [];
+    if (fs.existsSync(activityLogFilePath)) {
+      try {
+        const content = fs.readFileSync(activityLogFilePath, 'utf8');
+        // Handle potential BOM
+        const cleanContent = content.replace(/^\uFEFF/, '');
+        activities = JSON.parse(cleanContent);
+        if (!Array.isArray(activities)) activities = [];
+      } catch (e) {
+        console.error('Error reading activity log for append, reinitializing:', e);
+        // Reinitialize corrupted file
+        fs.writeFileSync(activityLogFilePath, '[]', 'utf8');
+        activities = [];
+      }
+    }
+
+    // Add new activity and save
+    activities.push(activity);
+    fs.writeFileSync(activityLogFilePath, JSON.stringify(activities, null, 2));
+
+    // Broadcast to all connected clients
+    broadcast({ type: 'activity:new', activity });
+
+    return activity;
+  } catch (e) {
+    console.error('Error logging activity:', e);
+    return null;
+  }
 }
+
+function buildActivityMessage(type, details = {}) {
+  const userLabel = details.userLabel || details.user?.label || details.userId || 'Unknown User';
+
+  switch (type) {
+    case 'workflow:approve':
+      return {
+        action: 'approved',
+        target: 'workflow',
+        details: { targetUserId: details.targetUserId, notes: details.notes, progress: details.progress },
+        message: (function(){
+          if (!details.targetUserId) return `${userLabel} approved`;
+          const target = resolveUserLabel(details.targetUserId);
+          const progress = details.progress ? ` (${details.progress.approved}/${details.progress.total})` : '';
+          
+          // Check if actor is approving on behalf of someone else
+          if (details.actorUserId && details.actorUserId !== details.targetUserId) {
+            return `${userLabel} approved on behalf of ${target}${progress}`;
+          }
+          
+          return `${userLabel} approved${progress}`;
+        })()
+      };
+
+    case 'workflow:remove-approval':
+      return {
+        action: 'removed approval',
+        target: 'workflow',
+        details: { targetUserId: details.targetUserId, notes: details.notes, progress: details.progress },
+        message: (function(){
+          if (!details.targetUserId) return `${userLabel} removed approval`;
+          const target = resolveUserLabel(details.targetUserId);
+          const progress = details.progress ? ` (${details.progress.approved}/${details.progress.total})` : '';
+          
+          // Check if actor is removing approval on behalf of someone else
+          if (details.actorUserId && details.actorUserId !== details.targetUserId) {
+            return `${userLabel} removed approval on behalf of ${target}${progress}`;
+          }
+          
+          return `${userLabel} removed approval${progress}`;
+        })()
+      };
+
+    case 'workflow:reject':
+      return {
+        action: 'rejected',
+        target: 'workflow',
+        details: { targetUserId: details.targetUserId, notes: details.notes },
+        message: (function(){
+          if (!details.targetUserId) return `${userLabel} rejected`;
+          const target = resolveUserLabel(details.targetUserId);
+          return `${userLabel} rejected (${target})`;
+        })()
+      };
+
+    case 'workflow:reset':
+      return {
+        action: 'reset approvals',
+        target: 'workflow',
+        details: {},
+        message: `${userLabel} reset approvals`
+      };
+
+    case 'workflow:request-review':
+      return {
+        action: 'requested review',
+        target: 'workflow',
+        details: {},
+        message: `${userLabel} requested review from approvers`
+      };
+
+    case 'workflow:complete':
+      return {
+        action: 'completed approvals',
+        target: 'workflow',
+        details: { total: details.total, approved: details.approved },
+        message: `All approvals completed`
+      };
+
+    case 'message:send':
+      return {
+        action: 'sent message',
+        target: 'message',
+        details: { to: details.to, channel: details.channel },
+        message: (function(){
+          const to = Array.isArray(details.to) ? details.to : (details.to ? [details.to] : []);
+          const labels = to.map((id) => resolveUserLabel(id)).filter(Boolean);
+          if (labels.length === 0) return `${userLabel} sent a message`;
+          if (labels.length === 1) return `${userLabel} sent a message to ${labels[0]}`;
+          if (labels.length === 2) return `${userLabel} sent a message to ${labels[0]} and ${labels[1]}`;
+          return `${userLabel} sent a message to ${labels[0]}, ${labels[1]} +${labels.length - 2} more`;
+        })()
+      };
+    case 'document:save':
+      return {
+        action: 'saved progress',
+        target: 'document',
+        details: { autoSave: details.autoSave || false, version: details.version },
+        message: `${userLabel} saved a new version of the document${details.version ? ` (v${details.version})` : ''}`
+      };
+
+    case 'document:checkin':
+      return {
+        action: 'checked in',
+        target: 'document',
+        details: { version: details.version, size: details.size },
+        message: `${userLabel} checked in document${details.version ? ` (v${details.version})` : ''}`
+      };
+
+    case 'document:checkout':
+      return {
+        action: 'checked out',
+        target: 'document',
+        details: {},
+        message: `${userLabel} checked out document`
+      };
+
+    case 'document:checkout:cancel':
+      return {
+        action: 'cancelled checkout',
+        target: 'document',
+        details: {},
+        message: `${userLabel} cancelled document checkout`
+      };
+
+    case 'document:checkout:override':
+      return {
+        action: 'overrode checkout',
+        target: 'document',
+        details: { previousUserId: details.previousUserId },
+        message: (function(){
+          const prev = details.previousUserId ? resolveUserLabel(details.previousUserId) : '';
+          return prev ? `${userLabel} overrode ${prev}'s checkout` : `${userLabel} overrode an existing checkout`;
+        })()
+      };
+
+    case 'document:status-change':
+      return {
+        action: 'changed status',
+        target: 'document',
+        details: { from: details.from, to: details.to },
+        message: `${userLabel} changed document status from ${details.from} to ${details.to}`
+      };
+
+    case 'version:view':
+      return {
+        action: 'viewed version',
+        target: 'version',
+        details: { version: details.version, platform: details.platform },
+        message: `${userLabel} viewed version v${details.version}`
+      };
+
+    case 'version:restore':
+      return {
+        action: 'restored version',
+        target: 'version',
+        details: { version: details.version, platform: details.platform },
+        message: `${userLabel} restored document (v${details.version || '—'})`
+      };
+
+    case 'system:error':
+      return {
+        action: 'encountered error',
+        target: 'system',
+        details,
+        message: `System error: ${details.error || 'Unknown error'}`
+      };
+
+    // Add more activity types as needed
+    default:
+      return {
+        action: 'performed action',
+        target: 'document',
+        details,
+        message: `${userLabel} performed ${type.replace(':', ' ')}`
+      };
+  }
+}
+
 const dataWorkingDir = path.join(rootDir, 'data', 'working');
 const canonicalDocumentsDir = path.join(dataAppDir, 'documents');
 const canonicalExhibitsDir = path.join(dataAppDir, 'exhibits');
@@ -135,6 +342,7 @@ const workingExhibitsDir = path.join(dataWorkingDir, 'exhibits');
 const compiledDir = path.join(dataWorkingDir, 'compiled');
 const versionsDir = path.join(dataWorkingDir, 'versions');
 const approvalsFilePath = path.join(dataAppDir, 'approvals.json');
+const activityLogFilePath = path.join(dataAppDir, 'activity-log.json');
 
 // Ensure working directories exist
 for (const dir of [dataWorkingDir, workingDocumentsDir, workingExhibitsDir, compiledDir, versionsDir]) {
@@ -144,7 +352,7 @@ for (const dir of [dataWorkingDir, workingDocumentsDir, workingExhibitsDir, comp
 // In-memory state (prototype)
 const DOCUMENT_ID = process.env.DOCUMENT_ID || 'default';
 const serverState = {
-  isFinal: false,
+  
   checkedOutBy: null,
   lastUpdated: new Date().toISOString(),
   revision: 1,
@@ -162,7 +370,6 @@ const stateFilePath = path.join(dataAppDir, 'state.json');
 try {
   if (fs.existsSync(stateFilePath)) {
     const saved = JSON.parse(fs.readFileSync(stateFilePath, 'utf8'));
-    if (typeof saved.isFinal === 'boolean') serverState.isFinal = saved.isFinal;
     if (saved.checkedOutBy === null || typeof saved.checkedOutBy === 'string') serverState.checkedOutBy = saved.checkedOutBy;
     if (typeof saved.lastUpdated === 'string') serverState.lastUpdated = saved.lastUpdated;
     if (typeof saved.revision === 'number') serverState.revision = saved.revision;
@@ -177,7 +384,7 @@ try {
 
 function persistState() {
   try {
-    fs.writeFileSync(stateFilePath, JSON.stringify({ isFinal: serverState.isFinal, checkedOutBy: serverState.checkedOutBy, lastUpdated: serverState.lastUpdated, revision: serverState.revision, documentVersion: serverState.documentVersion, title: serverState.title, status: serverState.status, updatedBy: serverState.updatedBy, updatedPlatform: serverState.updatedPlatform, approvalsRevision: serverState.approvalsRevision }, null, 2));
+    fs.writeFileSync(stateFilePath, JSON.stringify({ checkedOutBy: serverState.checkedOutBy, lastUpdated: serverState.lastUpdated, revision: serverState.revision, documentVersion: serverState.documentVersion, title: serverState.title, status: serverState.status, updatedBy: serverState.updatedBy, updatedPlatform: serverState.updatedPlatform, approvalsRevision: serverState.approvalsRevision }, null, 2));
   } catch {}
 }
 
@@ -259,15 +466,12 @@ function loadChatbotResponses() {
 // Track sequential reply index per user to keep each user's conversation ordered
 const chatbotStateByUser = new Map();
 
-function buildBanner({ isFinal, isCheckedOut, isOwner, checkedOutBy }) {
-  if (isFinal) {
-    return { state: 'final', title: 'Finalized', message: 'This document is finalized.' };
-  }
+function buildBanner({ isCheckedOut, isOwner, checkedOutBy }) {
   if (isCheckedOut) {
     // Disable banners for both self and other checkout cases
     return null;
   }
-  // Suppress the generic available banner
+  // Suppress other banners for now
   return null;
 }
 
@@ -490,6 +694,36 @@ app.get('/api/v1/users', (req, res) => {
   }
 });
 
+app.get('/api/v1/activity', (req, res) => {
+  try {
+    if (!fs.existsSync(activityLogFilePath)) {
+      // Initialize empty file if it doesn't exist
+      fs.writeFileSync(activityLogFilePath, '[]', 'utf8');
+      return res.json({ activities: [] });
+    }
+
+    let activities = [];
+    try {
+      const content = fs.readFileSync(activityLogFilePath, 'utf8');
+      // Handle potential BOM
+      const cleanContent = content.replace(/^\uFEFF/, '');
+      activities = JSON.parse(cleanContent);
+    } catch (parseError) {
+      console.error('Error parsing activity log, reinitializing:', parseError);
+      // Reinitialize corrupted file
+      fs.writeFileSync(activityLogFilePath, '[]', 'utf8');
+      activities = [];
+    }
+
+    // Ensure we return an array, filter out any malformed entries
+    const validActivities = Array.isArray(activities) ? activities.filter(a => a && typeof a === 'object' && a.id) : [];
+    return res.json({ activities: validActivities });
+  } catch (e) {
+    console.error('Error reading activity log:', e);
+    return res.status(500).json({ error: 'Failed to read activity log' });
+  }
+});
+
 app.get('/api/v1/current-document', (req, res) => {
   const p = resolveDefaultDocPath();
   const exists = fs.existsSync(p);
@@ -507,14 +741,14 @@ app.get('/api/v1/state-matrix', (req, res) => {
   // Derive role from users.json
   const derivedRole = getUserRole(userId);
   const roleMap = loadRoleMap();
-  const defaultPerms = { finalize: true, unfinalize: true, checkout: true, checkin: true, override: true, sendVendor: true };
+  const defaultPerms = { checkout: true, checkin: true, override: true, sendVendor: true };
   const isCheckedOut = !!serverState.checkedOutBy;
   const isOwner = serverState.checkedOutBy === userId;
   // Resolve display label for checked-out user (fallbacks to raw id)
   const checkedOutLabel = resolveUserLabel(serverState.checkedOutBy);
   const canWrite = !isCheckedOut || isOwner;
   const rolePerm = roleMap[derivedRole] || defaultPerms;
-  const banner = buildBanner({ isFinal: serverState.isFinal, isCheckedOut, isOwner, checkedOutBy: checkedOutLabel });
+  const banner = buildBanner({ isCheckedOut, isOwner, checkedOutBy: checkedOutLabel });
   const approvals = loadApprovals();
   const approvalsSummary = computeApprovalsSummary(approvals.approvers);
   const config = {
@@ -530,26 +764,19 @@ app.get('/api/v1/state-matrix', (req, res) => {
     },
     buttons: {
       replaceDefaultBtn: true,
-      finalizeBtn: !!rolePerm.finalize && !serverState.isFinal && canWrite,
-      unfinalizeBtn: !!rolePerm.unfinalize && serverState.isFinal && canWrite,
-      checkoutBtn: !!rolePerm.checkout && !isCheckedOut && !serverState.isFinal,
-      checkinBtn: !!rolePerm.checkin && isOwner && !serverState.isFinal,
-      cancelBtn: !!rolePerm.checkin && isOwner && !serverState.isFinal,
-      saveProgressBtn: !!rolePerm.checkin && isOwner && !serverState.isFinal,
-      overrideBtn: !!rolePerm.override && isCheckedOut && !isOwner && !serverState.isFinal,
-      sendVendorBtn: !!rolePerm.sendVendor && !serverState.isFinal,
+      checkoutBtn: !!rolePerm.checkout && !isCheckedOut,
+      checkinBtn: !!rolePerm.checkin && isOwner,
+      cancelBtn: !!rolePerm.checkin && isOwner,
+      saveProgressBtn: !!rolePerm.checkin && isOwner,
+      overrideBtn: !!rolePerm.override && isCheckedOut && !isOwner,
+      sendVendorBtn: !!rolePerm.sendVendor,
       // Always show Back to OpenGov button (client-only UX)
       openGovBtn: true,
       primaryLayout: {
         mode: (!isCheckedOut ? 'not_checked_out' : (isOwner ? 'self' : 'other'))
       }
     },
-    finalize: {
-      isFinal: serverState.isFinal,
-      banner: serverState.isFinal
-        ? { title: 'Finalized', message: 'This document is finalized. Non-owners are read-only.' }
-        : { title: 'Draft', message: 'This document is in draft.' }
-    },
+    
     banner,
     // Ordered banners for rendering in sequence on the client
     banners: (() => {
@@ -564,14 +791,14 @@ app.get('/api/v1/state-matrix', (req, res) => {
         const lastByUserId = (() => {
           try { return String(serverState.updatedBy && (serverState.updatedBy.id || serverState.updatedBy.userId || serverState.updatedBy)); } catch { return ''; }
         })();
-        // Notify ONLY if: client has a known version (>0), server advanced, and it was saved by another user
+        // Notify if: client has a known version (>0), server advanced, and update was from different user or different platform
         // Treat only clientLoaded <= 0 as unknown/initial. Version 1 is a valid, loaded baseline.
         const clientKnown = Number.isFinite(clientLoaded) && clientLoaded > 0;
         const serverAdvanced = serverState.documentVersion > clientLoaded;
         const updatedByAnother = (!!lastByUserId && requestingUserId && (lastByUserId !== requestingUserId));
-        // Only show banner for different platform if it was also saved by a different user
-        const differentPlatformAndUser = !!serverState.updatedPlatform && serverState.updatedPlatform !== originPlatform && updatedByAnother;
-        const shouldNotify = clientKnown && serverAdvanced && (updatedByAnother || differentPlatformAndUser);
+        const differentPlatform = !!serverState.updatedPlatform && serverState.updatedPlatform !== originPlatform;
+        const shouldNotify = clientKnown && serverAdvanced && (updatedByAnother || differentPlatform);
+
         if (shouldNotify) {
           const by = serverState.updatedBy && (serverState.updatedBy.label || serverState.updatedBy.userId) || 'someone';
           list.unshift({ state: 'update_available', title: 'Update available', message: `${by} updated this document.` });
@@ -630,34 +857,6 @@ app.get('/api/v1/approvals/state', (req, res) => {
   res.json({ documentId: 'default', approvers: [] });
 });
 
-app.post('/api/v1/finalize', (req, res) => {
-  const userId = req.body?.userId || 'user1';
-  // Finalize allowed even if someone else has checkout? For safety, require not held by another user.
-  if (serverState.checkedOutBy && serverState.checkedOutBy !== userId) {
-    const by = resolveUserLabel(serverState.checkedOutBy);
-    return res.status(409).json({ error: `Checked out by ${by}` });
-  }
-  serverState.isFinal = true;
-  // Clear any existing checkout
-  serverState.checkedOutBy = null;
-  serverState.lastUpdated = new Date().toISOString();
-  persistState();
-  broadcast({ type: 'finalize', value: true, userId });
-  res.json({ ok: true });
-});
-
-app.post('/api/v1/unfinalize', (req, res) => {
-  const userId = req.body?.userId || 'user1';
-  if (serverState.checkedOutBy && serverState.checkedOutBy !== userId) {
-    const by = resolveUserLabel(serverState.checkedOutBy);
-    return res.status(409).json({ error: `Checked out by ${by}` });
-  }
-  serverState.isFinal = false;
-  serverState.lastUpdated = new Date().toISOString();
-  persistState();
-  broadcast({ type: 'finalize', value: false, userId });
-  res.json({ ok: true });
-});
 
 // Update document title
 app.post('/api/v1/title', (req, res) => {
@@ -693,6 +892,11 @@ app.post('/api/v1/status/cycle', (req, res) => {
     serverState.lastUpdated = new Date().toISOString();
     persistState();
     broadcast({ type: 'status', status: next });
+    
+    // Log activity
+    const userId = req.body?.userId || 'user1';
+    logActivity('document:status-change', userId, { from: cur, to: next });
+    
     res.json({ ok: true, status: next });
   } catch (e) {
     res.status(500).json({ error: 'status_cycle_failed' });
@@ -719,7 +923,12 @@ app.post('/api/v1/document/revert', (req, res) => {
   const working = path.join(workingDocumentsDir, 'default.docx');
   if (fs.existsSync(working)) fs.rmSync(working);
   bumpRevision();
-  bumpDocumentVersion(req.body?.userId || 'system', req.query?.platform || req.body?.platform || null);
+  const actorUserId = req.body?.userId || 'system';
+  const platform = req.query?.platform || req.body?.platform || null;
+  bumpDocumentVersion(actorUserId, platform);
+  const versionNow = serverState.documentVersion;
+  // Log activity: document reverted to prior version (new version created)
+  try { logActivity('version:restore', actorUserId, { platform, version: versionNow }); } catch {}
   broadcast({ type: 'documentRevert' });
   res.json({ ok: true });
 });
@@ -737,7 +946,6 @@ app.post('/api/v1/save-progress', (req, res) => {
     if (!(bytes[0] === 0x50 && bytes[1] === 0x4b)) return res.status(400).json({ error: 'invalid_docx_magic' });
     if (bytes.length < 1024) return res.status(400).json({ error: 'invalid_docx_small', size: bytes.length });
     // Then enforce document state
-    if (serverState.isFinal) return res.status(409).json({ error: 'Finalized' });
     if (!serverState.checkedOutBy) return res.status(409).json({ error: 'Not checked out' });
     if (serverState.checkedOutBy !== userId) {
       const by = resolveUserLabel(serverState.checkedOutBy);
@@ -756,6 +964,14 @@ app.post('/api/v1/save-progress', (req, res) => {
       fs.writeFileSync(path.join(versionsDir, `v${ver}.json`), JSON.stringify(meta, null, 2));
       broadcast({ type: 'versions:update' });
     } catch {}
+
+    // Log activity
+    logActivity('document:save', userId, {
+      autoSave: false,
+      size: bytes.length,
+      version: serverState.documentVersion
+    });
+
     broadcast({ type: 'saveProgress', userId, size: bytes.length });
     // Touch title if empty to encourage naming
     if (!serverState.title || serverState.title === 'Untitled Document') {
@@ -812,6 +1028,9 @@ app.post('/api/v1/versions/view', (req, res) => {
     const n = Number(req.body?.version);
     if (!Number.isFinite(n) || n < 1) return res.status(400).json({ error: 'invalid_version' });
     const originPlatform = String(req.body?.platform || req.query?.platform || 'web');
+    const actorUserId = req.body?.userId || 'user1';
+    // Log activity: user viewed a specific version
+    try { logActivity('version:view', actorUserId, { version: n, platform: originPlatform }); } catch {}
     broadcast({ type: 'version:view', version: n, payload: { version: n, threadPlatform: originPlatform } });
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'version_view_failed' }); }
@@ -848,10 +1067,20 @@ app.post('/api/v1/approvals/set', (req, res) => {
     saveApprovals(list);
     const summary = computeApprovalsSummary(list);
     broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary });
+    // Log workflow activity with progress and actor info
+    const activityType = approved ? 'workflow:approve' : 'workflow:remove-approval';
+    logActivity(activityType, actorUserId, { 
+      targetUserId, 
+      notes, 
+      progress: summary,
+      actorUserId: actorUserId
+    });
     
     // Check if all approvals are complete and trigger celebration
     if (summary.approved === summary.total && summary.total > 0) {
       broadcast({ type: 'approval:complete', completedBy: actorUserId, timestamp: Date.now() });
+      // Log workflow completion
+      logActivity('workflow:complete', actorUserId, { total: summary.total, approved: summary.approved });
     }
     
     res.json({ approvers: list, summary, revision: serverState.approvalsRevision });
@@ -869,6 +1098,8 @@ app.post('/api/v1/approvals/reset', (req, res) => {
     saveApprovals(list);
     const summary = computeApprovalsSummary(list);
     broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary, notice: { type: 'reset', by: actorUserId } });
+    // Log workflow reset
+    logActivity('workflow:reset', actorUserId, {});
     res.json({ approvers: list, summary, revision: serverState.approvalsRevision });
   } catch (e) {
     res.status(500).json({ error: 'approvals_reset_failed' });
@@ -881,6 +1112,8 @@ app.post('/api/v1/approvals/notify', (req, res) => {
     const data = loadApprovals();
     const summary = computeApprovalsSummary(data.approvers);
     broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary, notice: { type: 'request_review', by: actorUserId } });
+    // Log review request
+    logActivity('workflow:request-review', actorUserId, {});
     res.json({ approvers: data.approvers, summary, revision: serverState.approvalsRevision });
   } catch (e) {
     res.status(500).json({ error: 'approvals_notify_failed' });
@@ -920,6 +1153,8 @@ app.post('/api/v1/factory-reset', (req, res) => {
     // Also clear approvals data
     try { if (fs.existsSync(approvalsFilePath)) fs.rmSync(approvalsFilePath); } catch {}
     bumpApprovalsRevision();
+    // Clear activity log
+    try { if (fs.existsSync(activityLogFilePath)) fs.rmSync(activityLogFilePath); } catch {}
     // Remove snapshots entirely
     const snapDir = path.join(dataWorkingDir, 'snapshots');
     if (fs.existsSync(snapDir)) {
@@ -942,7 +1177,6 @@ app.post('/api/v1/factory-reset', (req, res) => {
       if (!fs.existsSync(versionsDir)) fs.mkdirSync(versionsDir, { recursive: true });
     } catch {}
     // Reset state to baseline and bump revision so clients resync deterministically
-    serverState.isFinal = false;
     serverState.checkedOutBy = null;
     serverState.documentVersion = 1;
     serverState.updatedBy = null;
@@ -954,6 +1188,8 @@ app.post('/api/v1/factory-reset', (req, res) => {
     broadcast({ type: 'documentRevert' });
     // Notify clients to clear local messaging state
     broadcast({ type: 'messaging:reset' });
+    // Notify clients to clear activity state
+    broadcast({ type: 'activity:reset' });
     // Notify all clients to clear AI chat state
     broadcast({ type: 'chat:reset', payload: { all: true } });
     // Notify clients that versions list changed (emptied)
@@ -969,15 +1205,32 @@ app.post('/api/v1/factory-reset', (req, res) => {
 // Checkout/Checkin endpoints
 app.post('/api/v1/checkout', (req, res) => {
   const userId = req.body?.userId || 'user1';
-  if (serverState.isFinal) {
-    return res.status(409).json({ error: 'Finalized' });
-  }
+  const clientVersion = req.body?.clientVersion || 0;
+  
   if (serverState.checkedOutBy && serverState.checkedOutBy !== userId) {
     return res.status(409).json({ error: `Already checked out by ${serverState.checkedOutBy}` });
   }
+  
+  // Check if client is on current version
+  const currentVersion = serverState.documentVersion || 1;
+  const isOutdated = clientVersion < currentVersion;
+  
+  if (isOutdated && !req.body?.forceCheckout) {
+    return res.status(409).json({ 
+      error: 'version_outdated', 
+      currentVersion, 
+      clientVersion,
+      message: 'Document has been updated. Do you want to check out the most recent version?'
+    });
+  }
+  
   serverState.checkedOutBy = userId;
   serverState.lastUpdated = new Date().toISOString();
   persistState();
+
+  // Log activity
+  logActivity('document:checkout', userId, {});
+
   broadcast({ type: 'checkout', userId });
   res.json({ ok: true, checkedOutBy: userId });
 });
@@ -994,6 +1247,12 @@ app.post('/api/v1/checkin', (req, res) => {
   serverState.checkedOutBy = null;
   serverState.lastUpdated = new Date().toISOString();
   persistState();
+
+  // Log activity
+  logActivity('document:checkin', userId, {
+    version: serverState.documentVersion
+  });
+
   broadcast({ type: 'checkin', userId });
   res.json({ ok: true });
 });
@@ -1011,6 +1270,10 @@ app.post('/api/v1/checkout/cancel', (req, res) => {
   serverState.checkedOutBy = null;
   serverState.lastUpdated = new Date().toISOString();
   persistState();
+
+  // Log activity
+  logActivity('document:checkout:cancel', userId, {});
+
   broadcast({ type: 'checkoutCancel', userId });
   res.json({ ok: true });
 });
@@ -1021,13 +1284,15 @@ app.post('/api/v1/checkout/override', (req, res) => {
   const derivedRole = getUserRole(userId);
   const roleMap = loadRoleMap();
   const canOverride = !!(roleMap[derivedRole] && roleMap[derivedRole].override);
-  if (serverState.isFinal) return res.status(409).json({ error: 'Finalized' });
+  // finalization removed
   if (!canOverride) return res.status(403).json({ error: 'Forbidden' });
   // Override: clear any existing checkout, reverting to Available to check out
   if (serverState.checkedOutBy) {
+    const previousUserId = serverState.checkedOutBy;
     serverState.checkedOutBy = null;
     serverState.lastUpdated = new Date().toISOString();
     persistState();
+    try { logActivity('document:checkout:override', userId, { previousUserId }); } catch {}
     broadcast({ type: 'overrideCheckout', userId });
     return res.json({ ok: true, checkedOutBy: null });
   }
@@ -1053,10 +1318,27 @@ app.post('/api/v1/refresh-document', (req, res) => {
 // Client-originated events (prototype): accept and rebroadcast for parity
 app.post('/api/v1/events/client', async (req, res) => {
   try {
-    const { type = 'clientEvent', payload = {}, userId = 'user1', platform = 'web' } = req.body || {};
+    const { type = 'clientEvent', payload: rawPayload = {}, userId = 'user1', platform = 'web' } = req.body || {};
     const role = getUserRole(userId);
     const originPlatform = String(platform || 'web');
+    const payload = (function(){
+      const p = Object.assign({}, rawPayload);
+      if (type === 'chat') {
+        // Ensure platform-scoped threads by tagging payload
+        p.threadPlatform = originPlatform;
+      }
+      return p;
+    })();
     broadcast({ type, payload, userId, role, platform: originPlatform });
+
+    // Log human-sent messages as activities
+    if (type === 'approvals:message') {
+      try {
+        const toRaw = payload?.to;
+        const toList = Array.isArray(toRaw) ? toRaw.map(String) : [String(toRaw || '')];
+        logActivity('message:send', userId, { to: toList, channel: 'approvals', platform: originPlatform });
+      } catch {}
+    }
 
     const text = String(payload?.text || '').trim();
     if ((type === 'chat' || type === 'approvals:message') && text) {
@@ -1077,14 +1359,16 @@ app.post('/api/v1/events/client', async (req, res) => {
             const toList = Array.isArray(toRaw) ? toRaw.map(String) : [String(toRaw || '')];
             const threadId = payload && payload.threadId ? String(payload.threadId) : undefined;
             broadcast({ type: 'approvals:message', payload: { to: toList, text: replyText, threadId }, userId: 'bot', role: 'assistant', platform: 'server' });
+            // Log bot message send
+            logActivity('message:send', 'bot', { to: toList, channel: 'approvals', platform: 'server' });
           }
         } else {
           const msg = `LLM error: ${result && result.error ? result.error : 'Unknown error'}`;
-          try { broadcast({ type: 'notification', payload: formatServerNotification(msg, 'error') }); } catch {}
+          logActivity('system:error', 'system', { error: msg, source: 'llm' });
         }
       } catch (e) {
         const msg = `LLM error: ${e && e.message ? e.message : 'Unknown error'}`;
-        try { broadcast({ type: 'notification', payload: formatServerNotification(msg, 'error') }); } catch {}
+        logActivity('system:error', 'system', { error: msg, source: 'llm' });
       }
     } else if (type === 'chat:stop') {
       try { broadcast({ type: 'chat:reset', payload: { reason: 'user_stop', threadPlatform: originPlatform }, userId, role: 'assistant', platform: 'server' }); } catch {}
@@ -1313,7 +1597,7 @@ app.get('/api/v1/events', (req, res) => {
       documentId: DOCUMENT_ID,
       revision: serverState.revision,
       type: 'hello',
-      state: { isFinal: serverState.isFinal, checkedOutBy: serverState.checkedOutBy },
+      state: { checkedOutBy: serverState.checkedOutBy },
       ts: Date.now(),
     };
     res.write(`data: ${JSON.stringify(initial)}\n\n`);
@@ -1353,7 +1637,8 @@ function tryCreateHttpsServer() {
       return https.createServer(opts, app);
     }
   } catch { /* ignore */ }
-  if (String(process.env.ALLOW_HTTP || '').toLowerCase() === 'true') return null;
+  const allowHttp = String(process.env.ALLOW_HTTP || '').toLowerCase() === 'true' || String(process.env.NODE_ENV || '').toLowerCase() === 'test';
+  if (allowHttp) return null;
   throw new Error('No HTTPS certificate available. Install Office dev certs or provide server/config/dev-cert.pfx. Set ALLOW_HTTP=true to use HTTP for dev only.');
 }
 

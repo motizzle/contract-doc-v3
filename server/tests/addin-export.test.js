@@ -56,9 +56,8 @@ async function ensureNotCheckedOut() {
   } catch {}
 }
 
-async function ensureUnfinalized() {
-  try { await postJson('/api/v1/unfinalize', { userId: 'ensure' }); } catch {}
-}
+// Finalization removed – no-op
+async function ensureUnfinalized() { return; }
 
 function buildOfficeLikeBase64(totalBytes) {
   const size = Math.max(2, totalBytes|0);

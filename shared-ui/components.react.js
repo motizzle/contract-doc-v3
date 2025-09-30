@@ -23,12 +23,41 @@
       return; // Graceful no-op
     }
 
+    // Web-only: eliminate page-level scrollbar; let document and sidebar own scrolling
+    try {
+      if (typeof Office === 'undefined') {
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
+        document.body.style.height = '100vh';
+        // Lock any scrollable ancestors of the app root to avoid a second right-side scrollbar
+        (function lockScrollableAncestors() {
+          try {
+            const root = rootEl;
+            if (!root) return;
+            let node = root.parentElement;
+            const changed = [];
+            while (node && node !== document.body && node !== document.documentElement) {
+              const cs = getComputedStyle(node);
+              const isScrollable = /(auto|scroll)/.test(cs.overflowY) || node.scrollHeight > node.clientHeight;
+              if (isScrollable) {
+                node.setAttribute('data-og-prev-overflow-y', node.style.overflowY || '');
+                node.style.overflowY = 'hidden';
+                changed.push(node);
+              }
+              node = node.parentElement;
+            }
+            window.addEventListener('unload', () => {
+              try { changed.forEach(n => { const prev = n.getAttribute('data-og-prev-overflow-y') || ''; n.style.overflowY = prev; n.removeAttribute('data-og-prev-overflow-y'); }); } catch {}
+            });
+          } catch {}
+        })();
+      }
+    } catch {}
+
     // Load confetti.js library
     const confettiScript = document.createElement('script');
     confettiScript.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js';
-    confettiScript.onload = () => {
-      console.log('Confetti.js loaded successfully');
-    };
+     confettiScript.onload = () => {};
     document.head.appendChild(confettiScript);
 
     const React = win.React;
@@ -78,12 +107,19 @@
       const [loadedVersion, setLoadedVersion] = React.useState(1);
       const [dismissedVersion, setDismissedVersion] = React.useState(0);
       const [viewingVersion, setViewingVersion] = React.useState(1);
+      
+      // Debug: Track when viewingVersion changes
+      React.useEffect(() => {}, [viewingVersion]);
       const [isConnected, setIsConnected] = React.useState(false);
       const [lastTs, setLastTs] = React.useState(0);
       const [userId, setUserId] = React.useState('user1');
       const [role, setRole] = React.useState('editor');
       const [users, setUsers] = React.useState([]);
       const [logs, setLogs] = React.useState([]);
+      const [activities, setActivities] = React.useState([]);
+      const [lastSeenActivityId, setLastSeenActivityId] = React.useState(
+        typeof localStorage !== 'undefined' ? localStorage.getItem('lastSeenActivityId') || null : null
+      );
       const [lastSeenLogCount, setLastSeenLogCount] = React.useState(0);
       const [documentSource, setDocumentSource] = React.useState(null);
       const [lastError, setLastError] = React.useState(null);
@@ -91,9 +127,22 @@
       const [approvalsRevision, setApprovalsRevision] = React.useState(0);
       const API_BASE = getApiBase();
 
+      // Removed excessive logging
+
+      // Web-only: prevent page/body from adding a third scrollbar; keep scrolling scoped to document area and sidebar
       React.useEffect(() => {
-        console.log('StateProvider config changed to:', config);
-      }, [config]);
+        if (typeof Office !== 'undefined') return; // Word add-in unaffected
+        try {
+          const prevHtml = document.documentElement.style.overflow;
+          const prevBody = document.body.style.overflow;
+          document.documentElement.style.overflow = 'hidden';
+          document.body.style.overflow = 'hidden';
+          return () => {
+            document.documentElement.style.overflow = prevHtml;
+            document.body.style.overflow = prevBody;
+          };
+        } catch {}
+      }, []);
 
       // Notification formatting system
       const NOTIFICATION_TYPES = {
@@ -141,6 +190,32 @@
       const markNotificationsSeen = React.useCallback(() => {
         try { setLastSeenLogCount((logs || []).length); } catch {}
       }, [logs]);
+
+      // Load activities from server
+      const loadActivities = React.useCallback(async () => {
+        try {
+          const response = await fetch(`${API_BASE}/api/v1/activity`);
+          if (response.ok) {
+            const data = await response.json();
+            setActivities(data.activities || []);
+          }
+        } catch (e) {
+          console.error('Failed to load activities:', e);
+        }
+      }, [API_BASE]);
+
+      // Mark activities as seen
+      const markActivitiesSeen = React.useCallback(() => {
+        try {
+          const latestId = activities.length > 0 ? activities[activities.length - 1]?.id : null;
+          setLastSeenActivityId(latestId);
+          if (typeof localStorage !== 'undefined' && latestId) {
+            localStorage.setItem('lastSeenActivityId', latestId);
+          }
+        } catch (e) {
+          console.error('Failed to mark activities seen:', e);
+        }
+      }, [activities]);
 
       // Render formatted notification
       const renderNotification = React.useCallback((log, index) => {
@@ -191,6 +266,34 @@
               React.createElement('div', { key: 'timestamp', className: 'notification-timestamp' }, timestamp)
             ])
           ]);
+        } else if (log && typeof log === 'object' && log.message && log.timestamp) {
+          // New activity format (card style)
+          const timestamp = new Date(log.timestamp).toLocaleString();
+          const userLabel = log.user?.label || 'Unknown User';
+          const action = log.action || 'performed action';
+          const type = String(log.type || '').split(':')[0];
+          const icon = (function(){
+            switch (type) {
+              case 'document': return '📄';
+              case 'system': return '🔧';
+              case 'workflow': return '✅';
+              case 'version': return '🕘';
+              case 'status': return '🏷️';
+              default: return 'ℹ️';
+            }
+          })();
+
+          const message = log.message;
+
+          return React.createElement('div', { key: log.id || index, className: 'activity-card' }, [
+            React.createElement('div', { key: 'row', className: 'activity-card__row' }, [
+              React.createElement('span', { key: 'icon', className: 'activity-card__icon' }, icon),
+              React.createElement('div', { key: 'body', className: 'activity-card__body' }, [
+                React.createElement('div', { key: 'title', className: 'activity-card__title' }, message),
+                React.createElement('div', { key: 'meta', className: 'activity-card__meta' }, `${userLabel} • ${timestamp}`)
+              ])
+            ])
+          ]);
         } else if (log && typeof log === 'object' && (log.type || log.userId || log.ts)) {
           const std = toStd(log);
           if (std) return React.createElement('div', { key: index, className: 'notification-item notification-legacy' }, std.stdText);
@@ -226,15 +329,19 @@
           const r = await fetch(`${API_BASE}/api/v1/state-matrix?${qs}`);
             if (r.ok) {
               const j = await r.json();
-            console.log('Fetched config:', j.config);
-            try { console.log('Buttons:', j?.config?.buttons, 'Checkout:', j?.config?.checkoutStatus); } catch {}
-            console.log('Setting config to:', j.config);
               setConfig(j.config || null);
               if (typeof j.revision === 'number') setRevision(j.revision);
               try { const sum = j?.config?.approvals?.summary || null; setApprovalsSummary(sum); } catch {}
             }
         } catch {}
       }, [API_BASE, userId, loadedVersion]);
+
+      // Refresh state-matrix when revision changes to show banners for new versions
+      React.useEffect(() => {
+        if (revision > 0) { // Only refresh after initial load
+          refresh();
+        }
+      }, [revision]); // Remove refresh from deps to avoid loops
 
       React.useEffect(() => {
         // Load users for selector (role comes from users.json)
@@ -304,9 +411,6 @@
                   case 'compile':
                     addLog(`Document compiled as "${p.name}"`, 'success');
                     break;
-                  case 'finalize':
-                    addLog(p.value ? 'Document finalized' : 'Document unfinalized', 'system');
-                    break;
                   case 'checkout':
                     addLog('Document checked out', 'info');
                     break;
@@ -375,14 +479,30 @@
               if (p && p.type === 'messaging:reset') {
                 try { window.dispatchEvent(new CustomEvent('messaging:reset', { detail: p })); } catch {}
               }
+              // Handle activity updates
+              if (p && p.type === 'activity:new' && p.activity) {
+                setActivities(prev => [...prev, p.activity]);
+              }
+              // Handle activity reset
+              if (p && p.type === 'activity:reset') {
+                setActivities([]);
+                setLastSeenActivityId(null);
+                if (typeof localStorage !== 'undefined') {
+                  localStorage.removeItem('lastSeenActivityId');
+                }
+              }
               // Do not auto-refresh document on save/revert; show banner via state-matrix
               refresh();
             } catch {}
           };
           sse.onerror = () => { setIsConnected(false); addLog('Lost connection to server', 'error'); };
         } catch {}
+
+        // Load initial activities
+        loadActivities();
+
         return () => { try { sse && sse.close(); } catch {} };
-      }, [API_BASE, refresh, addLog]);
+      }, [API_BASE, refresh, addLog, loadActivities]);
 
       const addError = React.useCallback((err) => {
         try { setLastError(err || null); if (err && err.message) addLog(`Error: ${err.message}`, 'error'); } catch {}
@@ -406,6 +526,7 @@
                 const v = Number(j?.config?.documentVersion || 1);
                 const ver = Number.isFinite(v) && v > 0 ? v : 1;
                 setLoadedVersion(ver);
+                
                 try { setViewingVersion(ver); } catch {}
                 try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: ver, payload: { threadPlatform: 'web' } } })); } catch {}
               }
@@ -535,9 +656,51 @@
       }
 
       const actions = React.useMemo(() => ({
-        finalize: async () => { try { await fetch(`${API_BASE}/api/v1/finalize`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Document finalized successfully', 'success'); await refresh(); } catch (e) { addLog(`Failed to finalize document: ${e?.message||e}`, 'error'); } },
-        unfinalize: async () => { try { await fetch(`${API_BASE}/api/v1/unfinalize`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Document unfinalized successfully', 'success'); await refresh(); } catch (e) { addLog(`Failed to unfinalize document: ${e?.message||e}`, 'error'); } },
-        checkout: async () => { try { await fetch(`${API_BASE}/api/v1/checkout`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Document checked out successfully', 'success'); await refresh(); } catch (e) { addLog(`Failed to check out document: ${e?.message||e}`, 'error'); } },
+        // finalize/unfinalize removed
+        checkout: async () => { 
+          
+          try { 
+            const clientVersionToSend = (viewingVersion || loadedVersion || 0);
+            
+            const response = await fetch(`${API_BASE}/api/v1/checkout`, { 
+              method: 'POST', 
+              headers: { 'Content-Type': 'application/json' }, 
+              body: JSON.stringify({ userId, clientVersion: clientVersionToSend }) 
+            });
+            
+            
+            if (response.ok) {
+              addLog('Document checked out successfully', 'success'); 
+              await refresh(); 
+            } else {
+              const errorData = await response.json();
+              if (errorData.error === 'version_outdated') {
+                // Show modal for version outdated
+                
+                try { 
+                  window.dispatchEvent(new CustomEvent('react:open-modal', { 
+                    detail: { 
+                      id: 'version-outdated-checkout', 
+                      options: { 
+                        currentVersion: errorData.currentVersion,
+                        clientVersion: errorData.clientVersion,
+                        viewingVersion: viewingVersion || loadedVersion || 0,
+                        message: errorData.message,
+                        userId: userId
+                      } 
+                    } 
+                  })); 
+                } catch (e) {
+                  console.error('Error dispatching modal event:', e);
+                }
+              } else {
+                addLog(`Failed to check out document: ${errorData.error || 'Unknown error'}`, 'error');
+              }
+            }
+          } catch (e) { 
+            addLog(`Failed to check out document: ${e?.message||e}`, 'error'); 
+          } 
+        },
         checkin: async () => { try { await fetch(`${API_BASE}/api/v1/checkin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Document checked in successfully', 'success'); await refresh(); } catch (e) { addLog(`Failed to check in document: ${e?.message||e}`, 'error'); } },
         cancel: async () => { try { await fetch(`${API_BASE}/api/v1/checkout/cancel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Checkout cancelled successfully', 'success'); await refresh(); } catch (e) { addLog(`Failed to cancel checkout: ${e?.message||e}`, 'error'); } },
         override: async () => { try { await fetch(`${API_BASE}/api/v1/checkout/override`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); addLog('Checkout override successful', 'warning'); await refresh(); } catch (e) { addLog(`Failed to override checkout: ${e?.message||e}`, 'error'); } },
@@ -558,6 +721,7 @@
                 const j = await r.json();
                 const v = Number(j?.config?.documentVersion || 0);
                 if (Number.isFinite(v) && v > 0) {
+                  
                   try { setViewingVersion(v); } catch {}
                   try { setLoadedVersion(v); } catch {} // Fix: Update loadedVersion to prevent banner showing for same user
                   try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
@@ -585,13 +749,14 @@
                 const r = await fetch(`${API_BASE}/api/v1/state-matrix?${qs}`);
                 if (r.ok) {
                   const j = await r.json();
-                  try { console.log('[user switch] Buttons:', j?.config?.buttons, 'Checkout:', j?.config?.checkoutStatus); } catch {}
+                   
                   setConfig(j.config || null);
                   if (typeof j.revision === 'number') setRevision(j.revision);
                   // Update both viewingVersion and loadedVersion to the newest version for this user
                   try {
                     const v = Number(j?.config?.documentVersion || 0);
                     if (Number.isFinite(v) && v > 0) {
+                       
                       setViewingVersion(v);
                       setLoadedVersion(v); // Reset loadedVersion to current document version for new user
                       try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
@@ -630,9 +795,9 @@
             })();
           } catch {}
         },
-      }), [API_BASE, refresh, userId, addLog]);
+      }), [API_BASE, refresh, userId, addLog, viewingVersion]);
 
-      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, renderNotification, formatNotification, viewingVersion, setViewingVersion } }, React.createElement(App, { config }));
+      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, activities, lastSeenActivityId, markActivitiesSeen, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, renderNotification, formatNotification, viewingVersion, setViewingVersion, refresh } }, React.createElement(App, { config }));
     }
 
     function BannerStack(props) {
@@ -890,7 +1055,7 @@
       }
       const nestedItems = [
         menuItem('View Latest', viewLatest, true),
-        menuItem('Finalize', () => ask('Finalize?', 'This will lock the document.', actions.finalize), !!btns.finalizeBtn),
+        
         menuItem('Send to Vendor', () => { try { setTimeout(() => { try { actions.sendVendor({}); } catch {} }, 130); } catch {} }, !!btns.sendVendorBtn),
         menuItem('Request review', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'request-review' } })); } catch {} }, true),
         menuItem('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true),
@@ -921,7 +1086,7 @@
 
       // Bottom: all other actions, with '...' for menu
       const bottomGrid = [
-        add('Unfinalize', () => ask('Unlock?', 'This will unlock the document.', actions.unfinalize), !!btns.unfinalizeBtn),
+        
       ].filter(Boolean);
 
       // Read server-provided primary layout mode
@@ -1154,13 +1319,14 @@
     }
 
     function ActivityPanel() {
-      const { logs, renderNotification, markNotificationsSeen, lastSeenLogCount } = React.useContext(StateContext);
-      React.useEffect(() => { try { markNotificationsSeen?.(); } catch {} }, [markNotificationsSeen]);
+      const { activities, renderNotification, markActivitiesSeen } = React.useContext(StateContext);
+      React.useEffect(() => { try { markActivitiesSeen?.(); } catch {} }, [markActivitiesSeen]);
       const copy = async () => {
         try {
-          const text = (logs || []).slice().reverse().map(log => {
-            if (typeof log === 'string') return log;
-            return `[${log.timestamp}] ${log.message}`;
+          const text = (activities || []).slice().reverse().map(activity => {
+            if (typeof activity === 'string') return activity;
+            const timestamp = activity.timestamp ? new Date(activity.timestamp).toLocaleString() : 'Unknown';
+            return `[${timestamp}] ${activity.message || activity.action || 'Unknown activity'}`;
           }).join('\n');
           if (navigator?.clipboard?.writeText) await navigator.clipboard.writeText(text);
         } catch {}
@@ -1168,8 +1334,8 @@
       const footer = React.createElement('div', { className: 'd-flex items-center justify-end', style: { padding: '8px 0' } }, [
         React.createElement(UIButton, { key: 'copy', label: 'Copy', onClick: copy, variant: 'primary' })
       ]);
-      const list = (logs || []).length
-        ? React.createElement('div', { className: 'notifications-list' }, (logs || []).slice().reverse().map((log, index) => renderNotification(log, index)).filter(Boolean))
+      const list = (activities || []).length
+        ? React.createElement('div', { className: 'notifications-list', style: { maxHeight: 'none', overflow: 'visible' } }, (activities || []).slice().reverse().map((activity, index) => renderNotification(activity, index)).filter(Boolean))
         : React.createElement('div', { className: 'text-gray-500', style: { padding: 8 } }, 'No activity yet.');
       return React.createElement('div', { className: 'd-flex flex-column gap-2' }, [list, footer]);
     }
@@ -1534,7 +1700,7 @@
             const forUser = String(d && d.userId || 'default');
             const threadPlatform = d && d.payload && d.payload.threadPlatform;
             const currentPlatform = typeof Office !== 'undefined' ? 'word' : 'web';
-            console.log('📨 SSE reset received:', { forUser, threadPlatform, currentPlatform, currentUser });
+            
 
             if (isGlobal) {
               // Factory reset or global reset: clear completely, do NOT seed greeting
@@ -1547,23 +1713,23 @@
             try {
               if (typeof Office !== 'undefined') {
                 if (threadPlatform && threadPlatform !== 'word') {
-                  console.log('🔄 Ignoring reset - wrong platform for Word');
+                  
                   return;
                 }
               } else {
                 if (threadPlatform && threadPlatform !== 'web') {
-                  console.log('🔄 Ignoring reset - wrong platform for Web');
+                   
                   return;
                 }
               }
             } catch {}
 
             if (String(forUser) !== String(currentUser)) {
-              console.log('🔄 Ignoring reset - wrong user');
+              
               return;
             }
 
-            console.log('🔄 Processing reset for current user/platform');
+            
             setMessages(['[bot] ' + DEFAULT_AI_GREETING]);
             setText('');
           } catch (error) {
@@ -1662,16 +1828,16 @@
       ]);
       const reset = async () => {
         try {
-          console.log('🔄 Starting reset process...');
+          
           const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
-          console.log('📤 Sending reset request:', { platform: plat, userId: currentUser });
+          
           const r = await fetch(`${API_BASE}/api/v1/chatbot/reset`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUser, platform: plat }) });
           // Ask server and other clients to stop any in-flight streaming
           try { await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat:stop', userId: currentUser, platform: plat }) }); } catch {}
           // Optimistically clear locally; SSE chat:reset will also arrive
           try { setMessages(['[bot] ' + DEFAULT_AI_GREETING]); } catch {}
           try { setText(''); } catch {}
-          console.log('✅ Reset completed locally');
+          
           return r;
         } catch (error) {
           console.error('❌ Reset failed:', error);
@@ -1749,23 +1915,9 @@
         value: title,
         onChange: (e) => setTitle(e.target.value),
         onBlur,
-        placeholder: 'Untitled Document',
-        className: 'font-semibold w-full',
-        rows: 1,
-        style: {
-          background: 'transparent',
-          border: 'none',
-          outline: 'none',
-          padding: '0',
-          margin: '0',
-          fontSize: 'calc(var(--font-size-2xl) * 1.5)',
-          lineHeight: '1.15',
-          height: 'calc((var(--font-size-2xl) * 1.5) * 1.2)',
-          whiteSpace: 'normal',
-          overflowWrap: 'anywhere',
-          overflow: 'hidden',
-          resize: 'none'
-        }
+        placeholder: 'Wut Contract?',
+        className: 'font-semibold w-full document-title document-title-textarea',
+        rows: 1
       });
     }
 
@@ -1812,10 +1964,12 @@
             const n = Number(d && d.version);
             if (!Number.isFinite(n) || n < 1) return;
             const threadPlatform = d && d.payload && d.payload.threadPlatform;
+            
             // Keep platforms separate: ignore view events from the other platform
             try { if (typeof Office !== 'undefined') { if (threadPlatform && threadPlatform !== 'word') return; } else { if (threadPlatform && threadPlatform !== 'web') return; } } catch {}
             // Ensure the list reflects the newest versions
             try { await refresh(); } catch {}
+            
             setViewingVersion(n);
             const url = `${API_BASE}/api/v1/versions/${n}?rev=${Date.now()}`;
             if (typeof Office !== 'undefined') {
@@ -1881,7 +2035,7 @@
       };
       const list = (items || []).map(card);
       const scrollBox = list.length
-        ? React.createElement('div', { key: 'cards-wrap', style: { maxHeight: 360, overflowY: 'auto', padding: 0 } },
+         ? React.createElement('div', { key: 'cards-wrap', style: { padding: 0 } },
             React.createElement('div', { className: 'd-flex flex-column gap-8' }, list)
           )
         : React.createElement('div', { key: 'empty', className: 'text-gray-500', style: { padding: 8 } }, 'No versions yet.');
@@ -2310,6 +2464,103 @@
       );
     }
 
+    function VersionOutdatedCheckoutModal(props) {
+      const { onClose, currentVersion, clientVersion, viewingVersion, message, userId } = props || {};
+      const { tokens } = React.useContext(ThemeContext);
+      const { actions, addLog, refresh, setViewingVersion, setLoadedVersion } = React.useContext(StateContext);
+      const t = tokens && tokens.modal ? tokens.modal : {};
+      
+      const handleCheckoutLatest = async () => {
+        
+        try {
+          const response = await fetch(`${getApiBase()}/api/v1/checkout`, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ userId, clientVersion: currentVersion, forceCheckout: true }) 
+          });
+          
+          
+          
+          if (response.ok) {
+            addLog('Document checked out successfully (latest version)', 'success'); 
+            try { 
+              await refresh(); 
+              try { if (typeof setViewingVersion === 'function') setViewingVersion(currentVersion); } catch {}
+              try { if (typeof setLoadedVersion === 'function') setLoadedVersion(currentVersion); } catch {}
+              try {
+                const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
+                window.dispatchEvent(new CustomEvent('version:view', { detail: { version: currentVersion, payload: { threadPlatform: plat } } }));
+              } catch {}
+            } finally { onClose?.(); }
+          } else {
+            const errorData = await response.json();
+            
+            addLog(`Failed to check out document: ${errorData.error || 'Unknown error'}`, 'error');
+          }
+        } catch (e) { 
+          console.error('handleCheckoutLatest exception:', e);
+          addLog(`Failed to check out document: ${e?.message||e}`, 'error'); 
+        }
+      };
+
+      const handleCheckoutCurrent = async () => {
+        const versionToUse = viewingVersion || clientVersion;
+        
+        try {
+          const response = await fetch(`${getApiBase()}/api/v1/checkout`, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ userId, clientVersion: versionToUse, forceCheckout: true }) 
+          });
+          
+          
+          
+          if (response.ok) {
+            addLog(`Document checked out successfully (version ${versionToUse})`, 'success'); 
+            try { 
+              await refresh(); 
+              try { if (typeof setViewingVersion === 'function') setViewingVersion(versionToUse); } catch {}
+              try { if (typeof setLoadedVersion === 'function') setLoadedVersion(versionToUse); } catch {}
+              try {
+                const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
+                window.dispatchEvent(new CustomEvent('version:view', { detail: { version: versionToUse, payload: { threadPlatform: plat } } }));
+              } catch {}
+            } finally { onClose?.(); }
+          } else {
+            const errorData = await response.json();
+            
+            addLog(`Failed to check out document: ${errorData.error || 'Unknown error'}`, 'error');
+          }
+        } catch (e) { 
+          console.error('handleCheckoutCurrent exception:', e);
+          addLog(`Failed to check out document: ${e?.message||e}`, 'error'); 
+        }
+      };
+
+      const btn = (label, variant, onclick) => React.createElement(UIButton, { label, onClick: onclick, variant: variant || 'primary' });
+
+      return React.createElement('div', { className: 'modal-overlay', onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
+        React.createElement('div', { className: 'modal-panel' }, [
+          React.createElement('div', { key: 'h', className: 'modal-header' }, [
+            React.createElement('div', { key: 't', className: 'font-bold' }, 'Document Updated'),
+            React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: onClose }, '✕')
+          ]),
+          React.createElement('div', { key: 'b', className: 'modal-body' }, [
+            React.createElement('p', { key: 'msg', style: { marginBottom: '16px' } }, 'Document has been updated. Which version would you like to check out?'),
+            React.createElement('div', { key: 'info', style: { marginBottom: '20px', padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '4px' } }, [
+              React.createElement('div', { key: 'current', style: { marginBottom: '4px' } }, `Latest version: ${currentVersion || 'Unknown'}`),
+              React.createElement('div', { key: 'viewing' }, `You're viewing version: ${viewingVersion || clientVersion || 'Unknown'}`)
+            ])
+          ]),
+          React.createElement('div', { key: 'f', className: 'modal-footer' }, [
+            btn('Cancel', 'tertiary', onClose),
+            btn(`Check Out Version ${viewingVersion || clientVersion}`, 'secondary', handleCheckoutCurrent),
+            btn('Check Out Latest Version', 'primary', handleCheckoutLatest)
+          ])
+        ])
+      );
+    }
+
     function ConfirmModal(props) {
       const { title, message, onConfirm, onClose } = props || {};
       const { tokens } = React.useContext(ThemeContext);
@@ -2530,21 +2781,43 @@
     }
 
     function App(props) {
-      console.log('App render');
       const [modal, setModal] = React.useState(null);
       const { config } = props;
-      console.log('App props, config:', config);
-      const { documentSource, actions, approvalsSummary } = React.useContext(StateContext);
+      const { documentSource, actions, approvalsSummary, activities, lastSeenActivityId } = React.useContext(StateContext);
       React.useEffect(() => {
-        function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); if (d && d.id === 'notifications') setModal({ id: 'notifications' }); if (d && d.id === 'request-review') setModal({ id: 'request-review' }); if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); } catch {} }
+        function onOpen(ev) { 
+          
+          try { 
+            const d = ev.detail || {}; 
+            if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); 
+            if (d && d.id === 'approvals') setModal({ id: 'approvals' }); 
+            if (d && d.id === 'compile') setModal({ id: 'compile' }); 
+            if (d && d.id === 'notifications') setModal({ id: 'notifications' }); 
+            if (d && d.id === 'request-review') setModal({ id: 'request-review' }); 
+            if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); 
+            if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); 
+            if (d && d.id === 'version-outdated-checkout') {
+              
+              setModal({ 
+                id: 'version-outdated-checkout', 
+                currentVersion: d.options?.currentVersion, 
+                clientVersion: d.options?.clientVersion, 
+                viewingVersion: d.options?.viewingVersion, 
+                message: d.options?.message, 
+                userId: d.options?.userId 
+              });
+            }
+          } catch (e) {
+            console.error('Error in modal onOpen:', e);
+          }
+        }
         window.addEventListener('react:open-modal', onOpen);
         return () => window.removeEventListener('react:open-modal', onOpen);
       }, []);
   
       const [confirm, setConfirm] = React.useState(null);
       const ask = (kind) => {
-        if (kind === 'finalize') setConfirm({ title: 'Finalize?', message: 'This will lock the document.', onConfirm: actions.finalize });
-        if (kind === 'unfinalize') setConfirm({ title: 'Unlock?', message: 'This will unlock the document.', onConfirm: actions.unfinalize });
+        
         if (kind === 'reset') setConfirm({ title: 'Factory reset?', message: 'This will clear working data.', onConfirm: actions.factoryReset });
       };
 
@@ -2552,6 +2825,7 @@
       const onConfirmClose = () => setConfirm(null);
 
       const renderModal = () => {
+        
         if (!modal) return null;
         switch (modal.id) {
           case 'send-vendor':
@@ -2568,6 +2842,8 @@
             return React.createElement(MessageModal, { toUserId: modal.toUserId, toUserName: modal.toUserName, onClose });
           case 'open-gov':
             return React.createElement(OpenGovModal, { onClose });
+          case 'version-outdated-checkout':
+            return React.createElement(VersionOutdatedCheckoutModal, { currentVersion: modal.currentVersion, clientVersion: modal.clientVersion, viewingVersion: modal.viewingVersion, message: modal.message, userId: modal.userId, onClose });
           default:
             return null;
         }
@@ -2667,11 +2943,33 @@
             key: 'tab-activity',
             className: activeTab === 'Activity' ? 'tab tab--active' : 'tab',
             onClick: () => setActiveTab('Activity'),
-            style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Activity' ? '#111827' : '#6B7280', fontWeight: 600 }
-          }, React.createElement('span', { ref: actLabelRef, style: { display: 'inline-block' } }, 'Activity')),
+            style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Activity' ? '#111827' : '#6B7280', fontWeight: 600, position: 'relative' }
+          }, [
+            React.createElement('span', { key: 'label', ref: actLabelRef, style: { display: 'inline-block' } }, 'Activity'),
+            activities && lastSeenActivityId ? (() => {
+              const unseenCount = activities.filter(a => !lastSeenActivityId || a.id > lastSeenActivityId).length;
+              return unseenCount > 0 ? React.createElement('span', {
+                key: 'badge',
+                className: 'ui-badge badge-activity',
+                style: {
+                  position: 'absolute',
+                  top: '-8px',
+                  right: '-8px',
+                  background: '#ef4444',
+                  color: 'white',
+                  borderRadius: '10px',
+                  padding: '2px 6px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  minWidth: '16px',
+                  textAlign: 'center'
+                }
+              }, String(unseenCount)) : null;
+            })() : null
+          ]),
           React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
-        React.createElement('div', { key: 'tabbody', className: 'mt-3' }, [
+        React.createElement('div', { key: 'tabbody', className: 'mt-3', style: (typeof Office === 'undefined') ? { maxHeight: 'calc(100vh - 200px)', overflowY: 'auto', overscrollBehavior: 'contain' } : undefined }, [
           React.createElement('div', { key: 'wrap-ai', style: { display: (activeTab === 'AI' ? 'block' : 'none') } }, React.createElement(ChatConsole, { key: 'chat' })),
           React.createElement('div', { key: 'wrap-workflow', style: { display: (activeTab === 'Workflow' ? 'block' : 'none') } }, React.createElement(WorkflowApprovalsPanel, { key: 'workflow' })),
           React.createElement('div', { key: 'wrap-messaging', style: { display: (activeTab === 'Messaging' ? 'block' : 'none') } }, React.createElement(MessagingPanel, { key: 'messaging' })),
@@ -2680,7 +2978,9 @@
         ])
       ]);
 
-      const assistantPanel = React.createElement('div', { className: 'panel panel--assistant' }, [
+      // On web, confine scroll to the sidebar to avoid scrolling the document
+      // Single sidebar scrollbar on web: apply to tab body, not header container
+      const assistantPanel = React.createElement('div', { className: 'panel panel--assistant', style: (typeof Office === 'undefined') ? { overflow: 'hidden', maxHeight: '100vh' } : undefined }, [
         Tabs,
         renderModal(),
         (confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: onConfirmClose }) : null)

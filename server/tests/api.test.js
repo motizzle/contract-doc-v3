@@ -25,9 +25,13 @@ async function ensureServerRunning() {
   // Start server as child
   try {
     const cwd = path.join(__dirname, '..');
-    serverChild = spawn(process.execPath, ['src/server.js'], { cwd, stdio: 'ignore' });
-    // Wait for health
-    for (let i = 0; i < 20; i++) {
+    serverChild = spawn(process.execPath, ['src/server.js'], {
+      cwd,
+      stdio: 'ignore',
+      env: { ...process.env, NODE_ENV: 'test', ALLOW_HTTP: 'true' }
+    });
+    // Wait for health (up to 10s)
+    for (let i = 0; i < 40; i++) {
       await sleep(250);
       try { const r = await fetchJson('/api/v1/health'); if (r && r.status === 200) return true; } catch {}
     }
@@ -116,13 +120,9 @@ async function ensureNotCheckedOut() {
   }
 }
 
-async function ensureUnfinalized() {
-  try { await postJson('/api/v1/unfinalize', { userId: 'ensure' }); } catch {}
-}
-
-async function ensureFinalized() {
-  try { await postJson('/api/v1/finalize', { userId: 'ensure' }); } catch {}
-}
+// Finalization removed – helpers no-ops
+async function ensureUnfinalized() { return; }
+async function ensureFinalized() { return; }
 
 describe('API', () => {
   beforeAll(async () => {
@@ -144,7 +144,7 @@ describe('API', () => {
     expect(r.json.config).toBeTruthy();
   });
 
-  test('saveProgressBtn true only for owner checkout and not final', async () => {
+  test('saveProgressBtn true only for owner checkout', async () => {
     // Ensure unfinalized and not checked out
     await ensureUnfinalized();
     await ensureNotCheckedOut();
@@ -161,13 +161,7 @@ describe('API', () => {
     r = await fetchJson('/api/v1/state-matrix?platform=web&userId=b');
     expect(r.json.config.buttons.saveProgressBtn).toBeFalsy();
 
-    // Finalize -> false even for owner
-    await postJson('/api/v1/finalize', { userId: 'a' });
-    r = await fetchJson('/api/v1/state-matrix?platform=web&userId=a');
-    expect(r.json.config.buttons.saveProgressBtn).toBeFalsy();
-
     // Cleanup
-    await postJson('/api/v1/unfinalize', { userId: 'a' });
     await ensureNotCheckedOut();
   });
 
@@ -178,7 +172,7 @@ describe('API', () => {
     expect(Array.isArray(r.json.schema.fields)).toBe(true);
   });
 
-  test('save-progress endpoint enforces ownership/final and accepts valid docx-like bytes', async () => {
+  test('save-progress endpoint enforces ownership and accepts valid docx-like bytes', async () => {
     await ensureUnfinalized();
     await ensureNotCheckedOut();
     // Not checked out -> 409
@@ -201,12 +195,7 @@ describe('API', () => {
     expect(res.status).toBe(200);
     expect(typeof res.json.revision).toBe('number');
 
-    // Finalize blocks save-progress
-    await postJson('/api/v1/finalize', { userId: 'a' });
-    const okBuf2 = Buffer.alloc(2048, 0); okBuf2[0]=0x50; okBuf2[1]=0x4b;
-    res = await postJson('/api/v1/save-progress', { userId: 'a', base64: okBuf2.toString('base64') });
-    expect(res.status).toBe(409);
-    await postJson('/api/v1/unfinalize', { userId: 'a' });
+    // Finalization removed – no block by status
     await ensureNotCheckedOut();
   });
 
@@ -253,14 +242,7 @@ describe('API', () => {
     expect(c2.status).toBe(200);
   });
 
-  test('finalize/unfinalize', async () => {
-    await ensureNotCheckedOut();
-    const u = 'jest-user';
-    const f1 = await postJson('/api/v1/finalize', { userId: u });
-    expect(f1.status).toBe(200);
-    const f2 = await postJson('/api/v1/unfinalize', { userId: u });
-    expect(f2.status).toBe(200);
-  });
+  // Finalization removed – drop finalize/unfinalize endpoint test
 
   test('checkin without checkout returns 409', async () => {
     await ensureNotCheckedOut();
@@ -278,25 +260,9 @@ describe('API', () => {
     await postJson('/api/v1/checkin', { userId: a }); // cleanup
   });
 
-  test('cannot finalize when checked out by another user', async () => {
-    await ensureUnfinalized();
-    await ensureNotCheckedOut();
-    const a = 'jest-a', b = 'jest-b';
-    await postJson('/api/v1/checkout', { userId: a });
-    const r = await postJson('/api/v1/finalize', { userId: b });
-    expect(r.status).toBe(409);
-    await postJson('/api/v1/checkin', { userId: a }); // cleanup
-  });
+  // Finalization removed – drop finalize conflict test
 
-  test('while finalized, checkout is blocked and unfinalize succeeds', async () => {
-    await ensureFinalized();
-    const a = 'jest-a', b = 'jest-b';
-    const c = await postJson('/api/v1/checkout', { userId: a });
-    expect(c.status).toBe(409);
-    const r = await postJson('/api/v1/unfinalize', { userId: b });
-    expect(r.status).toBe(200);
-    await ensureUnfinalized();
-  });
+  // Finalization removed – drop finalize block test
 
   test('approvals API: GET/set/reset/notify', async () => {
     await ensureUnfinalized();

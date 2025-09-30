@@ -20,7 +20,7 @@
   --brand-logo-height: 31px;
 
   /* Title */
-  --brand-title-font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --brand-title-font-family: Arial;
   --brand-title-font-weight: 700;
   --brand-title-font-size: 18px;
   --brand-title-line-height: 48px;
@@ -106,7 +106,7 @@
 
   /* Typography */
   --font-family-mono: 'Consolas, monospace';
-  --font-family-system: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-family-system: Arial;
   --font-size-xs: 9px;
   --font-size-sm: 11px;
   --font-size-base: 13px;
@@ -1063,6 +1063,38 @@ body .brand-header-bg .pulse-pill {
 /* Typography */
 .font-mono { font-family: var(--font-family-mono); }
 .font-system { font-family: var(--font-family-system); }
+.document-title { font-family: var(--font-family-system); }
+
+.document-title-textarea {
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  font-family: var(--font-family-system);
+  font-size: calc(var(--font-size-2xl) * 1.5);
+  line-height: 1.15;
+  height: calc((var(--font-size-2xl) * 1.5) * 1.2);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  resize: none;
+}
+
+/* Activity cards */
+.activity-card {
+  border: 1px solid #e5e7eb; /* gray-200 */
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.activity-card__row { display: flex; align-items: flex-start; gap: 10px; }
+.activity-card__icon { font-size: 18px; line-height: 1; margin-top: 2px; }
+.activity-card__body { flex: 1; min-width: 0; }
+.activity-card__title { font-weight: 600; color: #111827; /* gray-900 */ }
+.activity-card__meta { margin-top: 2px; font-size: 12px; color: #6b7280; /* gray-500 */ }
 
 .text-xs { font-size: var(--font-size-xs); }
 .text-sm { font-size: var(--font-size-sm); }
@@ -1295,6 +1327,7 @@ body .brand-header-bg .pulse-pill {
   align-items: var(--layout-align-items-center);
   justify-content: var(--layout-justify-content-center);
   z-index: var(--z-index-modal-backdrop);
+  padding: 3px;
 }
 
 .modal-panel {
@@ -1309,7 +1342,7 @@ body .brand-header-bg .pulse-pill {
 }
 
 .modal-header {
-  padding: var(--space-14) var(--space-16);
+  padding: var(--space-16) var(--space-20);
   border-bottom: var(--border-width-1) var(--border-style-solid) var(--color-gray-200);
   display: var(--layout-display-flex);
   align-items: var(--layout-align-items-center);
