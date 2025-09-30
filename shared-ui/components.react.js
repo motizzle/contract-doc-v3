@@ -1619,8 +1619,14 @@
             const changeType = String(detail && (detail.changeType || 'change'));
             const contextBefore = String(detail && (detail.contextBefore || ''));
             const contextAfter = String(detail && (detail.contextAfter || ''));
+            const targetVersion = Number(detail && detail.targetVersion ? detail.targetVersion : 0);
             console.log('[UI] document:navigate event', { textLen: text.length, changeType, hasCtx: !!(contextBefore || contextAfter) });
             if (!text || typeof Office === 'undefined' || typeof Word === 'undefined') return;
+            // If a specific version is provided, load it first so deleted text context exists
+            if (Number.isFinite(targetVersion) && targetVersion > 0) {
+              try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: targetVersion } })); } catch {}
+              await new Promise(res => setTimeout(res, 900));
+            }
             await Word.run(async (context) => {
               const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
               const searchText = norm(text);
@@ -1655,6 +1661,23 @@
                 searchResults.load('items');
                 await context.sync();
               }
+              // Final fallback for very small insertions: anchor near context edges
+              if (!(searchResults.items && searchResults.items.length > 0) && (beforeNorm || afterNorm)) {
+                const beforeWords = beforeNorm ? beforeNorm.split(/\s+/).filter(Boolean) : [];
+                const afterWords = afterNorm ? afterNorm.split(/\s+/).filter(Boolean) : [];
+                const beforeAnchor = beforeWords.length ? beforeWords.slice(Math.max(0, beforeWords.length - 5)).join(' ') : '';
+                const afterAnchor = afterWords.length ? afterWords.slice(0, Math.min(5, afterWords.length)).join(' ') : '';
+                if (beforeAnchor) {
+                  searchResults = context.document.body.search(beforeAnchor, opts);
+                  searchResults.load('items');
+                  await context.sync();
+                }
+                if (!(searchResults.items && searchResults.items.length > 0) && afterAnchor) {
+                  searchResults = context.document.body.search(afterAnchor, opts);
+                  searchResults.load('items');
+                  await context.sync();
+                }
+              }
               if (searchResults.items && searchResults.items.length > 0) {
                 const range = searchResults.items[0];
                 range.select();
@@ -1662,6 +1685,9 @@
                 if (changeType === 'addition') range.font.highlightColor = 'lightGreen';
                 else if (changeType === 'deletion') range.font.highlightColor = 'lightPink';
                 else range.font.highlightColor = 'yellow';
+                await context.sync();
+              } else {
+                try { console.warn('[UI] document:navigate: no match found after fallbacks', { textLen: searchText.length }); } catch {}
               }
             });
           } catch {}
