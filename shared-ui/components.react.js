@@ -26,9 +26,7 @@
     // Load confetti.js library
     const confettiScript = document.createElement('script');
     confettiScript.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js';
-    confettiScript.onload = () => {
-      console.log('Confetti.js loaded successfully');
-    };
+     confettiScript.onload = () => {};
     document.head.appendChild(confettiScript);
 
     const React = win.React;
@@ -80,9 +78,7 @@
       const [viewingVersion, setViewingVersion] = React.useState(1);
       
       // Debug: Track when viewingVersion changes
-      React.useEffect(() => {
-        console.log('viewingVersion changed to:', viewingVersion);
-      }, [viewingVersion]);
+      React.useEffect(() => {}, [viewingVersion]);
       const [isConnected, setIsConnected] = React.useState(false);
       const [lastTs, setLastTs] = React.useState(0);
       const [userId, setUserId] = React.useState('user1');
@@ -484,7 +480,7 @@
                 const v = Number(j?.config?.documentVersion || 1);
                 const ver = Number.isFinite(v) && v > 0 ? v : 1;
                 setLoadedVersion(ver);
-                console.log('Setting viewingVersion to server version (config change):', ver);
+                
                 try { setViewingVersion(ver); } catch {}
                 try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: ver, payload: { threadPlatform: 'web' } } })); } catch {}
               }
@@ -616,18 +612,16 @@
       const actions = React.useMemo(() => ({
         // finalize/unfinalize removed
         checkout: async () => { 
-          console.log('Checkout action called with:', { userId, viewingVersion, loadedVersion });
+          
           try { 
-            // Debug: Force version outdated for testing
-            const forceVersionOutdated = window.location.search.includes('debug=version-modal');
-            const clientVersionToSend = forceVersionOutdated ? 1 : (viewingVersion || loadedVersion || 0);
+            const clientVersionToSend = (viewingVersion || loadedVersion || 0);
             
             const response = await fetch(`${API_BASE}/api/v1/checkout`, { 
               method: 'POST', 
               headers: { 'Content-Type': 'application/json' }, 
               body: JSON.stringify({ userId, clientVersion: clientVersionToSend }) 
             });
-            console.log('Checkout response status:', response.status);
+            
             
             if (response.ok) {
               addLog('Document checked out successfully', 'success'); 
@@ -636,13 +630,7 @@
               const errorData = await response.json();
               if (errorData.error === 'version_outdated') {
                 // Show modal for version outdated
-                console.log('Version outdated detected:', {
-                  currentVersion: errorData.currentVersion,
-                  clientVersion: errorData.clientVersion,
-                  viewingVersion: viewingVersion,
-                  loadedVersion: loadedVersion,
-                  userId: userId
-                });
+                
                 try { 
                   window.dispatchEvent(new CustomEvent('react:open-modal', { 
                     detail: { 
@@ -656,7 +644,6 @@
                       } 
                     } 
                   })); 
-                  console.log('Modal event dispatched');
                 } catch (e) {
                   console.error('Error dispatching modal event:', e);
                 }
@@ -688,7 +675,7 @@
                 const j = await r.json();
                 const v = Number(j?.config?.documentVersion || 0);
                 if (Number.isFinite(v) && v > 0) {
-                  console.log('Setting viewingVersion to server version (user switch):', v);
+                  
                   try { setViewingVersion(v); } catch {}
                   try { setLoadedVersion(v); } catch {} // Fix: Update loadedVersion to prevent banner showing for same user
                   try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
@@ -716,14 +703,14 @@
                 const r = await fetch(`${API_BASE}/api/v1/state-matrix?${qs}`);
                 if (r.ok) {
                   const j = await r.json();
-                  try { console.log('[user switch] Buttons:', j?.config?.buttons, 'Checkout:', j?.config?.checkoutStatus); } catch {}
+                   
                   setConfig(j.config || null);
                   if (typeof j.revision === 'number') setRevision(j.revision);
                   // Update both viewingVersion and loadedVersion to the newest version for this user
                   try {
                     const v = Number(j?.config?.documentVersion || 0);
                     if (Number.isFinite(v) && v > 0) {
-                      console.log('Setting viewingVersion to server version (new user):', v);
+                       
                       setViewingVersion(v);
                       setLoadedVersion(v); // Reset loadedVersion to current document version for new user
                       try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
@@ -764,7 +751,7 @@
         },
       }), [API_BASE, refresh, userId, addLog, viewingVersion]);
 
-      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, activities, lastSeenActivityId, markActivitiesSeen, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, renderNotification, formatNotification, viewingVersion, setViewingVersion } }, React.createElement(App, { config }));
+      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, activities, lastSeenActivityId, markActivitiesSeen, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, renderNotification, formatNotification, viewingVersion, setViewingVersion, refresh } }, React.createElement(App, { config }));
     }
 
     function BannerStack(props) {
@@ -1667,7 +1654,7 @@
             const forUser = String(d && d.userId || 'default');
             const threadPlatform = d && d.payload && d.payload.threadPlatform;
             const currentPlatform = typeof Office !== 'undefined' ? 'word' : 'web';
-            console.log('📨 SSE reset received:', { forUser, threadPlatform, currentPlatform, currentUser });
+            
 
             if (isGlobal) {
               // Factory reset or global reset: clear completely, do NOT seed greeting
@@ -1680,23 +1667,23 @@
             try {
               if (typeof Office !== 'undefined') {
                 if (threadPlatform && threadPlatform !== 'word') {
-                  console.log('🔄 Ignoring reset - wrong platform for Word');
+                  
                   return;
                 }
               } else {
                 if (threadPlatform && threadPlatform !== 'web') {
-                  console.log('🔄 Ignoring reset - wrong platform for Web');
+                   
                   return;
                 }
               }
             } catch {}
 
             if (String(forUser) !== String(currentUser)) {
-              console.log('🔄 Ignoring reset - wrong user');
+              
               return;
             }
 
-            console.log('🔄 Processing reset for current user/platform');
+            
             setMessages(['[bot] ' + DEFAULT_AI_GREETING]);
             setText('');
           } catch (error) {
@@ -1795,16 +1782,16 @@
       ]);
       const reset = async () => {
         try {
-          console.log('🔄 Starting reset process...');
+          
           const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
-          console.log('📤 Sending reset request:', { platform: plat, userId: currentUser });
+          
           const r = await fetch(`${API_BASE}/api/v1/chatbot/reset`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUser, platform: plat }) });
           // Ask server and other clients to stop any in-flight streaming
           try { await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chat:stop', userId: currentUser, platform: plat }) }); } catch {}
           // Optimistically clear locally; SSE chat:reset will also arrive
           try { setMessages(['[bot] ' + DEFAULT_AI_GREETING]); } catch {}
           try { setText(''); } catch {}
-          console.log('✅ Reset completed locally');
+          
           return r;
         } catch (error) {
           console.error('❌ Reset failed:', error);
@@ -1931,12 +1918,12 @@
             const n = Number(d && d.version);
             if (!Number.isFinite(n) || n < 1) return;
             const threadPlatform = d && d.payload && d.payload.threadPlatform;
-            console.log('Version view event received:', n, 'threadPlatform:', threadPlatform);
+            
             // Keep platforms separate: ignore view events from the other platform
             try { if (typeof Office !== 'undefined') { if (threadPlatform && threadPlatform !== 'word') return; } else { if (threadPlatform && threadPlatform !== 'web') return; } } catch {}
             // Ensure the list reflects the newest versions
             try { await refresh(); } catch {}
-            console.log('Setting viewingVersion to:', n);
+            
             setViewingVersion(n);
             const url = `${API_BASE}/api/v1/versions/${n}?rev=${Date.now()}`;
             if (typeof Office !== 'undefined') {
@@ -2434,10 +2421,11 @@
     function VersionOutdatedCheckoutModal(props) {
       const { onClose, currentVersion, clientVersion, viewingVersion, message, userId } = props || {};
       const { tokens } = React.useContext(ThemeContext);
-      const { actions, addLog, refresh } = React.useContext(StateContext);
+      const { actions, addLog, refresh, setViewingVersion, setLoadedVersion } = React.useContext(StateContext);
       const t = tokens && tokens.modal ? tokens.modal : {};
       
       const handleCheckoutLatest = async () => {
+        
         try {
           const response = await fetch(`${getApiBase()}/api/v1/checkout`, { 
             method: 'POST', 
@@ -2445,37 +2433,60 @@
             body: JSON.stringify({ userId, clientVersion: currentVersion, forceCheckout: true }) 
           });
           
+          
+          
           if (response.ok) {
             addLog('Document checked out successfully (latest version)', 'success'); 
-            await refresh(); 
-            onClose?.();
+            try { 
+              await refresh(); 
+              try { if (typeof setViewingVersion === 'function') setViewingVersion(currentVersion); } catch {}
+              try { if (typeof setLoadedVersion === 'function') setLoadedVersion(currentVersion); } catch {}
+              try {
+                const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
+                window.dispatchEvent(new CustomEvent('version:view', { detail: { version: currentVersion, payload: { threadPlatform: plat } } }));
+              } catch {}
+            } finally { onClose?.(); }
           } else {
             const errorData = await response.json();
+            
             addLog(`Failed to check out document: ${errorData.error || 'Unknown error'}`, 'error');
           }
         } catch (e) { 
+          console.error('handleCheckoutLatest exception:', e);
           addLog(`Failed to check out document: ${e?.message||e}`, 'error'); 
         }
       };
 
       const handleCheckoutCurrent = async () => {
+        const versionToUse = viewingVersion || clientVersion;
+        
         try {
-          const versionToUse = viewingVersion || clientVersion;
           const response = await fetch(`${getApiBase()}/api/v1/checkout`, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
             body: JSON.stringify({ userId, clientVersion: versionToUse, forceCheckout: true }) 
           });
           
+          
+          
           if (response.ok) {
             addLog(`Document checked out successfully (version ${versionToUse})`, 'success'); 
-            await refresh(); 
-            onClose?.();
+            try { 
+              await refresh(); 
+              try { if (typeof setViewingVersion === 'function') setViewingVersion(versionToUse); } catch {}
+              try { if (typeof setLoadedVersion === 'function') setLoadedVersion(versionToUse); } catch {}
+              try {
+                const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
+                window.dispatchEvent(new CustomEvent('version:view', { detail: { version: versionToUse, payload: { threadPlatform: plat } } }));
+              } catch {}
+            } finally { onClose?.(); }
           } else {
             const errorData = await response.json();
+            
             addLog(`Failed to check out document: ${errorData.error || 'Unknown error'}`, 'error');
           }
         } catch (e) { 
+          console.error('handleCheckoutCurrent exception:', e);
           addLog(`Failed to check out document: ${e?.message||e}`, 'error'); 
         }
       };
@@ -2729,7 +2740,7 @@
       const { documentSource, actions, approvalsSummary, activities, lastSeenActivityId } = React.useContext(StateContext);
       React.useEffect(() => {
         function onOpen(ev) { 
-          console.log('Modal event received:', ev.detail);
+          
           try { 
             const d = ev.detail || {}; 
             if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); 
@@ -2740,7 +2751,7 @@
             if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); 
             if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); 
             if (d && d.id === 'version-outdated-checkout') {
-              console.log('Setting version-outdated-checkout modal with:', d.options);
+              
               setModal({ 
                 id: 'version-outdated-checkout', 
                 currentVersion: d.options?.currentVersion, 
@@ -2768,7 +2779,7 @@
       const onConfirmClose = () => setConfirm(null);
 
       const renderModal = () => {
-        console.log('Rendering modal:', modal);
+        
         if (!modal) return null;
         switch (modal.id) {
           case 'send-vendor':
