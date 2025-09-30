@@ -1305,9 +1305,17 @@ app.post('/api/v1/refresh-document', (req, res) => {
 // Client-originated events (prototype): accept and rebroadcast for parity
 app.post('/api/v1/events/client', async (req, res) => {
   try {
-    const { type = 'clientEvent', payload = {}, userId = 'user1', platform = 'web' } = req.body || {};
+    const { type = 'clientEvent', payload: rawPayload = {}, userId = 'user1', platform = 'web' } = req.body || {};
     const role = getUserRole(userId);
     const originPlatform = String(platform || 'web');
+    const payload = (function(){
+      const p = Object.assign({}, rawPayload);
+      if (type === 'chat') {
+        // Ensure platform-scoped threads by tagging payload
+        p.threadPlatform = originPlatform;
+      }
+      return p;
+    })();
     broadcast({ type, payload, userId, role, platform: originPlatform });
 
     // Log human-sent messages as activities
