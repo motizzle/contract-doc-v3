@@ -280,6 +280,14 @@ function buildActivityMessage(type, details = {}) {
         message: `${userLabel} cancelled document checkout`
       };
 
+    case 'document:checkout:override':
+      return {
+        action: 'overrode checkout',
+        target: 'document',
+        details: {},
+        message: `${userLabel} overrode an existing checkout`
+      };
+
     case 'document:status-change':
       return {
         action: 'changed status',
@@ -1280,6 +1288,7 @@ app.post('/api/v1/checkout/override', (req, res) => {
     serverState.checkedOutBy = null;
     serverState.lastUpdated = new Date().toISOString();
     persistState();
+    try { logActivity('document:checkout:override', userId, {}); } catch {}
     broadcast({ type: 'overrideCheckout', userId });
     return res.json({ ok: true, checkedOutBy: null });
   }
