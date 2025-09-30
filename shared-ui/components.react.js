@@ -1973,12 +1973,11 @@
         };
       }, [currentUser]);
       const FOOTER_HEIGHT = 140; // reserve space so content never hides behind composer/footer
-      const isWordAddin = typeof Office !== 'undefined';
       const scrollToBottom = React.useCallback(() => {
         try { const el = listRef.current; if (el) el.scrollTop = el.scrollHeight; } catch {}
       }, []);
       React.useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
-      const box = React.createElement('div', { ref: listRef, className: 'chat-container', style: { width: '100%', flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', paddingBottom: isWordAddin ? FOOTER_HEIGHT : 16 } }, messages.map((m, i) => {
+      const box = React.createElement('div', { className: 'chat-container', style: { width: '100%', flex: 1, minHeight: 0, overflowY: 'visible', overflowX: 'hidden', paddingBottom: FOOTER_HEIGHT } }, messages.map((m, i) => {
         const who = (typeof m === 'string' && /^\[/.test(m)) ? (m.match(/^\[([^\]]+)\]/)?.[1] || '') : '';
         const isMine = who && who === displayNameOf(currentUser);
         const ts = new Date().toLocaleTimeString();
@@ -2047,21 +2046,14 @@
       };
       const resetBtn = React.createElement(UIButton, { label: 'Reset', onClick: reset, tone: 'secondary' });
       const refreshBtn = React.createElement(UIButton, { label: 'Refresh Doc', onClick: refreshDoc, tone: 'secondary' });
-      const footerBar = React.createElement('div', { className: 'd-flex flex-column gap-8', style: { position: isWordAddin ? 'sticky' : 'fixed', bottom: 0, left: 0, right: 0, width: '100%', boxSizing: 'border-box', background: '#fff', paddingTop: 8, paddingBottom: 12, borderTop: '1px solid #e5e7eb', zIndex: isWordAddin ? 'auto' : 1000 } }, [
+      const footerBar = React.createElement('div', { className: 'd-flex flex-column gap-8', style: { position: 'sticky', bottom: 0, left: 0, right: 0, width: '100%', boxSizing: 'border-box', background: '#fff', paddingTop: 8, paddingBottom: 12, borderTop: '1px solid #e5e7eb' } }, [
         React.createElement('div', { className: 'd-flex gap-8 align-items-end', style: { width: '100%', boxSizing: 'border-box' } }, [
           React.createElement('div', { style: { flex: 1 } }, input)
         ]),
         React.createElement('div', { className: 'd-flex gap-8' }, [resetBtn, refreshBtn])
       ]);
-      if (isWordAddin) {
-        // For Word add-in: keep footer inside flex container with sticky positioning
-        const wrap = React.createElement('div', { className: 'd-flex flex-column gap-8', style: { width: '100%', height: '100%', minHeight: 0 } }, [box, footerBar]);
-        return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', height: '100%' } }, [wrap]);
-      } else {
-        // For web: footer outside flex container with fixed positioning
-        const wrap = React.createElement('div', { className: 'd-flex flex-column gap-8', style: { width: '100%', height: '100%', minHeight: 0 } }, [box]);
-        return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' } }, [wrap, footerBar]);
-      }
+      const wrap = React.createElement('div', { ref: listRef, className: 'd-flex flex-column gap-8', style: { width: '100%', height: '100%', minHeight: 0, overflowY: 'auto', overflowX: 'hidden' } }, [box, footerBar]);
+      return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', height: '100%' } }, [wrap]);
     }
 
     function LastUpdatedPrefix() {
@@ -3176,7 +3168,7 @@
           }, React.createElement('span', { ref: cmpLabelRef, style: { display: 'inline-block' } }, 'Comparison')),
         React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
-        React.createElement('div', { key: 'tabbody', className: 'mt-3', style: { flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', padding: '0 8px 112px 8px' } }, [
+        React.createElement('div', { key: 'tabbody', className: 'mt-3', style: { flex: 1, minHeight: 0, overflowY: activeTab === 'AI' ? 'hidden' : 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', padding: activeTab === 'AI' ? '0 8px 0 8px' : '0 8px 112px 8px' } }, [
           React.createElement('div', { key: 'wrap-ai', style: { display: (activeTab === 'AI' ? 'block' : 'none') } }, React.createElement(ChatConsole, { key: 'chat' })),
           React.createElement('div', { key: 'wrap-workflow', style: { display: (activeTab === 'Workflow' ? 'block' : 'none') } }, React.createElement(WorkflowApprovalsPanel, { key: 'workflow' })),
           React.createElement('div', { key: 'wrap-messaging', style: { display: (activeTab === 'Messaging' ? 'block' : 'none') } }, React.createElement(MessagingPanel, { key: 'messaging' })),
