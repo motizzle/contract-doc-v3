@@ -492,13 +492,11 @@ body .brand-header-bg .pulse-pill {
 
 /* Chat container styling */
 .chat-container {
-  /* Fixed height to prevent layout shift while typing (web +25%) */
-  height: 525px; /* 420px * 1.25 */
-  overflow-y: auto;
-  overflow-x: hidden;
+  /* Flexible height for flexbox layout */
+  height: auto;
+  overflow: visible;
   border: none;
   background: transparent;
-  padding-bottom: 24px; /* small breathing room above composer */
 }
 
 /* Chat input styling */
@@ -1417,14 +1415,13 @@ body .brand-header-bg .pulse-pill {
 .badge-green { background: var(--color-success-100); color: var(--color-success-700); }
 .badge-gray { background: var(--color-gray-100); color: var(--color-gray-700); }
 
-/* Add-in specific chat container (smaller for Word interface) */
+/* Add-in specific chat container (flexible for Word interface) */
 .ms-welcome .chat-container {
   border: none !important;
   border-radius: var(--border-radius-md);
   padding: var(--space-8);
-  height: 300px;  /* Add-in +150% (120px * 2.5) */
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
+  height: auto !important;  /* Flexible height for flexbox */
+  overflow: visible !important;
   background: transparent !important;
 }
 
