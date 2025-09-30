@@ -498,6 +498,13 @@ body .brand-header-bg .pulse-pill {
   flex: 1 !important;              /* Keep flex behavior */
 }
 
+/* Ensure ChatConsole takes full height in Office add-in */
+.ms-welcome .ms-welcome__main #app-body {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
 .chat-container {
   /* Flexible height for flexbox layout */
   height: auto;
