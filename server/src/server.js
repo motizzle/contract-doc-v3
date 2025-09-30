@@ -284,8 +284,11 @@ function buildActivityMessage(type, details = {}) {
       return {
         action: 'overrode checkout',
         target: 'document',
-        details: {},
-        message: `${userLabel} overrode an existing checkout`
+        details: { previousUserId: details.previousUserId },
+        message: (function(){
+          const prev = details.previousUserId ? resolveUserLabel(details.previousUserId) : '';
+          return prev ? `${userLabel} overrode ${prev}'s checkout` : `${userLabel} overrode an existing checkout`;
+        })()
       };
 
     case 'document:status-change':
@@ -1285,10 +1288,11 @@ app.post('/api/v1/checkout/override', (req, res) => {
   if (!canOverride) return res.status(403).json({ error: 'Forbidden' });
   // Override: clear any existing checkout, reverting to Available to check out
   if (serverState.checkedOutBy) {
+    const previousUserId = serverState.checkedOutBy;
     serverState.checkedOutBy = null;
     serverState.lastUpdated = new Date().toISOString();
     persistState();
-    try { logActivity('document:checkout:override', userId, {}); } catch {}
+    try { logActivity('document:checkout:override', userId, { previousUserId }); } catch {}
     broadcast({ type: 'overrideCheckout', userId });
     return res.json({ ok: true, checkedOutBy: null });
   }
