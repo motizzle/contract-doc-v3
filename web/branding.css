@@ -555,7 +555,7 @@ body .brand-header-bg .pulse-pill {
 .chat-timestamp.mine { text-align: right; }
 .chat-timestamp.other { text-align: left; }
 
-.chat-bubble { max-width: 78%; padding: 8px 12px; border-radius: 14px; word-break: break-word; box-sizing: border-box; }
+.chat-bubble { max-width: min(78%, 100%); padding: 8px 12px; border-radius: 14px; word-break: break-word; box-sizing: border-box; }
 .chat-bubble.mine { background: var(--btn-primary-bg); color: var(--btn-primary-fg); }
 .chat-bubble.other { background: #ffffff; color: #111827; border: none; }
 
@@ -1423,7 +1423,8 @@ body .brand-header-bg .pulse-pill {
   border-radius: var(--border-radius-md);
   padding: var(--space-8);
   height: 300px;  /* Add-in +150% (120px * 2.5) */
-  overflow: auto;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
   background: transparent !important;
 }
 
