@@ -78,6 +78,11 @@
       const [loadedVersion, setLoadedVersion] = React.useState(1);
       const [dismissedVersion, setDismissedVersion] = React.useState(0);
       const [viewingVersion, setViewingVersion] = React.useState(1);
+      
+      // Debug: Track when viewingVersion changes
+      React.useEffect(() => {
+        console.log('viewingVersion changed to:', viewingVersion);
+      }, [viewingVersion]);
       const [isConnected, setIsConnected] = React.useState(false);
       const [lastTs, setLastTs] = React.useState(0);
       const [userId, setUserId] = React.useState('user1');
@@ -479,6 +484,7 @@
                 const v = Number(j?.config?.documentVersion || 1);
                 const ver = Number.isFinite(v) && v > 0 ? v : 1;
                 setLoadedVersion(ver);
+                console.log('Setting viewingVersion to server version (config change):', ver);
                 try { setViewingVersion(ver); } catch {}
                 try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: ver, payload: { threadPlatform: 'web' } } })); } catch {}
               }
@@ -610,12 +616,18 @@
       const actions = React.useMemo(() => ({
         // finalize/unfinalize removed
         checkout: async () => { 
+          console.log('Checkout action called with:', { userId, viewingVersion, loadedVersion });
           try { 
+            // Debug: Force version outdated for testing
+            const forceVersionOutdated = window.location.search.includes('debug=version-modal');
+            const clientVersionToSend = forceVersionOutdated ? 1 : (viewingVersion || loadedVersion || 0);
+            
             const response = await fetch(`${API_BASE}/api/v1/checkout`, { 
               method: 'POST', 
               headers: { 'Content-Type': 'application/json' }, 
-              body: JSON.stringify({ userId, clientVersion: viewingVersion || loadedVersion || 0 }) 
+              body: JSON.stringify({ userId, clientVersion: clientVersionToSend }) 
             });
+            console.log('Checkout response status:', response.status);
             
             if (response.ok) {
               addLog('Document checked out successfully', 'success'); 
@@ -624,6 +636,13 @@
               const errorData = await response.json();
               if (errorData.error === 'version_outdated') {
                 // Show modal for version outdated
+                console.log('Version outdated detected:', {
+                  currentVersion: errorData.currentVersion,
+                  clientVersion: errorData.clientVersion,
+                  viewingVersion: viewingVersion,
+                  loadedVersion: loadedVersion,
+                  userId: userId
+                });
                 try { 
                   window.dispatchEvent(new CustomEvent('react:open-modal', { 
                     detail: { 
@@ -637,7 +656,10 @@
                       } 
                     } 
                   })); 
-                } catch {}
+                  console.log('Modal event dispatched');
+                } catch (e) {
+                  console.error('Error dispatching modal event:', e);
+                }
               } else {
                 addLog(`Failed to check out document: ${errorData.error || 'Unknown error'}`, 'error');
               }
@@ -666,6 +688,7 @@
                 const j = await r.json();
                 const v = Number(j?.config?.documentVersion || 0);
                 if (Number.isFinite(v) && v > 0) {
+                  console.log('Setting viewingVersion to server version (user switch):', v);
                   try { setViewingVersion(v); } catch {}
                   try { setLoadedVersion(v); } catch {} // Fix: Update loadedVersion to prevent banner showing for same user
                   try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
@@ -700,6 +723,7 @@
                   try {
                     const v = Number(j?.config?.documentVersion || 0);
                     if (Number.isFinite(v) && v > 0) {
+                      console.log('Setting viewingVersion to server version (new user):', v);
                       setViewingVersion(v);
                       setLoadedVersion(v); // Reset loadedVersion to current document version for new user
                       try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
@@ -738,7 +762,7 @@
             })();
           } catch {}
         },
-      }), [API_BASE, refresh, userId, addLog]);
+      }), [API_BASE, refresh, userId, addLog, viewingVersion]);
 
       return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, activities, lastSeenActivityId, markActivitiesSeen, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, renderNotification, formatNotification, viewingVersion, setViewingVersion } }, React.createElement(App, { config }));
     }
@@ -1907,10 +1931,12 @@
             const n = Number(d && d.version);
             if (!Number.isFinite(n) || n < 1) return;
             const threadPlatform = d && d.payload && d.payload.threadPlatform;
+            console.log('Version view event received:', n, 'threadPlatform:', threadPlatform);
             // Keep platforms separate: ignore view events from the other platform
             try { if (typeof Office !== 'undefined') { if (threadPlatform && threadPlatform !== 'word') return; } else { if (threadPlatform && threadPlatform !== 'web') return; } } catch {}
             // Ensure the list reflects the newest versions
             try { await refresh(); } catch {}
+            console.log('Setting viewingVersion to:', n);
             setViewingVersion(n);
             const url = `${API_BASE}/api/v1/versions/${n}?rev=${Date.now()}`;
             if (typeof Office !== 'undefined') {
@@ -2468,9 +2494,9 @@
             ])
           ]),
           React.createElement('div', { key: 'f', className: 'modal-footer' }, [
-            React.createElement('button', { key: 'cancel', className: 'ui-button ui-button--secondary', onClick: onClose, style: { marginRight: '8px' } }, 'Cancel'),
-            React.createElement('button', { key: 'checkout-current', className: 'ui-button ui-button--tertiary', onClick: handleCheckoutCurrent, style: { marginRight: '8px' } }, `Check Out Version ${viewingVersion || clientVersion}`),
-            React.createElement('button', { key: 'checkout-latest', className: 'ui-button ui-button--primary', onClick: handleCheckoutLatest }, 'Check Out Latest Version')
+            React.createElement('button', { key: 'checkout-latest', className: 'ui-button ui-button--primary', onClick: handleCheckoutLatest, style: { marginRight: '8px' } }, 'Check Out Latest Version'),
+            React.createElement('button', { key: 'checkout-current', className: 'ui-button ui-button--secondary', onClick: handleCheckoutCurrent, style: { marginRight: '8px' } }, `Check Out Version ${viewingVersion || clientVersion}`),
+            React.createElement('button', { key: 'cancel', className: 'ui-button ui-button--tertiary', onClick: onClose }, 'Cancel')
           ])
         ])
       );
@@ -2700,7 +2726,32 @@
       const { config } = props;
       const { documentSource, actions, approvalsSummary, activities, lastSeenActivityId } = React.useContext(StateContext);
       React.useEffect(() => {
-        function onOpen(ev) { try { const d = ev.detail || {}; if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); if (d && d.id === 'approvals') setModal({ id: 'approvals' }); if (d && d.id === 'compile') setModal({ id: 'compile' }); if (d && d.id === 'notifications') setModal({ id: 'notifications' }); if (d && d.id === 'request-review') setModal({ id: 'request-review' }); if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); if (d && d.id === 'version-outdated-checkout') setModal({ id: 'version-outdated-checkout', currentVersion: d.options?.currentVersion, clientVersion: d.options?.clientVersion, viewingVersion: d.options?.viewingVersion, message: d.options?.message, userId: d.options?.userId }); } catch {} }
+        function onOpen(ev) { 
+          console.log('Modal event received:', ev.detail);
+          try { 
+            const d = ev.detail || {}; 
+            if (d && (d.id === 'send-vendor' || d.id === 'sendVendor')) setModal({ id: 'send-vendor', userId: d.options?.userId || 'user1' }); 
+            if (d && d.id === 'approvals') setModal({ id: 'approvals' }); 
+            if (d && d.id === 'compile') setModal({ id: 'compile' }); 
+            if (d && d.id === 'notifications') setModal({ id: 'notifications' }); 
+            if (d && d.id === 'request-review') setModal({ id: 'request-review' }); 
+            if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); 
+            if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); 
+            if (d && d.id === 'version-outdated-checkout') {
+              console.log('Setting version-outdated-checkout modal with:', d.options);
+              setModal({ 
+                id: 'version-outdated-checkout', 
+                currentVersion: d.options?.currentVersion, 
+                clientVersion: d.options?.clientVersion, 
+                viewingVersion: d.options?.viewingVersion, 
+                message: d.options?.message, 
+                userId: d.options?.userId 
+              });
+            }
+          } catch (e) {
+            console.error('Error in modal onOpen:', e);
+          }
+        }
         window.addEventListener('react:open-modal', onOpen);
         return () => window.removeEventListener('react:open-modal', onOpen);
       }, []);
@@ -2715,6 +2766,7 @@
       const onConfirmClose = () => setConfirm(null);
 
       const renderModal = () => {
+        console.log('Rendering modal:', modal);
         if (!modal) return null;
         switch (modal.id) {
           case 'send-vendor':
