@@ -96,3 +96,17 @@ b {
 /* Reduce logo size and tighten title spacing */
 .ms-welcome__header img { width: 40px; height: 40px; }
 .ms-welcome__header h1 { margin: 4px 0 0 0; line-height: 1.1; }
+
+/* Full height for app containers */
+#app-body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+#app-root {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
