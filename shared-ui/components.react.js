@@ -2141,14 +2141,15 @@
       };
       const resetBtn = React.createElement(UIButton, { label: 'Reset', onClick: reset, tone: 'secondary' });
       const refreshBtn = React.createElement(UIButton, { label: 'Refresh Doc', onClick: refreshDoc, tone: 'secondary' });
-      const footerBar = React.createElement('div', { className: 'd-flex flex-column gap-8', style: { width: '100%', boxSizing: 'border-box', paddingTop: 8, paddingBottom: 12 } }, [
+      const isAddin = typeof Office !== 'undefined';
+      const footerBar = React.createElement('div', { className: 'd-flex flex-column gap-8', style: { width: '100%', boxSizing: 'border-box', paddingTop: 8, paddingBottom: isAddin ? 8 : 12, paddingLeft: isAddin ? 0 : 12, paddingRight: isAddin ? 0 : 12 } }, [
         React.createElement('div', { className: 'd-flex gap-8 align-items-end', style: { width: '100%', boxSizing: 'border-box' } }, [
           React.createElement('div', { style: { flex: 1 } }, input)
         ]),
         React.createElement('div', { className: 'd-flex gap-8' }, [resetBtn, refreshBtn])
       ]);
       const wrap = React.createElement('div', { style: { width: '100%', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' } }, [
-        React.createElement('div', { ref: listRef, style: { flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px' } }, [box]),
+        React.createElement('div', { ref: listRef, style: { flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: isAddin ? '8px' : '12px' } }, [box]),
         React.createElement('div', { style: { flexShrink: 0, background: '#fff', borderTop: '1px solid #e5e7eb' } }, [footerBar])
       ]);
       return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, height: '100%' } }, [wrap]);
@@ -3266,7 +3267,7 @@
           }, React.createElement('span', { ref: cmpLabelRef, style: { display: 'inline-block' } }, 'Comparison')),
         React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
-        React.createElement('div', { key: 'tabbody', className: 'mt-3', style: { flex: 1, minHeight: 0, overflowY: activeTab === 'AI' ? 'hidden' : 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', padding: activeTab === 'AI' ? ((typeof Office === 'undefined') ? '0' : '0 8px 0 8px') : '0 8px 112px 8px' } }, [
+        React.createElement('div', { key: 'tabbody', className: activeTab === 'AI' ? '' : 'mt-3', style: { flex: 1, minHeight: 0, overflowY: activeTab === 'AI' ? 'hidden' : 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', padding: activeTab === 'AI' ? '0' : '0 8px 112px 8px', marginTop: activeTab === 'AI' ? 0 : undefined } }, [
           React.createElement('div', { key: 'wrap-ai', style: { display: (activeTab === 'AI' ? 'flex' : 'none'), flex: 1, height: '100%', flexDirection: 'column' } }, React.createElement(ChatConsole, { key: 'chat' })),
           React.createElement('div', { key: 'wrap-workflow', style: { display: (activeTab === 'Workflow' ? 'block' : 'none') } }, React.createElement(WorkflowApprovalsPanel, { key: 'workflow' })),
           React.createElement('div', { key: 'wrap-messaging', style: { display: (activeTab === 'Messaging' ? 'block' : 'none') } }, React.createElement(MessagingPanel, { key: 'messaging' })),
@@ -3283,7 +3284,7 @@
         (confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: onConfirmClose }) : null)
       ]);
 
-      const container = React.createElement('div', { style: { display: 'flex', flexDirection: 'column', height: ((typeof Office === 'undefined') ? '100vh' : '100%'), minHeight: 0 } }, [topPanel, assistantPanel]);
+      const container = React.createElement('div', { style: { display: 'flex', flexDirection: 'column', height: ((typeof Office === 'undefined') ? '100vh' : undefined), flex: ((typeof Office === 'undefined') ? undefined : 1), minHeight: 0 } }, [topPanel, assistantPanel]);
 
       return React.createElement(ThemeProvider, null, React.createElement(React.Fragment, null, [container, React.createElement(ApprovalCelebration, { key: 'celebration' })]));
     }

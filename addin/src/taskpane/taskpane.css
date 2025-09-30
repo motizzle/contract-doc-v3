@@ -10,6 +10,8 @@
      margin: 0;
      padding: 0;
      font-family: var(--font-family-system);
+     display: flex;
+     flex-direction: column;
  }
 
  /* Reset inherited fonts */
@@ -101,7 +103,8 @@ b {
 #app-body {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
 }
 
 #app-root {

@@ -1511,7 +1511,7 @@ body .brand-header-bg .pulse-pill {
 /* Panels beneath the header */
 .panel { padding: 3px 12px; margin-left: -12px; margin-right: -12px; }
 .panel--top { margin-top: 0; background: #F8F8F8; border: 1px solid #E6E6E6; }
-.panel--assistant { margin-top: 0; background: #FFFFFF; overflow-x: hidden; }
+.panel--assistant { margin-top: 0; background: #FFFFFF; overflow: hidden; }
 
 /* Plain text dropdown menu (three-dots) */
 .ui-menu {
