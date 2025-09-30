@@ -23,6 +23,37 @@
       return; // Graceful no-op
     }
 
+    // Web-only: eliminate page-level scrollbar; let document and sidebar own scrolling
+    try {
+      if (typeof Office === 'undefined') {
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
+        document.body.style.height = '100vh';
+        // Lock any scrollable ancestors of the app root to avoid a second right-side scrollbar
+        (function lockScrollableAncestors() {
+          try {
+            const root = rootEl;
+            if (!root) return;
+            let node = root.parentElement;
+            const changed = [];
+            while (node && node !== document.body && node !== document.documentElement) {
+              const cs = getComputedStyle(node);
+              const isScrollable = /(auto|scroll)/.test(cs.overflowY) || node.scrollHeight > node.clientHeight;
+              if (isScrollable) {
+                node.setAttribute('data-og-prev-overflow-y', node.style.overflowY || '');
+                node.style.overflowY = 'hidden';
+                changed.push(node);
+              }
+              node = node.parentElement;
+            }
+            window.addEventListener('unload', () => {
+              try { changed.forEach(n => { const prev = n.getAttribute('data-og-prev-overflow-y') || ''; n.style.overflowY = prev; n.removeAttribute('data-og-prev-overflow-y'); }); } catch {}
+            });
+          } catch {}
+        })();
+      }
+    } catch {}
+
     // Load confetti.js library
     const confettiScript = document.createElement('script');
     confettiScript.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js';
@@ -97,6 +128,21 @@
       const API_BASE = getApiBase();
 
       // Removed excessive logging
+
+      // Web-only: prevent page/body from adding a third scrollbar; keep scrolling scoped to document area and sidebar
+      React.useEffect(() => {
+        if (typeof Office !== 'undefined') return; // Word add-in unaffected
+        try {
+          const prevHtml = document.documentElement.style.overflow;
+          const prevBody = document.body.style.overflow;
+          document.documentElement.style.overflow = 'hidden';
+          document.body.style.overflow = 'hidden';
+          return () => {
+            document.documentElement.style.overflow = prevHtml;
+            document.body.style.overflow = prevBody;
+          };
+        } catch {}
+      }, []);
 
       // Notification formatting system
       const NOTIFICATION_TYPES = {
@@ -1289,7 +1335,7 @@
         React.createElement(UIButton, { key: 'copy', label: 'Copy', onClick: copy, variant: 'primary' })
       ]);
       const list = (activities || []).length
-        ? React.createElement('div', { className: 'notifications-list' }, (activities || []).slice().reverse().map((activity, index) => renderNotification(activity, index)).filter(Boolean))
+        ? React.createElement('div', { className: 'notifications-list', style: { maxHeight: 'none', overflow: 'visible' } }, (activities || []).slice().reverse().map((activity, index) => renderNotification(activity, index)).filter(Boolean))
         : React.createElement('div', { className: 'text-gray-500', style: { padding: 8 } }, 'No activity yet.');
       return React.createElement('div', { className: 'd-flex flex-column gap-2' }, [list, footer]);
     }
@@ -1989,7 +2035,7 @@
       };
       const list = (items || []).map(card);
       const scrollBox = list.length
-        ? React.createElement('div', { key: 'cards-wrap', style: { maxHeight: 360, overflowY: 'auto', padding: 0 } },
+         ? React.createElement('div', { key: 'cards-wrap', style: { padding: 0 } },
             React.createElement('div', { className: 'd-flex flex-column gap-8' }, list)
           )
         : React.createElement('div', { key: 'empty', className: 'text-gray-500', style: { padding: 8 } }, 'No versions yet.');
@@ -2923,7 +2969,7 @@
           ]),
           React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
-        React.createElement('div', { key: 'tabbody', className: 'mt-3' }, [
+        React.createElement('div', { key: 'tabbody', className: 'mt-3', style: (typeof Office === 'undefined') ? { maxHeight: 'calc(100vh - 200px)', overflowY: 'auto', overscrollBehavior: 'contain' } : undefined }, [
           React.createElement('div', { key: 'wrap-ai', style: { display: (activeTab === 'AI' ? 'block' : 'none') } }, React.createElement(ChatConsole, { key: 'chat' })),
           React.createElement('div', { key: 'wrap-workflow', style: { display: (activeTab === 'Workflow' ? 'block' : 'none') } }, React.createElement(WorkflowApprovalsPanel, { key: 'workflow' })),
           React.createElement('div', { key: 'wrap-messaging', style: { display: (activeTab === 'Messaging' ? 'block' : 'none') } }, React.createElement(MessagingPanel, { key: 'messaging' })),
@@ -2932,7 +2978,9 @@
         ])
       ]);
 
-      const assistantPanel = React.createElement('div', { className: 'panel panel--assistant' }, [
+      // On web, confine scroll to the sidebar to avoid scrolling the document
+      // Single sidebar scrollbar on web: apply to tab body, not header container
+      const assistantPanel = React.createElement('div', { className: 'panel panel--assistant', style: (typeof Office === 'undefined') ? { overflow: 'hidden', maxHeight: '100vh' } : undefined }, [
         Tabs,
         renderModal(),
         (confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: onConfirmClose }) : null)
