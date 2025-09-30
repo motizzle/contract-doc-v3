@@ -492,14 +492,13 @@ body .brand-header-bg .pulse-pill {
 
 /* Chat container styling */
 /* Custom app container for Office add-in - clean layout */
-body .app-main,
 .app-main {
   height: 100% !important;
   display: flex !important;
   flex-direction: column !important;
   padding: 0 !important;
   align-items: stretch !important;
-  box-sizing: border-box !important;
+  background: rgba(255, 0, 0, 0.1) !important; /* Debug: light red background */
 }
 
 .chat-container {
