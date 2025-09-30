@@ -2496,7 +2496,7 @@
             ])
           ]),
           React.createElement('div', { key: 'f', className: 'modal-footer' }, [
-            btn('Cancel', 'secondary', onClose),
+            btn('Cancel', 'tertiary', onClose),
             btn(`Check Out Version ${viewingVersion || clientVersion}`, 'secondary', handleCheckoutCurrent),
             btn('Check Out Latest Version', 'primary', handleCheckoutLatest)
           ])

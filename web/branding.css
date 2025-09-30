@@ -1327,6 +1327,7 @@ body .brand-header-bg .pulse-pill {
   align-items: var(--layout-align-items-center);
   justify-content: var(--layout-justify-content-center);
   z-index: var(--z-index-modal-backdrop);
+  padding: 3px;
 }
 
 .modal-panel {
@@ -1341,7 +1342,7 @@ body .brand-header-bg .pulse-pill {
 }
 
 .modal-header {
-  padding: var(--space-14) var(--space-16);
+  padding: var(--space-16) var(--space-20);
   border-bottom: var(--border-width-1) var(--border-style-solid) var(--color-gray-200);
   display: var(--layout-display-flex);
   align-items: var(--layout-align-items-center);
