@@ -1977,7 +1977,7 @@
         try { const el = listRef.current; if (el) el.scrollTop = el.scrollHeight; } catch {}
       }, []);
       React.useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
-      const box = React.createElement('div', { style: { } }, messages.map((m, i) => {
+      const box = React.createElement('div', { className: 'chat-container', style: { height: 'auto', flex: 'none' } }, messages.map((m, i) => {
         const who = (typeof m === 'string' && /^\[/.test(m)) ? (m.match(/^\[([^\]]+)\]/)?.[1] || '') : '';
         const isMine = who && who === displayNameOf(currentUser);
         const ts = new Date().toLocaleTimeString();
