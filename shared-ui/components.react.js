@@ -1731,8 +1731,7 @@
 
       const items = (list || []).map((d, i) => React.createElement('div', { key: d.id || i, className: 'difference-card', style: { border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 12px' } }, [
         React.createElement('div', { key: 'h', className: 'd-flex items-center justify-between' }, [
-          React.createElement('span', { key: 't', className: 'text-sm' }, (d.type === 1 ? 'Added' : (d.type === -1 ? 'Removed' : 'Changed'))),
-          React.createElement('span', { key: 'p', className: 'text-xs text-gray-500' }, `Page ${d.pageNumber || 1}`)
+          React.createElement('span', { key: 't', className: 'text-sm' }, (d.type === 1 ? 'Added' : (d.type === -1 ? 'Removed' : 'Changed')))
         ]),
         React.createElement('div', { key: 's', className: 'text-sm', style: { marginTop: 6 } }, d.summary || ''),
         React.createElement('div', { key: 'x', className: 'text-xs text-gray-600', style: { marginTop: 6 } }, String(d.text || '')),
