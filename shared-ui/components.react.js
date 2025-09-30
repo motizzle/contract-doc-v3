@@ -1596,6 +1596,60 @@
       return (view === 'list') ? listView : (view === 'new' ? newChatView : threadView);
     }
 
+    // Comparison Tab
+    function ComparisonTab() {
+      const API_BASE = getApiBase();
+      const [versionA, setVersionA] = React.useState('');
+      const [versionB, setVersionB] = React.useState('');
+      const [list, setList] = React.useState([]);
+      const [busy, setBusy] = React.useState(false);
+      const [error, setError] = React.useState('');
+
+      const compare = async () => {
+        setBusy(true); setError('');
+        try {
+          const r = await fetch(`${API_BASE}/api/v1/versions/compare`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ versionA: Number(versionA), versionB: Number(versionB) }) });
+          if (!r.ok) throw new Error('compare');
+          const j = await r.json();
+          setList(Array.isArray(j.differences) ? j.differences.filter(Boolean) : []);
+        } catch { setError('Comparison failed'); }
+        finally { setBusy(false); }
+      };
+
+      const jump = async (diff) => {
+        try {
+          await fetch(`${API_BASE}/api/v1/document/navigate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: String(diff.text || ''), changeType: (diff.type === 1 ? 'addition' : (diff.type === -1 ? 'deletion' : 'change')) }) });
+        } catch {}
+      };
+
+      const picker = (label, val, setVal) => React.createElement('div', { className: 'd-flex items-center gap-6' }, [
+        React.createElement('label', { key: 'l', className: 'text-sm text-gray-600' }, label),
+        React.createElement('input', { key: 'i', type: 'number', min: 1, value: val, onChange: (e) => setVal(e.target.value), className: 'input-padding input-border input-border-radius', style: { width: 100 } })
+      ]);
+
+      const header = React.createElement('div', { className: 'd-flex items-center gap-12' }, [
+        picker('Version A', versionA, setVersionA),
+        picker('Version B', versionB, setVersionB),
+        React.createElement(UIButton, { key: 'go', label: (busy ? 'Comparing…' : 'Compare'), onClick: compare, disabled: !!busy, variant: 'primary' })
+      ]);
+
+      const items = (list || []).map((d, i) => React.createElement('div', { key: d.id || i, className: 'difference-card', style: { border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 12px' } }, [
+        React.createElement('div', { key: 'h', className: 'd-flex items-center justify-between' }, [
+          React.createElement('span', { key: 't', className: 'text-sm' }, (d.type === 1 ? 'Added' : (d.type === -1 ? 'Removed' : 'Changed'))),
+          React.createElement('span', { key: 'p', className: 'text-xs text-gray-500' }, `Page ${d.pageNumber || 1}`)
+        ]),
+        React.createElement('div', { key: 's', className: 'text-sm', style: { marginTop: 6 } }, d.summary || ''),
+        React.createElement('div', { key: 'x', className: 'text-xs text-gray-600', style: { marginTop: 6 } }, String(d.text || '')),
+        React.createElement('div', { key: 'f', className: 'd-flex justify-end', style: { marginTop: 8 } }, React.createElement(UIButton, { label: 'Jump to location', onClick: () => jump(d), variant: 'secondary' }))
+      ]));
+
+      return React.createElement('div', { className: 'd-flex flex-column gap-12' }, [
+        header,
+        (error ? React.createElement('div', { className: 'bg-error-50 text-error-700 p-2 border border-error-200 rounded' }, error) : null),
+        React.createElement('div', { className: 'd-flex flex-column gap-8' }, items)
+      ]);
+    }
+
     // Notifications bell (standard icon) that opens a modal
     function NotificationsBell() {
       const { logs, lastSeenLogCount } = React.useContext(StateContext);
@@ -2967,6 +3021,13 @@
               }, String(unseenCount)) : null;
             })() : null
           ]),
+          // New Comparison tab
+          React.createElement('button', {
+            key: 'tab-compare',
+            className: activeTab === 'Comparison' ? 'tab tab--active' : 'tab',
+            onClick: () => setActiveTab('Comparison'),
+            style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Comparison' ? '#111827' : '#6B7280', fontWeight: 600 }
+          }, 'Comparison'),
           React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
         React.createElement('div', { key: 'tabbody', className: 'mt-3', style: (typeof Office === 'undefined') ? { maxHeight: 'calc(100vh - 200px)', overflowY: 'auto', overscrollBehavior: 'contain' } : undefined }, [
@@ -2975,6 +3036,7 @@
           React.createElement('div', { key: 'wrap-messaging', style: { display: (activeTab === 'Messaging' ? 'block' : 'none') } }, React.createElement(MessagingPanel, { key: 'messaging' })),
           React.createElement('div', { key: 'wrap-versions', style: { display: (activeTab === 'Versions' ? 'block' : 'none') } }, React.createElement(VersionsPanel, { key: 'versions' })),
           React.createElement('div', { key: 'wrap-activity', style: { display: (activeTab === 'Activity' ? 'block' : 'none') } }, React.createElement(ActivityPanel, { key: 'activity' })),
+          React.createElement('div', { key: 'wrap-compare', style: { display: (activeTab === 'Comparison' ? 'block' : 'none') } }, React.createElement(ComparisonTab, { key: 'compare' }))
         ])
       ]);
 

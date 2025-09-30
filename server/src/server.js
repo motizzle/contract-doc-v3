@@ -1315,6 +1315,41 @@ app.post('/api/v1/refresh-document', (req, res) => {
   }
 });
 
+// Version comparison (simple stub diff) - Word-first
+app.post('/api/v1/versions/compare', async (req, res) => {
+  try {
+    const versionA = Number(req.body?.versionA);
+    const versionB = Number(req.body?.versionB);
+    if (!Number.isFinite(versionA) || !Number.isFinite(versionB)) {
+      return res.status(400).json({ error: 'invalid_versions' });
+    }
+    // Load text for the two versions (fallback to empty if missing)
+    function readVersionText(v) {
+      try {
+        const p = (v === 1)
+          ? path.join(canonicalDocumentsDir, 'default.docx')
+          : path.join(versionsDir, `v${v}.docx`);
+        if (!fs.existsSync(p)) return '';
+        // Placeholder: real implementation should extract text from docx
+        // For now, return filename as stand-in so UI can render
+        return `DOCX(v${v})`;
+      } catch { return ''; }
+    }
+    const textA = readVersionText(versionA);
+    const textB = readVersionText(versionB);
+
+    // Naive diff: if different, return two entries (added/removed)
+    const differences = [];
+    if (textA !== textB) {
+      differences.push({ id: 1, type: -1, text: textA, pageNumber: 1, summary: `Removed content from v${versionA}` });
+      differences.push({ id: 2, type: 1, text: textB, pageNumber: 1, summary: `Added content from v${versionB}` });
+    }
+    return res.json({ versionA, versionB, differences });
+  } catch (e) {
+    return res.status(500).json({ error: 'compare_failed' });
+  }
+});
+
 // Client-originated events (prototype): accept and rebroadcast for parity
 app.post('/api/v1/events/client', async (req, res) => {
   try {
