@@ -1733,7 +1733,6 @@
         React.createElement('div', { key: 'h', className: 'd-flex items-center justify-between' }, [
           React.createElement('span', { key: 't', className: 'text-sm' }, (d.type === 1 ? 'Added' : (d.type === -1 ? 'Removed' : 'Changed')))
         ]),
-        React.createElement('div', { key: 's', className: 'text-sm', style: { marginTop: 6 } }, ((d.summary && !/^(added|removed)\s+text$/i.test(String(d.summary).trim())) ? d.summary : '')),
         React.createElement('div', { key: 'x', className: 'text-xs text-gray-600', style: { marginTop: 6 } }, String(d.text || '')),
         React.createElement('div', { key: 'f', className: 'd-flex justify-end', style: { marginTop: 8 } }, React.createElement(UIButton, { label: 'Jump to location', onClick: () => jump(d), variant: 'secondary' }))
       ]));
