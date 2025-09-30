@@ -3200,41 +3200,41 @@
       }, [recalcUnderline]);
 
       const Tabs = React.createElement('div', { className: 'mt-3 pt-2', style: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } }, [
-        React.createElement('div', { key: 'tabbar', ref: tabbarRef, className: 'd-flex items-center gap-16 border-b border-gray-200', style: { position: 'relative', padding: '0 8px' } }, [
+        React.createElement('div', { key: 'tabbar', ref: tabbarRef, className: 'd-flex gap-8 border-b border-gray-200', style: { position: 'relative', padding: '0 8px', alignItems: 'flex-end' } }, [
           React.createElement('button', {
             key: 'tab-ai',
             className: activeTab === 'AI' ? 'tab tab--active' : 'tab',
             onClick: () => setActiveTab('AI'),
-            style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'AI' ? '#111827' : '#6B7280', fontWeight: 600 }
+            style: { background: 'transparent', border: 'none', padding: '8px 6px', cursor: 'pointer', color: activeTab === 'AI' ? '#111827' : '#6B7280', fontWeight: 600 }
           }, React.createElement('span', { ref: aiLabelRef, style: { display: 'inline-block' } }, 'AI')),
           React.createElement('button', {
             key: 'tab-workflow',
             className: activeTab === 'Workflow' ? 'tab tab--active' : 'tab',
             onClick: () => setActiveTab('Workflow'),
-            style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Workflow' ? '#111827' : '#6B7280', fontWeight: 600 }
-          }, React.createElement('span', { ref: wfLabelRef, style: { display: 'inline-block' } }, [
-            'Workflow',
+            style: { background: 'transparent', border: 'none', padding: '8px 6px 8px 6px', cursor: 'pointer', color: activeTab === 'Workflow' ? '#111827' : '#6B7280', fontWeight: 600, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: '2px' }
+          }, [
             (approvalsSummary && typeof approvalsSummary.total === 'number'
-              ? ` (${approvalsSummary.approved || 0}/${approvalsSummary.total})`
-              : '')
-          ])),
+              ? React.createElement('span', { key: 'count', style: { fontSize: '11px', lineHeight: '1' } }, `(${approvalsSummary.approved || 0}/${approvalsSummary.total})`)
+              : null),
+            React.createElement('span', { key: 'label', ref: wfLabelRef, style: { display: 'inline-block' } }, 'Workflow')
+          ]),
           React.createElement('button', {
             key: 'tab-messaging',
             className: activeTab === 'Messaging' ? 'tab tab--active' : 'tab',
             onClick: () => setActiveTab('Messaging'),
-            style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Messaging' ? '#111827' : '#6B7280', fontWeight: 600 }
-          }, React.createElement('span', { ref: msgLabelRef, style: { display: 'inline-block' } }, 'Messaging')),
+            style: { background: 'transparent', border: 'none', padding: '8px 6px', cursor: 'pointer', color: activeTab === 'Messaging' ? '#111827' : '#6B7280', fontWeight: 600 }
+          }, React.createElement('span', { ref: msgLabelRef, style: { display: 'inline-block' } }, 'Messages')),
           React.createElement('button', {
             key: 'tab-versions',
             className: activeTab === 'Versions' ? 'tab tab--active' : 'tab',
             onClick: () => setActiveTab('Versions'),
-            style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Versions' ? '#111827' : '#6B7280', fontWeight: 600 }
+            style: { background: 'transparent', border: 'none', padding: '8px 6px', cursor: 'pointer', color: activeTab === 'Versions' ? '#111827' : '#6B7280', fontWeight: 600 }
           }, React.createElement('span', { ref: verLabelRef, style: { display: 'inline-block' } }, 'Versions')),
           React.createElement('button', {
             key: 'tab-activity',
             className: activeTab === 'Activity' ? 'tab tab--active' : 'tab',
             onClick: () => setActiveTab('Activity'),
-            style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Activity' ? '#111827' : '#6B7280', fontWeight: 600, position: 'relative' }
+            style: { background: 'transparent', border: 'none', padding: '8px 6px', cursor: 'pointer', color: activeTab === 'Activity' ? '#111827' : '#6B7280', fontWeight: 600, position: 'relative' }
           }, [
             React.createElement('span', { key: 'label', ref: actLabelRef, style: { display: 'inline-block' } }, 'Activity'),
             activities && lastSeenActivityId ? (() => {
@@ -3263,8 +3263,8 @@
             key: 'tab-compare',
             className: activeTab === 'Comparison' ? 'tab tab--active' : 'tab',
             onClick: () => setActiveTab('Comparison'),
-            style: { background: 'transparent', border: 'none', padding: '10px 8px', cursor: 'pointer', color: activeTab === 'Comparison' ? '#111827' : '#6B7280', fontWeight: 600 }
-          }, React.createElement('span', { ref: cmpLabelRef, style: { display: 'inline-block' } }, 'Comparison')),
+            style: { background: 'transparent', border: 'none', padding: '8px 6px', cursor: 'pointer', color: activeTab === 'Comparison' ? '#111827' : '#6B7280', fontWeight: 600 }
+          }, React.createElement('span', { ref: cmpLabelRef, style: { display: 'inline-block' } }, 'Compare')),
         React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
         React.createElement('div', { key: 'tabbody', className: activeTab === 'AI' ? '' : 'mt-3', style: { flex: 1, minHeight: 0, overflowY: activeTab === 'AI' ? 'hidden' : 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', padding: activeTab === 'AI' ? '0' : '0 8px 112px 8px', marginTop: activeTab === 'AI' ? 0 : undefined } }, [
