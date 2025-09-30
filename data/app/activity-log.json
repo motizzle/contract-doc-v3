@@ -43,5 +43,33 @@
     "target": "document",
     "details": {},
     "message": "Warren Peace cancelled document checkout"
+  },
+  {
+    "id": "act_1759204796868_fo9eowgun",
+    "timestamp": 1759204796868,
+    "type": "document:checkout",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {},
+    "message": "Warren Peace checked out document"
+  },
+  {
+    "id": "act_1759204802112_0mbh6y200",
+    "timestamp": 1759204802112,
+    "type": "document:checkout:cancel",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "cancelled checkout",
+    "target": "document",
+    "details": {},
+    "message": "Warren Peace cancelled document checkout"
   }
 ]

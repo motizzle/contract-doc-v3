@@ -2480,6 +2480,8 @@
         }
       };
 
+      const btn = (label, variant, onclick) => React.createElement(UIButton, { label, onClick: onclick, variant: variant || 'primary' });
+
       return React.createElement('div', { className: 'modal-overlay', onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
         React.createElement('div', { className: 'modal-panel' }, [
           React.createElement('div', { key: 'h', className: 'modal-header' }, [
@@ -2494,9 +2496,9 @@
             ])
           ]),
           React.createElement('div', { key: 'f', className: 'modal-footer' }, [
-            React.createElement('button', { key: 'checkout-latest', className: 'ui-button ui-button--primary', onClick: handleCheckoutLatest, style: { marginRight: '8px' } }, 'Check Out Latest Version'),
-            React.createElement('button', { key: 'checkout-current', className: 'ui-button ui-button--secondary', onClick: handleCheckoutCurrent, style: { marginRight: '8px' } }, `Check Out Version ${viewingVersion || clientVersion}`),
-            React.createElement('button', { key: 'cancel', className: 'ui-button ui-button--tertiary', onClick: onClose }, 'Cancel')
+            btn('Cancel', 'secondary', onClose),
+            btn(`Check Out Version ${viewingVersion || clientVersion}`, 'secondary', handleCheckoutCurrent),
+            btn('Check Out Latest Version', 'primary', handleCheckoutLatest)
           ])
         ])
       );
