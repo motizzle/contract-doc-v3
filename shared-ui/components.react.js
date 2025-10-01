@@ -1355,17 +1355,40 @@
     function MessagingPanel() {
       const API_BASE = getApiBase();
       const { currentUser, users } = React.useContext(StateContext);
-      const [messages, setMessages] = React.useState([]);
-      const [text, setText] = React.useState('');
-      const listRef = React.useRef(null);
-      const [view, setView] = React.useState('list'); // 'list' | 'thread' | 'new'
-      const [activePartnerId, setActivePartnerId] = React.useState('');
-      const [activeGroupIds, setActiveGroupIds] = React.useState([]);
-      const [newSelection, setNewSelection] = React.useState(() => new Set());
-
+      
       const storageKey = React.useCallback(() => `og.messaging.${String(currentUser || 'default')}`, [currentUser]);
       const activeKey = React.useCallback(() => `og.messaging.active.${String(currentUser || 'default')}`, [currentUser]);
       const viewKey = React.useCallback(() => `og.messaging.view.${String(currentUser || 'default')}`, [currentUser]);
+      
+      // Initialize from localStorage
+      const [messages, setMessages] = React.useState(() => {
+        try {
+          const stored = localStorage.getItem(storageKey());
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed)) return parsed;
+          }
+        } catch {}
+        return [];
+      });
+      const [text, setText] = React.useState('');
+      const listRef = React.useRef(null);
+      const [view, setView] = React.useState(() => {
+        try {
+          const stored = localStorage.getItem(viewKey());
+          if (stored) return stored;
+        } catch {}
+        return 'list';
+      });
+      const [activePartnerId, setActivePartnerId] = React.useState(() => {
+        try {
+          const stored = localStorage.getItem(activeKey());
+          if (stored) return stored;
+        } catch {}
+        return '';
+      });
+      const [activeGroupIds, setActiveGroupIds] = React.useState([]);
+      const [newSelection, setNewSelection] = React.useState(() => new Set());
 
       const userLabel = (uid) => {
         try { const u = (users || []).find(x => (x && (x.id === uid || x.label === uid))); return (u && (u.label || u.id)) || uid; } catch { return uid; }
@@ -1377,14 +1400,61 @@
         try { const parts = String(label || '').trim().split(/\s+/).filter(Boolean); if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase(); if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase(); return ''; } catch { return ''; }
       };
 
-      // Initialize blank on load and user change (no local persistence)
+      // Load from localStorage when user changes
       React.useEffect(() => {
-        try { setMessages([]); setActivePartnerId(''); setActiveGroupIds([]); setView('list'); } catch {}
-      }, [currentUser]);
-      // No-op effects to avoid localStorage persistence
-      React.useEffect(() => {}, [messages]);
-      React.useEffect(() => {}, [activePartnerId]);
+        try {
+          const storedMessages = localStorage.getItem(storageKey());
+          const storedView = localStorage.getItem(viewKey());
+          const storedActive = localStorage.getItem(activeKey());
+          
+          setMessages(storedMessages ? JSON.parse(storedMessages) : []);
+          setView(storedView || 'list');
+          setActivePartnerId(storedActive || '');
+          setActiveGroupIds([]);
+        } catch {
+          setMessages([]);
+          setView('list');
+          setActivePartnerId('');
+          setActiveGroupIds([]);
+        }
+      }, [currentUser, storageKey, viewKey, activeKey]);
+      
+      // Persist to localStorage
+      React.useEffect(() => {
+        try {
+          localStorage.setItem(storageKey(), JSON.stringify(messages));
+        } catch {}
+      }, [messages, storageKey]);
+      
+      React.useEffect(() => {
+        try {
+          localStorage.setItem(activeKey(), activePartnerId);
+        } catch {}
+      }, [activePartnerId, activeKey]);
+      
+      React.useEffect(() => {
+        try {
+          localStorage.setItem(viewKey(), view);
+        } catch {}
+      }, [view, viewKey]);
       React.useEffect(() => {}, [view]);
+      
+      // Factory reset handler
+      React.useEffect(() => {
+        const onFactoryReset = () => {
+          try {
+            setMessages([]);
+            setActivePartnerId('');
+            setActiveGroupIds([]);
+            setView('list');
+            localStorage.removeItem(storageKey());
+            localStorage.removeItem(activeKey());
+            localStorage.removeItem(viewKey());
+          } catch {}
+        };
+        window.addEventListener('factoryReset', onFactoryReset);
+        return () => window.removeEventListener('factoryReset', onFactoryReset);
+      }, [storageKey, activeKey, viewKey]);
 
       // Inbound messages
       React.useEffect(() => {
@@ -1923,18 +1993,53 @@
     function ChatConsole() {
       const API_BASE = getApiBase();
       const { currentUser, isConnected, users } = React.useContext(StateContext);
-      const [messages, setMessages] = React.useState([]);
+      const DEFAULT_AI_GREETING = 'Shall we...contract?';
+      const chatStorageKey = React.useCallback(() => `og.chat.${String(currentUser || 'default')}`, [currentUser]);
+      
+      // Initialize from localStorage or default greeting
+      const [messages, setMessages] = React.useState(() => {
+        try {
+          const stored = localStorage.getItem(chatStorageKey());
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          }
+        } catch {}
+        return ['[bot] ' + DEFAULT_AI_GREETING];
+      });
       const [text, setText] = React.useState('');
       const listRef = React.useRef(null);
-      const DEFAULT_AI_GREETING = 'Shall we...contract?';
       // Helper function to detect current platform
       const getCurrentPlatform = () => {
         try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; }
       };
-      // Initialize with greeting from bot on mount/user change
+      
+      // Persist messages to localStorage
       React.useEffect(() => {
-        try { setMessages(['[bot] ' + DEFAULT_AI_GREETING]); setText(''); } catch {}
-      }, [currentUser]);
+        try {
+          localStorage.setItem(chatStorageKey(), JSON.stringify(messages));
+        } catch {}
+      }, [messages, chatStorageKey]);
+      
+      // Load from localStorage when user changes
+      React.useEffect(() => {
+        try {
+          const stored = localStorage.getItem(chatStorageKey());
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setMessages(parsed);
+              setText('');
+              return;
+            }
+          }
+          setMessages(['[bot] ' + DEFAULT_AI_GREETING]);
+          setText('');
+        } catch {
+          setMessages(['[bot] ' + DEFAULT_AI_GREETING]);
+          setText('');
+        }
+      }, [currentUser, chatStorageKey]);
       const displayNameOf = React.useCallback((uid) => {
         try {
           if (!uid) return '';
@@ -1981,6 +2086,7 @@
               // Factory reset or global reset: clear completely, do NOT seed greeting
               setMessages([]);
               setText('');
+              try { localStorage.removeItem(chatStorageKey()); } catch {}
               return;
             }
 
