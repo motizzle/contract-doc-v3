@@ -1862,7 +1862,10 @@
             backgroundColor: '#ffffff',
             cursor: 'pointer'
           }
-        }, versions.map((v, i) => React.createElement('option', { key: i, value: String(i + 1) }, `Version ${i + 1}${v.label ? ` - ${v.label}` : ''}`)))
+        }, versions.slice().reverse().map((v, i) => {
+          const versionNum = versions.length - i;
+          return React.createElement('option', { key: i, value: String(versionNum) }, `Version ${versionNum}${v.label ? ` - ${v.label}` : ''}`);
+        }))
       ]);
 
       const header = React.createElement('div', { className: 'd-flex flex-column gap-12', style: { padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' } }, [
