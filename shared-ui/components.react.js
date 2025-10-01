@@ -3085,42 +3085,34 @@
             React.createElement('div', { key: 't', className: 'font-bold' }, 'AI System Prompt'),
             React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: onClose }, '✕')
           ]),
-          React.createElement('div', { key: 'b', className: 'modal-body', style: { display: 'flex', flexDirection: 'column', gap: '16px' } }, [
+          React.createElement('div', { key: 'b', className: 'modal-body d-flex flex-column gap-16' }, [
             loading ? React.createElement('div', { key: 'loading' }, 'Loading...') : null,
-            !loading ? React.createElement('div', { key: 'info', style: { fontSize: '13px', color: '#6b7280', padding: '12px', background: '#f9fafb', borderRadius: '6px', border: '1px solid #e5e7eb' } }, [
-              React.createElement('div', { key: 'label', style: { fontWeight: 600, marginBottom: '4px' } }, 'How it works:'),
+            !loading ? React.createElement('div', { key: 'info', className: 'text-sm text-gray-500 p-3 bg-gray-50 rounded border border-gray-200' }, [
+              React.createElement('div', { key: 'label', className: 'font-semibold mb-1' }, 'How it works:'),
               React.createElement('div', { key: 'text' }, 'The {DOCUMENT_CONTEXT} placeholder will be automatically replaced with the current document content. This prompt guides how the AI responds to your questions.')
             ]) : null,
-            !loading && contextPreview ? React.createElement('div', { key: 'preview', style: { fontSize: '13px' } }, [
-              React.createElement('div', { key: 'label', style: { fontWeight: 600, marginBottom: '4px', color: '#374151' } }, 'Current Document Context (preview):'),
-              React.createElement('div', { key: 'text', style: { padding: '8px', background: '#f9fafb', borderRadius: '4px', border: '1px solid #e5e7eb', fontFamily: 'monospace', fontSize: '12px', color: '#6b7280', maxHeight: '80px', overflow: 'auto' } }, contextPreview)
+            !loading && contextPreview ? React.createElement('div', { key: 'preview', className: 'd-flex flex-column gap-4' }, [
+              React.createElement('label', { key: 'label', className: 'text-sm font-semibold' }, 'Current Document Context (preview):'),
+              React.createElement('div', { key: 'text', className: 'p-2 bg-gray-50 rounded border border-gray-200 text-xs text-gray-500', style: { fontFamily: 'monospace', maxHeight: '80px', overflow: 'auto' } }, contextPreview)
             ]) : null,
-            !loading ? React.createElement('div', { key: 'prompt', style: { display: 'flex', flexDirection: 'column', gap: '8px' } }, [
-              React.createElement('label', { key: 'label', style: { fontSize: '13px', fontWeight: 600, color: '#374151' } }, 'System Prompt:'),
+            !loading ? React.createElement('div', { key: 'prompt', className: 'd-flex flex-column gap-6' }, [
+              React.createElement('label', { key: 'label', className: 'text-sm font-semibold' }, 'System Prompt:'),
               React.createElement('textarea', {
                 key: 'textarea',
+                rows: 10,
                 value: prompt,
                 onChange: (e) => setPrompt(e.target.value),
                 placeholder: 'Enter system prompt...',
-                style: {
-                  width: '100%',
-                  minHeight: '200px',
-                  padding: '12px',
-                  fontSize: '14px',
-                  fontFamily: 'system-ui, -apple-system, sans-serif',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  resize: 'vertical',
-                  boxSizing: 'border-box'
-                }
+                className: 'input-padding input-border input-border-radius',
+                style: { resize: 'vertical' }
               }),
-              React.createElement('div', { key: 'count', style: { fontSize: '12px', color: '#6b7280', textAlign: 'right' } }, `${prompt.length} / 2000 characters`)
+              React.createElement('div', { key: 'count', className: 'text-xs text-gray-500 text-right' }, `${prompt.length} / 2000 characters`)
             ]) : null,
-            error ? React.createElement('div', { key: 'error', style: { color: '#dc2626', fontSize: '13px', padding: '8px', background: '#fef2f2', borderRadius: '4px', border: '1px solid #fecaca' } }, error) : null
+            error ? React.createElement('div', { key: 'error', className: 'text-sm text-red-600 p-2 bg-red-50 rounded border border-red-200' }, error) : null
           ]),
-          React.createElement('div', { key: 'f', className: 'modal-footer', style: { display: 'flex', justifyContent: 'space-between' } }, [
+          React.createElement('div', { key: 'f', className: 'modal-footer d-flex justify-between' }, [
             React.createElement('div', { key: 'left' }, btn('Reset to Default', 'secondary', resetToDefault, saving || loading)),
-            React.createElement('div', { key: 'right', style: { display: 'flex', gap: '8px' } }, [
+            React.createElement('div', { key: 'right', className: 'd-flex gap-8' }, [
               btn('Cancel', 'secondary', onClose, saving),
               btn('Save', 'primary', save, saving || loading)
             ])
