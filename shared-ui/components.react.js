@@ -125,6 +125,7 @@
       const [lastError, setLastError] = React.useState(null);
       const [approvalsSummary, setApprovalsSummary] = React.useState(null);
       const [approvalsRevision, setApprovalsRevision] = React.useState(0);
+      const [messagingCount, setMessagingCount] = React.useState(0);
       const API_BASE = getApiBase();
 
       // Removed excessive logging
@@ -823,7 +824,7 @@
         },
       }), [API_BASE, refresh, userId, addLog, viewingVersion]);
 
-      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, activities, lastSeenActivityId, markActivitiesSeen, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, renderNotification, formatNotification, viewingVersion, setViewingVersion, refresh } }, React.createElement(App, { config }));
+      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, activities, lastSeenActivityId, markActivitiesSeen, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, messagingCount, setMessagingCount, renderNotification, formatNotification, viewingVersion, setViewingVersion, refresh } }, React.createElement(App, { config }));
     }
 
     function BannerStack(props) {
@@ -1388,7 +1389,7 @@
 
     function MessagingPanel() {
       const API_BASE = getApiBase();
-      const { currentUser, users } = React.useContext(StateContext);
+      const { currentUser, users, setMessagingCount } = React.useContext(StateContext);
 
       const storageKey = React.useCallback(() => `og.messaging.${String(currentUser || 'default')}`, [currentUser]);
       const activeKey = React.useCallback(() => `og.messaging.active.${String(currentUser || 'default')}`, [currentUser]);
@@ -1588,6 +1589,11 @@
         const tid = m.threadId ? String(m.threadId) : (Array.isArray(m.to) ? `group:${(m.to||[]).slice().sort().join(',')}` : `dm:${(m.from === me ? String(m.to) : String(m.from))}`);
         return activeThreadId && tid === activeThreadId;
       });
+
+      // Update messaging count in context
+      React.useEffect(() => {
+        if (setMessagingCount) setMessagingCount(conversations.length);
+      }, [conversations.length, setMessagingCount]);
 
       // Header
       const headerList = React.createElement('div', { className: 'd-flex items-center justify-end', style: { padding: '4px 8px' } }, [
@@ -3371,7 +3377,7 @@
     function App(props) {
       const [modal, setModal] = React.useState(null);
       const { config } = props;
-      const { documentSource, actions, approvalsSummary, activities, lastSeenActivityId, viewingVersion } = React.useContext(StateContext);
+      const { documentSource, actions, approvalsSummary, messagingCount, activities, lastSeenActivityId, viewingVersion } = React.useContext(StateContext);
       React.useEffect(() => {
         function onOpen(ev) { 
           
@@ -3515,8 +3521,8 @@
       }, [activeTab]);
 
       React.useEffect(() => { recalcUnderline(); }, [recalcUnderline]);
-      // Recalculate underline if the Workflow tab label width changes due to summary updates
-      React.useEffect(() => { recalcUnderline(); }, [approvalsSummary, recalcUnderline]);
+      // Recalculate underline if the Workflow or Messages tab label width changes due to count updates
+      React.useEffect(() => { recalcUnderline(); }, [approvalsSummary, messagingCount, recalcUnderline]);
       React.useEffect(() => {
         const onResize = () => recalcUnderline();
         window.addEventListener('resize', onResize);
@@ -3550,8 +3556,13 @@
               // Dispatch event to reset messaging view to list
               try { window.dispatchEvent(new CustomEvent('messaging:goHome')); } catch {}
             },
-            style: { background: 'transparent', border: 'none', padding: '8px 6px', cursor: 'pointer', color: activeTab === 'Messaging' ? '#111827' : '#6B7280', fontWeight: 600 }
-          }, React.createElement('span', { ref: msgLabelRef, style: { display: 'inline-block' } }, 'Messages')),
+            style: { background: 'transparent', border: 'none', padding: '8px 6px 8px 6px', cursor: 'pointer', color: activeTab === 'Messaging' ? '#111827' : '#6B7280', fontWeight: 600, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: '2px' }
+          }, [
+            (messagingCount > 0
+              ? React.createElement('span', { key: 'count', style: { fontSize: '11px', lineHeight: '1' } }, `(${messagingCount})`)
+              : null),
+            React.createElement('span', { key: 'label', ref: msgLabelRef, style: { display: 'inline-block' } }, 'Messages')
+          ]),
           React.createElement('button', {
             key: 'tab-versions',
             className: activeTab === 'Versions' ? 'tab tab--active' : 'tab',
