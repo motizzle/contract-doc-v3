@@ -1618,8 +1618,10 @@
           const me = String(currentUser);
           const hasUnread = messages.some(m => {
             const mTid = m.threadId ? String(m.threadId) : (Array.isArray(m.to) ? `group:${(m.to||[]).slice().sort().join(',')}` : `dm:${(m.from === me ? String(m.to) : String(m.from))}`);
+            const toArr = Array.isArray(m.to) ? m.to : [String(m.to || '')];
+            const involvesMe = (m.from === me || toArr.includes(me));
             const hasRead = Array.isArray(m.readBy) && m.readBy.includes(me);
-            return mTid === tid && !hasRead;
+            return mTid === tid && involvesMe && !hasRead;
           });
           return React.createElement('div', { key: tid || i, onClick: async () => {
               // Mark all messages in this thread as read via API
