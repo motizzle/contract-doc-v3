@@ -1240,8 +1240,8 @@
           if (isViewingOldVersion) {
             const currentVersion = Number(config?.documentVersion || 1);
           return {
-              title: 'Viewing old version',
-              message: `You are viewing version ${viewingVersion}. Current version is ${currentVersion}.`
+              title: 'New Version Available',
+              message: `You're viewing version ${viewingVersion}, the latest is ${currentVersion}.`
           };
           }
           return { title: '', message: '' };
@@ -1376,7 +1376,7 @@
         : React.createElement('div', { className: 'text-gray-500', style: { padding: 8 } }, 'No activity yet.');
       // Layout: column fills available height; only the list area scrolls
       const containerStyle = { display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 };
-      const listWrapStyle = { flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 0 8px 0' };
+      const listWrapStyle = { flex: 1, minHeight: 0, overflowY: 'auto', padding: '3px 0 8px 0' };
       const footer = React.createElement('div', { className: 'd-flex items-center justify-end', style: { padding: '10px 8px', background: '#fff', borderTop: '1px solid #e5e7eb' } }, [
         React.createElement(UIButton, { key: 'copy', label: 'Copy', onClick: copy, variant: 'primary' })
       ]);
@@ -2498,7 +2498,7 @@
         ? React.createElement('div', { className: 'd-flex flex-column gap-8' }, list)
         : React.createElement('div', { className: 'text-gray-500', style: { padding: 8 } }, 'No versions yet.');
       // Ensure enough bottom padding so the last card isn't hidden beneath the container edge
-      const containerStyle = { paddingBottom: 16 };
+      const containerStyle = { paddingTop: 3, paddingBottom: 16 };
       return React.createElement('div', { className: 'd-flex flex-column gap-8', style: containerStyle }, [
         inner,
         (confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: () => setConfirm(null) }) : null)
