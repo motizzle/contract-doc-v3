@@ -1812,23 +1812,34 @@
       const [hasCompared, setHasCompared] = React.useState(false);
       
       // Fetch versions list
-      React.useEffect(() => {
-        (async () => {
-          try {
-            const r = await fetch(`${API_BASE}/api/v1/versions?rev=${Date.now()}`, { cache: 'no-store' });
-            if (r.ok) {
-              const j = await r.json();
-              const arr = Array.isArray(j.items) ? j.items : [];
-              setVersions(arr);
-              // Default to version 1 and latest
-              if (arr.length > 0) {
-                setVersionA('1');
-                setVersionB(String(arr.length));
-              }
+      const loadVersions = React.useCallback(async () => {
+        try {
+          const r = await fetch(`${API_BASE}/api/v1/versions?rev=${Date.now()}`, { cache: 'no-store' });
+          if (r.ok) {
+            const j = await r.json();
+            const arr = Array.isArray(j.items) ? j.items : [];
+            setVersions(arr);
+            // Default to version 1 and latest (only on initial load when nothing is selected)
+            if (arr.length > 0 && !versionB) {
+              setVersionA('1');
+              setVersionB(String(arr.length));
             }
-          } catch {}
-        })();
-      }, [API_BASE]);
+          }
+        } catch {}
+      }, [API_BASE, versionB]);
+      
+      React.useEffect(() => {
+        loadVersions();
+      }, [loadVersions]);
+      
+      // Listen for versions:update event to refresh list
+      React.useEffect(() => {
+        const onVersionsUpdate = () => {
+          loadVersions();
+        };
+        window.addEventListener('versions:update', onVersionsUpdate);
+        return () => window.removeEventListener('versions:update', onVersionsUpdate);
+      }, [loadVersions]);
 
       const compare = async () => {
         setBusy(true); setError('');
