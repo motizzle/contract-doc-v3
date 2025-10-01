@@ -643,9 +643,6 @@ body .brand-header-bg .pulse-pill {
   max-height: 300px;
   overflow-y: auto;
   padding: 8px;
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
 }
 
 .notifications-list-modal {
