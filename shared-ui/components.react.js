@@ -1521,7 +1521,9 @@
             if (involvesMe) {
               // Skip if we already have this client-sent message
               if (clientId && Array.isArray(messages) && messages.some(m => m.clientId && String(m.clientId) === clientId)) return;
-              setMessages(prev => prev.concat({ id: Date.now() + Math.random(), from, to, text, ts: Date.now(), clientId: clientId || undefined, threadId: threadId || undefined }));
+              // Mark incoming messages as unread
+              const isFromMe = from === String(currentUser);
+              setMessages(prev => prev.concat({ id: Date.now() + Math.random(), from, to, text, ts: Date.now(), clientId: clientId || undefined, threadId: threadId || undefined, read: isFromMe }));
             }
           } catch {}
         };
@@ -1556,7 +1558,7 @@
         const clientId = `c_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const recipients = isGroup ? activeGroupIds.slice() : [String(activePartnerId)];
         const threadId = isGroup ? `group:${recipients.slice().sort().join(',')}` : `dm:${String(activePartnerId)}`;
-        const mine = { id: Date.now() + Math.random(), from: String(currentUser), to: (isGroup ? recipients : String(activePartnerId)), text: trimmed, ts: Date.now(), clientId, threadId };
+        const mine = { id: Date.now() + Math.random(), from: String(currentUser), to: (isGroup ? recipients : String(activePartnerId)), text: trimmed, ts: Date.now(), clientId, threadId, read: true };
         setMessages(prev => prev.concat(mine));
         try {
           await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'approvals:message', payload: { to: recipients, text: trimmed, clientId, threadId }, userId: currentUser }) });
@@ -1594,7 +1596,7 @@
       React.useEffect(() => {
         if (setMessagingCount) {
           const me = String(currentUser);
-          const unreadCount = messages.filter(m => String(m.from || '') !== me).length;
+          const unreadCount = messages.filter(m => String(m.from || '') !== me && m.read !== true).length;
           setMessagingCount(unreadCount);
         }
       }, [messages, currentUser, setMessagingCount]);
@@ -1612,17 +1614,30 @@
             : userLabel(String(tid).slice(3));
           const preview = (c.lastMsg && c.lastMsg.text) ? c.lastMsg.text : '';
           const time = c.lastMsg && c.lastMsg.ts ? new Date(c.lastMsg.ts).toLocaleTimeString() : '';
+          // Check if thread has unread messages
+          const me = String(currentUser);
+          const hasUnread = messages.some(m => {
+            const mTid = m.threadId ? String(m.threadId) : (Array.isArray(m.to) ? `group:${(m.to||[]).slice().sort().join(',')}` : `dm:${(m.from === me ? String(m.to) : String(m.from))}`);
+            return mTid === tid && String(m.from || '') !== me && m.read !== true;
+          });
           return React.createElement('div', { key: tid || i, onClick: () => {
+              // Mark all messages in this thread as read
+              setMessages(prev => prev.map(m => {
+                const mTid = m.threadId ? String(m.threadId) : (Array.isArray(m.to) ? `group:${(m.to||[]).slice().sort().join(',')}` : `dm:${(m.from === me ? String(m.to) : String(m.from))}`);
+                if (mTid === tid) return { ...m, read: true };
+                return m;
+              }));
               if (isGroup) { setActivePartnerId(''); setActiveGroupIds(String(tid).slice(6).split(',').filter(Boolean)); }
               else { setActiveGroupIds([]); setActivePartnerId(String(tid).slice(3)); }
               setView('thread');
             },
             className: 'd-flex items-center',
-            style: { border: '1px solid #e5e7eb', borderRadius: 12, padding: '14px 16px', cursor: 'pointer', background: '#fff' } }, [
+            style: { border: '1px solid #e5e7eb', borderRadius: 12, padding: '14px 16px', cursor: 'pointer', background: hasUnread ? '#f3f4f6' : '#fff', position: 'relative' } }, [
+              hasUnread ? React.createElement('div', { key: 'badge', style: { position: 'absolute', top: 14, right: 14, width: 8, height: 8, borderRadius: '50%', background: '#6d5ef1' } }) : null,
               React.createElement('div', { key: 'av', className: 'avatar-initials', style: { marginRight: 10 } }, initialsOf(label)),
               React.createElement('div', { key: 'txt', className: 'd-flex flex-column', style: { flex: 1, minWidth: 0 } }, [
-                React.createElement('div', { key: 'n', className: 'font-medium', style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, label),
-                React.createElement('div', { key: 'p', className: 'text-sm text-gray-600', style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, preview)
+                React.createElement('div', { key: 'n', className: 'font-medium', style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: hasUnread ? 700 : 600 } }, label),
+                React.createElement('div', { key: 'p', className: 'text-sm text-gray-600', style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: hasUnread ? 600 : 400 } }, preview)
               ]),
               React.createElement('div', { key: 't', className: 'text-xs text-gray-500' }, time)
             ]);
