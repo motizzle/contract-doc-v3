@@ -1391,7 +1391,8 @@
       const API_BASE = getApiBase();
       const { currentUser, users, setMessagingCount } = React.useContext(StateContext);
 
-      const storageKey = React.useCallback(() => `og.messaging.${String(currentUser || 'default')}`, [currentUser]);
+      // Store messages globally, not per-user, so messages arrive even when viewing as different user
+      const storageKey = React.useCallback(() => `og.messaging.global`, []);
       const activeKey = React.useCallback(() => `og.messaging.active.${String(currentUser || 'default')}`, [currentUser]);
       const viewKey = React.useCallback(() => `og.messaging.view.${String(currentUser || 'default')}`, [currentUser]);
       
@@ -1517,14 +1518,11 @@
             const clientId = d.payload && d.payload.clientId ? String(d.payload.clientId) : '';
             const threadId = d.payload && d.payload.threadId ? String(d.payload.threadId) : '';
             if (!text) return;
-            const involvesMe = Array.isArray(to) ? (to.includes(String(currentUser)) || from === String(currentUser)) : (from === String(currentUser) || to === String(currentUser));
-            if (involvesMe) {
-              // Skip if we already have this client-sent message
-              if (clientId && Array.isArray(messages) && messages.some(m => m.clientId && String(m.clientId) === clientId)) return;
-              // Mark incoming messages as unread
-              const isFromMe = from === String(currentUser);
-              setMessages(prev => prev.concat({ id: Date.now() + Math.random(), from, to, text, ts: Date.now(), clientId: clientId || undefined, threadId: threadId || undefined, read: isFromMe }));
-            }
+            // Skip if we already have this client-sent message
+            if (clientId && Array.isArray(messages) && messages.some(m => m.clientId && String(m.clientId) === clientId)) return;
+            // Store ALL messages globally with readBy array to track who has read it
+            const readBy = [from]; // Sender has always "read" their own message
+            setMessages(prev => prev.concat({ id: Date.now() + Math.random(), from, to, text, ts: Date.now(), clientId: clientId || undefined, threadId: threadId || undefined, readBy }));
           } catch {}
         };
         const onReset = () => {
@@ -1558,7 +1556,7 @@
         const clientId = `c_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const recipients = isGroup ? activeGroupIds.slice() : [String(activePartnerId)];
         const threadId = isGroup ? `group:${recipients.slice().sort().join(',')}` : `dm:${String(activePartnerId)}`;
-        const mine = { id: Date.now() + Math.random(), from: String(currentUser), to: (isGroup ? recipients : String(activePartnerId)), text: trimmed, ts: Date.now(), clientId, threadId, read: true };
+        const mine = { id: Date.now() + Math.random(), from: String(currentUser), to: (isGroup ? recipients : String(activePartnerId)), text: trimmed, ts: Date.now(), clientId, threadId, readBy: [String(currentUser)] };
         setMessages(prev => prev.concat(mine));
         try {
           await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'approvals:message', payload: { to: recipients, text: trimmed, clientId, threadId }, userId: currentUser }) });
@@ -1592,11 +1590,17 @@
         return activeThreadId && tid === activeThreadId;
       });
 
-      // Update messaging count in context - count unread messages (from others)
+      // Update messaging count in context - count unread messages (not read by currentUser)
       React.useEffect(() => {
         if (setMessagingCount) {
           const me = String(currentUser);
-          const unreadCount = messages.filter(m => String(m.from || '') !== me && m.read !== true).length;
+          const unreadCount = messages.filter(m => {
+            // Message is unread if currentUser is involved (to/from) but not in readBy array
+            const toArr = Array.isArray(m.to) ? m.to : [String(m.to || '')];
+            const involvesMe = (m.from === me || toArr.includes(me));
+            const hasRead = Array.isArray(m.readBy) && m.readBy.includes(me);
+            return involvesMe && !hasRead;
+          }).length;
           setMessagingCount(unreadCount);
         }
       }, [messages, currentUser, setMessagingCount]);
@@ -1614,17 +1618,21 @@
             : userLabel(String(tid).slice(3));
           const preview = (c.lastMsg && c.lastMsg.text) ? c.lastMsg.text : '';
           const time = c.lastMsg && c.lastMsg.ts ? new Date(c.lastMsg.ts).toLocaleTimeString() : '';
-          // Check if thread has unread messages
+          // Check if thread has unread messages (messages not read by currentUser)
           const me = String(currentUser);
           const hasUnread = messages.some(m => {
             const mTid = m.threadId ? String(m.threadId) : (Array.isArray(m.to) ? `group:${(m.to||[]).slice().sort().join(',')}` : `dm:${(m.from === me ? String(m.to) : String(m.from))}`);
-            return mTid === tid && String(m.from || '') !== me && m.read !== true;
+            const hasRead = Array.isArray(m.readBy) && m.readBy.includes(me);
+            return mTid === tid && !hasRead;
           });
           return React.createElement('div', { key: tid || i, onClick: () => {
-              // Mark all messages in this thread as read
+              // Mark all messages in this thread as read by adding currentUser to readBy array
               setMessages(prev => prev.map(m => {
                 const mTid = m.threadId ? String(m.threadId) : (Array.isArray(m.to) ? `group:${(m.to||[]).slice().sort().join(',')}` : `dm:${(m.from === me ? String(m.to) : String(m.from))}`);
-                if (mTid === tid) return { ...m, read: true };
+                if (mTid === tid) {
+                  const readBy = Array.isArray(m.readBy) ? m.readBy : [];
+                  if (!readBy.includes(me)) return { ...m, readBy: [...readBy, me] };
+                }
                 return m;
               }));
               if (isGroup) { setActivePartnerId(''); setActiveGroupIds(String(tid).slice(6).split(',').filter(Boolean)); }
