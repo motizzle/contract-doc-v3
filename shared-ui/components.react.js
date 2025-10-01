@@ -1223,14 +1223,28 @@
         ]);
       })();
 
-      const showUpdateBanner = Array.isArray(config?.banners) && (config.banners || []).some(b => b && b.state === 'update_available');
+      // Show banner if viewing old version
+      const isViewingOldVersion = (() => {
+        try {
+          const currentVersion = Number(config?.documentVersion || 1);
+          const viewing = Number(viewingVersion || 1);
+          return viewing < currentVersion;
+        } catch {
+          return false;
+        }
+      })();
+      
+      const showUpdateBanner = isViewingOldVersion;
       const updateBannerParts = (function(){
         try {
-          const b = (config.banners || []).find(x => x && x.state === 'update_available');
-          return {
-            title: (b && b.title) || '',
-            message: (b && b.message) || ''
-          };
+          if (isViewingOldVersion) {
+            const currentVersion = Number(config?.documentVersion || 1);
+            return {
+              title: 'Viewing old version',
+              message: `You are viewing version ${viewingVersion}. Current version is ${currentVersion}.`
+            };
+          }
+          return { title: '', message: '' };
         } catch { return { title: '', message: '' }; }
       })();
 
