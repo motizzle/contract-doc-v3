@@ -1621,5 +1621,314 @@
       "previousUserId": "user2"
     },
     "message": "Warren Peace overrode Fun E Guy's checkout"
+  },
+  {
+    "id": "act_1759276852593_0au76shws",
+    "timestamp": 1759276852593,
+    "type": "message:send",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "sent message",
+    "target": "message",
+    "details": {
+      "to": [
+        "user2"
+      ],
+      "channel": "approvals"
+    },
+    "message": "Warren Peace sent a message to Fun E Guy"
+  },
+  {
+    "id": "act_1759276969593_86rc27gh4",
+    "timestamp": 1759276969593,
+    "type": "message:send",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "sent message",
+    "target": "message",
+    "details": {
+      "to": [
+        "user2",
+        "user3"
+      ],
+      "channel": "approvals"
+    },
+    "message": "Warren Peace sent a message to Fun E Guy and Yuri Lee Laffed"
+  },
+  {
+    "id": "act_1759277011136_qlpm7z1fa",
+    "timestamp": 1759277011136,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759277025422_0ze5vqe21",
+    "timestamp": 1759277025422,
+    "type": "message:send",
+    "user": {
+      "id": "bot",
+      "label": "bot",
+      "platform": "server"
+    },
+    "action": "sent message",
+    "target": "message",
+    "details": {
+      "to": [
+        "user2",
+        "user3"
+      ],
+      "channel": "approvals"
+    },
+    "message": "bot sent a message to Fun E Guy and Yuri Lee Laffed"
+  },
+  {
+    "id": "act_1759277054867_3jxjaifdi",
+    "timestamp": 1759277054867,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759277055083_a5tohnk7y",
+    "timestamp": 1759277055083,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759277055123_b3rl306hm",
+    "timestamp": 1759277055123,
+    "type": "message:send",
+    "user": {
+      "id": "user2",
+      "label": "Fun E Guy",
+      "platform": "web"
+    },
+    "action": "sent message",
+    "target": "message",
+    "details": {
+      "to": [
+        "user1"
+      ],
+      "channel": "approvals"
+    },
+    "message": "Fun E Guy sent a message to Warren Peace"
+  },
+  {
+    "id": "act_1759277062813_dvwraam0n",
+    "timestamp": 1759277062813,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759277071594_8bkpp1a20",
+    "timestamp": 1759277071594,
+    "type": "message:send",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "sent message",
+    "target": "message",
+    "details": {
+      "to": [
+        "user2"
+      ],
+      "channel": "approvals"
+    },
+    "message": "Warren Peace sent a message to Fun E Guy"
+  },
+  {
+    "id": "act_1759277115151_blv7cdpe6",
+    "timestamp": 1759277115151,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759277131606_hb87ul6u5",
+    "timestamp": 1759277131606,
+    "type": "system:error",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "encountered error",
+    "target": "system",
+    "details": {
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
+    },
+    "message": "System error: LLM error: Request timeout"
+  },
+  {
+    "id": "act_1759277261286_clt5fdtn9",
+    "timestamp": 1759277261286,
+    "type": "workflow:remove-approval",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "removed approval",
+    "target": "workflow",
+    "details": {
+      "targetUserId": "user1",
+      "progress": {
+        "approved": 4,
+        "total": 5
+      }
+    },
+    "message": "Warren Peace removed approval (4/5)"
+  },
+  {
+    "id": "act_1759277262007_gfwwrmf24",
+    "timestamp": 1759277262007,
+    "type": "workflow:approve",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "approved",
+    "target": "workflow",
+    "details": {
+      "targetUserId": "user1",
+      "progress": {
+        "approved": 5,
+        "total": 5
+      }
+    },
+    "message": "Warren Peace approved (5/5)"
+  },
+  {
+    "id": "act_1759277262011_qn9tvvcgo",
+    "timestamp": 1759277262011,
+    "type": "workflow:complete",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "completed approvals",
+    "target": "workflow",
+    "details": {
+      "total": 5,
+      "approved": 5
+    },
+    "message": "All approvals completed"
+  },
+  {
+    "id": "act_1759277275982_1pbmj2g8j",
+    "timestamp": 1759277275982,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "word"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 18,
+      "platform": "word"
+    },
+    "message": "Warren Peace viewed version v18"
   }
 ]

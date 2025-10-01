@@ -2263,12 +2263,19 @@
       };
       const resetBtn = React.createElement(UIButton, { label: 'Reset', onClick: reset, tone: 'secondary' });
       const refreshBtn = React.createElement(UIButton, { label: 'Refresh Doc', onClick: refreshDoc, tone: 'secondary' });
+      const editPromptBtn = React.createElement(UIButton, { 
+        label: 'Edit Prompt', 
+        onClick: () => window.dispatchEvent(new CustomEvent('react:open-modal', { 
+          detail: { id: 'system-prompt-editor' } 
+        })), 
+        tone: 'secondary' 
+      });
       const isAddin = typeof Office !== 'undefined';
       const footerBar = React.createElement('div', { className: 'd-flex flex-column gap-8', style: { width: '100%', boxSizing: 'border-box', paddingTop: 8, paddingBottom: isAddin ? 8 : 12, paddingLeft: isAddin ? 0 : 12, paddingRight: isAddin ? 0 : 12 } }, [
         React.createElement('div', { className: 'd-flex gap-8 align-items-end', style: { width: '100%', boxSizing: 'border-box' } }, [
           React.createElement('div', { style: { flex: 1 } }, input)
         ]),
-        React.createElement('div', { className: 'd-flex gap-8' }, [resetBtn, refreshBtn])
+        React.createElement('div', { className: 'd-flex gap-8' }, [resetBtn, refreshBtn, editPromptBtn])
       ]);
       const wrap = React.createElement('div', { style: { width: '100%', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' } }, [
         React.createElement('div', { ref: listRef, style: { flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: isAddin ? '8px' : '12px' } }, [box]),
@@ -2989,6 +2996,139 @@
       );
     }
 
+    function SystemPromptEditorModal(props) {
+      const { onClose } = props || {};
+      const [prompt, setPrompt] = React.useState('');
+      const [loading, setLoading] = React.useState(true);
+      const [saving, setSaving] = React.useState(false);
+      const [error, setError] = React.useState('');
+      const [contextPreview, setContextPreview] = React.useState('');
+      
+      React.useEffect(() => {
+        (async () => {
+          try {
+            const r = await fetch(`${API_BASE}/api/v1/chat/system-prompt`);
+            if (r.ok) {
+              const data = await r.json();
+              setPrompt(data.prompt || '');
+              setContextPreview(data.documentContextPreview || '');
+            } else {
+              setError('Failed to load system prompt');
+            }
+          } catch (e) {
+            setError('Error loading system prompt: ' + e.message);
+          }
+          setLoading(false);
+        })();
+      }, []);
+      
+      const save = async () => {
+        if (prompt.trim().length < 10) {
+          setError('Prompt must be at least 10 characters');
+          return;
+        }
+        if (prompt.length > 2000) {
+          setError('Prompt is too long (max 2000 characters)');
+          return;
+        }
+        
+        setSaving(true);
+        setError('');
+        try {
+          const r = await fetch(`${API_BASE}/api/v1/chat/system-prompt`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt })
+          });
+          if (r.ok) {
+            onClose?.();
+          } else {
+            const data = await r.json();
+            setError(data.error || 'Failed to save prompt');
+          }
+        } catch (e) {
+          setError('Error saving prompt: ' + e.message);
+        }
+        setSaving(false);
+      };
+      
+      const resetToDefault = async () => {
+        if (!confirm('Reset to default prompt? This will delete your custom prompt.')) return;
+        
+        setSaving(true);
+        setError('');
+        try {
+          const r = await fetch(`${API_BASE}/api/v1/chat/system-prompt/reset`, {
+            method: 'POST'
+          });
+          if (r.ok) {
+            // Reload prompt
+            const r2 = await fetch(`${API_BASE}/api/v1/chat/system-prompt`);
+            if (r2.ok) {
+              const data = await r2.json();
+              setPrompt(data.prompt || '');
+            }
+          } else {
+            setError('Failed to reset prompt');
+          }
+        } catch (e) {
+          setError('Error resetting prompt: ' + e.message);
+        }
+        setSaving(false);
+      };
+      
+      const btn = (label, variant, onclick, disabled) => React.createElement(UIButton, { label, onClick: onclick, variant: variant || 'primary', disabled });
+      
+      return React.createElement('div', { className: 'modal-overlay', onClick: (e) => { if (e.target === e.currentTarget) onClose?.(); } },
+        React.createElement('div', { className: 'modal-panel', style: { maxWidth: '700px', width: '90%' } }, [
+          React.createElement('div', { key: 'h', className: 'modal-header' }, [
+            React.createElement('div', { key: 't', className: 'font-bold' }, 'AI System Prompt'),
+            React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: onClose }, '✕')
+          ]),
+          React.createElement('div', { key: 'b', className: 'modal-body', style: { display: 'flex', flexDirection: 'column', gap: '16px' } }, [
+            loading ? React.createElement('div', { key: 'loading' }, 'Loading...') : null,
+            !loading ? React.createElement('div', { key: 'info', style: { fontSize: '13px', color: '#6b7280', padding: '12px', background: '#f9fafb', borderRadius: '6px', border: '1px solid #e5e7eb' } }, [
+              React.createElement('div', { key: 'label', style: { fontWeight: 600, marginBottom: '4px' } }, 'How it works:'),
+              React.createElement('div', { key: 'text' }, 'The {DOCUMENT_CONTEXT} placeholder will be automatically replaced with the current document content. This prompt guides how the AI responds to your questions.')
+            ]) : null,
+            !loading && contextPreview ? React.createElement('div', { key: 'preview', style: { fontSize: '13px' } }, [
+              React.createElement('div', { key: 'label', style: { fontWeight: 600, marginBottom: '4px', color: '#374151' } }, 'Current Document Context (preview):'),
+              React.createElement('div', { key: 'text', style: { padding: '8px', background: '#f9fafb', borderRadius: '4px', border: '1px solid #e5e7eb', fontFamily: 'monospace', fontSize: '12px', color: '#6b7280', maxHeight: '80px', overflow: 'auto' } }, contextPreview)
+            ]) : null,
+            !loading ? React.createElement('div', { key: 'prompt', style: { display: 'flex', flexDirection: 'column', gap: '8px' } }, [
+              React.createElement('label', { key: 'label', style: { fontSize: '13px', fontWeight: 600, color: '#374151' } }, 'System Prompt:'),
+              React.createElement('textarea', {
+                key: 'textarea',
+                value: prompt,
+                onChange: (e) => setPrompt(e.target.value),
+                placeholder: 'Enter system prompt...',
+                style: {
+                  width: '100%',
+                  minHeight: '200px',
+                  padding: '12px',
+                  fontSize: '14px',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  resize: 'vertical',
+                  boxSizing: 'border-box'
+                }
+              }),
+              React.createElement('div', { key: 'count', style: { fontSize: '12px', color: '#6b7280', textAlign: 'right' } }, `${prompt.length} / 2000 characters`)
+            ]) : null,
+            error ? React.createElement('div', { key: 'error', style: { color: '#dc2626', fontSize: '13px', padding: '8px', background: '#fef2f2', borderRadius: '4px', border: '1px solid #fecaca' } }, error) : null
+          ]),
+          React.createElement('div', { key: 'f', className: 'modal-footer', style: { display: 'flex', justifyContent: 'space-between' } }, [
+            React.createElement('div', { key: 'left' }, btn('Reset to Default', 'secondary', resetToDefault, saving || loading)),
+            React.createElement('div', { key: 'right', style: { display: 'flex', gap: '8px' } }, [
+              btn('Cancel', 'secondary', onClose, saving),
+              btn('Save', 'primary', save, saving || loading)
+            ])
+          ])
+        ])
+      );
+    }
+
     function ApprovalsPill() {
       const { approvalsSummary } = React.useContext(StateContext);
       if (!approvalsSummary) return null;
@@ -3252,6 +3392,8 @@
             return React.createElement(OpenGovModal, { onClose });
           case 'version-outdated-checkout':
             return React.createElement(VersionOutdatedCheckoutModal, { currentVersion: modal.currentVersion, clientVersion: modal.clientVersion, viewingVersion: modal.viewingVersion, message: modal.message, userId: modal.userId, onClose });
+          case 'system-prompt-editor':
+            return React.createElement(SystemPromptEditorModal, { onClose });
           default:
             return null;
         }

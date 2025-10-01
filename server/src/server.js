@@ -76,12 +76,28 @@ function getSystemPrompt() {
   // Check for document updates (handles refresh button and file changes)
   loadDocumentContext();
 
-  return process.env.LLM_SYSTEM_PROMPT || `You are OG Assist, an AI assistant aware of the current document context.
+  const customPromptPath = path.join(dataAppDir, 'config', 'system-prompt.txt');
+  let basePrompt = '';
+  
+  if (fs.existsSync(customPromptPath)) {
+    try {
+      basePrompt = fs.readFileSync(customPromptPath, 'utf8');
+    } catch {
+      basePrompt = '';
+    }
+  }
+  
+  if (!basePrompt) {
+    basePrompt = process.env.LLM_SYSTEM_PROMPT || `You are OG Assist, an AI assistant aware of the current document context.
 
 Current Document Context:
-${DOCUMENT_CONTEXT}
+{DOCUMENT_CONTEXT}
 
 Answer helpfully and provide insights based on the current document context. Reference specific details from the contract when relevant. Be concise but informative.`;
+  }
+  
+  // Replace placeholder with actual document context
+  return basePrompt.replace(/{DOCUMENT_CONTEXT}/g, DOCUMENT_CONTEXT);
 }
 
 // Configuration
@@ -1558,6 +1574,91 @@ app.post('/api/v1/chatbot/reset', (req, res) => {
     return res.json({ ok: true });
   } catch (e) {
     return res.status(500).json({ error: 'reset_failed' });
+  }
+});
+
+// System Prompt Editor API
+app.get('/api/v1/chat/system-prompt', (req, res) => {
+  try {
+    const customPromptPath = path.join(dataAppDir, 'config', 'system-prompt.txt');
+    let prompt = '';
+    let hasCustom = false;
+    
+    if (fs.existsSync(customPromptPath)) {
+      try {
+        prompt = fs.readFileSync(customPromptPath, 'utf8');
+        hasCustom = true;
+      } catch {}
+    }
+    
+    if (!prompt) {
+      // Return default prompt with placeholder
+      prompt = `You are OG Assist, an AI assistant aware of the current document context.
+
+Current Document Context:
+{DOCUMENT_CONTEXT}
+
+Be concise. Reference specific details from the contract when relevant. Be concise but informative.`;
+    }
+    
+    const contextPreview = DOCUMENT_CONTEXT.slice(0, 500) + (DOCUMENT_CONTEXT.length > 500 ? '...' : '');
+    
+    res.json({ 
+      prompt,
+      hasCustom,
+      documentContextPreview: contextPreview
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to load system prompt' });
+  }
+});
+
+app.post('/api/v1/chat/system-prompt', (req, res) => {
+  try {
+    const { prompt } = req.body || {};
+    
+    if (!prompt || typeof prompt !== 'string' || prompt.trim().length < 10) {
+      return res.status(400).json({ error: 'Prompt must be at least 10 characters' });
+    }
+    
+    if (prompt.length > 2000) {
+      return res.status(400).json({ error: 'Prompt too long (max 2000 characters)' });
+    }
+    
+    const customPromptPath = path.join(dataAppDir, 'config', 'system-prompt.txt');
+    const configDir = path.dirname(customPromptPath);
+    
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true });
+    }
+    
+    fs.writeFileSync(customPromptPath, prompt.trim(), 'utf8');
+    
+    // Log activity
+    logActivity('system:prompt-update', req.body?.userId || 'system', { 
+      promptLength: prompt.trim().length 
+    });
+    
+    res.json({ ok: true, prompt: prompt.trim() });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to save system prompt' });
+  }
+});
+
+app.post('/api/v1/chat/system-prompt/reset', (req, res) => {
+  try {
+    const customPromptPath = path.join(dataAppDir, 'config', 'system-prompt.txt');
+    
+    if (fs.existsSync(customPromptPath)) {
+      fs.unlinkSync(customPromptPath);
+    }
+    
+    // Log activity
+    logActivity('system:prompt-reset', req.body?.userId || 'system', {});
+    
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to reset system prompt' });
   }
 });
 
