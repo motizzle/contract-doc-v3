@@ -1455,6 +1455,19 @@
         window.addEventListener('factoryReset', onFactoryReset);
         return () => window.removeEventListener('factoryReset', onFactoryReset);
       }, [storageKey, activeKey, viewKey]);
+      
+      // Go home handler (when clicking Messages tab)
+      React.useEffect(() => {
+        const onGoHome = () => {
+          try {
+            setView('list');
+            setActivePartnerId('');
+            setActiveGroupIds([]);
+          } catch {}
+        };
+        window.addEventListener('messaging:goHome', onGoHome);
+        return () => window.removeEventListener('messaging:goHome', onGoHome);
+      }, []);
 
       // Inbound messages
       React.useEffect(() => {
@@ -3327,7 +3340,11 @@
           React.createElement('button', {
             key: 'tab-messaging',
             className: activeTab === 'Messaging' ? 'tab tab--active' : 'tab',
-            onClick: () => setActiveTab('Messaging'),
+            onClick: () => {
+              setActiveTab('Messaging');
+              // Dispatch event to reset messaging view to list
+              try { window.dispatchEvent(new CustomEvent('messaging:goHome')); } catch {}
+            },
             style: { background: 'transparent', border: 'none', padding: '8px 6px', cursor: 'pointer', color: activeTab === 'Messaging' ? '#111827' : '#6B7280', fontWeight: 600 }
           }, React.createElement('span', { ref: msgLabelRef, style: { display: 'inline-block' } }, 'Messages')),
           React.createElement('button', {
