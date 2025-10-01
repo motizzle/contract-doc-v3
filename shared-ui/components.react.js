@@ -3005,6 +3005,7 @@
       const [contextPreview, setContextPreview] = React.useState('');
       
       React.useEffect(() => {
+        const API_BASE = getApiBase();
         (async () => {
           try {
             const r = await fetch(`${API_BASE}/api/v1/chat/system-prompt`);
@@ -3035,6 +3036,7 @@
         setSaving(true);
         setError('');
         try {
+          const API_BASE = getApiBase();
           const r = await fetch(`${API_BASE}/api/v1/chat/system-prompt`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -3058,6 +3060,7 @@
         setSaving(true);
         setError('');
         try {
+          const API_BASE = getApiBase();
           const r = await fetch(`${API_BASE}/api/v1/chat/system-prompt/reset`, {
             method: 'POST'
           });
