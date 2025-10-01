@@ -16,6 +16,15 @@ const LLM_PROVIDER = process.env.LLM_PROVIDER || 'ollama'; // 'ollama' or 'opena
 const LLM_USE_OPENAI = String(process.env.LLM_USE_OPENAI || '').toLowerCase() === 'true';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'gemma3:1b'; // Smaller, faster model
+
+// Default System Prompt - Single source of truth
+const DEFAULT_SYSTEM_PROMPT = `You are OG Assist, an AI assistant aware of the current document context.
+
+Current Document Context:
+{DOCUMENT_CONTEXT}
+
+Answer helpfully and provide insights based on the current document context. Reference specific details from the contract when relevant. Be concise but informative.`;
+
 // Dynamic document context loading
 let DOCUMENT_CONTEXT = '';
 let DOCUMENT_LAST_MODIFIED = null;
@@ -88,12 +97,7 @@ function getSystemPrompt() {
   }
   
   if (!basePrompt) {
-    basePrompt = process.env.LLM_SYSTEM_PROMPT || `You are OG Assist, an AI assistant aware of the current document context.
-
-Current Document Context:
-{DOCUMENT_CONTEXT}
-
-Answer helpfully and provide insights based on the current document context. Reference specific details from the contract when relevant. Be concise but informative.`;
+    basePrompt = process.env.LLM_SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT;
   }
   
   // Replace placeholder with actual document context
@@ -1593,12 +1597,7 @@ app.get('/api/v1/chat/system-prompt', (req, res) => {
     
     if (!prompt) {
       // Return default prompt with placeholder
-      prompt = `You are OG Assist, an AI assistant aware of the current document context.
-
-Current Document Context:
-{DOCUMENT_CONTEXT}
-
-Be concise. Reference specific details from the contract when relevant. Be concise but informative.`;
+      prompt = DEFAULT_SYSTEM_PROMPT;
     }
     
     const contextPreview = DOCUMENT_CONTEXT.slice(0, 500) + (DOCUMENT_CONTEXT.length > 500 ? '...' : '');
