@@ -642,7 +642,6 @@ body .brand-header-bg .pulse-pill {
 .notifications-list {
   max-height: 300px;
   overflow-y: auto;
-  padding: 8px;
 }
 
 .notifications-list-modal {
