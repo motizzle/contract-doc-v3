@@ -589,20 +589,20 @@ body .brand-header-bg .pulse-pill {
 /* Notification styling */
 .notification-item {
   margin-bottom: 4px;
-  border-radius: 6px;
+  border-radius: 12px;
   font-family: monospace;
   font-size: 12px;
   line-height: 1.4;
 }
 
 .notification-legacy {
-  padding: 8px 12px;
+  padding: 14px 16px;
   border: 1px solid #e5e7eb;
-  background-color: #f9fafb;
+  background-color: #ffffff;
 }
 
 .notification-formatted {
-  padding: 10px 14px;
+  padding: 14px 16px;
   margin-bottom: 6px;
   font-size: 13px;
   line-height: 1.4;
@@ -1094,10 +1094,9 @@ body .brand-header-bg .pulse-pill {
 .activity-card {
   border: 1px solid #e5e7eb; /* gray-200 */
   background: #ffffff;
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: 12px;
+  padding: 14px 16px;
   margin: 8px 0;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
 .activity-card__row { display: flex; align-items: flex-start; gap: 10px; }
 .activity-card__icon { font-size: 18px; line-height: 1; margin-top: 2px; }

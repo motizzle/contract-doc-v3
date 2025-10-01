@@ -1594,7 +1594,7 @@
               setView('thread');
             },
             className: 'd-flex items-center',
-            style: { border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 12px', cursor: 'pointer', background: '#fff' } }, [
+            style: { border: '1px solid #e5e7eb', borderRadius: 12, padding: '14px 16px', cursor: 'pointer', background: '#fff' } }, [
               React.createElement('div', { key: 'av', className: 'avatar-initials', style: { marginRight: 10 } }, initialsOf(label)),
               React.createElement('div', { key: 'txt', className: 'd-flex flex-column', style: { flex: 1, minWidth: 0 } }, [
                 React.createElement('div', { key: 'n', className: 'font-medium', style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, label),
@@ -1642,7 +1642,7 @@
           ]),
           React.createElement(UIButton, { key: 'start', label: 'Start', onClick: startNewChats, variant: 'primary', disabled: !newSelection.size })
         ]),
-        React.createElement('div', { key: 'pick', style: { border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' } },
+        React.createElement('div', { key: 'pick', style: { border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' } },
           React.createElement('div', { style: { maxHeight: 320, overflowY: 'auto', background: '#fff' } },
             (users || []).filter(u => (u?.id || u?.label) && (u.id || u.label) !== currentUser)
               .map((u, i) => {
