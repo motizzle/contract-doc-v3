@@ -1590,10 +1590,14 @@
         return activeThreadId && tid === activeThreadId;
       });
 
-      // Update messaging count in context
+      // Update messaging count in context - count unread messages (from others)
       React.useEffect(() => {
-        if (setMessagingCount) setMessagingCount(conversations.length);
-      }, [conversations.length, setMessagingCount]);
+        if (setMessagingCount) {
+          const me = String(currentUser);
+          const unreadCount = messages.filter(m => String(m.from || '') !== me).length;
+          setMessagingCount(unreadCount);
+        }
+      }, [messages, currentUser, setMessagingCount]);
 
       // Header
       const headerList = React.createElement('div', { className: 'd-flex items-center justify-end', style: { padding: '4px 8px' } }, [
