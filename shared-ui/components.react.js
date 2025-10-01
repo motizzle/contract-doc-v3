@@ -3188,7 +3188,7 @@
     function App(props) {
       const [modal, setModal] = React.useState(null);
       const { config } = props;
-      const { documentSource, actions, approvalsSummary, activities, lastSeenActivityId } = React.useContext(StateContext);
+      const { documentSource, actions, approvalsSummary, activities, lastSeenActivityId, viewingVersion } = React.useContext(StateContext);
       React.useEffect(() => {
         function onOpen(ev) { 
           
