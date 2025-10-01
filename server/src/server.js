@@ -178,6 +178,44 @@ function logActivity(type, userId, details = {}) {
   }
 }
 
+// Messages storage functions
+function readMessages() {
+  try {
+    if (fs.existsSync(messagesFilePath)) {
+      const content = fs.readFileSync(messagesFilePath, 'utf8');
+      const cleanContent = content.replace(/^\uFEFF/, '');
+      const messages = JSON.parse(cleanContent);
+      return Array.isArray(messages) ? messages : [];
+    }
+    return [];
+  } catch (e) {
+    console.error('Error reading messages:', e);
+    return [];
+  }
+}
+
+function saveMessage(message) {
+  try {
+    const messages = readMessages();
+    messages.push(message);
+    fs.writeFileSync(messagesFilePath, JSON.stringify(messages, null, 2), 'utf8');
+    return true;
+  } catch (e) {
+    console.error('Error saving message:', e);
+    return false;
+  }
+}
+
+function updateMessages(updatedMessages) {
+  try {
+    fs.writeFileSync(messagesFilePath, JSON.stringify(updatedMessages, null, 2), 'utf8');
+    return true;
+  } catch (e) {
+    console.error('Error updating messages:', e);
+    return false;
+  }
+}
+
 function buildActivityMessage(type, details = {}) {
   const userLabel = details.userLabel || details.user?.label || details.userId || 'Unknown User';
 
@@ -365,6 +403,7 @@ const compiledDir = path.join(dataWorkingDir, 'compiled');
 const versionsDir = path.join(dataWorkingDir, 'versions');
 const approvalsFilePath = path.join(dataAppDir, 'approvals.json');
 const activityLogFilePath = path.join(dataAppDir, 'activity-log.json');
+const messagesFilePath = path.join(dataAppDir, 'messages.json');
 
 // Ensure working directories exist
 for (const dir of [dataWorkingDir, workingDocumentsDir, workingExhibitsDir, compiledDir, versionsDir]) {
@@ -743,6 +782,46 @@ app.get('/api/v1/activity', (req, res) => {
   } catch (e) {
     console.error('Error reading activity log:', e);
     return res.status(500).json({ error: 'Failed to read activity log' });
+  }
+});
+
+// Messages API
+app.get('/api/v1/messages', (req, res) => {
+  try {
+    const messages = readMessages();
+    return res.json({ messages });
+  } catch (e) {
+    console.error('Error reading messages:', e);
+    return res.status(500).json({ error: 'Failed to read messages' });
+  }
+});
+
+app.post('/api/v1/messages/mark-read', (req, res) => {
+  try {
+    const { threadId, userId } = req.body;
+    if (!threadId || !userId) {
+      return res.status(400).json({ error: 'Missing threadId or userId' });
+    }
+    
+    const messages = readMessages();
+    const updatedMessages = messages.map(m => {
+      const me = String(userId);
+      const mTid = m.threadId ? String(m.threadId) : (Array.isArray(m.to) ? `group:${(m.to||[]).slice().sort().join(',')}` : `dm:${(m.from === me ? String(m.to) : String(m.from))}`);
+      
+      if (mTid === threadId) {
+        const readBy = Array.isArray(m.readBy) ? m.readBy : [];
+        if (!readBy.includes(me)) {
+          return { ...m, readBy: [...readBy, me] };
+        }
+      }
+      return m;
+    });
+    
+    updateMessages(updatedMessages);
+    return res.json({ ok: true, messages: updatedMessages });
+  } catch (e) {
+    console.error('Error marking messages as read:', e);
+    return res.status(500).json({ error: 'Failed to mark messages as read' });
   }
 });
 
@@ -1495,12 +1574,25 @@ app.post('/api/v1/events/client', async (req, res) => {
     })();
     broadcast({ type, payload, userId, role, platform: originPlatform });
 
-    // Log human-sent messages as activities
+    // Log human-sent messages as activities and save to messages file
     if (type === 'approvals:message') {
       try {
         const toRaw = payload?.to;
         const toList = Array.isArray(toRaw) ? toRaw.map(String) : [String(toRaw || '')];
         logActivity('message:send', userId, { to: toList, channel: 'approvals', platform: originPlatform });
+        
+        // Save message to file
+        const message = {
+          id: Date.now() + Math.random(),
+          from: userId,
+          to: toList.length === 1 ? toList[0] : toList,
+          text: String(payload?.text || ''),
+          ts: Date.now(),
+          clientId: payload?.clientId || undefined,
+          threadId: payload?.threadId || undefined,
+          readBy: [userId]
+        };
+        saveMessage(message);
       } catch {}
     }
 
@@ -1525,6 +1617,17 @@ app.post('/api/v1/events/client', async (req, res) => {
             broadcast({ type: 'approvals:message', payload: { to: toList, text: replyText, threadId }, userId: 'bot', role: 'assistant', platform: 'server' });
             // Log bot message send
             logActivity('message:send', 'bot', { to: toList, channel: 'approvals', platform: 'server' });
+            // Save bot message to file
+            const botMessage = {
+              id: Date.now() + Math.random(),
+              from: 'bot',
+              to: toList.length === 1 ? toList[0] : toList,
+              text: replyText,
+              ts: Date.now(),
+              threadId: threadId || undefined,
+              readBy: ['bot']
+            };
+            saveMessage(botMessage);
           }
         } else {
           const msg = `LLM error: ${result && result.error ? result.error : 'Unknown error'}`;

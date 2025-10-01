@@ -1391,22 +1391,26 @@
       const API_BASE = getApiBase();
       const { currentUser, users, setMessagingCount } = React.useContext(StateContext);
 
-      // Store messages globally, not per-user, so messages arrive even when viewing as different user
-      const storageKey = React.useCallback(() => `og.messaging.global`, []);
       const activeKey = React.useCallback(() => `og.messaging.active.${String(currentUser || 'default')}`, [currentUser]);
       const viewKey = React.useCallback(() => `og.messaging.view.${String(currentUser || 'default')}`, [currentUser]);
       
-      // Initialize from localStorage
-      const [messages, setMessages] = React.useState(() => {
-        try {
-          const stored = localStorage.getItem(storageKey());
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed)) return parsed;
-          }
-        } catch {}
-        return [];
-      });
+      // Load messages from server
+      const [messages, setMessages] = React.useState([]);
+      
+      // Fetch messages on mount
+      React.useEffect(() => {
+        const loadMessages = async () => {
+          try {
+            const r = await fetch(`${API_BASE}/api/v1/messages`);
+            if (r.ok) {
+              const j = await r.json();
+              if (Array.isArray(j.messages)) setMessages(j.messages);
+            }
+          } catch {}
+        };
+        loadMessages();
+      }, [API_BASE]);
+      
       const [text, setText] = React.useState('');
       const listRef = React.useRef(null);
       const [view, setView] = React.useState(() => {
@@ -1439,28 +1443,21 @@
       // Load from localStorage when user changes
       React.useEffect(() => {
         try {
-          const storedMessages = localStorage.getItem(storageKey());
           const storedView = localStorage.getItem(viewKey());
           const storedActive = localStorage.getItem(activeKey());
           
-          setMessages(storedMessages ? JSON.parse(storedMessages) : []);
+          // Messages loaded from server, just restore UI state
           setView(storedView || 'list');
           setActivePartnerId(storedActive || '');
           setActiveGroupIds([]);
         } catch {
-          setMessages([]);
           setView('list');
           setActivePartnerId('');
           setActiveGroupIds([]);
         }
-      }, [currentUser, storageKey, viewKey, activeKey]);
+      }, [currentUser, viewKey, activeKey]);
       
-      // Persist to localStorage
-      React.useEffect(() => {
-        try {
-          localStorage.setItem(storageKey(), JSON.stringify(messages));
-        } catch {}
-      }, [messages, storageKey]);
+      // Messages are now stored on server, not in localStorage
       
       React.useEffect(() => {
         try {
@@ -1483,14 +1480,13 @@
             setActivePartnerId('');
             setActiveGroupIds([]);
             setView('list');
-            localStorage.removeItem(storageKey());
             localStorage.removeItem(activeKey());
             localStorage.removeItem(viewKey());
           } catch {}
         };
         window.addEventListener('factoryReset', onFactoryReset);
         return () => window.removeEventListener('factoryReset', onFactoryReset);
-      }, [storageKey, activeKey, viewKey]);
+      }, [activeKey, viewKey]);
       
       // Go home handler (when clicking Messages tab)
       React.useEffect(() => {
@@ -1625,16 +1621,20 @@
             const hasRead = Array.isArray(m.readBy) && m.readBy.includes(me);
             return mTid === tid && !hasRead;
           });
-          return React.createElement('div', { key: tid || i, onClick: () => {
-              // Mark all messages in this thread as read by adding currentUser to readBy array
-              setMessages(prev => prev.map(m => {
-                const mTid = m.threadId ? String(m.threadId) : (Array.isArray(m.to) ? `group:${(m.to||[]).slice().sort().join(',')}` : `dm:${(m.from === me ? String(m.to) : String(m.from))}`);
-                if (mTid === tid) {
-                  const readBy = Array.isArray(m.readBy) ? m.readBy : [];
-                  if (!readBy.includes(me)) return { ...m, readBy: [...readBy, me] };
+          return React.createElement('div', { key: tid || i, onClick: async () => {
+              // Mark all messages in this thread as read via API
+              try {
+                const r = await fetch(`${API_BASE}/api/v1/messages/mark-read`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ threadId: tid, userId: me })
+                });
+                if (r.ok) {
+                  const j = await r.json();
+                  if (Array.isArray(j.messages)) setMessages(j.messages);
                 }
-                return m;
-              }));
+              } catch {}
+              
               if (isGroup) { setActivePartnerId(''); setActiveGroupIds(String(tid).slice(6).split(',').filter(Boolean)); }
               else { setActiveGroupIds([]); setActivePartnerId(String(tid).slice(3)); }
               setView('thread');
