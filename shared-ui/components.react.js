@@ -891,7 +891,7 @@
     }
 
     function ActionButtons() {
-      const { config, actions, revision, setDocumentSource, addLog, setLoadedVersion, users, currentUser } = React.useContext(StateContext);
+      const { config, actions, revision, setDocumentSource, addLog, setLoadedVersion, users, currentUser, viewingVersion } = React.useContext(StateContext);
       const [confirm, setConfirm] = React.useState(null);
       const { tokens } = React.useContext(ThemeContext);
       const rootRef = React.useRef(null);
@@ -1239,10 +1239,10 @@
         try {
           if (isViewingOldVersion) {
             const currentVersion = Number(config?.documentVersion || 1);
-            return {
+          return {
               title: 'Viewing old version',
               message: `You are viewing version ${viewingVersion}. Current version is ${currentVersion}.`
-            };
+          };
           }
           return { title: '', message: '' };
         } catch { return { title: '', message: '' }; }
@@ -1389,7 +1389,7 @@
     function MessagingPanel() {
       const API_BASE = getApiBase();
       const { currentUser, users } = React.useContext(StateContext);
-      
+
       const storageKey = React.useCallback(() => `og.messaging.${String(currentUser || 'default')}`, [currentUser]);
       const activeKey = React.useCallback(() => `og.messaging.active.${String(currentUser || 'default')}`, [currentUser]);
       const viewKey = React.useCallback(() => `og.messaging.view.${String(currentUser || 'default')}`, [currentUser]);
@@ -1915,11 +1915,11 @@
 
       const header = React.createElement('div', { className: 'd-flex flex-column gap-12', style: { padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' } }, [
         React.createElement('div', { key: 'pickers', className: 'd-flex gap-12' }, [
-          picker('Version A', versionA, setVersionA),
+        picker('Version A', versionA, setVersionA),
           picker('Version B', versionB, setVersionB)
         ]),
         React.createElement('div', { key: 'btn-row', className: 'd-flex' }, [
-          React.createElement(UIButton, { key: 'go', label: (busy ? 'Comparing…' : 'Compare'), onClick: compare, disabled: !!busy, variant: 'primary' })
+        React.createElement(UIButton, { key: 'go', label: (busy ? 'Comparing…' : 'Compare'), onClick: compare, disabled: !!busy, variant: 'primary' })
         ])
       ]);
 
@@ -1993,7 +1993,7 @@
           fontWeight: 500
         } 
       }, '⚠ ' + error) : null;
-      
+
       return React.createElement('div', { className: 'd-flex flex-column gap-12' }, [
         header,
         errorBanner,
