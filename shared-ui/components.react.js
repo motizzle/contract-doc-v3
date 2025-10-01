@@ -1535,7 +1535,7 @@
           try { window.removeEventListener('messaging:message', onMsg); } catch {}
           try { window.removeEventListener('messaging:reset', onReset); } catch {}
         };
-      }, [currentUser, messages, storageKey, activeKey, viewKey]);
+      }, [currentUser, messages, activeKey, viewKey]);
 
       // Do not auto-select a partner on New Chat; user must choose explicitly
 
