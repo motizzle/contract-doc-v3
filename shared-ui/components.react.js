@@ -3336,6 +3336,7 @@
             if (d && d.id === 'request-review') setModal({ id: 'request-review' }); 
             if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); 
             if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); 
+            if (d && d.id === 'system-prompt-editor') setModal({ id: 'system-prompt-editor' }); 
             if (d && d.id === 'version-outdated-checkout') {
               
               setModal({ 
