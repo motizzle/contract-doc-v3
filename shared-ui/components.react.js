@@ -109,7 +109,9 @@
       const [viewingVersion, setViewingVersion] = React.useState(1);
       
       // Debug: Track when viewingVersion changes
-      React.useEffect(() => {}, [viewingVersion]);
+      React.useEffect(() => {
+        console.log(`[DEBUG] viewingVersion changed to: ${viewingVersion}`);
+      }, [viewingVersion]);
       const [isConnected, setIsConnected] = React.useState(false);
       const [lastTs, setLastTs] = React.useState(0);
       const [userId, setUserId] = React.useState('user1');
@@ -447,7 +449,11 @@
                             const r = await fetch(u);
                             const j = await r.json();
                             const v = Number(j?.config?.documentVersion || 0);
-                            if (v > 0) { setLoadedVersion(v); setViewingVersion(v); }
+                            if (v > 0) { 
+                              console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: factoryReset (add-in)`);
+                              setLoadedVersion(v); 
+                              setViewingVersion(v); 
+                            }
                           } catch {}
                         }
                       } catch {}
@@ -462,7 +468,11 @@
                         const r = await fetch(u);
                         const j = await r.json();
                         const v = Number(j?.config?.documentVersion || 0);
-                        if (v > 0) { setLoadedVersion(v); setViewingVersion(v); }
+                        if (v > 0) { 
+                          console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: factoryReset (web)`);
+                          setLoadedVersion(v); 
+                          setViewingVersion(v); 
+                        }
                       } catch {}
                     })();
                   }
@@ -748,7 +758,7 @@
                 const j = await r.json();
                 const v = Number(j?.config?.documentVersion || 0);
                 if (Number.isFinite(v) && v > 0) {
-                  
+                  console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: saveProgress`);
                   try { setViewingVersion(v); } catch {}
                   try { setLoadedVersion(v); } catch {} // Fix: Update loadedVersion to prevent banner showing for same user
                   try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
@@ -783,7 +793,7 @@
                   try {
                     const v = Number(j?.config?.documentVersion || 0);
                     if (Number.isFinite(v) && v > 0) {
-                       
+                      console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: userSwitch`);
                       setViewingVersion(v);
                       setLoadedVersion(v); // Reset loadedVersion to current document version for new user
                       try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
@@ -862,10 +872,11 @@
           }
           const serverVersion = Number(config?.documentVersion || 0);
           if (Number.isFinite(serverVersion) && serverVersion > 0) {
+            console.log(`[DEBUG] Setting viewingVersion to ${serverVersion} - Source: refreshNow`);
             setLoadedVersion(serverVersion);
             try { setViewingVersion(serverVersion); } catch {}
             try {
-              const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
+              const plat = (function(){ try { return (typeof Office !== 'undefined()) ? 'word' : 'web'; } catch { return 'web'; } })();
               window.dispatchEvent(new CustomEvent('version:view', { detail: { version: serverVersion, payload: { threadPlatform: plat } } }));
             } catch {}
           }
@@ -2464,9 +2475,10 @@
             // Ensure the list reflects the newest versions
             try { await refresh(); } catch {}
             
+            console.log(`[DEBUG] Setting viewingVersion to ${n} - Source: ComparisonTab version:view event`);
             setViewingVersion(n);
             const url = `${API_BASE}/api/v1/versions/${n}?rev=${Date.now()}`;
-            if (typeof Office !== 'undefined') {
+            if (typeof Office !== 'undefined()) {
               try {
                 const res = await fetch(url, { cache: 'no-store' }); if (!res.ok) throw new Error('download');
                 const buf = await res.arrayBuffer();
@@ -2978,7 +2990,8 @@
           if (response.ok) {
             addLog('Document checked out successfully (latest version)', 'success'); 
             try { 
-              await refresh(); 
+              await refresh();
+              console.log(`[DEBUG] Setting viewingVersion to ${currentVersion} - Source: checkout (current version)`);
               try { if (typeof setViewingVersion === 'function') setViewingVersion(currentVersion); } catch {}
               try { if (typeof setLoadedVersion === 'function') setLoadedVersion(currentVersion); } catch {}
               try {
@@ -3012,7 +3025,8 @@
           if (response.ok) {
             addLog(`Document checked out successfully (version ${versionToUse})`, 'success'); 
             try { 
-              await refresh(); 
+              await refresh();
+              console.log(`[DEBUG] Setting viewingVersion to ${versionToUse} - Source: checkout (specific version)`);
               try { if (typeof setViewingVersion === 'function') setViewingVersion(versionToUse); } catch {}
               try { if (typeof setLoadedVersion === 'function') setLoadedVersion(versionToUse); } catch {}
               try {
