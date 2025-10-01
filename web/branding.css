@@ -617,6 +617,46 @@ body .brand-header-bg .pulse-pill {
   flex-shrink: 0;
 }
 
+/* Messaging cards */
+.messaging-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  background: #fff;
+  position: relative;
+}
+
+.messaging-card--unread {
+  background: #f3f4f6;
+}
+
+.messaging-card__unread-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6d5ef1;
+}
+
+.messaging-card__name {
+  font-weight: 600;
+}
+
+.messaging-card__name--unread {
+  font-weight: 700;
+}
+
+.messaging-card__preview {
+  font-weight: 400;
+}
+
+.messaging-card__preview--unread {
+  font-weight: 600;
+}
+
 .notification-content {
   flex: 1;
 }

@@ -1631,13 +1631,12 @@
               else { setActiveGroupIds([]); setActivePartnerId(String(tid).slice(3)); }
               setView('thread');
             },
-            className: 'd-flex items-center',
-            style: { border: '1px solid #e5e7eb', borderRadius: 12, padding: '14px 16px', cursor: 'pointer', background: hasUnread ? '#f3f4f6' : '#fff', position: 'relative' } }, [
-              hasUnread ? React.createElement('div', { key: 'badge', style: { position: 'absolute', top: 14, right: 14, width: 8, height: 8, borderRadius: '50%', background: '#6d5ef1' } }) : null,
+            className: `messaging-card ${hasUnread ? 'messaging-card--unread' : ''} d-flex items-center`}, [
+              hasUnread ? React.createElement('div', { key: 'badge', className: 'messaging-card__unread-badge' }) : null,
               React.createElement('div', { key: 'av', className: 'avatar-initials', style: { marginRight: 10 } }, initialsOf(label)),
               React.createElement('div', { key: 'txt', className: 'd-flex flex-column', style: { flex: 1, minWidth: 0 } }, [
-                React.createElement('div', { key: 'n', className: 'font-medium', style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: hasUnread ? 700 : 600 } }, label),
-                React.createElement('div', { key: 'p', className: 'text-sm text-gray-600', style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: hasUnread ? 600 : 400 } }, preview)
+                React.createElement('div', { key: 'n', className: `messaging-card__name ${hasUnread ? 'messaging-card__name--unread' : ''}`, style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, label),
+                React.createElement('div', { key: 'p', className: `messaging-card__preview ${hasUnread ? 'messaging-card__preview--unread' : ''} text-sm text-gray-600`, style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, preview)
               ]),
               React.createElement('div', { key: 't', className: 'text-xs text-gray-500' }, time)
             ]);
