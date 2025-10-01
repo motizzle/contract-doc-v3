@@ -439,11 +439,31 @@
                           const buf = await res.arrayBuffer();
                           const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
                           await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
+                          // Update loadedVersion after factory reset so banner logic works
+                          try {
+                            const plat = 'word';
+                            const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent(String(userId||'user1'))}`;
+                            const r = await fetch(u);
+                            const j = await r.json();
+                            const v = Number(j?.config?.documentVersion || 0);
+                            if (v > 0) { setLoadedVersion(v); setViewingVersion(v); }
+                          } catch {}
                         }
                       } catch {}
                     })();
                   } else {
                     setDocumentSource(canonical);
+                    // Update loadedVersion after factory reset so banner logic works
+                    (async () => {
+                      try {
+                        const plat = 'web';
+                        const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent(String(userId||'user1'))}`;
+                        const r = await fetch(u);
+                        const j = await r.json();
+                        const v = Number(j?.config?.documentVersion || 0);
+                        if (v > 0) { setLoadedVersion(v); setViewingVersion(v); }
+                      } catch {}
+                    })();
                   }
                 } catch {}
                 try { window.dispatchEvent(new CustomEvent('factoryReset', { detail: p })); } catch {}
