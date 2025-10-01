@@ -3285,6 +3285,25 @@
       const verLabelRef = React.useRef(null);
       const actLabelRef = React.useRef(null);
       const cmpLabelRef = React.useRef(null);
+      const prevTabRef = React.useRef(activeTab);
+      
+      // Reload document when leaving Comparison tab to remove comparison highlights
+      React.useEffect(() => {
+        const wasOnComparison = prevTabRef.current === 'Comparison';
+        const nowOnComparison = activeTab === 'Comparison';
+        
+        if (wasOnComparison && !nowOnComparison) {
+          // Switching away from Comparison - reload current version
+          try {
+            const version = viewingVersion || 1;
+            window.dispatchEvent(new CustomEvent('version:view', { 
+              detail: { version, source: 'tab-switch' } 
+            }));
+          } catch {}
+        }
+        
+        prevTabRef.current = activeTab;
+      }, [activeTab, viewingVersion]);
 
       const recalcUnderline = React.useCallback(() => {
         try {
