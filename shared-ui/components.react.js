@@ -3393,6 +3393,225 @@
       ]);
     }
 
+    // Fields Panel - Phase 2: Basic wireframe with Enter Variable button
+    function FieldsPanel() {
+      const API_BASE = getApiBase();
+      const { currentUser } = React.useContext(StateContext);
+      const [showModal, setShowModal] = React.useState(false);
+      const [fieldName, setFieldName] = React.useState('');
+      const [isInserting, setIsInserting] = React.useState(false);
+
+      const handleInsert = async () => {
+        const name = fieldName.trim();
+        if (!name) return;
+
+        setIsInserting(true);
+        try {
+          // Generate unique field ID
+          const fieldId = `field-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          
+          // Create field via API
+          const response = await fetch(`${API_BASE}/api/v1/fields`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fieldId,
+              displayLabel: name,
+              fieldType: 'TEXTINPUT',
+              fieldColor: '#980043',
+              type: 'text',
+              category: 'Uncategorized',
+              defaultValue: '',
+              userId: currentUser || 'user1'
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to create field');
+          }
+
+          // Insert field into document using SuperDoc
+          // Check if SuperDoc instance and editor are available
+          if (window.superdocInstance && window.superdocInstance.editor) {
+            const editor = window.superdocInstance.editor;
+            
+            // Check if field annotation commands are available
+            if (editor.commands && typeof editor.commands.addFieldAnnotationAtSelection === 'function') {
+              editor.commands.addFieldAnnotationAtSelection({
+                fieldId,
+                displayLabel: name,
+                fieldType: 'TEXTINPUT',
+                fieldColor: '#980043',
+                type: 'text'
+              });
+            } else {
+              console.warn('SuperDoc Field Annotation plugin not loaded. Field created in backend but not inserted into document.');
+              alert('Field created successfully, but SuperDoc Field Annotation plugin is not loaded. The field was saved but not inserted into the document.');
+            }
+          } else {
+            console.warn('SuperDoc instance not available');
+            alert('Field created successfully, but SuperDoc is not available to insert it into the document.');
+          }
+
+          // Close modal and reset
+          setShowModal(false);
+          setFieldName('');
+        } catch (error) {
+          console.error('Error inserting field:', error);
+          alert('Failed to insert field. Please try again.');
+        } finally {
+          setIsInserting(false);
+        }
+      };
+
+      const handleKeyPress = (e) => {
+        if (e.key === 'Enter') {
+          handleInsert();
+        } else if (e.key === 'Escape') {
+          setShowModal(false);
+          setFieldName('');
+        }
+      };
+
+      // Modal
+      const modal = showModal ? React.createElement('div', {
+        style: {
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000
+        },
+        onClick: () => {
+          setShowModal(false);
+          setFieldName('');
+        }
+      }, React.createElement('div', {
+        style: {
+          background: 'white',
+          borderRadius: '8px',
+          padding: '24px',
+          width: '400px',
+          maxWidth: '90%',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+        },
+        onClick: (e) => e.stopPropagation()
+      }, [
+        React.createElement('h3', {
+          key: 'title',
+          style: { margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }
+        }, 'Enter Variable Name'),
+        React.createElement('input', {
+          key: 'input',
+          type: 'text',
+          value: fieldName,
+          onChange: (e) => setFieldName(e.target.value),
+          onKeyDown: handleKeyPress,
+          placeholder: 'e.g., Party A Name',
+          autoFocus: true,
+          style: {
+            width: '100%',
+            padding: '8px 12px',
+            fontSize: '14px',
+            border: '1px solid #d1d5db',
+            borderRadius: '4px',
+            marginBottom: '16px'
+          }
+        }),
+        React.createElement('div', {
+          key: 'buttons',
+          style: { display: 'flex', gap: '8px', justifyContent: 'flex-end' }
+        }, [
+          React.createElement('button', {
+            key: 'cancel',
+            onClick: () => {
+              setShowModal(false);
+              setFieldName('');
+            },
+            disabled: isInserting,
+            style: {
+              padding: '8px 16px',
+              fontSize: '14px',
+              border: '1px solid #d1d5db',
+              borderRadius: '4px',
+              background: 'white',
+              cursor: isInserting ? 'not-allowed' : 'pointer',
+              opacity: isInserting ? 0.6 : 1
+            }
+          }, 'Cancel'),
+          React.createElement('button', {
+            key: 'insert',
+            onClick: handleInsert,
+            disabled: !fieldName.trim() || isInserting,
+            style: {
+              padding: '8px 16px',
+              fontSize: '14px',
+              border: 'none',
+              borderRadius: '4px',
+              background: (!fieldName.trim() || isInserting) ? '#9ca3af' : '#6d5ef1',
+              color: 'white',
+              cursor: (!fieldName.trim() || isInserting) ? 'not-allowed' : 'pointer',
+              fontWeight: '500'
+            }
+          }, isInserting ? 'Inserting...' : 'Insert')
+        ])
+      ])) : null;
+
+      // Main panel UI
+      return React.createElement('div', { style: { padding: '0' } }, [
+        modal,
+        React.createElement('div', {
+          key: 'header',
+          style: {
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '16px',
+            padding: '0 8px'
+          }
+        }, [
+          React.createElement('h3', {
+            key: 'title',
+            style: { margin: 0, fontSize: '16px', fontWeight: '600' }
+          }, 'Fields'),
+          React.createElement('button', {
+            key: 'add',
+            onClick: () => setShowModal(true),
+            style: {
+              padding: '6px 12px',
+              fontSize: '14px',
+              border: 'none',
+              borderRadius: '4px',
+              background: '#6d5ef1',
+              color: 'white',
+              cursor: 'pointer',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }
+          }, [
+            React.createElement('span', { key: 'icon', style: { fontSize: '16px' } }, '+'),
+            React.createElement('span', { key: 'text' }, 'Enter Variable')
+          ])
+        ]),
+        React.createElement('div', {
+          key: 'body',
+          style: {
+            padding: '32px 16px',
+            textAlign: 'center',
+            color: '#6b7280',
+            fontSize: '14px'
+          }
+        }, 'No fields yet. Click "+ Enter Variable" to create your first field.')
+      ]);
+    }
+
     function App(props) {
       const [modal, setModal] = React.useState(null);
       const { config } = props;
@@ -3496,6 +3715,7 @@
       const verLabelRef = React.useRef(null);
       const actLabelRef = React.useRef(null);
       const cmpLabelRef = React.useRef(null);
+      const fieldsLabelRef = React.useRef(null);
       const prevTabRef = React.useRef(activeTab);
       
       // Reload document when leaving Comparison tab to remove comparison highlights
@@ -3529,7 +3749,9 @@
                   ? verLabelRef.current
                   : (activeTab === 'Activity'
                     ? actLabelRef.current
-                    : cmpLabelRef.current)))));
+                    : (activeTab === 'Comparison'
+                      ? cmpLabelRef.current
+                      : fieldsLabelRef.current))))));
           if (!bar || !labelEl) return;
           const barRect = bar.getBoundingClientRect();
           const labRect = labelEl.getBoundingClientRect();
@@ -3623,6 +3845,13 @@
             onClick: () => setActiveTab('Comparison'),
             style: { background: 'transparent', border: 'none', padding: '8px 6px', cursor: 'pointer', color: activeTab === 'Comparison' ? '#111827' : '#6B7280', fontWeight: 600 }
           }, React.createElement('span', { ref: cmpLabelRef, style: { display: 'inline-block' } }, 'Compare')),
+          // Fields tab (Phase 2)
+          React.createElement('button', {
+            key: 'tab-fields',
+            className: activeTab === 'Fields' ? 'tab tab--active' : 'tab',
+            onClick: () => setActiveTab('Fields'),
+            style: { background: 'transparent', border: 'none', padding: '8px 6px', cursor: 'pointer', color: activeTab === 'Fields' ? '#111827' : '#6B7280', fontWeight: 600 }
+          }, React.createElement('span', { ref: fieldsLabelRef, style: { display: 'inline-block' } }, 'Fields')),
         React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
         React.createElement('div', { key: 'tabbody', className: activeTab === 'AI' ? '' : 'mt-3', style: { flex: 1, minHeight: 0, overflowY: activeTab === 'AI' ? 'hidden' : 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', padding: activeTab === 'AI' ? '0' : '0 8px 112px 8px', marginTop: activeTab === 'AI' ? 0 : undefined } }, [
@@ -3631,7 +3860,8 @@
           React.createElement('div', { key: 'wrap-messaging', style: { display: (activeTab === 'Messaging' ? 'block' : 'none') } }, React.createElement(MessagingPanel, { key: 'messaging' })),
           React.createElement('div', { key: 'wrap-versions', style: { display: (activeTab === 'Versions' ? 'block' : 'none') } }, React.createElement(VersionsPanel, { key: 'versions' })),
           React.createElement('div', { key: 'wrap-activity', style: { display: (activeTab === 'Activity' ? 'block' : 'none') } }, React.createElement(ActivityPanel, { key: 'activity' })),
-          React.createElement('div', { key: 'wrap-compare', style: { display: (activeTab === 'Comparison' ? 'block' : 'none') } }, React.createElement(ComparisonTab, { key: 'compare' }))
+          React.createElement('div', { key: 'wrap-compare', style: { display: (activeTab === 'Comparison' ? 'block' : 'none') } }, React.createElement(ComparisonTab, { key: 'compare' })),
+          React.createElement('div', { key: 'wrap-fields', style: { display: (activeTab === 'Fields' ? 'block' : 'none') } }, React.createElement(FieldsPanel, { key: 'fields' }))
         ])
       ]);
 
