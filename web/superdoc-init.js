@@ -71,7 +71,15 @@ export function mountSuperdoc(options) {
   const superdoc = new Ctor({
     selector: options.selector,
     toolbar: toolbarSelector,
-    modules: { toolbar: toolbarModuleCfg },
+    modules: { 
+      toolbar: toolbarModuleCfg,
+      fieldAnnotation: {
+        enabled: true,
+        allowCreate: true,
+        allowEdit: true,
+        allowDelete: true
+      }
+    },
     document: options.document,
     documentMode: options.documentMode ?? 'editing',
     pagination: options.pagination ?? true,
@@ -79,7 +87,18 @@ export function mountSuperdoc(options) {
     // Prefer same-origin collab proxy; choose ws/wss based on page protocol
     collab: { url: (function(){ try { const p = location.protocol === 'http:' ? 'ws' : 'wss'; return `${p}://localhost:4001/collab`; } catch { return 'wss://localhost:4001/collab'; } })() },
     onReady: (e) => console.log('SuperDoc ready', e),
-    onEditorCreate: (e) => console.log('Editor created', e),
+    onEditorCreate: (e) => {
+      console.log('Editor created', e);
+      // Check if field annotation commands are available
+      if (e && e.commands) {
+        console.log('✅ Field Annotation plugin loaded:', {
+          hasAddCommand: typeof e.commands.addFieldAnnotationAtSelection === 'function',
+          hasUpdateCommand: typeof e.commands.updateFieldAnnotations === 'function',
+          hasDeleteCommand: typeof e.commands.deleteFieldAnnotations === 'function',
+          hasGetAllHelper: e.helpers && e.helpers.fieldAnnotation && typeof e.helpers.fieldAnnotation.getAllFieldAnnotations === 'function'
+        });
+      }
+    },
   });
   // Expose a small export API for the React right-pane to use for Save Progress
   try {
