@@ -503,8 +503,7 @@
                 try {
                   const all = !!(p.payload && p.payload.all);
                   if (all) {
-                    try { localStorage.removeItem(`ogassist.messages.${String(currentUser || 'default')}`); } catch {}
-                    try { localStorage.removeItem(`ogassist.seeded.${String(currentUser || 'default')}`); } catch {}
+                    try { localStorage.removeItem(`og.chat.${String(currentUser || 'default')}`); } catch {}
                   }
                 } catch {}
               }
@@ -958,17 +957,8 @@
             const buf = await res.arrayBuffer();
             const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
             await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
-            // Clear local client caches to avoid stale chats after reload actions
-            try {
-              const uid = String(currentUser || 'default');
-              localStorage.removeItem(`og.messaging.${uid}`);
-              localStorage.removeItem(`og.messaging.active.${uid}`);
-              localStorage.removeItem(`og.messaging.view.${uid}`);
-              localStorage.removeItem(`ogassist.messages.${uid}`);
-              localStorage.removeItem(`ogassist.seeded.${uid}`);
-              try { window.dispatchEvent(new CustomEvent('messaging:reset', { detail: { source: 'viewLatest' } })); } catch {}
-              try { window.dispatchEvent(new CustomEvent('chat:reset', { detail: { payload: { all: true }, source: 'viewLatest' } })); } catch {}
-            } catch {}
+            // Note: Messaging is server-based now, AI chat persists until explicit reset
+            // Only factory reset or AI reset button should clear chat history
             try {
               const plat = 'word';
               const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent(String(currentUser||'user1'))}`;
@@ -995,17 +985,8 @@
             const finalUrl = `${url}?rev=${Date.now()}`;
             setDocumentSource(finalUrl);
             addLog(`doc src viewLatest -> ${finalUrl}`);
-            // Clear local client caches after swapping document
-            try {
-              const uid = String(currentUser || 'default');
-              localStorage.removeItem(`og.messaging.${uid}`);
-              localStorage.removeItem(`og.messaging.active.${uid}`);
-              localStorage.removeItem(`og.messaging.view.${uid}`);
-              localStorage.removeItem(`ogassist.messages.${uid}`);
-              localStorage.removeItem(`ogassist.seeded.${uid}`);
-              try { window.dispatchEvent(new CustomEvent('messaging:reset', { detail: { source: 'viewLatest' } })); } catch {}
-              try { window.dispatchEvent(new CustomEvent('chat:reset', { detail: { payload: { all: true }, source: 'viewLatest' } })); } catch {}
-            } catch {}
+            // Note: Messaging is server-based now, AI chat persists until explicit reset
+            // Only factory reset or AI reset button should clear chat history
             try {
               const plat = 'web';
               const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent(String(currentUser||'user1'))}`;
