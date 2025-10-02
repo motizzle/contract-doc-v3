@@ -1,7 +1,7 @@
 [
   {
-    "id": "act_1759292970083_jbkpzwoqz",
-    "timestamp": 1759292970083,
+    "id": "act_1759362097773_kwx15h3ji",
+    "timestamp": 1759362097773,
     "type": "document:checkout",
     "user": {
       "id": "user1",
@@ -14,8 +14,36 @@
     "message": "Warren Peace checked out document"
   },
   {
-    "id": "act_1759292974352_zfc74wvw1",
-    "timestamp": 1759292974352,
+    "id": "act_1759362100178_dbpj4ot6p",
+    "timestamp": 1759362100178,
+    "type": "document:checkout:cancel",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "cancelled checkout",
+    "target": "document",
+    "details": {},
+    "message": "Warren Peace cancelled document checkout"
+  },
+  {
+    "id": "act_1759374599707_pyvf685ud",
+    "timestamp": 1759374599707,
+    "type": "document:checkout",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {},
+    "message": "Warren Peace checked out document"
+  },
+  {
+    "id": "act_1759374600075_x6c94jscp",
+    "timestamp": 1759374600075,
     "type": "document:save",
     "user": {
       "id": "user1",
@@ -31,12 +59,42 @@
     "message": "Warren Peace saved a new version of the document (v2)"
   },
   {
-    "id": "act_1759293024599_jmhw5qj01",
-    "timestamp": 1759293024599,
+    "id": "act_1759374609390_pz78g46mk",
+    "timestamp": 1759374609390,
+    "type": "document:checkout:override",
+    "user": {
+      "id": "user2",
+      "label": "Kent Uckey",
+      "platform": "web"
+    },
+    "action": "overrode checkout",
+    "target": "document",
+    "details": {
+      "previousUserId": "user1"
+    },
+    "message": "Kent Uckey overrode Warren Peace's checkout"
+  },
+  {
+    "id": "act_1759374610831_4k3fhsn0r",
+    "timestamp": 1759374610831,
+    "type": "document:checkout",
+    "user": {
+      "id": "user2",
+      "label": "Kent Uckey",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {},
+    "message": "Kent Uckey checked out document"
+  },
+  {
+    "id": "act_1759374612844_iiuzf2iig",
+    "timestamp": 1759374612844,
     "type": "document:save",
     "user": {
-      "id": "user1",
-      "label": "Warren Peace",
+      "id": "user2",
+      "label": "Kent Uckey",
       "platform": "web"
     },
     "action": "saved progress",
@@ -45,15 +103,62 @@
       "autoSave": false,
       "version": 3
     },
-    "message": "Warren Peace saved a new version of the document (v3)"
+    "message": "Kent Uckey saved a new version of the document (v3)"
   },
   {
-    "id": "act_1759293026113_q4ykrjs6a",
-    "timestamp": 1759293026113,
-    "type": "document:save",
+    "id": "act_1759374624073_rzebmyjm9",
+    "timestamp": 1759374624073,
+    "type": "version:view",
     "user": {
       "id": "user1",
       "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 1,
+      "platform": "web"
+    },
+    "message": "Warren Peace viewed version v1"
+  },
+  {
+    "id": "act_1759374632182_7lsu7j53c",
+    "timestamp": 1759374632182,
+    "type": "document:checkout:override",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "overrode checkout",
+    "target": "document",
+    "details": {
+      "previousUserId": "user2"
+    },
+    "message": "Warren Peace overrode Kent Uckey's checkout"
+  },
+  {
+    "id": "act_1759374655108_kyz3b75dw",
+    "timestamp": 1759374655108,
+    "type": "document:checkout",
+    "user": {
+      "id": "user2",
+      "label": "Kent Uckey",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {},
+    "message": "Kent Uckey checked out document"
+  },
+  {
+    "id": "act_1759374655920_at3noiwx5",
+    "timestamp": 1759374655920,
+    "type": "document:save",
+    "user": {
+      "id": "user2",
+      "label": "Kent Uckey",
       "platform": "web"
     },
     "action": "saved progress",
@@ -62,27 +167,27 @@
       "autoSave": false,
       "version": 4
     },
-    "message": "Warren Peace saved a new version of the document (v4)"
+    "message": "Kent Uckey saved a new version of the document (v4)"
   },
   {
-    "id": "act_1759293026155_3u9jciccr",
-    "timestamp": 1759293026155,
-    "type": "document:checkin",
+    "id": "act_1759374660712_l6bi2rg5v",
+    "timestamp": 1759374660712,
+    "type": "document:checkout:override",
     "user": {
       "id": "user1",
       "label": "Warren Peace",
       "platform": "web"
     },
-    "action": "checked in",
+    "action": "overrode checkout",
     "target": "document",
     "details": {
-      "version": 4
+      "previousUserId": "user2"
     },
-    "message": "Warren Peace checked in document (v4)"
+    "message": "Warren Peace overrode Kent Uckey's checkout"
   },
   {
-    "id": "act_1759293027564_ew1grek2p",
-    "timestamp": 1759293027564,
+    "id": "act_1759374661957_g88pj8hug",
+    "timestamp": 1759374661957,
     "type": "document:checkout",
     "user": {
       "id": "user1",
@@ -93,5 +198,22 @@
     "target": "document",
     "details": {},
     "message": "Warren Peace checked out document"
+  },
+  {
+    "id": "act_1759374663255_t0okpfy6i",
+    "timestamp": 1759374663255,
+    "type": "document:save",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 5
+    },
+    "message": "Warren Peace saved a new version of the document (v5)"
   }
 ]

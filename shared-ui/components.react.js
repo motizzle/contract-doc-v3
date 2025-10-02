@@ -499,13 +499,6 @@
               }
               if (p && p.type === 'chat:reset') {
                 try { window.dispatchEvent(new CustomEvent('chat:reset', { detail: p })); } catch {}
-                // Clear AI chat local storage when reset is global or for this user
-                try {
-                  const all = !!(p.payload && p.payload.all);
-                  if (all) {
-                    try { localStorage.removeItem(`og.chat.${String(currentUser || 'default')}`); } catch {}
-                  }
-                } catch {}
               }
               // Fan out lightweight user messaging events
               if (p && p.type === 'approvals:message') {
@@ -2081,52 +2074,36 @@
       const API_BASE = getApiBase();
       const { currentUser, isConnected, users } = React.useContext(StateContext);
       const DEFAULT_AI_GREETING = 'Shall we...contract?';
-      const chatStorageKey = React.useCallback(() => `og.chat.${String(currentUser || 'default')}`, [currentUser]);
       
-      // Initialize from localStorage or default greeting
-      const [messages, setMessages] = React.useState(() => {
-        try {
-          const stored = localStorage.getItem(chatStorageKey());
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      // Load messages from server
+      const [messages, setMessages] = React.useState(['[bot] ' + DEFAULT_AI_GREETING]);
+      
+      // Fetch messages on mount and when user changes
+      React.useEffect(() => {
+        const loadMessages = async () => {
+          try {
+            const r = await fetch(`${API_BASE}/api/v1/chat?userId=${encodeURIComponent(currentUser)}`);
+            if (r.ok) {
+              const j = await r.json();
+              if (Array.isArray(j.messages) && j.messages.length > 0) {
+                setMessages(j.messages);
+              } else {
+                setMessages(['[bot] ' + DEFAULT_AI_GREETING]);
+              }
+            }
+          } catch {
+            setMessages(['[bot] ' + DEFAULT_AI_GREETING]);
           }
-        } catch {}
-        return ['[bot] ' + DEFAULT_AI_GREETING];
-      });
+        };
+        loadMessages();
+      }, [API_BASE, currentUser]);
+      
       const [text, setText] = React.useState('');
       const listRef = React.useRef(null);
       // Helper function to detect current platform
       const getCurrentPlatform = () => {
         try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; }
       };
-      
-      // Persist messages to localStorage
-      React.useEffect(() => {
-        try {
-          localStorage.setItem(chatStorageKey(), JSON.stringify(messages));
-        } catch {}
-      }, [messages, chatStorageKey]);
-      
-      // Load from localStorage when user changes
-      React.useEffect(() => {
-        try {
-          const stored = localStorage.getItem(chatStorageKey());
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setMessages(parsed);
-              setText('');
-              return;
-            }
-          }
-          setMessages(['[bot] ' + DEFAULT_AI_GREETING]);
-          setText('');
-        } catch {
-          setMessages(['[bot] ' + DEFAULT_AI_GREETING]);
-          setText('');
-        }
-      }, [currentUser, chatStorageKey]);
       const displayNameOf = React.useCallback((uid) => {
         try {
           if (!uid) return '';
@@ -2170,10 +2147,23 @@
             
 
             if (isGlobal) {
-              // Factory reset or global reset: clear completely, do NOT seed greeting
-              setMessages([]);
+              // Factory reset: reload from server (should be empty after server reset)
+              setMessages(['[bot] ' + DEFAULT_AI_GREETING]);
               setText('');
-              try { localStorage.removeItem(chatStorageKey()); } catch {}
+              // Reload from server
+              (async () => {
+                try {
+                  const r = await fetch(`${API_BASE}/api/v1/chat?userId=${encodeURIComponent(currentUser)}`);
+                  if (r.ok) {
+                    const j = await r.json();
+                    if (Array.isArray(j.messages) && j.messages.length > 0) {
+                      setMessages(j.messages);
+                    } else {
+                      setMessages(['[bot] ' + DEFAULT_AI_GREETING]);
+                    }
+                  }
+                } catch {}
+              })();
               return;
             }
 
@@ -2181,23 +2171,20 @@
             try {
               if (typeof Office !== 'undefined') {
                 if (threadPlatform && threadPlatform !== 'word') {
-                  
                   return;
                 }
               } else {
                 if (threadPlatform && threadPlatform !== 'web') {
-                   
                   return;
                 }
               }
             } catch {}
 
             if (String(forUser) !== String(currentUser)) {
-              
               return;
             }
 
-            
+            // User-initiated reset via reset button
             setMessages(['[bot] ' + DEFAULT_AI_GREETING]);
             setText('');
           } catch (error) {

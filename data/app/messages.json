@@ -1,0 +1,124 @@
+[
+  {
+    "id": 1759354003826.6316,
+    "from": "user1",
+    "to": "user2",
+    "text": "test",
+    "ts": 1759354003826,
+    "clientId": "c_1759354003736_jzpxqd",
+    "threadId": "dm:user2",
+    "readBy": [
+      "user1",
+      "user2"
+    ]
+  },
+  {
+    "id": 1759354018325.0315,
+    "from": "user2",
+    "to": "user2",
+    "text": "e",
+    "ts": 1759354018325,
+    "clientId": "c_1759354018305_u2n5y2",
+    "threadId": "dm:user2",
+    "readBy": [
+      "user2"
+    ]
+  },
+  {
+    "id": 1759354022087.0754,
+    "from": "bot",
+    "to": "user2",
+    "text": "Okay, here’s a concise response based on the provided context:\n\n“We’re focusing on a shared goal – rapid development of groundbreaking features. The contract requires us to adapt to a document experience that’s currently lost – prioritizing invisible infrastructure for baseline functionality to keep pace with evolving technology.”",
+    "ts": 1759354022087,
+    "threadId": "dm:user2",
+    "readBy": [
+      "bot",
+      "user2"
+    ]
+  },
+  {
+    "id": 1759354022665.4036,
+    "from": "user2",
+    "to": "user2",
+    "text": "e",
+    "ts": 1759354022665,
+    "clientId": "c_1759354022656_qbb8bf",
+    "threadId": "dm:user2",
+    "readBy": [
+      "user2"
+    ]
+  },
+  {
+    "id": 1759354028139.9243,
+    "from": "bot",
+    "to": "user2",
+    "text": "Okay, here’s a concise summary of the context:\n\n**OpenGov and MVPs are collaborating on a shared goal – rapid development. The contract emphasizes a streamlined, non-traditional document workflow, prioritizing a 2026 independent contract document experience and a fast-paced technology environment.**",
+    "ts": 1759354028139,
+    "threadId": "dm:user2",
+    "readBy": [
+      "bot",
+      "user2"
+    ]
+  },
+  {
+    "id": 1759354034617.7334,
+    "from": "bot",
+    "to": "user2",
+    "text": "Okay, here’s a concise summary of the current document context:\n\n**OpenGov and MVPs are collaborating to build a shared goal – a document experience that surpasses traditional document workflows. The contract emphasizes a 2026 goal of independent contract document experience, requiring a rapid pace of technological advancement to keep up.**",
+    "ts": 1759354034617,
+    "threadId": "dm:user2",
+    "readBy": [
+      "bot",
+      "user2"
+    ]
+  },
+  {
+    "id": 1759354058771.136,
+    "from": "user2",
+    "to": "user2",
+    "text": "d",
+    "ts": 1759354058771,
+    "clientId": "c_1759354058759_g79uc5",
+    "threadId": "dm:user2",
+    "readBy": [
+      "user2"
+    ]
+  },
+  {
+    "id": 1759354066736.9028,
+    "from": "bot",
+    "to": "user2",
+    "text": "Okay, here’s a concise summary of the context:\n\n**OpenGov and its MVPs are collaborating on a shared goal – rapid development. The contract emphasizes a streamlined, invisible infrastructure for baseline functionality, requiring constant adaptation to evolving technology.**",
+    "ts": 1759354066736,
+    "threadId": "dm:user2",
+    "readBy": [
+      "bot",
+      "user2"
+    ]
+  },
+  {
+    "id": 1759358702758.8645,
+    "from": "user1",
+    "to": "user2",
+    "text": "read it again!",
+    "ts": 1759358702758,
+    "clientId": "c_1759358702743_obdb6y",
+    "threadId": "dm:user2",
+    "readBy": [
+      "user1",
+      "user2"
+    ]
+  },
+  {
+    "id": 1759358724388.5735,
+    "from": "bot",
+    "to": "user2",
+    "text": "Okay, here’s a concise summary of the context, focusing on key takeaways:\n\n**OpenGov and its MVPs are collaborating to build a shared goal – achieving independent contract document experience by 2026.**  The contract prioritizes a rapid pace and includes invisible infrastructure for baseline functionality. Given the technology’s rapid evolution, significant adaptation is needed.",
+    "ts": 1759358724388,
+    "threadId": "dm:user2",
+    "readBy": [
+      "bot",
+      "user2"
+    ]
+  }
+]

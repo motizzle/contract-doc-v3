@@ -216,6 +216,47 @@ function updateMessages(updatedMessages) {
   }
 }
 
+// Chat storage functions (per-user AI chat history)
+function readChat() {
+  try {
+    if (fs.existsSync(chatFilePath)) {
+      const content = fs.readFileSync(chatFilePath, 'utf8');
+      const cleanContent = content.replace(/^\uFEFF/, '');
+      const data = JSON.parse(cleanContent);
+      return data || {};
+    }
+    return {};
+  } catch (e) {
+    console.error('Error reading chat:', e);
+    return {};
+  }
+}
+
+function saveChatMessage(userId, message) {
+  try {
+    const allChats = readChat();
+    if (!allChats[userId]) allChats[userId] = [];
+    allChats[userId].push(message);
+    fs.writeFileSync(chatFilePath, JSON.stringify(allChats, null, 2), 'utf8');
+    return true;
+  } catch (e) {
+    console.error('Error saving chat message:', e);
+    return false;
+  }
+}
+
+function resetUserChat(userId) {
+  try {
+    const allChats = readChat();
+    delete allChats[userId];
+    fs.writeFileSync(chatFilePath, JSON.stringify(allChats, null, 2), 'utf8');
+    return true;
+  } catch (e) {
+    console.error('Error resetting chat:', e);
+    return false;
+  }
+}
+
 function buildActivityMessage(type, details = {}) {
   const userLabel = details.userLabel || details.user?.label || details.userId || 'Unknown User';
 
@@ -404,6 +445,7 @@ const versionsDir = path.join(dataWorkingDir, 'versions');
 const approvalsFilePath = path.join(dataAppDir, 'approvals.json');
 const activityLogFilePath = path.join(dataAppDir, 'activity-log.json');
 const messagesFilePath = path.join(dataAppDir, 'messages.json');
+const chatFilePath = path.join(dataAppDir, 'chat.json');
 
 // Ensure working directories exist
 for (const dir of [dataWorkingDir, workingDocumentsDir, workingExhibitsDir, compiledDir, versionsDir]) {
@@ -822,6 +864,36 @@ app.post('/api/v1/messages/mark-read', (req, res) => {
   } catch (e) {
     console.error('Error marking messages as read:', e);
     return res.status(500).json({ error: 'Failed to mark messages as read' });
+  }
+});
+
+// Chat API
+app.get('/api/v1/chat', (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) {
+      return res.status(400).json({ error: 'Missing userId' });
+    }
+    const allChats = readChat();
+    const userChat = allChats[userId] || [];
+    return res.json({ messages: userChat });
+  } catch (e) {
+    console.error('Error reading chat:', e);
+    return res.status(500).json({ error: 'Failed to read chat' });
+  }
+});
+
+app.post('/api/v1/chat/reset', (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: 'Missing userId' });
+    }
+    resetUserChat(userId);
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('Error resetting chat:', e);
+    return res.status(500).json({ error: 'Failed to reset chat' });
   }
 });
 
@@ -1256,6 +1328,10 @@ app.post('/api/v1/factory-reset', (req, res) => {
     bumpApprovalsRevision();
     // Clear activity log
     try { if (fs.existsSync(activityLogFilePath)) fs.rmSync(activityLogFilePath); } catch {}
+    // Clear messages
+    try { if (fs.existsSync(messagesFilePath)) fs.rmSync(messagesFilePath); } catch {}
+    // Clear chat history
+    try { if (fs.existsSync(chatFilePath)) fs.rmSync(chatFilePath); } catch {}
     // Remove snapshots entirely
     const snapDir = path.join(dataWorkingDir, 'snapshots');
     if (fs.existsSync(snapDir)) {
@@ -1574,6 +1650,14 @@ app.post('/api/v1/events/client', async (req, res) => {
     })();
     broadcast({ type, payload, userId, role, platform: originPlatform });
 
+    // Save AI chat messages to server
+    if (type === 'chat') {
+      try {
+        const message = `[${userId}] ${text}`;
+        saveChatMessage(userId, message);
+      } catch {}
+    }
+
     // Log human-sent messages as activities and save to messages file
     if (type === 'approvals:message') {
       try {
@@ -1610,6 +1694,11 @@ app.post('/api/v1/events/client', async (req, res) => {
               role: 'assistant',
               platform: 'server'
             });
+            // Save bot reply to chat history
+            try {
+              const botMessage = `[bot] ${replyText}`;
+              saveChatMessage(userId, botMessage);
+            } catch {}
           } else {
             const toRaw = payload?.to;
             const toList = Array.isArray(toRaw) ? toRaw.map(String) : [String(toRaw || '')];
@@ -1679,6 +1768,8 @@ app.post('/api/v1/chatbot/reset', (req, res) => {
     const key = String(req.body?.userId || 'default');
     const originPlatform = String(req.body?.platform || 'web');
     chatbotStateByUser.delete(key);
+    // Delete chat history from server
+    resetUserChat(key);
     try { broadcast({ type: 'chat:reset', payload: { threadPlatform: originPlatform }, userId: key, role: 'assistant', platform: 'server' }); } catch {}
     return res.json({ ok: true });
   } catch (e) {
