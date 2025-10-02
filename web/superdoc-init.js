@@ -88,23 +88,28 @@ export function mountSuperdoc(options) {
     collab: { url: (function(){ try { const p = location.protocol === 'http:' ? 'ws' : 'wss'; return `${p}://localhost:4001/collab`; } catch { return 'wss://localhost:4001/collab'; } })() },
     onReady: (e) => console.log('SuperDoc ready', e),
     onEditorCreate: (e) => {
-      console.log('Editor created', e);
-      // Store editor reference for field annotation access
-      superdoc.editor = e;
+      console.log('Editor created (wrapper)', e);
       
-      // Debug: Check what's available
-      console.log('🔍 Editor object keys:', Object.keys(e || {}));
-      console.log('🔍 Commands available:', e && e.commands ? Object.keys(e.commands) : 'no commands');
-      console.log('🔍 Helpers available:', e && e.helpers ? Object.keys(e.helpers) : 'no helpers');
-      console.log('🔍 Extensions available:', e && e.extensions ? Object.keys(e.extensions) : 'no extensions');
+      // The actual editor is nested at e.editor!
+      const actualEditor = e.editor;
+      console.log('Actual editor', actualEditor);
+      
+      // Store ACTUAL editor reference for field annotation access
+      superdoc.editor = actualEditor;
+      
+      // Debug: Check what's available on the ACTUAL editor
+      console.log('🔍 Actual editor keys:', Object.keys(actualEditor || {}));
+      console.log('🔍 Commands available:', actualEditor && actualEditor.commands ? Object.keys(actualEditor.commands) : 'no commands');
+      console.log('🔍 Helpers available:', actualEditor && actualEditor.helpers ? Object.keys(actualEditor.helpers) : 'no helpers');
+      console.log('🔍 Extensions available:', actualEditor && actualEditor.extensions ? Object.keys(actualEditor.extensions) : 'no extensions');
       
       // Check if field annotation commands are available
-      if (e && e.commands) {
+      if (actualEditor && actualEditor.commands) {
         console.log('✅ Field Annotation plugin status:', {
-          hasAddCommand: typeof e.commands.addFieldAnnotationAtSelection === 'function',
-          hasUpdateCommand: typeof e.commands.updateFieldAnnotations === 'function',
-          hasDeleteCommand: typeof e.commands.deleteFieldAnnotations === 'function',
-          hasGetAllHelper: e.helpers && e.helpers.fieldAnnotation && typeof e.helpers.fieldAnnotation.getAllFieldAnnotations === 'function'
+          hasAddCommand: typeof actualEditor.commands.addFieldAnnotationAtSelection === 'function',
+          hasUpdateCommand: typeof actualEditor.commands.updateFieldAnnotations === 'function',
+          hasDeleteCommand: typeof actualEditor.commands.deleteFieldAnnotations === 'function',
+          hasGetAllHelper: actualEditor.helpers && actualEditor.helpers.fieldAnnotation && typeof actualEditor.helpers.fieldAnnotation.getAllFieldAnnotations === 'function'
         });
       }
     },
