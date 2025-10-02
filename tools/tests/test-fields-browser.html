@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phase 1 Fields API Browser Tests</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 { color: #333; }
+    .test-container {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .test-result {
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+    }
+    .test-pass {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+    .test-fail {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+    .test-info {
+      background: #d1ecf1;
+      border: 1px solid #bee5eb;
+      color: #0c5460;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    button:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+    }
+    .summary {
+      font-size: 18px;
+      font-weight: bold;
+      margin: 20px 0;
+    }
+    .summary.success { color: #28a745; }
+    .summary.failure { color: #dc3545; }
+    pre {
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 Phase 1 Fields API Browser Tests</h1>
+  
+  <div class="test-container">
+    <p><strong>Server URL:</strong> <code>https://localhost:4001</code></p>
+    <p>Make sure the server is running before clicking "Run Tests"</p>
+    <button id="runTests" onclick="runAllTests()">Run Tests</button>
+  </div>
+
+  <div id="results"></div>
+
+  <script>
+    const BASE_URL = 'https://localhost:4001';
+    let testsPassed = 0;
+    let testsFailed = 0;
+    const results = [];
+
+    function log(message, type = 'info') {
+      results.push({ message, type });
+      const div = document.createElement('div');
+      div.className = `test-result test-${type}`;
+      div.textContent = message;
+      document.getElementById('results').appendChild(div);
+    }
+
+    function logJSON(obj) {
+      const pre = document.createElement('pre');
+      pre.textContent = JSON.stringify(obj, null, 2);
+      document.getElementById('results').appendChild(pre);
+    }
+
+    async function test(name, fn) {
+      try {
+        await fn();
+        log(`✅ ${name}`, 'pass');
+        testsPassed++;
+      } catch (err) {
+        log(`❌ ${name}: ${err.message}`, 'fail');
+        testsFailed++;
+      }
+    }
+
+    async function runAllTests() {
+      // Reset
+      document.getElementById('results').innerHTML = '';
+      document.getElementById('runTests').disabled = true;
+      testsPassed = 0;
+      testsFailed = 0;
+
+      log('Starting Phase 1 Fields API Tests...', 'info');
+
+      // Test 1: Health check
+      await test('Server is running', async () => {
+        const res = await fetch(`${BASE_URL}/api/health`);
+        if (!res.ok) throw new Error(`Server not responding (${res.status})`);
+      });
+
+      // Test 2: Get all fields (initial state)
+      await test('GET /api/v1/fields - returns fields object', async () => {
+        const res = await fetch(`${BASE_URL}/api/v1/fields`);
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        const data = await res.json();
+        if (!data.fields) throw new Error('Missing fields property');
+      });
+
+      // Test 3: Create a field
+      const testField = {
+        fieldId: 'browser-test-001',
+        displayLabel: 'Browser Test Field',
+        fieldType: 'TEXTINPUT',
+        fieldColor: '#980043',
+        type: 'text',
+        category: 'Browser Tests',
+        defaultValue: '',
+        userId: 'browser-test-user'
+      };
+
+      await test('POST /api/v1/fields - creates new field', async () => {
+        const res = await fetch(`${BASE_URL}/api/v1/fields`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(testField)
+        });
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        const data = await res.json();
+        if (!data.ok || !data.field) throw new Error('Invalid response');
+      });
+
+      // Test 4: Verify field exists
+      await test('GET /api/v1/fields - created field exists', async () => {
+        const res = await fetch(`${BASE_URL}/api/v1/fields`);
+        const data = await res.json();
+        if (!data.fields[testField.fieldId]) throw new Error('Field not found');
+      });
+
+      // Test 5: Update field
+      await test('PUT /api/v1/fields/:fieldId - updates field', async () => {
+        const res = await fetch(`${BASE_URL}/api/v1/fields/${testField.fieldId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            displayLabel: 'Updated Browser Test Field',
+            userId: 'browser-test-user'
+          })
+        });
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        const data = await res.json();
+        if (data.field.displayLabel !== 'Updated Browser Test Field') {
+          throw new Error('Update not applied');
+        }
+      });
+
+      // Test 6: Duplicate field error
+      await test('POST /api/v1/fields - rejects duplicate fieldId', async () => {
+        const res = await fetch(`${BASE_URL}/api/v1/fields`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(testField)
+        });
+        if (res.status !== 409) throw new Error(`Expected 409, got ${res.status}`);
+      });
+
+      // Test 7: Missing required fields error
+      await test('POST /api/v1/fields - rejects missing required fields', async () => {
+        const res = await fetch(`${BASE_URL}/api/v1/fields`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fieldId: 'test' })
+        });
+        if (res.status !== 400) throw new Error(`Expected 400, got ${res.status}`);
+      });
+
+      // Test 8: Non-existent field error
+      await test('PUT /api/v1/fields/:fieldId - rejects non-existent field', async () => {
+        const res = await fetch(`${BASE_URL}/api/v1/fields/does-not-exist`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ displayLabel: 'Test', userId: 'test' })
+        });
+        if (res.status !== 404) throw new Error(`Expected 404, got ${res.status}`);
+      });
+
+      // Test 9: Activity log
+      await test('GET /api/v1/activity - contains field activities', async () => {
+        const res = await fetch(`${BASE_URL}/api/v1/activity`);
+        const data = await res.json();
+        const fieldActivities = data.activities.filter(a => a.target === 'field');
+        if (fieldActivities.length === 0) throw new Error('No field activities logged');
+        log(`   Found ${fieldActivities.length} field activities`, 'info');
+      });
+
+      // Test 10: SSE listener setup
+      await test('SSE event listeners can be registered', async () => {
+        let eventReceived = false;
+        
+        const handler = (e) => {
+          eventReceived = true;
+          log(`   SSE event received: ${e.type}`, 'info');
+        };
+        
+        window.addEventListener('field:created', handler);
+        window.addEventListener('field:updated', handler);
+        window.addEventListener('field:deleted', handler);
+        
+        log('   SSE listeners registered (create/update/delete fields to see events)', 'info');
+      });
+
+      // Test 11: Delete field
+      await test('DELETE /api/v1/fields/:fieldId - deletes field', async () => {
+        const res = await fetch(`${BASE_URL}/api/v1/fields/${testField.fieldId}?userId=browser-test-user`, {
+          method: 'DELETE'
+        });
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        const data = await res.json();
+        if (!data.ok) throw new Error('Delete failed');
+      });
+
+      // Test 12: Verify deletion
+      await test('GET /api/v1/fields - deleted field is removed', async () => {
+        const res = await fetch(`${BASE_URL}/api/v1/fields`);
+        const data = await res.json();
+        if (data.fields[testField.fieldId]) throw new Error('Field still exists');
+      });
+
+      // Summary
+      const totalTests = testsPassed + testsFailed;
+      const summaryDiv = document.createElement('div');
+      summaryDiv.className = 'test-container';
+      
+      if (testsFailed === 0) {
+        summaryDiv.innerHTML = `
+          <div class="summary success">
+            🎉 All ${totalTests} tests passed!
+          </div>
+          <p>Phase 1 backend is working correctly.</p>
+          <p><strong>✅ Passed:</strong> ${testsPassed} | <strong>❌ Failed:</strong> ${testsFailed}</p>
+        `;
+      } else {
+        summaryDiv.innerHTML = `
+          <div class="summary failure">
+            ⚠️ ${testsFailed} test(s) failed
+          </div>
+          <p><strong>✅ Passed:</strong> ${testsPassed} | <strong>❌ Failed:</strong> ${testsFailed}</p>
+          <p>Please review the errors above.</p>
+        `;
+      }
+      
+      document.getElementById('results').appendChild(summaryDiv);
+      document.getElementById('runTests').disabled = false;
+    }
+  </script>
+</body>
+</html>
+
