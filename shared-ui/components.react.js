@@ -876,7 +876,7 @@
             setLoadedVersion(serverVersion);
             try { setViewingVersion(serverVersion); } catch {}
             try {
-              const plat = (function(){ try { return (typeof Office !== 'undefined()) ? 'word' : 'web'; } catch { return 'web'; } })();
+              const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
               window.dispatchEvent(new CustomEvent('version:view', { detail: { version: serverVersion, payload: { threadPlatform: plat } } }));
             } catch {}
           }
@@ -2478,7 +2478,7 @@
             console.log(`[DEBUG] Setting viewingVersion to ${n} - Source: ComparisonTab version:view event`);
             setViewingVersion(n);
             const url = `${API_BASE}/api/v1/versions/${n}?rev=${Date.now()}`;
-            if (typeof Office !== 'undefined()) {
+            if (typeof Office !== 'undefined') {
               try {
                 const res = await fetch(url, { cache: 'no-store' }); if (!res.ok) throw new Error('download');
                 const buf = await res.arrayBuffer();
