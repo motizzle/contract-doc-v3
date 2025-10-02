@@ -3430,48 +3430,25 @@
             throw new Error('Failed to create field');
           }
 
-          // Insert field into document - platform specific
-          // Check if running in Word add-in
-          const isWordAddin = typeof Office !== 'undefined' && Office.context && Office.context.host;
-          
-          if (isWordAddin) {
-            // Word add-in: Use Office.js to insert Content Control into Word document
-            try {
-              await Word.run(async (context) => {
-                const range = context.document.getSelection();
-                const contentControl = range.insertContentControl();
-                contentControl.title = name;
-                contentControl.tag = fieldId;
-                contentControl.appearance = 'BoundingBox';
-                contentControl.color = '#980043';
-                contentControl.insertText(name, 'Replace');
-                
-                await context.sync();
-                console.log('✅ Field inserted into Word document:', name);
+          // Insert field into document using SuperDoc Field Annotation API
+          // Both Word add-in and web viewer use SuperDoc
+          if (window.superdocInstance && window.superdocInstance.editor) {
+            const editor = window.superdocInstance.editor;
+            
+            if (editor.commands && typeof editor.commands.addFieldAnnotationAtSelection === 'function') {
+              editor.commands.addFieldAnnotationAtSelection({
+                fieldId,
+                displayLabel: name,
+                fieldType: 'TEXTINPUT',
+                fieldColor: '#980043',
+                type: 'text'
               });
-            } catch (wordError) {
-              console.warn('⚠️ Failed to insert into Word document:', wordError);
+              console.log('✅ Field inserted into document:', name);
+            } else {
+              console.warn('⚠️ SuperDoc Field Annotation plugin not loaded. Field created in backend but not inserted into document.');
             }
           } else {
-            // Web viewer: Use SuperDoc Field Annotation
-            if (window.superdocInstance && window.superdocInstance.editor) {
-              const editor = window.superdocInstance.editor;
-              
-              if (editor.commands && typeof editor.commands.addFieldAnnotationAtSelection === 'function') {
-                editor.commands.addFieldAnnotationAtSelection({
-                  fieldId,
-                  displayLabel: name,
-                  fieldType: 'TEXTINPUT',
-                  fieldColor: '#980043',
-                  type: 'text'
-                });
-                console.log('✅ Field inserted into SuperDoc document:', name);
-              } else {
-                console.warn('⚠️ SuperDoc Field Annotation plugin not loaded. Field created in backend but not inserted into document.');
-              }
-            } else {
-              console.warn('⚠️ SuperDoc instance not available. Field created in backend but not inserted into document.');
-            }
+            console.warn('⚠️ SuperDoc instance not available. Field created in backend but not inserted into document.');
           }
 
         } catch (error) {

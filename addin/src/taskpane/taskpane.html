@@ -35,8 +35,45 @@
         <h2 class="ms-font-xl">Loading...</h2>
     </section>
     <main id="app-body" class="app-main">
+        <!-- Hidden SuperDoc container for field annotations API -->
+        <div id="superdoc-container" style="position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none;">
+          <div id="superdoc-toolbar"></div>
+          <div id="superdoc"></div>
+        </div>
         <div id="app-root" class="w-full"></div>
     </main>
+    
+    <!-- SuperDoc initialization for field annotations -->
+    <link href="/vendor/superdoc/style.css" rel="stylesheet" />
+    <script type="module">
+      import { ensureSuperDocLoaded, mountSuperdoc } from '/web/superdoc-init.js?v=fieldannotations-1';
+      
+      // Load SuperDoc for field annotation API access
+      window.addEventListener('load', async () => {
+        try {
+          await ensureSuperDocLoaded();
+          console.log('✅ SuperDoc loaded in Word add-in');
+          
+          // Mount SuperDoc to access field annotation commands
+          // Document loaded here should match what's open in Word
+          const superdocInstance = mountSuperdoc({
+            selector: '#superdoc',
+            toolbar: '#superdoc-toolbar',
+            document: '/documents/working/default.docx',
+            documentMode: 'editing',
+            pagination: false,
+            rulers: false
+          });
+          
+          // Expose instance globally for React components
+          window.superdocInstance = superdocInstance;
+          console.log('✅ SuperDoc field annotation API available in Word add-in');
+        } catch (error) {
+          console.error('❌ Failed to load SuperDoc in Word add-in:', error);
+        }
+      });
+    </script>
+    
     <!-- Preload and load React UMD locally via backend proxy -->
     <link rel="preload" as="script" href="/vendor/react/react.production.min.js" />
     <link rel="preload" as="script" href="/vendor/react/react-dom.production.min.js" />
