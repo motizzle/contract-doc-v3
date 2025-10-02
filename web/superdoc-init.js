@@ -91,9 +91,16 @@ export function mountSuperdoc(options) {
       console.log('Editor created', e);
       // Store editor reference for field annotation access
       superdoc.editor = e;
+      
+      // Debug: Check what's available
+      console.log('🔍 Editor object keys:', Object.keys(e || {}));
+      console.log('🔍 Commands available:', e && e.commands ? Object.keys(e.commands) : 'no commands');
+      console.log('🔍 Helpers available:', e && e.helpers ? Object.keys(e.helpers) : 'no helpers');
+      console.log('🔍 Extensions available:', e && e.extensions ? Object.keys(e.extensions) : 'no extensions');
+      
       // Check if field annotation commands are available
       if (e && e.commands) {
-        console.log('✅ Field Annotation plugin loaded:', {
+        console.log('✅ Field Annotation plugin status:', {
           hasAddCommand: typeof e.commands.addFieldAnnotationAtSelection === 'function',
           hasUpdateCommand: typeof e.commands.updateFieldAnnotations === 'function',
           hasDeleteCommand: typeof e.commands.deleteFieldAnnotations === 'function',
