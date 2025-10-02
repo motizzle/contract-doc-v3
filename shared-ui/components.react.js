@@ -3400,6 +3400,86 @@
       const [showModal, setShowModal] = React.useState(false);
       const [fieldName, setFieldName] = React.useState('');
       const [isInserting, setIsInserting] = React.useState(false);
+      const [fields, setFields] = React.useState({});
+      const [isLoading, setIsLoading] = React.useState(true);
+
+      // Load fields from backend
+      React.useEffect(() => {
+        const loadFields = async () => {
+          try {
+            const response = await fetch(`${API_BASE}/api/v1/fields`);
+            if (response.ok) {
+              const data = await response.json();
+              setFields(data.fields || {});
+            }
+          } catch (error) {
+            console.error('Failed to load fields:', error);
+          } finally {
+            setIsLoading(false);
+          }
+        };
+        loadFields();
+      }, [API_BASE]);
+
+      // Listen for SSE field events
+      React.useEffect(() => {
+        const handleFieldCreated = (event) => {
+          try {
+            const data = JSON.parse(event.data || '{}');
+            if (data.field) {
+              setFields(prev => ({ ...prev, [data.field.fieldId]: data.field }));
+            }
+          } catch (error) {
+            console.error('Failed to handle field:created event:', error);
+          }
+        };
+
+        const handleFieldUpdated = (event) => {
+          try {
+            const data = JSON.parse(event.data || '{}');
+            if (data.field) {
+              setFields(prev => ({ ...prev, [data.field.fieldId]: data.field }));
+            }
+          } catch (error) {
+            console.error('Failed to handle field:updated event:', error);
+          }
+        };
+
+        const handleFieldDeleted = (event) => {
+          try {
+            const data = JSON.parse(event.data || '{}');
+            if (data.fieldId) {
+              setFields(prev => {
+                const updated = { ...prev };
+                delete updated[data.fieldId];
+                return updated;
+              });
+            }
+          } catch (error) {
+            console.error('Failed to handle field:deleted event:', error);
+          }
+        };
+
+        const handleFieldsReset = () => {
+          setFields({});
+        };
+
+        if (window.eventSource) {
+          window.eventSource.addEventListener('field:created', handleFieldCreated);
+          window.eventSource.addEventListener('field:updated', handleFieldUpdated);
+          window.eventSource.addEventListener('field:deleted', handleFieldDeleted);
+          window.eventSource.addEventListener('fields:reset', handleFieldsReset);
+        }
+
+        return () => {
+          if (window.eventSource) {
+            window.eventSource.removeEventListener('field:created', handleFieldCreated);
+            window.eventSource.removeEventListener('field:updated', handleFieldUpdated);
+            window.eventSource.removeEventListener('field:deleted', handleFieldDeleted);
+            window.eventSource.removeEventListener('fields:reset', handleFieldsReset);
+          }
+        };
+      }, []);
 
       const handleInsert = async () => {
         const name = fieldName.trim();
@@ -3601,12 +3681,84 @@
         React.createElement('div', {
           key: 'body',
           style: {
-            padding: '32px 16px',
-            textAlign: 'center',
-            color: '#6b7280',
-            fontSize: '14px'
+            padding: '8px',
+            overflowY: 'auto',
+            maxHeight: '400px'
           }
-        }, 'No fields yet. Click "+ Enter Variable" to create your first field.')
+        }, (() => {
+          if (isLoading) {
+            return React.createElement('div', {
+              style: {
+                padding: '32px 16px',
+                textAlign: 'center',
+                color: '#6b7280',
+                fontSize: '14px'
+              }
+            }, 'Loading fields...');
+          }
+
+          const fieldsList = Object.values(fields);
+          if (fieldsList.length === 0) {
+            return React.createElement('div', {
+              style: {
+                padding: '32px 16px',
+                textAlign: 'center',
+                color: '#6b7280',
+                fontSize: '14px'
+              }
+            }, 'No fields yet. Click "+ Enter Variable" to create your first field.');
+          }
+
+          // Show fields list
+          return fieldsList.map((field) => React.createElement('div', {
+            key: field.fieldId,
+            style: {
+              padding: '12px',
+              marginBottom: '8px',
+              background: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              ':hover': {
+                borderColor: '#6d5ef1',
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+              }
+            },
+            onClick: () => {
+              // Insert field at cursor
+              if (window.superdocInstance && window.superdocInstance.editor) {
+                const editor = window.superdocInstance.editor;
+                if (editor.commands && typeof editor.commands.addFieldAnnotationAtSelection === 'function') {
+                  editor.commands.addFieldAnnotationAtSelection({
+                    fieldId: field.fieldId,
+                    displayLabel: field.displayLabel,
+                    fieldType: field.fieldType || 'TEXTINPUT',
+                    fieldColor: field.fieldColor || '#980043',
+                    type: field.type || 'text'
+                  });
+                  console.log('✅ Field inserted:', field.displayLabel);
+                }
+              }
+            }
+          }, [
+            React.createElement('div', {
+              key: 'name',
+              style: {
+                fontWeight: '500',
+                marginBottom: '4px',
+                fontSize: '14px'
+              }
+            }, field.displayLabel),
+            React.createElement('div', {
+              key: 'meta',
+              style: {
+                fontSize: '12px',
+                color: '#6b7280'
+              }
+            }, `${field.fieldType || 'TEXTINPUT'} • ${field.category || 'Uncategorized'}`)
+          ]));
+        })())
       ]);
     }
 
