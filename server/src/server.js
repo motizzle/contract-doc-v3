@@ -1650,8 +1650,11 @@ app.post('/api/v1/events/client', async (req, res) => {
     })();
     broadcast({ type, payload, userId, role, platform: originPlatform });
 
+    // Extract text early for saving
+    const text = String(payload?.text || '').trim();
+
     // Save AI chat messages to server
-    if (type === 'chat') {
+    if (type === 'chat' && text) {
       try {
         const message = `[${userId}] ${text}`;
         saveChatMessage(userId, message);
@@ -1670,7 +1673,7 @@ app.post('/api/v1/events/client', async (req, res) => {
           id: Date.now() + Math.random(),
           from: userId,
           to: toList.length === 1 ? toList[0] : toList,
-          text: String(payload?.text || ''),
+          text: text,
           ts: Date.now(),
           clientId: payload?.clientId || undefined,
           threadId: payload?.threadId || undefined,
@@ -1679,8 +1682,6 @@ app.post('/api/v1/events/client', async (req, res) => {
         saveMessage(message);
       } catch {}
     }
-
-    const text = String(payload?.text || '').trim();
     if ((type === 'chat' || type === 'approvals:message') && text) {
       try {
         const result = await generateReply({ messages: [{ role: 'user', content: text }], systemPrompt: getSystemPrompt() });
