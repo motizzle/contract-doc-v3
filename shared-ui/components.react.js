@@ -3727,18 +3727,41 @@
             },
             onClick: () => {
               // Insert field at cursor
-              if (window.superdocInstance && window.superdocInstance.editor) {
-                const editor = window.superdocInstance.editor;
-                if (editor.commands && typeof editor.commands.addFieldAnnotationAtSelection === 'function') {
-                  editor.commands.addFieldAnnotationAtSelection({
-                    fieldId: field.fieldId,
-                    displayLabel: field.displayLabel,
-                    fieldType: field.fieldType || 'TEXTINPUT',
-                    fieldColor: field.fieldColor || '#980043',
-                    type: field.type || 'text'
-                  });
-                  console.log('✅ Field inserted:', field.displayLabel);
-                }
+              console.log('🔵 Field clicked:', field.displayLabel);
+              console.log('🔍 Checking SuperDoc availability...');
+              console.log('  - window.superdocInstance:', !!window.superdocInstance);
+              console.log('  - window.superdocInstance.editor:', !!(window.superdocInstance && window.superdocInstance.editor));
+              
+              if (!window.superdocInstance) {
+                console.error('❌ SuperDoc instance not found. Make sure SuperDoc is loaded.');
+                return;
+              }
+              
+              if (!window.superdocInstance.editor) {
+                console.error('❌ SuperDoc editor not found.');
+                return;
+              }
+              
+              const editor = window.superdocInstance.editor;
+              console.log('  - editor.commands:', !!editor.commands);
+              console.log('  - addFieldAnnotationAtSelection:', typeof editor.commands?.addFieldAnnotationAtSelection);
+              
+              if (!editor.commands || typeof editor.commands.addFieldAnnotationAtSelection !== 'function') {
+                console.error('❌ SuperDoc Field Annotation plugin not loaded. Commands available:', Object.keys(editor.commands || {}));
+                return;
+              }
+              
+              try {
+                editor.commands.addFieldAnnotationAtSelection({
+                  fieldId: field.fieldId,
+                  displayLabel: field.displayLabel,
+                  fieldType: field.fieldType || 'TEXTINPUT',
+                  fieldColor: field.fieldColor || '#980043',
+                  type: field.type || 'text'
+                });
+                console.log('✅ Field inserted:', field.displayLabel);
+              } catch (error) {
+                console.error('❌ Failed to insert field:', error);
               }
             }
           }, [
