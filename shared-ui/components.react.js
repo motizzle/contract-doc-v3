@@ -2344,11 +2344,18 @@
 
     function LastUpdatedPrefix() {
       const { config } = React.useContext(StateContext);
-      let when = '—';
+      let dateStr = '';
+      let timeStr = '';
       let firstName = '';
       try {
         const ts = config && config.lastSaved && config.lastSaved.timestamp;
-        when = ts ? new Date(ts).toLocaleString() : '—';
+        if (ts) {
+          const d = new Date(ts);
+          // Format: "March 1, 2025"
+          dateStr = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+          // Format: "1:30pm"
+          timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase().replace(/\s/g, '');
+        }
         const user = config && config.lastSaved && config.lastSaved.user;
         let label = '';
         if (user) {
@@ -2362,8 +2369,10 @@
           firstName = parts && parts.length ? parts[0] : '';
         }
       } catch {}
-      const suffix = firstName ? ` by ${firstName}` : '';
-      return React.createElement('span', null, `Last updated on ${when}${suffix}`);
+      
+      if (!dateStr || !timeStr) return React.createElement('span', null, 'Last updated —');
+      const byName = firstName ? ` by ${firstName}` : '';
+      return React.createElement('span', null, `Last updated${byName} on ${dateStr}, at ${timeStr} PST`);
     }
 
     function InlineTitleEditor() {

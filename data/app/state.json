@@ -1,14 +1,11 @@
 {
-  "checkedOutBy": "user1",
-  "lastUpdated": "2025-10-02T03:11:03.253Z",
-  "revision": 666,
-  "documentVersion": 5,
+  "checkedOutBy": null,
+  "lastUpdated": "2025-10-02T04:57:08.917Z",
+  "revision": 667,
+  "documentVersion": 1,
   "title": "Contract Management Software",
   "status": "draft",
-  "updatedBy": {
-    "userId": "user1",
-    "label": "Warren Peace"
-  },
-  "updatedPlatform": "web",
-  "approvalsRevision": 241
+  "updatedBy": null,
+  "updatedPlatform": null,
+  "approvalsRevision": 242
 }
