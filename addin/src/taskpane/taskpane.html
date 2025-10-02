@@ -48,8 +48,8 @@
     <script type="module">
       import { ensureSuperDocLoaded, mountSuperdoc } from '/web/superdoc-init.js?v=fieldannotations-1';
       
-      // Load SuperDoc for field annotation API access
-      window.addEventListener('load', async () => {
+      // Initialize SuperDoc immediately and signal when ready
+      window.superdocReady = (async () => {
         try {
           await ensureSuperDocLoaded();
           console.log('✅ SuperDoc loaded in Word add-in');
@@ -65,13 +65,13 @@
             rulers: false
           });
           
-          // Expose instance globally for React components
-          window.superdocInstance = superdocInstance;
           console.log('✅ SuperDoc field annotation API available in Word add-in');
+          return true;
         } catch (error) {
           console.error('❌ Failed to load SuperDoc in Word add-in:', error);
+          return false;
         }
-      });
+      })();
     </script>
     
     <!-- Preload and load React UMD locally via backend proxy -->
@@ -104,7 +104,18 @@
             return true; // stop retrying if we displayed an error
           }
         }
-        function start() {
+        async function start() {
+          // Wait for SuperDoc to be ready before mounting React
+          if (window.superdocReady) {
+            try {
+              console.log('⏳ Waiting for SuperDoc to initialize...');
+              await window.superdocReady;
+              console.log('✅ SuperDoc ready, proceeding with React mount');
+            } catch (err) {
+              console.warn('⚠️ SuperDoc initialization failed, proceeding anyway:', err);
+            }
+          }
+          
           // Only show the loading message if mount takes noticeable time
           var showLoadingTimer = setTimeout(function(){
             try { document.getElementById('sideload-msg').style.display = 'block'; } catch {}
