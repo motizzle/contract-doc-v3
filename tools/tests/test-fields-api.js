@@ -70,7 +70,7 @@ async function runTests() {
 
   // Test 1: Health check
   await test('Server is running', async () => {
-    const { status } = await request('GET', '/api/health');
+    const { status } = await request('GET', '/api/v1/health');
     if (status !== 200) throw new Error(`Expected 200, got ${status}`);
   });
 

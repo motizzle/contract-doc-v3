@@ -13,6 +13,23 @@ $BaseUrl = "https://localhost:4001"
 $TestsPassed = 0
 $TestsFailed = 0
 
+# Disable SSL certificate validation for self-signed certs (works in older PowerShell)
+if (-not ([System.Management.Automation.PSTypeName]'TrustAllCertsPolicy').Type) {
+    Add-Type @"
+    using System.Net;
+    using System.Security.Cryptography.X509Certificates;
+    public class TrustAllCertsPolicy : ICertificatePolicy {
+        public bool CheckValidationResult(
+            ServicePoint srvPoint, X509Certificate certificate,
+            WebRequest request, int certificateProblem) {
+            return true;
+        }
+    }
+"@
+    [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+}
+
 Write-Host "`n🧪 Starting Phase 1 Fields API Tests`n" -ForegroundColor Cyan
 Write-Host ("=" * 60) -ForegroundColor Gray
 
@@ -28,8 +45,12 @@ function Invoke-ApiRequest {
     $params = @{
         Uri = $url
         Method = $Method
-        SkipCertificateCheck = $true
         ErrorAction = 'Stop'
+    }
+    
+    # Only add SkipCertificateCheck if available (PowerShell 6+)
+    if ($PSVersionTable.PSVersion.Major -ge 6) {
+        $params.SkipCertificateCheck = $true
     }
     
     if ($Body) {
@@ -69,7 +90,7 @@ function Test-Case {
 
 # Test 1: Health check
 Test-Case "Server is running" {
-    $result = Invoke-ApiRequest -Method GET -Path "/api/health"
+    $result = Invoke-ApiRequest -Method GET -Path "/api/v1/health"
     if (-not $result.Success) {
         throw "Server not responding"
     }
@@ -114,7 +135,9 @@ Test-Case "POST /api/v1/fields - creates new field" {
 # Test 4: Get all fields (should contain our field)
 Test-Case "GET /api/v1/fields - created field exists" {
     $result = Invoke-ApiRequest -Method GET -Path "/api/v1/fields"
-    if ($null -eq $result.Data.fields[$TestField.fieldId]) {
+    $fieldId = $TestField.fieldId
+    $field = $result.Data.fields.PSObject.Properties | Where-Object { $_.Name -eq $fieldId } | Select-Object -First 1
+    if ($null -eq $field) {
         throw "Created field not found"
     }
 }
@@ -218,7 +241,9 @@ Test-Case "DELETE /api/v1/fields/:fieldId - deletes field" {
 # Test 13: Verify deletion
 Test-Case "GET /api/v1/fields - deleted field is removed" {
     $result = Invoke-ApiRequest -Method GET -Path "/api/v1/fields"
-    if ($null -ne $result.Data.fields[$TestField.fieldId]) {
+    $fieldId = $TestField.fieldId
+    $field = $result.Data.fields.PSObject.Properties | Where-Object { $_.Name -eq $fieldId } | Select-Object -First 1
+    if ($null -ne $field) {
         throw "Field still exists after deletion"
     }
 }

@@ -126,7 +126,7 @@
 
       // Test 1: Health check
       await test('Server is running', async () => {
-        const res = await fetch(`${BASE_URL}/api/health`);
+        const res = await fetch(`${BASE_URL}/api/v1/health`);
         if (!res.ok) throw new Error(`Server not responding (${res.status})`);
       });
 
