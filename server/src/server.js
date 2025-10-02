@@ -257,6 +257,64 @@ function resetUserChat(userId) {
   }
 }
 
+// Fields storage functions (document field/variable definitions)
+function readFields() {
+  try {
+    if (fs.existsSync(fieldsFilePath)) {
+      const content = fs.readFileSync(fieldsFilePath, 'utf8');
+      const cleanContent = content.replace(/^\uFEFF/, '');
+      const data = JSON.parse(cleanContent);
+      return data || {};
+    }
+    return {};
+  } catch (e) {
+    console.error('Error reading fields:', e);
+    return {};
+  }
+}
+
+function saveField(field) {
+  try {
+    const fields = readFields();
+    fields[field.fieldId] = field;
+    fs.writeFileSync(fieldsFilePath, JSON.stringify(fields, null, 2), 'utf8');
+    return true;
+  } catch (e) {
+    console.error('Error saving field:', e);
+    return false;
+  }
+}
+
+function updateField(fieldId, updates) {
+  try {
+    const fields = readFields();
+    if (!fields[fieldId]) {
+      return false;
+    }
+    fields[fieldId] = { ...fields[fieldId], ...updates, updatedAt: new Date().toISOString() };
+    fs.writeFileSync(fieldsFilePath, JSON.stringify(fields, null, 2), 'utf8');
+    return true;
+  } catch (e) {
+    console.error('Error updating field:', e);
+    return false;
+  }
+}
+
+function deleteField(fieldId) {
+  try {
+    const fields = readFields();
+    if (!fields[fieldId]) {
+      return false;
+    }
+    delete fields[fieldId];
+    fs.writeFileSync(fieldsFilePath, JSON.stringify(fields, null, 2), 'utf8');
+    return true;
+  } catch (e) {
+    console.error('Error deleting field:', e);
+    return false;
+  }
+}
+
 function buildActivityMessage(type, details = {}) {
   const userLabel = details.userLabel || details.user?.label || details.userId || 'Unknown User';
 
@@ -424,6 +482,30 @@ function buildActivityMessage(type, details = {}) {
         message: `System error: ${details.error || 'Unknown error'}`
       };
 
+    case 'field:created':
+      return {
+        action: 'created field',
+        target: 'field',
+        details: { fieldId: details.fieldId, displayLabel: details.displayLabel, category: details.category },
+        message: `${userLabel} created field "${details.displayLabel}"${details.category ? ` in ${details.category}` : ''}`
+      };
+
+    case 'field:updated':
+      return {
+        action: 'updated field',
+        target: 'field',
+        details: { fieldId: details.fieldId, displayLabel: details.displayLabel, changes: details.changes },
+        message: `${userLabel} updated field "${details.displayLabel}"`
+      };
+
+    case 'field:deleted':
+      return {
+        action: 'deleted field',
+        target: 'field',
+        details: { fieldId: details.fieldId, displayLabel: details.displayLabel },
+        message: `${userLabel} deleted field "${details.displayLabel}"`
+      };
+
     // Add more activity types as needed
     default:
       return {
@@ -446,6 +528,7 @@ const approvalsFilePath = path.join(dataAppDir, 'approvals.json');
 const activityLogFilePath = path.join(dataAppDir, 'activity-log.json');
 const messagesFilePath = path.join(dataAppDir, 'messages.json');
 const chatFilePath = path.join(dataAppDir, 'chat.json');
+const fieldsFilePath = path.join(dataAppDir, 'fields.json');
 
 // Ensure working directories exist
 for (const dir of [dataWorkingDir, workingDocumentsDir, workingExhibitsDir, compiledDir, versionsDir]) {
@@ -897,6 +980,165 @@ app.post('/api/v1/chat/reset', (req, res) => {
   }
 });
 
+// Fields API
+app.get('/api/v1/fields', (req, res) => {
+  try {
+    const fields = readFields();
+    return res.json({ fields });
+  } catch (e) {
+    console.error('Error reading fields:', e);
+    return res.status(500).json({ error: 'Failed to read fields' });
+  }
+});
+
+app.post('/api/v1/fields', (req, res) => {
+  try {
+    const { fieldId, displayLabel, fieldType, fieldColor, type, category, defaultValue, userId } = req.body;
+    
+    // Validation
+    if (!fieldId || !displayLabel) {
+      return res.status(400).json({ error: 'Missing required fields: fieldId, displayLabel' });
+    }
+    
+    // Check for duplicate fieldId
+    const existingFields = readFields();
+    if (existingFields[fieldId]) {
+      return res.status(409).json({ error: 'Field with this ID already exists' });
+    }
+    
+    // Create field object with metadata
+    const field = {
+      fieldId,
+      displayLabel,
+      fieldType: fieldType || 'TEXTINPUT',
+      fieldColor: fieldColor || '#980043',
+      type: type || 'text',
+      category: category || 'Uncategorized',
+      defaultValue: defaultValue || '',
+      createdBy: userId || 'system',
+      createdAt: new Date().toISOString(),
+      updatedBy: userId || 'system',
+      updatedAt: new Date().toISOString()
+    };
+    
+    // Save to storage
+    if (!saveField(field)) {
+      return res.status(500).json({ error: 'Failed to save field' });
+    }
+    
+    // Log activity
+    logActivity('field:created', userId || 'system', { 
+      fieldId, 
+      displayLabel,
+      category
+    });
+    
+    // Broadcast SSE event
+    broadcast({ 
+      type: 'field:created', 
+      field,
+      userId: userId || 'system'
+    });
+    
+    return res.json({ ok: true, field });
+  } catch (e) {
+    console.error('Error creating field:', e);
+    return res.status(500).json({ error: 'Failed to create field' });
+  }
+});
+
+app.put('/api/v1/fields/:fieldId', (req, res) => {
+  try {
+    const { fieldId } = req.params;
+    const { displayLabel, fieldType, fieldColor, type, category, defaultValue, userId } = req.body;
+    
+    // Check if field exists
+    const existingFields = readFields();
+    if (!existingFields[fieldId]) {
+      return res.status(404).json({ error: 'Field not found' });
+    }
+    
+    // Build updates object
+    const updates = {
+      updatedBy: userId || 'system'
+    };
+    if (displayLabel !== undefined) updates.displayLabel = displayLabel;
+    if (fieldType !== undefined) updates.fieldType = fieldType;
+    if (fieldColor !== undefined) updates.fieldColor = fieldColor;
+    if (type !== undefined) updates.type = type;
+    if (category !== undefined) updates.category = category;
+    if (defaultValue !== undefined) updates.defaultValue = defaultValue;
+    
+    // Update field
+    if (!updateField(fieldId, updates)) {
+      return res.status(500).json({ error: 'Failed to update field' });
+    }
+    
+    // Get updated field
+    const updatedFields = readFields();
+    const updatedField = updatedFields[fieldId];
+    
+    // Log activity
+    logActivity('field:updated', userId || 'system', { 
+      fieldId,
+      displayLabel: updatedField.displayLabel,
+      changes: Object.keys(updates).filter(k => k !== 'updatedBy')
+    });
+    
+    // Broadcast SSE event
+    broadcast({ 
+      type: 'field:updated', 
+      fieldId,
+      field: updatedField,
+      changes: updates,
+      userId: userId || 'system'
+    });
+    
+    return res.json({ ok: true, field: updatedField });
+  } catch (e) {
+    console.error('Error updating field:', e);
+    return res.status(500).json({ error: 'Failed to update field' });
+  }
+});
+
+app.delete('/api/v1/fields/:fieldId', (req, res) => {
+  try {
+    const { fieldId } = req.params;
+    const { userId } = req.query;
+    
+    // Check if field exists
+    const existingFields = readFields();
+    if (!existingFields[fieldId]) {
+      return res.status(404).json({ error: 'Field not found' });
+    }
+    
+    const field = existingFields[fieldId];
+    
+    // Delete field
+    if (!deleteField(fieldId)) {
+      return res.status(500).json({ error: 'Failed to delete field' });
+    }
+    
+    // Log activity
+    logActivity('field:deleted', userId || 'system', { 
+      fieldId,
+      displayLabel: field.displayLabel
+    });
+    
+    // Broadcast SSE event
+    broadcast({ 
+      type: 'field:deleted', 
+      fieldId,
+      userId: userId || 'system'
+    });
+    
+    return res.json({ ok: true, fieldId });
+  } catch (e) {
+    console.error('Error deleting field:', e);
+    return res.status(500).json({ error: 'Failed to delete field' });
+  }
+});
+
 app.get('/api/v1/current-document', (req, res) => {
   const p = resolveDefaultDocPath();
   const exists = fs.existsSync(p);
@@ -1332,6 +1574,8 @@ app.post('/api/v1/factory-reset', (req, res) => {
     try { if (fs.existsSync(messagesFilePath)) fs.rmSync(messagesFilePath); } catch {}
     // Clear chat history
     try { if (fs.existsSync(chatFilePath)) fs.rmSync(chatFilePath); } catch {}
+    // Clear fields
+    try { if (fs.existsSync(fieldsFilePath)) fs.rmSync(fieldsFilePath); } catch {}
     // Remove snapshots entirely
     const snapDir = path.join(dataWorkingDir, 'snapshots');
     if (fs.existsSync(snapDir)) {
@@ -1369,6 +1613,8 @@ app.post('/api/v1/factory-reset', (req, res) => {
     broadcast({ type: 'activity:reset' });
     // Notify all clients to clear AI chat state
     broadcast({ type: 'chat:reset', payload: { all: true } });
+    // Notify clients to clear fields
+    broadcast({ type: 'fields:reset' });
     // Notify clients that versions list changed (emptied)
     broadcast({ type: 'versions:update' });
     const approvals = loadApprovals();
