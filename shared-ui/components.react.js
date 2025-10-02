@@ -3444,22 +3444,21 @@
                 fieldColor: '#980043',
                 type: 'text'
               });
+              console.log('✅ Field inserted into document:', name);
             } else {
-              console.warn('SuperDoc Field Annotation plugin not loaded. Field created in backend but not inserted into document.');
-              alert('Field created successfully, but SuperDoc Field Annotation plugin is not loaded. The field was saved but not inserted into the document.');
+              console.warn('⚠️ SuperDoc Field Annotation plugin not loaded. Field created in backend but not inserted into document.');
             }
           } else {
-            console.warn('SuperDoc instance not available');
-            alert('Field created successfully, but SuperDoc is not available to insert it into the document.');
+            console.warn('⚠️ SuperDoc instance not available. Field created in backend but not inserted into document.');
           }
 
-          // Close modal and reset
+        } catch (error) {
+          console.error('❌ Error inserting field:', error);
+          // Note: alert() not supported in Office add-ins, using console instead
+        } finally {
+          // Always close modal and reset, even on error
           setShowModal(false);
           setFieldName('');
-        } catch (error) {
-          console.error('Error inserting field:', error);
-          alert('Failed to insert field. Please try again.');
-        } finally {
           setIsInserting(false);
         }
       };
