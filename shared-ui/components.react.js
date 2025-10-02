@@ -1499,8 +1499,8 @@
             const clientId = d.payload && d.payload.clientId ? String(d.payload.clientId) : '';
             const threadId = d.payload && d.payload.threadId ? String(d.payload.threadId) : '';
             if (!text) return;
-            // Skip if we already have this client-sent message
-            if (clientId && Array.isArray(messages) && messages.some(m => m.clientId && String(m.clientId) === clientId)) return;
+              // Skip if we already have this client-sent message
+              if (clientId && Array.isArray(messages) && messages.some(m => m.clientId && String(m.clientId) === clientId)) return;
             // Store ALL messages globally with readBy array to track who has read it
             const readBy = [from]; // Sender has always "read" their own message
             setMessages(prev => prev.concat({ id: Date.now() + Math.random(), from, to, text, ts: Date.now(), clientId: clientId || undefined, threadId: threadId || undefined, readBy }));
@@ -2371,8 +2371,8 @@
       } catch {}
       
       if (!dateStr || !timeStr) return React.createElement('span', null, 'Last updated —');
-      const byName = firstName ? ` by ${firstName}` : '';
-      return React.createElement('span', null, `Last updated${byName} on ${dateStr}, at ${timeStr} PST`);
+      const byName = firstName || 'OpenGov';
+      return React.createElement('span', null, `Last updated by ${byName} on ${dateStr}, at ${timeStr} PST`);
     }
 
     function InlineTitleEditor() {
@@ -2967,7 +2967,7 @@
           if (response.ok) {
             addLog('Document checked out successfully (latest version)', 'success'); 
             try { 
-              await refresh();
+              await refresh(); 
               console.log(`[DEBUG] Setting viewingVersion to ${currentVersion} - Source: checkout (current version)`);
               try { if (typeof setViewingVersion === 'function') setViewingVersion(currentVersion); } catch {}
               try { if (typeof setLoadedVersion === 'function') setLoadedVersion(currentVersion); } catch {}
@@ -3002,7 +3002,7 @@
           if (response.ok) {
             addLog(`Document checked out successfully (version ${versionToUse})`, 'success'); 
             try { 
-              await refresh();
+              await refresh(); 
               console.log(`[DEBUG] Setting viewingVersion to ${versionToUse} - Source: checkout (specific version)`);
               try { if (typeof setViewingVersion === 'function') setViewingVersion(versionToUse); } catch {}
               try { if (typeof setLoadedVersion === 'function') setLoadedVersion(versionToUse); } catch {}
