@@ -3400,82 +3400,6 @@
       const [showModal, setShowModal] = React.useState(false);
       const [fieldName, setFieldName] = React.useState('');
       const [isInserting, setIsInserting] = React.useState(false);
-      const [fields, setFields] = React.useState({});
-      const [isLoading, setIsLoading] = React.useState(true);
-
-      // Load fields from backend
-      React.useEffect(() => {
-        const loadFields = async () => {
-          try {
-            const response = await fetch(`${API_BASE}/api/v1/fields`);
-            if (response.ok) {
-              const data = await response.json();
-              setFields(data.fields || {});
-            }
-          } catch (error) {
-            console.error('Error loading fields:', error);
-          } finally {
-            setIsLoading(false);
-          }
-        };
-        loadFields();
-      }, [API_BASE]);
-
-      // Listen for field events via SSE to update list in real-time
-      React.useEffect(() => {
-        const handleFieldCreated = (e) => {
-          try {
-            const { field } = e.detail;
-            if (field) {
-              setFields(prev => ({ ...prev, [field.fieldId]: field }));
-            }
-          } catch (err) {
-            console.error('Error handling field:created event:', err);
-          }
-        };
-
-        const handleFieldUpdated = (e) => {
-          try {
-            const { field } = e.detail;
-            if (field) {
-              setFields(prev => ({ ...prev, [field.fieldId]: field }));
-            }
-          } catch (err) {
-            console.error('Error handling field:updated event:', err);
-          }
-        };
-
-        const handleFieldDeleted = (e) => {
-          try {
-            const { fieldId } = e.detail;
-            if (fieldId) {
-              setFields(prev => {
-                const updated = { ...prev };
-                delete updated[fieldId];
-                return updated;
-              });
-            }
-          } catch (err) {
-            console.error('Error handling field:deleted event:', err);
-          }
-        };
-
-        const handleFieldsReset = () => {
-          setFields({});
-        };
-
-        window.addEventListener('field:created', handleFieldCreated);
-        window.addEventListener('field:updated', handleFieldUpdated);
-        window.addEventListener('field:deleted', handleFieldDeleted);
-        window.addEventListener('fields:reset', handleFieldsReset);
-
-        return () => {
-          window.removeEventListener('field:created', handleFieldCreated);
-          window.removeEventListener('field:updated', handleFieldUpdated);
-          window.removeEventListener('field:deleted', handleFieldDeleted);
-          window.removeEventListener('fields:reset', handleFieldsReset);
-        };
-      }, []);
 
       const handleInsert = async () => {
         const name = fieldName.trim();
@@ -3506,26 +3430,48 @@
             throw new Error('Failed to create field');
           }
 
-          // Insert field into document using SuperDoc
-          // Check if SuperDoc instance and editor are available
-          if (window.superdocInstance && window.superdocInstance.editor) {
-            const editor = window.superdocInstance.editor;
-            
-            // Check if field annotation commands are available
-            if (editor.commands && typeof editor.commands.addFieldAnnotationAtSelection === 'function') {
-              editor.commands.addFieldAnnotationAtSelection({
-                fieldId,
-                displayLabel: name,
-                fieldType: 'TEXTINPUT',
-                fieldColor: '#980043',
-                type: 'text'
+          // Insert field into document - platform specific
+          // Check if running in Word add-in
+          const isWordAddin = typeof Office !== 'undefined' && Office.context && Office.context.host;
+          
+          if (isWordAddin) {
+            // Word add-in: Use Office.js to insert Content Control into Word document
+            try {
+              await Word.run(async (context) => {
+                const range = context.document.getSelection();
+                const contentControl = range.insertContentControl();
+                contentControl.title = name;
+                contentControl.tag = fieldId;
+                contentControl.appearance = 'BoundingBox';
+                contentControl.color = '#980043';
+                contentControl.insertText(name, 'Replace');
+                
+                await context.sync();
+                console.log('✅ Field inserted into Word document:', name);
               });
-              console.log('✅ Field inserted into document:', name);
-            } else {
-              console.warn('⚠️ SuperDoc Field Annotation plugin not loaded. Field created in backend but not inserted into document.');
+            } catch (wordError) {
+              console.warn('⚠️ Failed to insert into Word document:', wordError);
             }
           } else {
-            console.warn('⚠️ SuperDoc instance not available. Field created in backend but not inserted into document.');
+            // Web viewer: Use SuperDoc Field Annotation
+            if (window.superdocInstance && window.superdocInstance.editor) {
+              const editor = window.superdocInstance.editor;
+              
+              if (editor.commands && typeof editor.commands.addFieldAnnotationAtSelection === 'function') {
+                editor.commands.addFieldAnnotationAtSelection({
+                  fieldId,
+                  displayLabel: name,
+                  fieldType: 'TEXTINPUT',
+                  fieldColor: '#980043',
+                  type: 'text'
+                });
+                console.log('✅ Field inserted into SuperDoc document:', name);
+              } else {
+                console.warn('⚠️ SuperDoc Field Annotation plugin not loaded. Field created in backend but not inserted into document.');
+              }
+            } else {
+              console.warn('⚠️ SuperDoc instance not available. Field created in backend but not inserted into document.');
+            }
           }
 
         } catch (error) {
@@ -3652,21 +3598,8 @@
         }, [
           React.createElement('h3', {
             key: 'title',
-            style: { margin: 0, fontSize: '16px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }
-          }, [
-            React.createElement('span', { key: 'label' }, 'Fields'),
-            Object.keys(fields).length > 0 ? React.createElement('span', {
-              key: 'count',
-              style: {
-                fontSize: '12px',
-                fontWeight: '500',
-                background: '#e5e7eb',
-                color: '#6b7280',
-                padding: '2px 8px',
-                borderRadius: '12px'
-              }
-            }, Object.keys(fields).length) : null
-          ]),
+            style: { margin: 0, fontSize: '16px', fontWeight: '600' }
+          }, 'Fields'),
           React.createElement('button', {
             key: 'add',
             onClick: () => setShowModal(true),
@@ -3691,79 +3624,12 @@
         React.createElement('div', {
           key: 'body',
           style: {
-            padding: '8px 0'
+            padding: '32px 16px',
+            textAlign: 'center',
+            color: '#6b7280',
+            fontSize: '14px'
           }
-        }, (() => {
-          const fieldList = Object.values(fields);
-          
-          if (isLoading) {
-            return React.createElement('div', {
-              style: {
-                padding: '32px 16px',
-                textAlign: 'center',
-                color: '#6b7280',
-                fontSize: '14px'
-              }
-            }, 'Loading fields...');
-          }
-          
-          if (fieldList.length === 0) {
-            return React.createElement('div', {
-              style: {
-                padding: '32px 16px',
-                textAlign: 'center',
-                color: '#6b7280',
-                fontSize: '14px'
-              }
-            }, 'No fields yet. Click "+ Enter Variable" to create your first field.');
-          }
-          
-          return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px' } }, 
-            fieldList.map(field => 
-              React.createElement('div', {
-                key: field.fieldId,
-                style: {
-                  padding: '12px',
-                  background: '#f9fafb',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '6px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  cursor: 'pointer',
-                  transition: 'background 0.15s'
-                },
-                onMouseEnter: (e) => { e.currentTarget.style.background = '#f3f4f6'; },
-                onMouseLeave: (e) => { e.currentTarget.style.background = '#f9fafb'; }
-              }, [
-                React.createElement('div', {
-                  key: 'info',
-                  style: { flex: 1, minWidth: 0 }
-                }, [
-                  React.createElement('div', {
-                    key: 'label',
-                    style: {
-                      fontWeight: '500',
-                      fontSize: '14px',
-                      color: '#111827',
-                      marginBottom: '2px',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }
-                  }, field.displayLabel || field.fieldId),
-                  React.createElement('div', {
-                    key: 'meta',
-                    style: {
-                      fontSize: '12px',
-                      color: '#6b7280'
-                    }
-                  }, `${field.category || 'Uncategorized'} • ${field.type || 'text'}`)
-                ])
-              ])
-            )
-          );
-        })())
+        }, 'No fields yet. Click "+ Enter Variable" to create your first field.')
       ]);
     }
 
