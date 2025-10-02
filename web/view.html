@@ -32,9 +32,23 @@
   <script defer src="/vendor/react/react-dom.production.min.js"></script>
   <script defer src="/ui/components.react.js?v=react-m25"></script>
   <script type="module">
-    import { ensureSuperDocLoaded } from '/web/superdoc-init.js?v=ui-actions-4';
+    import { ensureSuperDocLoaded, mountSuperdoc } from '/web/superdoc-init.js?v=ui-actions-4';
     window.addEventListener('load', async () => {
-      try { await ensureSuperDocLoaded(); } catch {}
+      try {
+        await ensureSuperDocLoaded();
+        // Mount SuperDoc editor
+        mountSuperdoc({
+          selector: '#superdoc',
+          toolbar: '#superdoc-toolbar',
+          document: '/documents/working/default.docx',
+          documentMode: 'editing',
+          pagination: true,
+          rulers: true
+        });
+        console.log('✅ SuperDoc mounted in web viewer');
+      } catch (error) {
+        console.error('❌ Failed to load SuperDoc:', error);
+      }
       // Phase 2 will unify mount; keep single-shot call for now to preserve behavior
       try { if (window.mountReactApp && window.React && window.ReactDOM) window.mountReactApp({ rootSelector: '#app-root' }); } catch {}
     });
