@@ -89,6 +89,8 @@ export function mountSuperdoc(options) {
     onReady: (e) => console.log('SuperDoc ready', e),
     onEditorCreate: (e) => {
       console.log('Editor created', e);
+      // Store editor reference for field annotation access
+      superdoc.editor = e;
       // Check if field annotation commands are available
       if (e && e.commands) {
         console.log('✅ Field Annotation plugin loaded:', {
