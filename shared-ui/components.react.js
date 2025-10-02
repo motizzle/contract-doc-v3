@@ -2096,7 +2096,7 @@
           }
         };
         loadMessages();
-      }, [API_BASE, currentUser]);
+      }, [API_BASE, currentUser, DEFAULT_AI_GREETING]);
       
       const [text, setText] = React.useState('');
       const listRef = React.useRef(null);
@@ -2116,7 +2116,7 @@
       const send = async () => {
         const t = (text || '').trim();
         if (!t) return;
-        setMessages((m) => { const next = (m || []).concat(`[${displayNameOf(currentUser)}] ${t}`); return next; });
+        setMessages((m) => { const next = (m || []).concat(`[${currentUser}] ${t}`); return next; });
         setText('');
         try {
           const platform = getCurrentPlatform();
@@ -2134,7 +2134,7 @@
             try { if (typeof Office !== 'undefined') { if (threadPlatform && threadPlatform !== 'word') return; } else { if (threadPlatform && threadPlatform !== 'web') return; } } catch {}
             // Ignore echo of our own message (server broadcasts user messages too)
             if (!text || String(from) === String(currentUser)) return;
-            setMessages((m) => { const next = (m || []).concat(`[${displayNameOf(from)}] ${text}`); return next; });
+            setMessages((m) => { const next = (m || []).concat(`[${from}] ${text}`); return next; });
           } catch {}
         }
         function onChatReset(ev) {
@@ -2246,7 +2246,7 @@
           window.removeEventListener('chat:complete', onChatComplete);
           window.removeEventListener('chat:reset', onChatReset);
         };
-      }, [currentUser]);
+      }, [currentUser, displayNameOf, API_BASE, DEFAULT_AI_GREETING]);
       const FOOTER_HEIGHT = 140; // reserve space so content never hides behind composer/footer
       const scrollToBottom = React.useCallback(() => {
         try { const el = listRef.current; if (el) el.scrollTop = el.scrollHeight; } catch {}
@@ -2254,7 +2254,7 @@
       React.useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
       const box = React.createElement('div', { className: 'chat-container' }, messages.map((m, i) => {
         const who = (typeof m === 'string' && /^\[/.test(m)) ? (m.match(/^\[([^\]]+)\]/)?.[1] || '') : '';
-        const isMine = who && who === displayNameOf(currentUser);
+        const isMine = who && who === currentUser;
         const ts = new Date().toLocaleTimeString();
         const text = typeof m === 'string' ? m.replace(/^\[[^\]]+\]\s*/, '') : String(m);
         const rowCls = 'chat-bubble-row ' + (isMine ? 'mine' : 'other');

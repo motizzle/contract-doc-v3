@@ -19,6 +19,7 @@ Status legend: [Draft] [Planned] [Implemented] [Deprecated]
   - features/send-to-vendor.md [Draft]
   - features/view-latest.md [Draft]
   - features/user-permissions.md [Draft]
+  - features/variables.md [Draft]
 - Operations
   - operations/installation.md [Implemented]
   - operations/docker-notes.md [Draft]
