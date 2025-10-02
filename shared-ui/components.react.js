@@ -1084,7 +1084,7 @@
         add('Checkout', actions.checkout, !!btns.checkoutBtn),
         React.createElement('div', { style: { position: 'relative' } }, [
           React.createElement('span', { key: 'anchor', ref: menuAnchorRef },
-            add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '75px' } })
+            add('⋮', () => setMenuOpen(!menuOpen), true, 'secondary', { style: { minWidth: '53px' } })
           ),
           React.createElement(PortalMenu, { key: 'menu', anchorRef: menuAnchorRef, open: !!(nestedItems.length && menuOpen), onClose: () => setMenuOpen(false), align: 'right' },
             React.createElement('div', { className: 'ui-menu', role: 'menu' }, nestedItems)
