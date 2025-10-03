@@ -3963,7 +3963,8 @@
                   className: 'text-sm text-gray-500'
                 }, `${variable.type === 'signature' ? '✍️ Signature' : '📝 Value'} • ${variable.category || 'Uncategorized'}`)
               ]),
-              React.createElement('div', {
+              // Only show action buttons when not editing
+              editingNames[variable.varId] === undefined ? React.createElement('div', {
                 key: 'buttons',
                 className: 'd-flex gap-8 items-center'
               }, [
@@ -4042,7 +4043,7 @@
                   }
                 }
               })
-            ])
+            ]) : null
             ]),
             // Value input (only for value type, not signatures)
             variable.type !== 'signature' ? React.createElement('div', {
