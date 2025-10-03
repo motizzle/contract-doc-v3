@@ -3547,18 +3547,35 @@
           }
         } else {
           // Web viewer: Update SuperDoc field annotations
-          if (window.superdocInstance && window.superdocInstance.editor) {
-            const editor = window.superdocInstance.editor;
-            if (editor.commands && typeof editor.commands.updateFieldAnnotations === 'function') {
-              try {
-                editor.commands.updateFieldAnnotations({
-                  fieldId: variable.varId,
-                  displayLabel: variable.value || variable.displayLabel
-                });
-                console.log('✅ Updated SuperDoc field annotation:', variable.displayLabel);
-              } catch (error) {
-                console.error('❌ Failed to update SuperDoc field:', error);
-              }
+          console.log('🔍 Attempting to update SuperDoc field:', variable.varId, variable.value);
+          if (!window.superdocInstance) {
+            console.error('❌ window.superdocInstance is not available');
+            return;
+          }
+          if (!window.superdocInstance.editor) {
+            console.error('❌ window.superdocInstance.editor is not available');
+            return;
+          }
+          
+          const editor = window.superdocInstance.editor;
+          console.log('🔍 Editor available:', !!editor);
+          console.log('🔍 Editor.commands:', !!editor.commands);
+          
+          if (editor.commands && typeof editor.commands.updateFieldAnnotations === 'function') {
+            try {
+              const result = editor.commands.updateFieldAnnotations({
+                fieldId: variable.varId,
+                displayLabel: variable.value || variable.displayLabel
+              });
+              console.log('✅ Updated SuperDoc field annotation:', variable.displayLabel, 'Result:', result);
+            } catch (error) {
+              console.error('❌ Failed to update SuperDoc field:', error);
+            }
+          } else {
+            console.warn('⚠️ SuperDoc updateFieldAnnotations command not available');
+            if (editor.commands) {
+              const fieldCommands = Object.keys(editor.commands).filter(k => k.toLowerCase().includes('field'));
+              console.log('🔍 Available field-related commands:', fieldCommands);
             }
           }
         }
