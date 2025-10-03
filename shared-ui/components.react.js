@@ -3588,6 +3588,11 @@
             
             if (response.ok) {
               console.log('✅ Variable value saved:', varId, newValue);
+              // Update the document immediately
+              const updatedVariable = variables[varId];
+              if (updatedVariable) {
+                await updateVariableInDocument({ ...updatedVariable, value: newValue });
+              }
             } else {
               console.error('❌ Failed to save variable value');
             }
