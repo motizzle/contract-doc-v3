@@ -3968,8 +3968,7 @@
                         onClick: (e) => {
                           e?.stopPropagation?.();
                           handleRename(variable.varId, editingNames[variable.varId]);
-                        },
-                        style: { padding: '4px 8px', fontSize: '12px' }
+                        }
                       }),
                       React.createElement(UIButton, {
                         key: 'cancel',
@@ -3982,8 +3981,7 @@
                             delete updated[variable.varId];
                             return updated;
                           });
-                        },
-                        style: { padding: '4px 8px', fontSize: '12px' }
+                        }
                       })
                     ])
                   : React.createElement('div', {
@@ -4017,11 +4015,7 @@
               ]),
               React.createElement('div', {
                 key: 'buttons',
-                style: {
-                  display: 'flex',
-                  gap: '8px',
-                  alignItems: 'center'
-                }
+                className: 'd-flex gap-8 items-center'
               }, [
                 React.createElement(UIButton, {
                   key: 'edit',
@@ -4030,8 +4024,7 @@
                   onClick: (e) => {
                     e?.stopPropagation?.();
                     setEditingNames(prev => ({ ...prev, [variable.varId]: variable.displayLabel }));
-                  },
-                  style: { padding: '4px 8px', fontSize: '12px' }
+                  }
                 }),
                 React.createElement(UIButton, {
                   key: 'delete',
@@ -4040,8 +4033,7 @@
                   onClick: (e) => {
                     e?.stopPropagation?.();
                     handleDelete(variable.varId, variable.displayLabel);
-                  },
-                  style: { padding: '4px 8px', fontSize: '12px', color: '#ef4444' }
+                  }
                 }),
                 React.createElement(UIButton, {
                   key: 'insert',
