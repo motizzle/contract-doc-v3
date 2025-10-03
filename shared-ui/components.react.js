@@ -112,7 +112,7 @@
       }, [viewingVersion]);
       const [isConnected, setIsConnected] = React.useState(false);
       const [lastTs, setLastTs] = React.useState(0);
-      const [userId, setUserId] = React.useState('user1');
+      const [userId, setUserId] = React.useState('user2');
       const [role, setRole] = React.useState('editor');
       const [users, setUsers] = React.useState([]);
       const [logs, setLogs] = React.useState([]);
