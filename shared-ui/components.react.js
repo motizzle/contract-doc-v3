@@ -3561,6 +3561,16 @@
           console.log('🔍 Editor available:', !!editor);
           console.log('🔍 Editor.commands:', !!editor.commands);
           
+          // SuperDoc limitation: Field annotations are metadata overlays, not text content
+          // updateFieldAnnotations only updates annotation properties (color, type), not the displayed text
+          // The text content is part of the document structure, not the annotation
+          // 
+          // For now, web users need to delete and re-insert fields to see updated values
+          // Or we accept that values only update on document reload
+          console.log('ℹ️ SuperDoc web viewer limitation: Field text content cannot be updated in real-time');
+          console.log('ℹ️ Variable value updated in backend. Refresh document or re-insert field to see changes.');
+          
+          // Still update the annotation metadata in case it helps in future SuperDoc versions
           if (editor.commands && typeof editor.commands.updateFieldAnnotations === 'function') {
             try {
               const result = editor.commands.updateFieldAnnotations({
@@ -3570,9 +3580,9 @@
                 fieldColor: '#980043',
                 type: variable.type
               });
-              console.log('✅ Updated SuperDoc field annotation:', variable.displayLabel, 'Result:', result);
+              console.log('✅ Updated SuperDoc field annotation metadata:', variable.displayLabel, 'Result:', result);
             } catch (error) {
-              console.error('❌ Failed to update SuperDoc field:', error);
+              console.error('❌ Failed to update SuperDoc field metadata:', error);
             }
           } else {
             console.warn('⚠️ SuperDoc updateFieldAnnotations command not available');
