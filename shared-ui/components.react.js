@@ -3513,24 +3513,28 @@
           // Insert field into document - platform specific
           const isWordAddin = typeof Office !== 'undefined' && Office.context && Office.context.host;
           
-          if (isWordAddin) {
-            // Word add-in: Insert into actual Word document using Content Controls
-            try {
-              await Word.run(async (context) => {
-                const range = context.document.getSelection();
-                const contentControl = range.insertContentControl();
-                contentControl.title = name;
-                contentControl.tag = fieldId;
-                contentControl.appearance = 'BoundingBox';
-                contentControl.color = '#980043';
-                contentControl.insertText(`{{${name}}}`, 'Replace');
-                
-                await context.sync();
-                console.log('✅ Field inserted into Word document:', name);
-              });
-            } catch (wordError) {
-              console.error('❌ Failed to insert into Word document:', wordError);
-            }
+              if (isWordAddin) {
+                // Word add-in: Insert into actual Word document using Content Controls
+                try {
+                  await Word.run(async (context) => {
+                    const range = context.document.getSelection();
+                    const contentControl = range.insertContentControl();
+                    contentControl.title = name;
+                    contentControl.tag = fieldId;
+                    contentControl.appearance = 'Tags'; // Shows field name in tags like <Field Name>
+                    contentControl.color = '#980043'; // Burgundy color to match SuperDoc
+                    contentControl.insertText(name, 'Replace'); // Just the field name, not {{}}
+                    
+                    // Apply highlighting to make it stand out like SuperDoc
+                    contentControl.font.highlightColor = '#FFC0CB'; // Light pink highlight
+                    contentControl.font.bold = true;
+                    
+                    await context.sync();
+                    console.log('✅ Field inserted into Word document:', name);
+                  });
+                } catch (wordError) {
+                  console.error('❌ Failed to insert into Word document:', wordError);
+                }
           } else {
             // Web viewer: Insert into SuperDoc editor
             if (window.superdocInstance && window.superdocInstance.editor) {
@@ -3761,9 +3765,13 @@
                     const contentControl = range.insertContentControl();
                     contentControl.title = field.displayLabel;
                     contentControl.tag = field.fieldId;
-                    contentControl.appearance = 'BoundingBox';
+                    contentControl.appearance = 'Tags'; // Shows <Field Name>
                     contentControl.color = field.fieldColor || '#980043';
-                    contentControl.insertText(`{{${field.displayLabel}}}`, 'Replace');
+                    contentControl.insertText(field.displayLabel, 'Replace');
+                    
+                    // Apply highlighting to match SuperDoc appearance
+                    contentControl.font.highlightColor = '#FFC0CB'; // Light pink highlight
+                    contentControl.font.bold = true;
                     
                     await context.sync();
                     console.log('✅ Field inserted into Word document:', field.displayLabel);
