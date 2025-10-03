@@ -3561,34 +3561,39 @@
           console.log('🔍 Editor available:', !!editor);
           console.log('🔍 Editor.commands:', !!editor.commands);
           
-          // SuperDoc field annotation update strategy:
-          // 1. Find the field annotation by fieldId
-          // 2. Delete the old annotation
-          // 3. Re-insert at the same position with updated displayLabel (text content)
+          // SuperDoc field annotation update: Manually walk ProseMirror document
+          // Helpers aren't exposed in UMD build, so we access editor.view.state.doc directly
           
-          if (editor.helpers?.fieldAnnotation && editor.commands) {
+          if (editor.view && editor.view.state && editor.commands) {
             try {
-              // Find the field annotation(s) by fieldId
-              const annotations = editor.helpers.fieldAnnotation.findFieldAnnotationsByFieldId(variable.varId, editor.state);
+              console.log(`🔄 Attempting to update field ${variable.varId} with new value: "${variable.value || variable.displayLabel}"`);
               
-              if (annotations && annotations.length > 0) {
-                console.log(`🔍 Found ${annotations.length} annotation(s) for field ${variable.varId}`);
-                
-                // Process each annotation in reverse order (to maintain positions)
-                // Reverse order prevents position shifts when deleting earlier annotations
+              const doc = editor.view.state.doc;
+              const annotations = [];
+              
+              // Manually walk the document to find field annotation nodes
+              doc.descendants((node, pos) => {
+                if (node.type.name === 'fieldAnnotation' && node.attrs.fieldId === variable.varId) {
+                  annotations.push({ node, pos });
+                }
+              });
+              
+              console.log(`🔍 Found ${annotations.length} annotation(s) for field ${variable.varId}`);
+              
+              if (annotations.length > 0) {
+                // Process in reverse order to maintain positions
                 for (let i = annotations.length - 1; i >= 0; i--) {
-                  const annotation = annotations[i];
-                  const { pos, node } = annotation;
+                  const { node, pos } = annotations[i];
                   const oldLabel = node.attrs.displayLabel;
                   const newLabel = variable.value || variable.displayLabel;
                   
                   console.log(`📝 Updating annotation ${i + 1}/${annotations.length} at pos ${pos}: "${oldLabel}" → "${newLabel}"`);
                   
-                  // Delete this specific annotation instance (not all with same fieldId)
-                  const deleteResult = editor.commands.deleteFieldAnnotation(annotation);
+                  // Delete the specific annotation
+                  const deleteResult = editor.commands.deleteFieldAnnotation({ node, pos });
                   console.log(`🗑️ Delete result:`, deleteResult);
                   
-                  // Re-insert with updated displayLabel at the same position
+                  // Re-insert with new displayLabel at the same position
                   const insertResult = editor.commands.addFieldAnnotation(pos, {
                     fieldId: variable.varId,
                     displayLabel: newLabel,
@@ -3598,20 +3603,18 @@
                   });
                   console.log(`➕ Insert result:`, insertResult);
                   
-                  console.log(`✅ Replaced annotation ${i + 1}/${annotations.length} at pos ${pos}`);
+                  console.log(`✅ Replaced annotation ${i + 1}/${annotations.length}`);
                 }
               } else {
-                console.log(`ℹ️ Field ${variable.varId} not found in document (not yet inserted or already removed)`);
+                console.log(`ℹ️ Field ${variable.varId} not found in document (not yet inserted)`);
               }
             } catch (error) {
-              console.error('❌ Failed to update SuperDoc field:', error);
+              console.error('❌ Failed to update SuperDoc field:', error, error.stack);
             }
           } else {
-            console.warn('⚠️ SuperDoc updateFieldAnnotations command not available');
-            if (editor.commands) {
-              const fieldCommands = Object.keys(editor.commands).filter(k => k.toLowerCase().includes('field'));
-              console.log('🔍 Available field-related commands:', fieldCommands);
-            }
+            console.warn('⚠️ SuperDoc editor.view or commands not available');
+            console.log('🔍 editor.view:', !!editor.view);
+            console.log('🔍 editor.commands:', !!editor.commands);
           }
         }
       };
