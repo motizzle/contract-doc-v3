@@ -3404,6 +3404,7 @@
       const [variables, setVariables] = React.useState({});
       const [isLoading, setIsLoading] = React.useState(true);
       const [editingValues, setEditingValues] = React.useState({});
+      const [editingNames, setEditingNames] = React.useState({});
       const saveTimeouts = React.useRef({});
 
       // Load variables from backend
@@ -3577,6 +3578,55 @@
             console.error('❌ Error saving variable value:', error);
           }
         }, 500);
+      };
+
+      // Helper: Rename variable
+      const handleRename = async (varId, newName) => {
+        if (!newName.trim()) return;
+        
+        try {
+          const response = await fetch(`${API_BASE}/api/v1/variables/${varId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              displayLabel: newName.trim(),
+              userId: currentUser || 'user1'
+            })
+          });
+          
+          if (response.ok) {
+            console.log('✅ Variable renamed:', newName);
+            setEditingNames(prev => {
+              const updated = { ...prev };
+              delete updated[varId];
+              return updated;
+            });
+          } else {
+            console.error('❌ Failed to rename variable');
+          }
+        } catch (error) {
+          console.error('❌ Error renaming variable:', error);
+        }
+      };
+
+      // Helper: Delete variable
+      const handleDelete = async (varId, displayLabel) => {
+        // Note: Using console log instead of confirm() for Office add-in compatibility
+        console.log('🗑️ Deleting variable:', displayLabel);
+        
+        try {
+          const response = await fetch(`${API_BASE}/api/v1/variables/${varId}?userId=${currentUser || 'user1'}`, {
+            method: 'DELETE'
+          });
+          
+          if (response.ok) {
+            console.log('✅ Variable deleted:', displayLabel);
+          } else {
+            console.error('❌ Failed to delete variable');
+          }
+        } catch (error) {
+          console.error('❌ Error deleting variable:', error);
+        }
       };
 
       const handleInsert = async () => {
@@ -3894,16 +3944,137 @@
             }, [
               React.createElement('div', {
                 key: 'info',
-                style: { flex: 1 }
+                style: { flex: 1, minWidth: 0 }
               }, [
-                React.createElement('div', {
-                  key: 'name',
-                  style: {
-                    fontWeight: '600',
-                    marginBottom: '2px',
-                    fontSize: '14px'
-                  }
-                }, variable.displayLabel),
+                // Name - editable or display
+                editingNames[variable.varId] !== undefined
+                  ? React.createElement('div', {
+                      key: 'name-edit',
+                      style: { display: 'flex', gap: '4px', marginBottom: '2px' }
+                    }, [
+                      React.createElement('input', {
+                        key: 'input',
+                        type: 'text',
+                        value: editingNames[variable.varId],
+                        onChange: (e) => setEditingNames(prev => ({ ...prev, [variable.varId]: e.target.value })),
+                        onKeyDown: (e) => {
+                          if (e.key === 'Enter') {
+                            handleRename(variable.varId, editingNames[variable.varId]);
+                          } else if (e.key === 'Escape') {
+                            setEditingNames(prev => {
+                              const updated = { ...prev };
+                              delete updated[variable.varId];
+                              return updated;
+                            });
+                          }
+                        },
+                        onClick: (e) => e.stopPropagation(),
+                        autoFocus: true,
+                        style: {
+                          flex: 1,
+                          padding: '4px 6px',
+                          fontSize: '14px',
+                          border: '1px solid #6d5ef1',
+                          borderRadius: '3px',
+                          fontWeight: '600'
+                        }
+                      }),
+                      React.createElement('button', {
+                        key: 'save',
+                        onClick: (e) => {
+                          e.stopPropagation();
+                          handleRename(variable.varId, editingNames[variable.varId]);
+                        },
+                        style: {
+                          padding: '4px 6px',
+                          fontSize: '11px',
+                          border: 'none',
+                          borderRadius: '3px',
+                          background: '#10b981',
+                          color: 'white',
+                          cursor: 'pointer'
+                        }
+                      }, '✓'),
+                      React.createElement('button', {
+                        key: 'cancel',
+                        onClick: (e) => {
+                          e.stopPropagation();
+                          setEditingNames(prev => {
+                            const updated = { ...prev };
+                            delete updated[variable.varId];
+                            return updated;
+                          });
+                        },
+                        style: {
+                          padding: '4px 6px',
+                          fontSize: '11px',
+                          border: 'none',
+                          borderRadius: '3px',
+                          background: '#6b7280',
+                          color: 'white',
+                          cursor: 'pointer'
+                        }
+                      }, '✕')
+                    ])
+                  : React.createElement('div', {
+                      key: 'name-display',
+                      style: {
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        marginBottom: '2px'
+                      }
+                    }, [
+                      React.createElement('span', {
+                        key: 'text',
+                        style: {
+                          fontWeight: '600',
+                          fontSize: '14px',
+                          flex: 1,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }
+                      }, variable.displayLabel),
+                      React.createElement('button', {
+                        key: 'edit',
+                        onClick: (e) => {
+                          e.stopPropagation();
+                          setEditingNames(prev => ({ ...prev, [variable.varId]: variable.displayLabel }));
+                        },
+                        title: 'Rename',
+                        style: {
+                          padding: '2px 4px',
+                          fontSize: '12px',
+                          border: 'none',
+                          borderRadius: '3px',
+                          background: 'transparent',
+                          color: '#6b7280',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }
+                      }, '✏️'),
+                      React.createElement('button', {
+                        key: 'delete',
+                        onClick: (e) => {
+                          e.stopPropagation();
+                          handleDelete(variable.varId, variable.displayLabel);
+                        },
+                        title: 'Delete',
+                        style: {
+                          padding: '2px 4px',
+                          fontSize: '12px',
+                          border: 'none',
+                          borderRadius: '3px',
+                          background: 'transparent',
+                          color: '#ef4444',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }
+                      }, '🗑️')
+                    ]),
                 React.createElement('div', {
                   key: 'meta',
                   style: {
