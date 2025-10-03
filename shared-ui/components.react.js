@@ -3585,7 +3585,9 @@
                 for (let i = annotations.length - 1; i >= 0; i--) {
                   const { node, pos } = annotations[i];
                   const oldLabel = node.attrs.displayLabel;
-                  const newLabel = variable.value || variable.displayLabel;
+                  // Display the variable NAME in the document, not the value
+                  // The value is stored in backend but the displayLabel should show the variable name
+                  const newLabel = variable.displayLabel;
                   
                   console.log(`📝 Updating annotation ${i + 1}/${annotations.length} at pos ${pos}: "${oldLabel}" → "${newLabel}"`);
                   
@@ -3593,7 +3595,7 @@
                   const deleteResult = editor.commands.deleteFieldAnnotation({ node, pos });
                   console.log(`🗑️ Delete result:`, deleteResult);
                   
-                  // Re-insert with new displayLabel at the same position
+                  // Re-insert with new displayLabel (variable name) at the same position
                   const insertResult = editor.commands.addFieldAnnotation(pos, {
                     fieldId: variable.varId,
                     displayLabel: newLabel,
