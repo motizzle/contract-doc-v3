@@ -3441,8 +3441,13 @@
         const handleVariableUpdated = (event) => {
           try {
             const data = JSON.parse(event.data || '{}');
+            console.log('📡 SSE variable:updated received:', data);
             if (data.variable) {
-              setVariables(prev => ({ ...prev, [data.variable.varId]: data.variable }));
+              setVariables(prev => {
+                const updated = { ...prev, [data.variable.varId]: data.variable };
+                console.log('🔄 Variables state updated:', updated);
+                return updated;
+              });
             }
           } catch (error) {
             console.error('Failed to handle variable:updated event:', error);
