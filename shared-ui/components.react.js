@@ -3426,6 +3426,9 @@
 
       // Listen for SSE variable events
       React.useEffect(() => {
+        console.log('🔧 Variables SSE useEffect is running');
+        console.log('🔧 window.eventSource available?', !!window.eventSource);
+        
         const handleVariableCreated = (event) => {
           try {
             const data = JSON.parse(event.data || '{}');
