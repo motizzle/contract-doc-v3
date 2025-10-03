@@ -3868,85 +3868,50 @@
         ])
       ])) : null;
 
-      // Main panel UI
-      return React.createElement('div', { style: { padding: '0' } }, [
+      // Main panel UI - container style matches Versions panel
+      const containerStyle = { paddingTop: 3, paddingBottom: 16 };
+      
+      return React.createElement('div', { className: 'd-flex flex-column gap-8', style: containerStyle }, [
         modal,
         React.createElement('div', {
           key: 'header',
           style: {
             display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '16px',
-            padding: '0 8px'
+            justifyContent: 'flex-end',
+            alignItems: 'center'
           }
         }, [
-          React.createElement('h3', {
-            key: 'title',
-            style: { margin: 0, fontSize: '16px', fontWeight: '600' }
-          }, 'Variables'),
-          React.createElement('button', {
+          React.createElement(UIButton, {
             key: 'add',
+            label: '+ Enter Variable',
             onClick: () => setShowModal(true),
-            style: {
-              padding: '6px 12px',
-              fontSize: '14px',
-              border: 'none',
-              borderRadius: '4px',
-              background: '#6d5ef1',
-              color: 'white',
-              cursor: 'pointer',
-              fontWeight: '500',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }
-          }, [
-            React.createElement('span', { key: 'icon', style: { fontSize: '16px' } }, '+'),
-            React.createElement('span', { key: 'text' }, 'Enter Variable')
-          ])
+            variant: 'primary'
+          })
         ]),
-        React.createElement('div', {
-          key: 'body',
-          style: {
-            padding: '8px',
-            overflowY: 'auto',
-            maxHeight: '400px'
-          }
-        }, (() => {
+        (() => {
           if (isLoading) {
             return React.createElement('div', {
-              style: {
-                padding: '32px 16px',
-                textAlign: 'center',
-                color: '#6b7280',
-                fontSize: '14px'
-              }
+              className: 'text-gray-500',
+              style: { padding: 8 }
             }, 'Loading variables...');
           }
 
           const variablesList = Object.values(variables);
           if (variablesList.length === 0) {
             return React.createElement('div', {
-              style: {
-                padding: '32px 16px',
-                textAlign: 'center',
-                color: '#6b7280',
-                fontSize: '14px'
-              }
-            }, 'No variables yet. Click "+ Enter Variable" to create your first variable.');
+              className: 'text-gray-500',
+              style: { padding: 8 }
+            }, 'No variables yet.');
           }
 
-          // Show variables list with inline value editing
-          return variablesList.map((variable) => React.createElement('div', {
+          // Show variables list with inline value editing - card style matches Versions panel
+          return React.createElement('div', { className: 'd-flex flex-column gap-8' }, variablesList.map((variable) => React.createElement('div', {
             key: variable.varId,
             style: {
-              padding: '12px',
-              marginBottom: '8px',
-              background: 'white',
-              border: '1px solid #e5e7eb',
-              borderRadius: '6px',
-              transition: 'all 0.2s'
+              border: '1px solid #E5E7EB',
+              borderRadius: 12,
+              padding: '14px 16px',
+              background: '#FFFFFF'
             }
           }, [
             // Variable header with name and insert button
@@ -4100,10 +4065,12 @@
                   }
                 }, `${variable.type === 'signature' ? '✍️ Signature' : '📝 Value'} • ${variable.category || 'Uncategorized'}`)
               ]),
-              React.createElement('button', {
+              React.createElement(UIButton, {
                 key: 'insert',
+                label: 'Insert',
+                variant: 'primary',
                 onClick: async (e) => {
-                  e.stopPropagation();
+                  e?.stopPropagation?.();
                   console.log('🔵 Insert variable clicked:', variable.displayLabel);
                   
                   const isWordAddin = typeof Office !== 'undefined' && Office.context && Office.context.host;
@@ -4153,18 +4120,8 @@
                       console.error('❌ Failed to insert into SuperDoc:', error);
                     }
                   }
-                },
-                style: {
-                  padding: '4px 8px',
-                  fontSize: '12px',
-                  border: 'none',
-                  borderRadius: '4px',
-                  background: '#6d5ef1',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontWeight: '500'
                 }
-              }, 'Insert')
+              })
             ]),
             // Value input (only for value type, not signatures)
             variable.type !== 'signature' ? React.createElement('div', {
@@ -4198,8 +4155,8 @@
                 }
               })
             ]) : null
-          ]));
-        })())
+          ])));
+        })()
       ]);
     }
 
