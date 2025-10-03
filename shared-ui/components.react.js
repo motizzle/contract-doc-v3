@@ -3565,7 +3565,10 @@
             try {
               const result = editor.commands.updateFieldAnnotations({
                 fieldId: variable.varId,
-                displayLabel: variable.value || variable.displayLabel
+                displayLabel: variable.value || variable.displayLabel,
+                fieldType: 'TEXTINPUT',
+                fieldColor: '#980043',
+                type: variable.type
               });
               console.log('✅ Updated SuperDoc field annotation:', variable.displayLabel, 'Result:', result);
             } catch (error) {
