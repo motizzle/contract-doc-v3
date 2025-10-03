@@ -3820,66 +3820,39 @@
           onKeyDown: handleKeyPress,
           placeholder: variableType === 'value' ? 'e.g., Contract Amount' : 'e.g., Party A Signature',
           autoFocus: true,
-          style: {
-            width: '100%',
-            padding: '8px 12px',
-            fontSize: '14px',
-            border: '1px solid #d1d5db',
-            borderRadius: '4px',
-            marginBottom: '16px'
-          }
+          className: 'w-full input-padding input-border input-border-radius text-base mb-16'
         }),
         React.createElement('div', {
           key: 'buttons',
-          style: { display: 'flex', gap: '8px', justifyContent: 'flex-end' }
+          className: 'd-flex gap-8 justify-end'
         }, [
-          React.createElement('button', {
+          React.createElement(UIButton, {
             key: 'cancel',
+            label: 'Cancel',
+            variant: 'secondary',
             onClick: () => {
               setShowModal(false);
               setVariableName('');
             },
-            disabled: isInserting,
-            style: {
-              padding: '8px 16px',
-              fontSize: '14px',
-              border: '1px solid #d1d5db',
-              borderRadius: '4px',
-              background: 'white',
-              cursor: isInserting ? 'not-allowed' : 'pointer',
-              opacity: isInserting ? 0.6 : 1
-            }
-          }, 'Cancel'),
-          React.createElement('button', {
+            disabled: isInserting
+          }),
+          React.createElement(UIButton, {
             key: 'insert',
+            label: isInserting ? 'Inserting...' : 'Insert',
+            variant: 'primary',
             onClick: handleInsert,
             disabled: !variableName.trim() || isInserting,
-            style: {
-              padding: '8px 16px',
-              fontSize: '14px',
-              border: 'none',
-              borderRadius: '4px',
-              background: (!variableName.trim() || isInserting) ? '#9ca3af' : '#6d5ef1',
-              color: 'white',
-              cursor: (!variableName.trim() || isInserting) ? 'not-allowed' : 'pointer',
-              fontWeight: '500'
-            }
-          }, isInserting ? 'Inserting...' : 'Insert')
+            isLoading: isInserting
+          })
         ])
       ])) : null;
 
       // Main panel UI - container style matches Versions panel
-      const containerStyle = { paddingTop: 3, paddingBottom: 16 };
-      
-      return React.createElement('div', { className: 'd-flex flex-column gap-8', style: containerStyle }, [
+      return React.createElement('div', { className: 'd-flex flex-column gap-8 pt-3 pb-16' }, [
         modal,
         React.createElement('div', {
           key: 'header',
-          style: {
-            display: 'flex',
-            justifyContent: 'flex-end',
-            alignItems: 'center'
-          }
+          className: 'd-flex justify-end items-center'
         }, [
           React.createElement(UIButton, {
             key: 'add',
@@ -3891,48 +3864,37 @@
         (() => {
           if (isLoading) {
             return React.createElement('div', {
-              className: 'text-gray-500',
-              style: { padding: 8 }
+              className: 'text-gray-500 p-8'
             }, 'Loading variables...');
           }
 
           const variablesList = Object.values(variables);
           if (variablesList.length === 0) {
             return React.createElement('div', {
-              className: 'text-gray-500',
-              style: { padding: 8 }
+              className: 'text-gray-500 p-8'
             }, 'No variables yet.');
           }
 
           // Show variables list with inline value editing - card style matches Versions panel
           return React.createElement('div', { className: 'd-flex flex-column gap-8' }, variablesList.map((variable) => React.createElement('div', {
             key: variable.varId,
-            style: {
-              border: '1px solid #E5E7EB',
-              borderRadius: 12,
-              padding: '14px 16px',
-              background: '#FFFFFF'
-            }
+            className: 'border border-gray-200 rounded-xl bg-white',
+            style: { padding: '14px 16px' }
           }, [
             // Variable header with name and buttons
             React.createElement('div', {
               key: 'header',
-              style: {
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '8px'
-              }
+              className: 'd-flex justify-between items-center mb-8'
             }, [
               React.createElement('div', {
                 key: 'info',
-                style: { flex: 1, minWidth: 0 }
+                className: 'flex-1 min-w-0'
               }, [
                 // Name - editable or display
                 editingNames[variable.varId] !== undefined
                   ? React.createElement('div', {
                       key: 'name-edit',
-                      style: { display: 'flex', gap: '4px', marginBottom: '2px' }
+                      className: 'd-flex gap-4 mb-2'
                     }, [
                       React.createElement('input', {
                         key: 'input',
@@ -3952,13 +3914,11 @@
                         },
                         onClick: (e) => e.stopPropagation(),
                         autoFocus: true,
+                        className: 'flex-1 text-lg font-semibold',
                         style: {
-                          flex: 1,
                           padding: '4px 6px',
-                          fontSize: '14px',
                           border: '1px solid #6d5ef1',
-                          borderRadius: '3px',
-                          fontWeight: '600'
+                          borderRadius: '3px'
                         }
                       }),
                       React.createElement(UIButton, {
@@ -3986,19 +3946,12 @@
                     ])
                   : React.createElement('div', {
                       key: 'name-display',
-                      style: {
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        marginBottom: '2px'
-                      }
+                      className: 'd-flex items-center gap-6 mb-2'
                     }, [
                       React.createElement('span', {
                         key: 'text',
+                        className: 'font-semibold text-lg flex-1',
                         style: {
-                          fontWeight: '600',
-                          fontSize: '14px',
-                          flex: 1,
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap'
@@ -4007,10 +3960,7 @@
                     ]),
                 React.createElement('div', {
                   key: 'meta',
-                  style: {
-                    fontSize: '11px',
-                    color: '#6b7280'
-                  }
+                  className: 'text-sm text-gray-500'
                 }, `${variable.type === 'signature' ? '✍️ Signature' : '📝 Value'} • ${variable.category || 'Uncategorized'}`)
               ]),
               React.createElement('div', {
@@ -4097,17 +4047,11 @@
             // Value input (only for value type, not signatures)
             variable.type !== 'signature' ? React.createElement('div', {
               key: 'value',
-              style: { marginTop: '8px' }
+              className: 'mt-8'
             }, [
               React.createElement('label', {
                 key: 'label',
-                style: {
-                  display: 'block',
-                  fontSize: '11px',
-                  color: '#6b7280',
-                  marginBottom: '4px',
-                  fontWeight: '500'
-                }
+                className: 'd-block text-sm text-gray-500 mb-4 font-medium'
               }, 'Value:'),
               React.createElement('input', {
                 key: 'input',
@@ -4116,14 +4060,7 @@
                 onChange: (e) => handleValueChange(variable.varId, e.target.value),
                 placeholder: 'Enter value...',
                 onClick: (e) => e.stopPropagation(),
-                style: {
-                  width: '100%',
-                  padding: '6px 8px',
-                  fontSize: '13px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '4px',
-                  fontFamily: 'monospace'
-                }
+                className: 'w-full font-mono text-base input-padding input-border input-border-radius'
               })
             ]) : null
           ])));
