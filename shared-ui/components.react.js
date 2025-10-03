@@ -392,6 +392,13 @@
                   window.dispatchEvent(new CustomEvent('approval:complete', { detail: p }));
                 } catch {}
               }
+              // Handle variable events
+              if (p && p.type && p.type.startsWith('variable:')) {
+                try {
+                  window.dispatchEvent(new CustomEvent(p.type, { detail: p }));
+                  console.log('📡 Dispatched window event:', p.type, p);
+                } catch {}
+              }
               // Only log user-relevant events as notifications
               if (p && p.type) {
                 switch (p.type) {
@@ -3431,7 +3438,7 @@
         
         const handleVariableCreated = (event) => {
           try {
-            const data = JSON.parse(event.data || '{}');
+            const data = event.detail || {};
             console.log('📡 SSE variable:created received:', data);
             if (data.variable) {
               setVariables(prev => {
@@ -3447,7 +3454,7 @@
 
         const handleVariableUpdated = (event) => {
           try {
-            const data = JSON.parse(event.data || '{}');
+            const data = event.detail || {};
             console.log('📡 SSE variable:updated received:', data);
             if (data.variable) {
               setVariables(prev => {
@@ -3463,7 +3470,7 @@
 
         const handleVariableValueChanged = (event) => {
           try {
-            const data = JSON.parse(event.data || '{}');
+            const data = event.detail || {};
             if (data.variable) {
               setVariables(prev => ({ ...prev, [data.variable.varId]: data.variable }));
               // Update platform-specific rendering
@@ -3476,7 +3483,7 @@
 
         const handleVariableDeleted = (event) => {
           try {
-            const data = JSON.parse(event.data || '{}');
+            const data = event.detail || {};
             if (data.varId) {
               setVariables(prev => {
                 const updated = { ...prev };
@@ -3493,36 +3500,20 @@
           setVariables({});
         };
 
-        // Poll for eventSource if not immediately available (timing issue)
-        let attached = false;
-        const attachListeners = () => {
-          if (window.eventSource && !attached) {
-            console.log('✅ Attaching variable SSE listeners');
-            window.eventSource.addEventListener('variable:created', handleVariableCreated);
-            window.eventSource.addEventListener('variable:updated', handleVariableUpdated);
-            window.eventSource.addEventListener('variable:valueChanged', handleVariableValueChanged);
-            window.eventSource.addEventListener('variable:deleted', handleVariableDeleted);
-            window.eventSource.addEventListener('variables:reset', handleVariablesReset);
-            attached = true;
-          } else if (!window.eventSource) {
-            console.warn('⚠️ window.eventSource not available yet, will retry...');
-          }
-        };
-
-        attachListeners();
-        
-        // Retry after a delay if not attached
-        const retryTimer = !attached ? setTimeout(attachListeners, 500) : null;
+        // Listen to window custom events dispatched by main SSE handler
+        console.log('✅ Attaching variable window event listeners');
+        window.addEventListener('variable:created', handleVariableCreated);
+        window.addEventListener('variable:updated', handleVariableUpdated);
+        window.addEventListener('variable:valueChanged', handleVariableValueChanged);
+        window.addEventListener('variable:deleted', handleVariableDeleted);
+        window.addEventListener('variables:reset', handleVariablesReset);
 
         return () => {
-          if (retryTimer) clearTimeout(retryTimer);
-          if (window.eventSource) {
-            window.eventSource.removeEventListener('variable:created', handleVariableCreated);
-            window.eventSource.removeEventListener('variable:updated', handleVariableUpdated);
-            window.eventSource.removeEventListener('variable:valueChanged', handleVariableValueChanged);
-            window.eventSource.removeEventListener('variable:deleted', handleVariableDeleted);
-            window.eventSource.removeEventListener('variables:reset', handleVariablesReset);
-          }
+          window.removeEventListener('variable:created', handleVariableCreated);
+          window.removeEventListener('variable:updated', handleVariableUpdated);
+          window.removeEventListener('variable:valueChanged', handleVariableValueChanged);
+          window.removeEventListener('variable:deleted', handleVariableDeleted);
+          window.removeEventListener('variables:reset', handleVariablesReset);
         };
       }, []);
 
