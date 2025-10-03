@@ -3574,27 +3574,32 @@
               if (annotations && annotations.length > 0) {
                 console.log(`🔍 Found ${annotations.length} annotation(s) for field ${variable.varId}`);
                 
-                // Process each annotation (in case field appears multiple times)
-                annotations.forEach(({ pos, node }) => {
+                // Process each annotation in reverse order (to maintain positions)
+                // Reverse order prevents position shifts when deleting earlier annotations
+                for (let i = annotations.length - 1; i >= 0; i--) {
+                  const annotation = annotations[i];
+                  const { pos, node } = annotation;
                   const oldLabel = node.attrs.displayLabel;
                   const newLabel = variable.value || variable.displayLabel;
                   
-                  console.log(`📝 Updating annotation at pos ${pos}: "${oldLabel}" → "${newLabel}"`);
+                  console.log(`📝 Updating annotation ${i + 1}/${annotations.length} at pos ${pos}: "${oldLabel}" → "${newLabel}"`);
                   
-                  // Delete the old annotation
-                  editor.commands.deleteFieldAnnotations(variable.varId);
+                  // Delete this specific annotation instance (not all with same fieldId)
+                  const deleteResult = editor.commands.deleteFieldAnnotation(annotation);
+                  console.log(`🗑️ Delete result:`, deleteResult);
                   
                   // Re-insert with updated displayLabel at the same position
-                  editor.commands.addFieldAnnotation(pos, {
+                  const insertResult = editor.commands.addFieldAnnotation(pos, {
                     fieldId: variable.varId,
                     displayLabel: newLabel,
                     fieldType: 'TEXTINPUT',
                     fieldColor: '#980043',
                     type: variable.type
                   });
+                  console.log(`➕ Insert result:`, insertResult);
                   
-                  console.log(`✅ Replaced annotation at pos ${pos} with new value`);
-                });
+                  console.log(`✅ Replaced annotation ${i + 1}/${annotations.length} at pos ${pos}`);
+                }
               } else {
                 console.log(`ℹ️ Field ${variable.varId} not found in document (not yet inserted or already removed)`);
               }
