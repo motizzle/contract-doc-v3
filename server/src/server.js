@@ -1018,12 +1018,13 @@ app.post('/api/v1/variables', (req, res) => {
     }
     
     // Create variable object with metadata
+    // If no value provided, use displayLabel as initial placeholder value
     const variable = {
       varId: generatedVarId,
       displayLabel,
       type: type || 'value',
       category: category || 'Uncategorized',
-      value: value || '',
+      value: value || displayLabel,
       createdBy: userId || 'system',
       createdAt: new Date().toISOString(),
       updatedBy: userId || 'system',

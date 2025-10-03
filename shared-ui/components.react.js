@@ -3462,6 +3462,8 @@
                 console.log('🔄 Variables state updated:', updated);
                 return updated;
               });
+              // Variable renamed - name is metadata, doesn't affect document display
+              // Document shows value, not name
             }
           } catch (error) {
             console.error('Failed to handle variable:updated event:', error);
@@ -3473,7 +3475,7 @@
             const data = event.detail || {};
             if (data.variable) {
               setVariables(prev => ({ ...prev, [data.variable.varId]: data.variable }));
-              // Update platform-specific rendering
+              // Value changed - update document to show new value
               updateVariableInDocument(data.variable);
             }
           } catch (error) {
@@ -3585,9 +3587,9 @@
                 for (let i = annotations.length - 1; i >= 0; i--) {
                   const { node, pos } = annotations[i];
                   const oldLabel = node.attrs.displayLabel;
-                  // Display the variable NAME in the document, not the value
-                  // The value is stored in backend but the displayLabel should show the variable name
-                  const newLabel = variable.displayLabel;
+                  // Display the variable VALUE in the document
+                  // The label/name is just metadata for identification in the sidepane
+                  const newLabel = variable.value || variable.displayLabel;
                   
                   console.log(`📝 Updating annotation ${i + 1}/${annotations.length} at pos ${pos}: "${oldLabel}" → "${newLabel}"`);
                   
@@ -3595,7 +3597,7 @@
                   const deleteResult = editor.commands.deleteFieldAnnotation({ node, pos });
                   console.log(`🗑️ Delete result:`, deleteResult);
                   
-                  // Re-insert with new displayLabel (variable name) at the same position
+                  // Re-insert with new displayLabel (value) at the same position
                   const insertResult = editor.commands.addFieldAnnotation(pos, {
                     fieldId: variable.varId,
                     displayLabel: newLabel,
@@ -3645,7 +3647,7 @@
             
             if (response.ok) {
               console.log('✅ Variable value saved:', varId, newValue);
-              // Update the document immediately
+              // Update the document to show the new value
               const updatedVariable = variables[varId];
               if (updatedVariable) {
                 await updateVariableInDocument({ ...updatedVariable, value: newValue });
@@ -3747,12 +3749,14 @@
                 contentControl.tag = variable.varId;
                 contentControl.appearance = 'Tags';
                 contentControl.color = '#980043';
-                contentControl.insertText(name, 'Replace');
+                // Insert the VALUE (which will be name if no value provided)
+                const displayText = variable.value || name;
+                contentControl.insertText(displayText, 'Replace');
                 contentControl.font.highlightColor = '#FFC0CB';
                 contentControl.font.bold = true;
                 
                 await context.sync();
-                console.log('✅ Variable inserted into Word document:', name);
+                console.log('✅ Variable inserted into Word document:', displayText);
               });
             } catch (wordError) {
               console.error('❌ Failed to insert into Word document:', wordError);
@@ -3763,14 +3767,16 @@
               const editor = window.superdocInstance.editor;
               
               if (editor.commands && typeof editor.commands.addFieldAnnotationAtSelection === 'function') {
+                // Insert the VALUE (which will be name if no value provided)
+                const displayText = variable.value || name;
                 editor.commands.addFieldAnnotationAtSelection({
                   fieldId: variable.varId,
-                  displayLabel: name,
+                  displayLabel: displayText,
                   fieldType: 'TEXTINPUT',
                   fieldColor: '#980043',
                   type: variableType
                 });
-                console.log('✅ Variable inserted into SuperDoc document:', name);
+                console.log('✅ Variable inserted into SuperDoc document:', displayText);
               } else {
                 console.warn('⚠️ SuperDoc Field Annotation plugin not loaded.');
               }
