@@ -5,11 +5,9 @@
   const win = typeof global !== 'undefined' ? global : (typeof window !== 'undefined' ? window : this);
 
   function getApiBase() {
-    try {
-      const src = Array.from(document.scripts).map(s => s.src).find(u => typeof u === 'string' && /(^|\/)components\.react\.js(\?|$)/.test(u));
-      if (src) return new URL(src).origin;
-    } catch {}
-    try { return location.origin; } catch {}
+    // Always use the API server port (4001), not the dev server port (4000)
+    // The dev server (4000) is for serving the add-in HTML/JS
+    // The API server (4001) is for all backend API calls
     return 'https://localhost:4001';
   }
 
