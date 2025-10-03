@@ -258,59 +258,59 @@ function resetUserChat(userId) {
 }
 
 // Fields storage functions (document field/variable definitions)
-function readFields() {
+function readVariables() {
   try {
-    if (fs.existsSync(fieldsFilePath)) {
-      const content = fs.readFileSync(fieldsFilePath, 'utf8');
+    if (fs.existsSync(variablesFilePath)) {
+      const content = fs.readFileSync(variablesFilePath, 'utf8');
       const cleanContent = content.replace(/^\uFEFF/, '');
       const data = JSON.parse(cleanContent);
       return data || {};
     }
     return {};
   } catch (e) {
-    console.error('Error reading fields:', e);
+    console.error('Error reading variables:', e);
     return {};
   }
 }
 
-function saveField(field) {
+function saveVariable(variable) {
   try {
-    const fields = readFields();
-    fields[field.fieldId] = field;
-    fs.writeFileSync(fieldsFilePath, JSON.stringify(fields, null, 2), 'utf8');
+    const variables = readVariables();
+    variables[variable.varId] = variable;
+    fs.writeFileSync(variablesFilePath, JSON.stringify(variables, null, 2), 'utf8');
     return true;
   } catch (e) {
-    console.error('Error saving field:', e);
+    console.error('Error saving variable:', e);
     return false;
   }
 }
 
-function updateField(fieldId, updates) {
+function updateVariable(varId, updates) {
   try {
-    const fields = readFields();
-    if (!fields[fieldId]) {
+    const variables = readVariables();
+    if (!variables[varId]) {
       return false;
     }
-    fields[fieldId] = { ...fields[fieldId], ...updates, updatedAt: new Date().toISOString() };
-    fs.writeFileSync(fieldsFilePath, JSON.stringify(fields, null, 2), 'utf8');
+    variables[varId] = { ...variables[varId], ...updates, updatedAt: new Date().toISOString() };
+    fs.writeFileSync(variablesFilePath, JSON.stringify(variables, null, 2), 'utf8');
     return true;
   } catch (e) {
-    console.error('Error updating field:', e);
+    console.error('Error updating variable:', e);
     return false;
   }
 }
 
-function deleteField(fieldId) {
+function deleteVariable(varId) {
   try {
-    const fields = readFields();
-    if (!fields[fieldId]) {
+    const variables = readVariables();
+    if (!variables[varId]) {
       return false;
     }
-    delete fields[fieldId];
-    fs.writeFileSync(fieldsFilePath, JSON.stringify(fields, null, 2), 'utf8');
+    delete variables[varId];
+    fs.writeFileSync(variablesFilePath, JSON.stringify(variables, null, 2), 'utf8');
     return true;
   } catch (e) {
-    console.error('Error deleting field:', e);
+    console.error('Error deleting variable:', e);
     return false;
   }
 }
@@ -482,28 +482,36 @@ function buildActivityMessage(type, details = {}) {
         message: `System error: ${details.error || 'Unknown error'}`
       };
 
-    case 'field:created':
+    case 'variable:created':
       return {
-        action: 'created field',
-        target: 'field',
-        details: { fieldId: details.fieldId, displayLabel: details.displayLabel, category: details.category },
-        message: `${userLabel} created field "${details.displayLabel}"${details.category ? ` in ${details.category}` : ''}`
+        action: 'created variable',
+        target: 'variable',
+        details: { varId: details.varId, displayLabel: details.displayLabel, category: details.category },
+        message: `${userLabel} created variable "${details.displayLabel}"${details.category ? ` in ${details.category}` : ''}`
       };
 
-    case 'field:updated':
+    case 'variable:updated':
       return {
-        action: 'updated field',
-        target: 'field',
-        details: { fieldId: details.fieldId, displayLabel: details.displayLabel, changes: details.changes },
-        message: `${userLabel} updated field "${details.displayLabel}"`
+        action: 'updated variable',
+        target: 'variable',
+        details: { varId: details.varId, displayLabel: details.displayLabel, changes: details.changes },
+        message: `${userLabel} updated variable "${details.displayLabel}"`
       };
 
-    case 'field:deleted':
+    case 'variable:valueChanged':
       return {
-        action: 'deleted field',
-        target: 'field',
-        details: { fieldId: details.fieldId, displayLabel: details.displayLabel },
-        message: `${userLabel} deleted field "${details.displayLabel}"`
+        action: 'changed variable value',
+        target: 'variable',
+        details: { varId: details.varId, displayLabel: details.displayLabel, value: details.value },
+        message: `${userLabel} changed "${details.displayLabel}" to "${details.value}"`
+      };
+
+    case 'variable:deleted':
+      return {
+        action: 'deleted variable',
+        target: 'variable',
+        details: { varId: details.varId, displayLabel: details.displayLabel },
+        message: `${userLabel} deleted variable "${details.displayLabel}"`
       };
 
     // Add more activity types as needed
@@ -528,7 +536,7 @@ const approvalsFilePath = path.join(dataAppDir, 'approvals.json');
 const activityLogFilePath = path.join(dataAppDir, 'activity-log.json');
 const messagesFilePath = path.join(dataAppDir, 'messages.json');
 const chatFilePath = path.join(dataAppDir, 'chat.json');
-const fieldsFilePath = path.join(dataAppDir, 'fields.json');
+const variablesFilePath = path.join(dataAppDir, 'variables.json');
 
 // Ensure working directories exist
 for (const dir of [dataWorkingDir, workingDocumentsDir, workingExhibitsDir, compiledDir, versionsDir]) {
@@ -981,13 +989,13 @@ app.post('/api/v1/chat/reset', (req, res) => {
 });
 
 // Fields API
-app.get('/api/v1/fields', (req, res) => {
+app.get('/api/v1/variables', (req, res) => {
   try {
-    const fields = readFields();
-    return res.json({ fields });
+    const variables = readVariables();
+    return res.json({ variables });
   } catch (e) {
-    console.error('Error reading fields:', e);
-    return res.status(500).json({ error: 'Failed to read fields' });
+    console.error('Error reading variables:', e);
+    return res.status(500).json({ error: 'Failed to read variables' });
   }
 });
 
@@ -1574,8 +1582,8 @@ app.post('/api/v1/factory-reset', (req, res) => {
     try { if (fs.existsSync(messagesFilePath)) fs.rmSync(messagesFilePath); } catch {}
     // Clear chat history
     try { if (fs.existsSync(chatFilePath)) fs.rmSync(chatFilePath); } catch {}
-    // Clear fields
-    try { if (fs.existsSync(fieldsFilePath)) fs.rmSync(fieldsFilePath); } catch {}
+    // Clear variables
+    try { if (fs.existsSync(variablesFilePath)) fs.rmSync(variablesFilePath); } catch {}
     // Remove snapshots entirely
     const snapDir = path.join(dataWorkingDir, 'snapshots');
     if (fs.existsSync(snapDir)) {

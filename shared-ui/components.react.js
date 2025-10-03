@@ -3393,148 +3393,241 @@
       ]);
     }
 
-    // Fields Panel - Phase 2: Basic wireframe with Enter Variable button
-    function FieldsPanel() {
+    // Variables Panel - Phase 3: Full implementation with inline value editing
+    function VariablesPanel() {
       const API_BASE = getApiBase();
       const { currentUser } = React.useContext(StateContext);
       const [showModal, setShowModal] = React.useState(false);
-      const [fieldName, setFieldName] = React.useState('');
+      const [variableName, setVariableName] = React.useState('');
+      const [variableType, setVariableType] = React.useState('value');
       const [isInserting, setIsInserting] = React.useState(false);
-      const [fields, setFields] = React.useState({});
+      const [variables, setVariables] = React.useState({});
       const [isLoading, setIsLoading] = React.useState(true);
+      const [editingValues, setEditingValues] = React.useState({});
+      const saveTimeouts = React.useRef({});
 
-      // Load fields from backend
+      // Load variables from backend
       React.useEffect(() => {
-        const loadFields = async () => {
+        const loadVariables = async () => {
           try {
-            const response = await fetch(`${API_BASE}/api/v1/fields`);
+            const response = await fetch(`${API_BASE}/api/v1/variables`);
             if (response.ok) {
               const data = await response.json();
-              setFields(data.fields || {});
+              setVariables(data.variables || {});
             }
           } catch (error) {
-            console.error('Failed to load fields:', error);
+            console.error('Failed to load variables:', error);
           } finally {
             setIsLoading(false);
           }
         };
-        loadFields();
+        loadVariables();
       }, [API_BASE]);
 
-      // Listen for SSE field events
+      // Listen for SSE variable events
       React.useEffect(() => {
-        const handleFieldCreated = (event) => {
+        const handleVariableCreated = (event) => {
           try {
             const data = JSON.parse(event.data || '{}');
-            if (data.field) {
-              setFields(prev => ({ ...prev, [data.field.fieldId]: data.field }));
+            if (data.variable) {
+              setVariables(prev => ({ ...prev, [data.variable.varId]: data.variable }));
             }
           } catch (error) {
-            console.error('Failed to handle field:created event:', error);
+            console.error('Failed to handle variable:created event:', error);
           }
         };
 
-        const handleFieldUpdated = (event) => {
+        const handleVariableUpdated = (event) => {
           try {
             const data = JSON.parse(event.data || '{}');
-            if (data.field) {
-              setFields(prev => ({ ...prev, [data.field.fieldId]: data.field }));
+            if (data.variable) {
+              setVariables(prev => ({ ...prev, [data.variable.varId]: data.variable }));
             }
           } catch (error) {
-            console.error('Failed to handle field:updated event:', error);
+            console.error('Failed to handle variable:updated event:', error);
           }
         };
 
-        const handleFieldDeleted = (event) => {
+        const handleVariableValueChanged = (event) => {
           try {
             const data = JSON.parse(event.data || '{}');
-            if (data.fieldId) {
-              setFields(prev => {
+            if (data.variable) {
+              setVariables(prev => ({ ...prev, [data.variable.varId]: data.variable }));
+              // Update platform-specific rendering
+              updateVariableInDocument(data.variable);
+            }
+          } catch (error) {
+            console.error('Failed to handle variable:valueChanged event:', error);
+          }
+        };
+
+        const handleVariableDeleted = (event) => {
+          try {
+            const data = JSON.parse(event.data || '{}');
+            if (data.varId) {
+              setVariables(prev => {
                 const updated = { ...prev };
-                delete updated[data.fieldId];
+                delete updated[data.varId];
                 return updated;
               });
             }
           } catch (error) {
-            console.error('Failed to handle field:deleted event:', error);
+            console.error('Failed to handle variable:deleted event:', error);
           }
         };
 
-        const handleFieldsReset = () => {
-          setFields({});
+        const handleVariablesReset = () => {
+          setVariables({});
         };
 
         if (window.eventSource) {
-          window.eventSource.addEventListener('field:created', handleFieldCreated);
-          window.eventSource.addEventListener('field:updated', handleFieldUpdated);
-          window.eventSource.addEventListener('field:deleted', handleFieldDeleted);
-          window.eventSource.addEventListener('fields:reset', handleFieldsReset);
+          window.eventSource.addEventListener('variable:created', handleVariableCreated);
+          window.eventSource.addEventListener('variable:updated', handleVariableUpdated);
+          window.eventSource.addEventListener('variable:valueChanged', handleVariableValueChanged);
+          window.eventSource.addEventListener('variable:deleted', handleVariableDeleted);
+          window.eventSource.addEventListener('variables:reset', handleVariablesReset);
         }
 
         return () => {
           if (window.eventSource) {
-            window.eventSource.removeEventListener('field:created', handleFieldCreated);
-            window.eventSource.removeEventListener('field:updated', handleFieldUpdated);
-            window.eventSource.removeEventListener('field:deleted', handleFieldDeleted);
-            window.eventSource.removeEventListener('fields:reset', handleFieldsReset);
+            window.eventSource.removeEventListener('variable:created', handleVariableCreated);
+            window.eventSource.removeEventListener('variable:updated', handleVariableUpdated);
+            window.eventSource.removeEventListener('variable:valueChanged', handleVariableValueChanged);
+            window.eventSource.removeEventListener('variable:deleted', handleVariableDeleted);
+            window.eventSource.removeEventListener('variables:reset', handleVariablesReset);
           }
         };
       }, []);
 
+      // Helper: Update variable value in document when it changes
+      const updateVariableInDocument = async (variable) => {
+        const isWordAddin = typeof Office !== 'undefined' && Office.context && Office.context.host;
+        
+        if (isWordAddin) {
+          // Word add-in: Update Content Controls with matching tag
+          try {
+            await Word.run(async (context) => {
+              const contentControls = context.document.contentControls;
+              contentControls.load('items');
+              await context.sync();
+              
+              for (let i = 0; i < contentControls.items.length; i++) {
+                const cc = contentControls.items[i];
+                cc.load('tag,title');
+                await context.sync();
+                
+                if (cc.tag === variable.varId) {
+                  const displayText = variable.value || variable.displayLabel;
+                  cc.insertText(displayText, 'Replace');
+                  await context.sync();
+                  console.log('✅ Updated Word Content Control:', displayText);
+                }
+              }
+            });
+          } catch (error) {
+            console.error('❌ Failed to update Word Content Control:', error);
+          }
+        } else {
+          // Web viewer: Update SuperDoc field annotations
+          if (window.superdocInstance && window.superdocInstance.editor) {
+            const editor = window.superdocInstance.editor;
+            if (editor.commands && typeof editor.commands.updateFieldAnnotations === 'function') {
+              try {
+                editor.commands.updateFieldAnnotations({
+                  fieldId: variable.varId,
+                  displayLabel: variable.value || variable.displayLabel
+                });
+                console.log('✅ Updated SuperDoc field annotation:', variable.displayLabel);
+              } catch (error) {
+                console.error('❌ Failed to update SuperDoc field:', error);
+              }
+            }
+          }
+        }
+      };
+
+      // Helper: Debounced save of variable value
+      const handleValueChange = (varId, newValue) => {
+        // Update local state immediately
+        setEditingValues(prev => ({ ...prev, [varId]: newValue }));
+        
+        // Clear existing timeout for this variable
+        if (saveTimeouts.current[varId]) {
+          clearTimeout(saveTimeouts.current[varId]);
+        }
+        
+        // Debounce save (500ms after last keystroke)
+        saveTimeouts.current[varId] = setTimeout(async () => {
+          try {
+            const response = await fetch(`${API_BASE}/api/v1/variables/${varId}/value`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                value: newValue,
+                userId: currentUser || 'user1'
+              })
+            });
+            
+            if (response.ok) {
+              console.log('✅ Variable value saved:', varId, newValue);
+            } else {
+              console.error('❌ Failed to save variable value');
+            }
+          } catch (error) {
+            console.error('❌ Error saving variable value:', error);
+          }
+        }, 500);
+      };
+
       const handleInsert = async () => {
-        const name = fieldName.trim();
+        const name = variableName.trim();
         if (!name) return;
 
         setIsInserting(true);
         try {
-          // Generate unique field ID
-          const fieldId = `field-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          
-          // Create field via API
-          const response = await fetch(`${API_BASE}/api/v1/fields`, {
+          // Create variable via API (server will generate varId if not provided)
+          const response = await fetch(`${API_BASE}/api/v1/variables`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              fieldId,
               displayLabel: name,
-              fieldType: 'TEXTINPUT',
-              fieldColor: '#980043',
-              type: 'text',
-              category: 'Uncategorized',
-              defaultValue: '',
+              type: variableType,
+              category: variableType === 'signature' ? 'Signatures' : 'Uncategorized',
+              value: '',
               userId: currentUser || 'user1'
             })
           });
 
           if (!response.ok) {
-            throw new Error('Failed to create field');
+            throw new Error('Failed to create variable');
           }
 
-          // Insert field into document - platform specific
+          const result = await response.json();
+          const variable = result.variable;
+
+          // Insert variable into document - platform specific
           const isWordAddin = typeof Office !== 'undefined' && Office.context && Office.context.host;
           
-              if (isWordAddin) {
-                // Word add-in: Insert into actual Word document using Content Controls
-                try {
-                  await Word.run(async (context) => {
-                    const range = context.document.getSelection();
-                    const contentControl = range.insertContentControl();
-                    contentControl.title = name;
-                    contentControl.tag = fieldId;
-                    contentControl.appearance = 'Tags'; // Shows field name in tags like <Field Name>
-                    contentControl.color = '#980043'; // Burgundy color to match SuperDoc
-                    contentControl.insertText(name, 'Replace'); // Just the field name, not {{}}
-                    
-                    // Apply highlighting to make it stand out like SuperDoc
-                    contentControl.font.highlightColor = '#FFC0CB'; // Light pink highlight
-                    contentControl.font.bold = true;
-                    
-                    await context.sync();
-                    console.log('✅ Field inserted into Word document:', name);
-                  });
-                } catch (wordError) {
-                  console.error('❌ Failed to insert into Word document:', wordError);
-                }
+          if (isWordAddin) {
+            // Word add-in: Insert into actual Word document using Content Controls
+            try {
+              await Word.run(async (context) => {
+                const range = context.document.getSelection();
+                const contentControl = range.insertContentControl();
+                contentControl.title = name;
+                contentControl.tag = variable.varId;
+                contentControl.appearance = 'Tags';
+                contentControl.color = '#980043';
+                contentControl.insertText(name, 'Replace');
+                contentControl.font.highlightColor = '#FFC0CB';
+                contentControl.font.bold = true;
+                
+                await context.sync();
+                console.log('✅ Variable inserted into Word document:', name);
+              });
+            } catch (wordError) {
+              console.error('❌ Failed to insert into Word document:', wordError);
+            }
           } else {
             // Web viewer: Insert into SuperDoc editor
             if (window.superdocInstance && window.superdocInstance.editor) {
@@ -3542,13 +3635,13 @@
               
               if (editor.commands && typeof editor.commands.addFieldAnnotationAtSelection === 'function') {
                 editor.commands.addFieldAnnotationAtSelection({
-                  fieldId,
+                  fieldId: variable.varId,
                   displayLabel: name,
                   fieldType: 'TEXTINPUT',
                   fieldColor: '#980043',
-                  type: 'text'
+                  type: variableType
                 });
-                console.log('✅ Field inserted into SuperDoc document:', name);
+                console.log('✅ Variable inserted into SuperDoc document:', name);
               } else {
                 console.warn('⚠️ SuperDoc Field Annotation plugin not loaded.');
               }
@@ -3558,12 +3651,12 @@
           }
 
         } catch (error) {
-          console.error('❌ Error inserting field:', error);
-          // Note: alert() not supported in Office add-ins, using console instead
+          console.error('❌ Error inserting variable:', error);
         } finally {
           // Always close modal and reset, even on error
           setShowModal(false);
-          setFieldName('');
+          setVariableName('');
+          setVariableType('value');
           setIsInserting(false);
         }
       };
@@ -3573,7 +3666,7 @@
           handleInsert();
         } else if (e.key === 'Escape') {
           setShowModal(false);
-          setFieldName('');
+          setVariableName('');
         }
       };
 
@@ -3593,7 +3686,7 @@
         },
         onClick: () => {
           setShowModal(false);
-          setFieldName('');
+          setVariableName('');
         }
       }, React.createElement('div', {
         style: {
@@ -3609,14 +3702,56 @@
         React.createElement('h3', {
           key: 'title',
           style: { margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }
-        }, 'Enter Variable Name'),
+        }, 'Create Variable'),
+        React.createElement('div', {
+          key: 'type-selector',
+          style: { marginBottom: '12px' }
+        }, [
+          React.createElement('label', {
+            key: 'label',
+            style: { display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }
+          }, 'Type'),
+          React.createElement('div', {
+            key: 'types',
+            style: { display: 'flex', gap: '8px' }
+          }, [
+            React.createElement('button', {
+              key: 'value',
+              onClick: () => setVariableType('value'),
+              style: {
+                flex: 1,
+                padding: '8px',
+                fontSize: '14px',
+                border: variableType === 'value' ? '2px solid #6d5ef1' : '1px solid #d1d5db',
+                borderRadius: '4px',
+                background: variableType === 'value' ? '#ede9fe' : 'white',
+                cursor: 'pointer',
+                fontWeight: variableType === 'value' ? '600' : '400'
+              }
+            }, 'Value'),
+            React.createElement('button', {
+              key: 'signature',
+              onClick: () => setVariableType('signature'),
+              style: {
+                flex: 1,
+                padding: '8px',
+                fontSize: '14px',
+                border: variableType === 'signature' ? '2px solid #6d5ef1' : '1px solid #d1d5db',
+                borderRadius: '4px',
+                background: variableType === 'signature' ? '#ede9fe' : 'white',
+                cursor: 'pointer',
+                fontWeight: variableType === 'signature' ? '600' : '400'
+              }
+            }, 'Signature')
+          ])
+        ]),
         React.createElement('input', {
           key: 'input',
           type: 'text',
-          value: fieldName,
-          onChange: (e) => setFieldName(e.target.value),
+          value: variableName,
+          onChange: (e) => setVariableName(e.target.value),
           onKeyDown: handleKeyPress,
-          placeholder: 'e.g., Party A Name',
+          placeholder: variableType === 'value' ? 'e.g., Contract Amount' : 'e.g., Party A Signature',
           autoFocus: true,
           style: {
             width: '100%',
@@ -3635,7 +3770,7 @@
             key: 'cancel',
             onClick: () => {
               setShowModal(false);
-              setFieldName('');
+              setVariableName('');
             },
             disabled: isInserting,
             style: {
@@ -3651,15 +3786,15 @@
           React.createElement('button', {
             key: 'insert',
             onClick: handleInsert,
-            disabled: !fieldName.trim() || isInserting,
+            disabled: !variableName.trim() || isInserting,
             style: {
               padding: '8px 16px',
               fontSize: '14px',
               border: 'none',
               borderRadius: '4px',
-              background: (!fieldName.trim() || isInserting) ? '#9ca3af' : '#6d5ef1',
+              background: (!variableName.trim() || isInserting) ? '#9ca3af' : '#6d5ef1',
               color: 'white',
-              cursor: (!fieldName.trim() || isInserting) ? 'not-allowed' : 'pointer',
+              cursor: (!variableName.trim() || isInserting) ? 'not-allowed' : 'pointer',
               fontWeight: '500'
             }
           }, isInserting ? 'Inserting...' : 'Insert')
@@ -3682,7 +3817,7 @@
           React.createElement('h3', {
             key: 'title',
             style: { margin: 0, fontSize: '16px', fontWeight: '600' }
-          }, 'Fields'),
+          }, 'Variables'),
           React.createElement('button', {
             key: 'add',
             onClick: () => setShowModal(true),
@@ -3720,11 +3855,11 @@
                 color: '#6b7280',
                 fontSize: '14px'
               }
-            }, 'Loading fields...');
+            }, 'Loading variables...');
           }
 
-          const fieldsList = Object.values(fields);
-          if (fieldsList.length === 0) {
+          const variablesList = Object.values(variables);
+          if (variablesList.length === 0) {
             return React.createElement('div', {
               style: {
                 padding: '32px 16px',
@@ -3732,96 +3867,149 @@
                 color: '#6b7280',
                 fontSize: '14px'
               }
-            }, 'No fields yet. Click "+ Enter Variable" to create your first field.');
+            }, 'No variables yet. Click "+ Enter Variable" to create your first variable.');
           }
 
-          // Show fields list
-          return fieldsList.map((field) => React.createElement('div', {
-            key: field.fieldId,
+          // Show variables list with inline value editing
+          return variablesList.map((variable) => React.createElement('div', {
+            key: variable.varId,
             style: {
               padding: '12px',
               marginBottom: '8px',
               background: 'white',
               border: '1px solid #e5e7eb',
               borderRadius: '6px',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              ':hover': {
-                borderColor: '#6d5ef1',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-              }
-            },
-            onClick: async () => {
-              // Insert field at cursor - platform specific
-              console.log('🔵 Field clicked:', field.displayLabel);
-              
-              const isWordAddin = typeof Office !== 'undefined' && Office.context && Office.context.host;
-              
-              if (isWordAddin) {
-                // Word add-in: Insert into actual Word document
-                try {
-                  await Word.run(async (context) => {
-                    const range = context.document.getSelection();
-                    const contentControl = range.insertContentControl();
-                    contentControl.title = field.displayLabel;
-                    contentControl.tag = field.fieldId;
-                    contentControl.appearance = 'Tags'; // Shows <Field Name>
-                    contentControl.color = field.fieldColor || '#980043';
-                    contentControl.insertText(field.displayLabel, 'Replace');
-                    
-                    // Apply highlighting to match SuperDoc appearance
-                    contentControl.font.highlightColor = '#FFC0CB'; // Light pink highlight
-                    contentControl.font.bold = true;
-                    
-                    await context.sync();
-                    console.log('✅ Field inserted into Word document:', field.displayLabel);
-                  });
-                } catch (error) {
-                  console.error('❌ Failed to insert field into Word:', error);
-                }
-              } else {
-                // Web viewer: Insert into SuperDoc
-                if (!window.superdocInstance || !window.superdocInstance.editor) {
-                  console.error('❌ SuperDoc not available');
-                  return;
-                }
-                
-                const editor = window.superdocInstance.editor;
-                if (!editor.commands || typeof editor.commands.addFieldAnnotationAtSelection !== 'function') {
-                  console.error('❌ Field Annotation plugin not loaded');
-                  return;
-                }
-                
-                try {
-                  editor.commands.addFieldAnnotationAtSelection({
-                    fieldId: field.fieldId,
-                    displayLabel: field.displayLabel,
-                    fieldType: field.fieldType || 'TEXTINPUT',
-                    fieldColor: field.fieldColor || '#980043',
-                    type: field.type || 'text'
-                  });
-                  console.log('✅ Field inserted into SuperDoc:', field.displayLabel);
-                } catch (error) {
-                  console.error('❌ Failed to insert field into SuperDoc:', error);
-                }
-              }
+              transition: 'all 0.2s'
             }
           }, [
+            // Variable header with name and insert button
             React.createElement('div', {
-              key: 'name',
+              key: 'header',
               style: {
-                fontWeight: '500',
-                marginBottom: '4px',
-                fontSize: '14px'
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '8px'
               }
-            }, field.displayLabel),
-            React.createElement('div', {
-              key: 'meta',
-              style: {
-                fontSize: '12px',
-                color: '#6b7280'
-              }
-            }, `${field.fieldType || 'TEXTINPUT'} • ${field.category || 'Uncategorized'}`)
+            }, [
+              React.createElement('div', {
+                key: 'info',
+                style: { flex: 1 }
+              }, [
+                React.createElement('div', {
+                  key: 'name',
+                  style: {
+                    fontWeight: '600',
+                    marginBottom: '2px',
+                    fontSize: '14px'
+                  }
+                }, variable.displayLabel),
+                React.createElement('div', {
+                  key: 'meta',
+                  style: {
+                    fontSize: '11px',
+                    color: '#6b7280'
+                  }
+                }, `${variable.type === 'signature' ? '✍️ Signature' : '📝 Value'} • ${variable.category || 'Uncategorized'}`)
+              ]),
+              React.createElement('button', {
+                key: 'insert',
+                onClick: async (e) => {
+                  e.stopPropagation();
+                  console.log('🔵 Insert variable clicked:', variable.displayLabel);
+                  
+                  const isWordAddin = typeof Office !== 'undefined' && Office.context && Office.context.host;
+                  
+                  if (isWordAddin) {
+                    try {
+                      await Word.run(async (context) => {
+                        const range = context.document.getSelection();
+                        const contentControl = range.insertContentControl();
+                        contentControl.title = variable.displayLabel;
+                        contentControl.tag = variable.varId;
+                        contentControl.appearance = 'Tags';
+                        contentControl.color = '#980043';
+                        const displayText = variable.value || variable.displayLabel;
+                        contentControl.insertText(displayText, 'Replace');
+                        contentControl.font.highlightColor = '#FFC0CB';
+                        contentControl.font.bold = true;
+                        
+                        await context.sync();
+                        console.log('✅ Variable inserted into Word document:', displayText);
+                      });
+                    } catch (error) {
+                      console.error('❌ Failed to insert into Word document:', error);
+                    }
+                  } else {
+                    if (!window.superdocInstance || !window.superdocInstance.editor) {
+                      console.error('❌ SuperDoc not available');
+                      return;
+                    }
+                    
+                    const editor = window.superdocInstance.editor;
+                    if (!editor.commands || typeof editor.commands.addFieldAnnotationAtSelection !== 'function') {
+                      console.error('❌ Field Annotation plugin not loaded');
+                      return;
+                    }
+                    
+                    try {
+                      editor.commands.addFieldAnnotationAtSelection({
+                        fieldId: variable.varId,
+                        displayLabel: variable.value || variable.displayLabel,
+                        fieldType: 'TEXTINPUT',
+                        fieldColor: '#980043',
+                        type: variable.type
+                      });
+                      console.log('✅ Variable inserted into SuperDoc:', variable.displayLabel);
+                    } catch (error) {
+                      console.error('❌ Failed to insert into SuperDoc:', error);
+                    }
+                  }
+                },
+                style: {
+                  padding: '4px 8px',
+                  fontSize: '12px',
+                  border: 'none',
+                  borderRadius: '4px',
+                  background: '#6d5ef1',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontWeight: '500'
+                }
+              }, 'Insert')
+            ]),
+            // Value input (only for value type, not signatures)
+            variable.type !== 'signature' ? React.createElement('div', {
+              key: 'value',
+              style: { marginTop: '8px' }
+            }, [
+              React.createElement('label', {
+                key: 'label',
+                style: {
+                  display: 'block',
+                  fontSize: '11px',
+                  color: '#6b7280',
+                  marginBottom: '4px',
+                  fontWeight: '500'
+                }
+              }, 'Value:'),
+              React.createElement('input', {
+                key: 'input',
+                type: 'text',
+                value: editingValues[variable.varId] !== undefined ? editingValues[variable.varId] : (variable.value || ''),
+                onChange: (e) => handleValueChange(variable.varId, e.target.value),
+                placeholder: 'Enter value...',
+                onClick: (e) => e.stopPropagation(),
+                style: {
+                  width: '100%',
+                  padding: '6px 8px',
+                  fontSize: '13px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '4px',
+                  fontFamily: 'monospace'
+                }
+              })
+            ]) : null
           ]));
         })())
       ]);
@@ -3930,7 +4118,7 @@
       const verLabelRef = React.useRef(null);
       const actLabelRef = React.useRef(null);
       const cmpLabelRef = React.useRef(null);
-      const fieldsLabelRef = React.useRef(null);
+      const variablesLabelRef = React.useRef(null);
       const prevTabRef = React.useRef(activeTab);
       
       // Reload document when leaving Comparison tab to remove comparison highlights
@@ -3966,7 +4154,7 @@
                     ? actLabelRef.current
                     : (activeTab === 'Comparison'
                       ? cmpLabelRef.current
-                      : fieldsLabelRef.current))))));
+                      : variablesLabelRef.current))))));
           if (!bar || !labelEl) return;
           const barRect = bar.getBoundingClientRect();
           const labRect = labelEl.getBoundingClientRect();
@@ -4060,13 +4248,13 @@
             onClick: () => setActiveTab('Comparison'),
             style: { background: 'transparent', border: 'none', padding: '8px 6px', cursor: 'pointer', color: activeTab === 'Comparison' ? '#111827' : '#6B7280', fontWeight: 600 }
           }, React.createElement('span', { ref: cmpLabelRef, style: { display: 'inline-block' } }, 'Compare')),
-          // Fields tab (Phase 2)
+          // Variables tab (Phase 3)
           React.createElement('button', {
-            key: 'tab-fields',
-            className: activeTab === 'Fields' ? 'tab tab--active' : 'tab',
-            onClick: () => setActiveTab('Fields'),
-            style: { background: 'transparent', border: 'none', padding: '8px 6px', cursor: 'pointer', color: activeTab === 'Fields' ? '#111827' : '#6B7280', fontWeight: 600 }
-          }, React.createElement('span', { ref: fieldsLabelRef, style: { display: 'inline-block' } }, 'Fields')),
+            key: 'tab-variables',
+            className: activeTab === 'Variables' ? 'tab tab--active' : 'tab',
+            onClick: () => setActiveTab('Variables'),
+            style: { background: 'transparent', border: 'none', padding: '8px 6px', cursor: 'pointer', color: activeTab === 'Variables' ? '#111827' : '#6B7280', fontWeight: 600 }
+          }, React.createElement('span', { ref: variablesLabelRef, style: { display: 'inline-block' } }, 'Variables')),
         React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
         React.createElement('div', { key: 'tabbody', className: activeTab === 'AI' ? '' : 'mt-3', style: { flex: 1, minHeight: 0, overflowY: activeTab === 'AI' ? 'hidden' : 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', padding: activeTab === 'AI' ? '0' : '0 8px 112px 8px', marginTop: activeTab === 'AI' ? 0 : undefined } }, [
@@ -4076,7 +4264,7 @@
           React.createElement('div', { key: 'wrap-versions', style: { display: (activeTab === 'Versions' ? 'block' : 'none') } }, React.createElement(VersionsPanel, { key: 'versions' })),
           React.createElement('div', { key: 'wrap-activity', style: { display: (activeTab === 'Activity' ? 'block' : 'none') } }, React.createElement(ActivityPanel, { key: 'activity' })),
           React.createElement('div', { key: 'wrap-compare', style: { display: (activeTab === 'Comparison' ? 'block' : 'none') } }, React.createElement(ComparisonTab, { key: 'compare' })),
-          React.createElement('div', { key: 'wrap-fields', style: { display: (activeTab === 'Fields' ? 'block' : 'none') } }, React.createElement(FieldsPanel, { key: 'fields' }))
+          React.createElement('div', { key: 'wrap-variables', style: { display: (activeTab === 'Variables' ? 'block' : 'none') } }, React.createElement(VariablesPanel, { key: 'variables' }))
         ])
       ]);
 
