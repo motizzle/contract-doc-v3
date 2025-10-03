@@ -3429,8 +3429,13 @@
         const handleVariableCreated = (event) => {
           try {
             const data = JSON.parse(event.data || '{}');
+            console.log('📡 SSE variable:created received:', data);
             if (data.variable) {
-              setVariables(prev => ({ ...prev, [data.variable.varId]: data.variable }));
+              setVariables(prev => {
+                const updated = { ...prev, [data.variable.varId]: data.variable };
+                console.log('🔄 Variables state updated (created):', updated);
+                return updated;
+              });
             }
           } catch (error) {
             console.error('Failed to handle variable:created event:', error);
@@ -3485,15 +3490,29 @@
           setVariables({});
         };
 
-        if (window.eventSource) {
-          window.eventSource.addEventListener('variable:created', handleVariableCreated);
-          window.eventSource.addEventListener('variable:updated', handleVariableUpdated);
-          window.eventSource.addEventListener('variable:valueChanged', handleVariableValueChanged);
-          window.eventSource.addEventListener('variable:deleted', handleVariableDeleted);
-          window.eventSource.addEventListener('variables:reset', handleVariablesReset);
-        }
+        // Poll for eventSource if not immediately available (timing issue)
+        let attached = false;
+        const attachListeners = () => {
+          if (window.eventSource && !attached) {
+            console.log('✅ Attaching variable SSE listeners');
+            window.eventSource.addEventListener('variable:created', handleVariableCreated);
+            window.eventSource.addEventListener('variable:updated', handleVariableUpdated);
+            window.eventSource.addEventListener('variable:valueChanged', handleVariableValueChanged);
+            window.eventSource.addEventListener('variable:deleted', handleVariableDeleted);
+            window.eventSource.addEventListener('variables:reset', handleVariablesReset);
+            attached = true;
+          } else if (!window.eventSource) {
+            console.warn('⚠️ window.eventSource not available yet, will retry...');
+          }
+        };
+
+        attachListeners();
+        
+        // Retry after a delay if not attached
+        const retryTimer = !attached ? setTimeout(attachListeners, 500) : null;
 
         return () => {
+          if (retryTimer) clearTimeout(retryTimer);
           if (window.eventSource) {
             window.eventSource.removeEventListener('variable:created', handleVariableCreated);
             window.eventSource.removeEventListener('variable:updated', handleVariableUpdated);
