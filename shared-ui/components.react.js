@@ -367,6 +367,7 @@
         let sse;
         try {
           sse = new EventSource(`${API_BASE}/api/v1/events`);
+          window.eventSource = sse; // Expose for other components (VariablesPanel, etc.)
           sse.onopen = () => { setIsConnected(true); addLog('Connected to server', 'network'); };
           sse.onmessage = (ev) => {
             try {
