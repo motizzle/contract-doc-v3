@@ -3914,7 +3914,7 @@
               background: '#FFFFFF'
             }
           }, [
-            // Variable header with name and insert button
+            // Variable header with name and buttons
             React.createElement('div', {
               key: 'header',
               style: {
@@ -4006,26 +4006,6 @@
                           whiteSpace: 'nowrap'
                         }
                       }, variable.displayLabel),
-                      React.createElement(UIButton, {
-                        key: 'edit',
-                        label: 'Edit',
-                        variant: 'tertiary',
-                        onClick: (e) => {
-                          e?.stopPropagation?.();
-                          setEditingNames(prev => ({ ...prev, [variable.varId]: variable.displayLabel }));
-                        },
-                        style: { padding: '4px 8px', fontSize: '12px' }
-                      }),
-                      React.createElement(UIButton, {
-                        key: 'delete',
-                        label: 'Delete',
-                        variant: 'tertiary',
-                        onClick: (e) => {
-                          e?.stopPropagation?.();
-                          handleDelete(variable.varId, variable.displayLabel);
-                        },
-                        style: { padding: '4px 8px', fontSize: '12px', color: '#ef4444' }
-                      })
                     ]),
                 React.createElement('div', {
                   key: 'meta',
@@ -4035,11 +4015,39 @@
                   }
                 }, `${variable.type === 'signature' ? '✍️ Signature' : '📝 Value'} • ${variable.category || 'Uncategorized'}`)
               ]),
-              React.createElement(UIButton, {
-                key: 'insert',
-                label: 'Insert',
-                variant: 'primary',
-                onClick: async (e) => {
+              React.createElement('div', {
+                key: 'buttons',
+                style: {
+                  display: 'flex',
+                  gap: '8px',
+                  alignItems: 'center'
+                }
+              }, [
+                React.createElement(UIButton, {
+                  key: 'edit',
+                  label: 'Edit',
+                  variant: 'tertiary',
+                  onClick: (e) => {
+                    e?.stopPropagation?.();
+                    setEditingNames(prev => ({ ...prev, [variable.varId]: variable.displayLabel }));
+                  },
+                  style: { padding: '4px 8px', fontSize: '12px' }
+                }),
+                React.createElement(UIButton, {
+                  key: 'delete',
+                  label: 'Delete',
+                  variant: 'tertiary',
+                  onClick: (e) => {
+                    e?.stopPropagation?.();
+                    handleDelete(variable.varId, variable.displayLabel);
+                  },
+                  style: { padding: '4px 8px', fontSize: '12px', color: '#ef4444' }
+                }),
+                React.createElement(UIButton, {
+                  key: 'insert',
+                  label: 'Insert',
+                  variant: 'primary',
+                  onClick: async (e) => {
                   e?.stopPropagation?.();
                   console.log('🔵 Insert variable clicked:', variable.displayLabel);
                   
@@ -4092,6 +4100,7 @@
                   }
                 }
               })
+            ])
             ]),
             // Value input (only for value type, not signatures)
             variable.type !== 'signature' ? React.createElement('div', {
