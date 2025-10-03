@@ -988,7 +988,7 @@ app.post('/api/v1/chat/reset', (req, res) => {
   }
 });
 
-// Fields API
+// Variables API
 app.get('/api/v1/variables', (req, res) => {
   try {
     const variables = readVariables();
@@ -999,71 +999,77 @@ app.get('/api/v1/variables', (req, res) => {
   }
 });
 
-app.post('/api/v1/fields', (req, res) => {
+app.post('/api/v1/variables', (req, res) => {
   try {
-    const { fieldId, displayLabel, fieldType, fieldColor, type, category, defaultValue, userId } = req.body;
+    const { varId, displayLabel, type, category, value, userId } = req.body;
     
     // Validation
-    if (!fieldId || !displayLabel) {
-      return res.status(400).json({ error: 'Missing required fields: fieldId, displayLabel' });
+    if (!displayLabel) {
+      return res.status(400).json({ error: 'Missing required field: displayLabel' });
     }
     
-    // Check for duplicate fieldId
-    const existingFields = readFields();
-    if (existingFields[fieldId]) {
-      return res.status(409).json({ error: 'Field with this ID already exists' });
+    // Generate varId if not provided
+    const generatedVarId = varId || `var-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Check for duplicate varId
+    const existingVariables = readVariables();
+    if (existingVariables[generatedVarId]) {
+      return res.status(409).json({ error: 'Variable with this ID already exists' });
     }
     
-    // Create field object with metadata
-    const field = {
-      fieldId,
+    // Create variable object with metadata
+    const variable = {
+      varId: generatedVarId,
       displayLabel,
-      fieldType: fieldType || 'TEXTINPUT',
-      fieldColor: fieldColor || '#980043',
-      type: type || 'text',
+      type: type || 'value',
       category: category || 'Uncategorized',
-      defaultValue: defaultValue || '',
+      value: value || '',
       createdBy: userId || 'system',
       createdAt: new Date().toISOString(),
       updatedBy: userId || 'system',
       updatedAt: new Date().toISOString()
     };
     
+    // Add docusignRole for signature type
+    if (type === 'signature') {
+      variable.docusignRole = req.body.docusignRole || null;
+    }
+    
     // Save to storage
-    if (!saveField(field)) {
-      return res.status(500).json({ error: 'Failed to save field' });
+    if (!saveVariable(variable)) {
+      return res.status(500).json({ error: 'Failed to save variable' });
     }
     
     // Log activity
-    logActivity('field:created', userId || 'system', { 
-      fieldId, 
+    logActivity('variable:created', userId || 'system', { 
+      varId: generatedVarId, 
       displayLabel,
       category
     });
     
     // Broadcast SSE event
     broadcast({ 
-      type: 'field:created', 
-      field,
+      type: 'variable:created', 
+      variable,
       userId: userId || 'system'
     });
     
-    return res.json({ ok: true, field });
+    return res.json({ ok: true, variable });
   } catch (e) {
-    console.error('Error creating field:', e);
-    return res.status(500).json({ error: 'Failed to create field' });
+    console.error('Error creating variable:', e);
+    return res.status(500).json({ error: 'Failed to create variable' });
   }
 });
 
-app.put('/api/v1/fields/:fieldId', (req, res) => {
+app.put('/api/v1/variables/:varId', (req, res) => {
   try {
-    const { fieldId } = req.params;
-    const { displayLabel, fieldType, fieldColor, type, category, defaultValue, userId } = req.body;
+    const { varId } = req.params;
+    const { displayLabel, type, category, value, docusignRole, userId } = req.body;
     
-    // Check if field exists
-    const existingFields = readFields();
-    if (!existingFields[fieldId]) {
-      return res.status(404).json({ error: 'Field not found' });
+    // Check if variable exists
+    const existingVariables = readVariables();
+    if (!existingVariables[varId]) {
+      return res.status(404).json({ error: 'Variable not found' });
     }
     
     // Build updates object
@@ -1071,79 +1077,131 @@ app.put('/api/v1/fields/:fieldId', (req, res) => {
       updatedBy: userId || 'system'
     };
     if (displayLabel !== undefined) updates.displayLabel = displayLabel;
-    if (fieldType !== undefined) updates.fieldType = fieldType;
-    if (fieldColor !== undefined) updates.fieldColor = fieldColor;
     if (type !== undefined) updates.type = type;
     if (category !== undefined) updates.category = category;
-    if (defaultValue !== undefined) updates.defaultValue = defaultValue;
+    if (value !== undefined) updates.value = value;
+    if (docusignRole !== undefined) updates.docusignRole = docusignRole;
     
-    // Update field
-    if (!updateField(fieldId, updates)) {
-      return res.status(500).json({ error: 'Failed to update field' });
+    // Update variable
+    if (!updateVariable(varId, updates)) {
+      return res.status(500).json({ error: 'Failed to update variable' });
     }
     
-    // Get updated field
-    const updatedFields = readFields();
-    const updatedField = updatedFields[fieldId];
+    // Get updated variable
+    const updatedVariables = readVariables();
+    const updatedVariable = updatedVariables[varId];
     
     // Log activity
-    logActivity('field:updated', userId || 'system', { 
-      fieldId,
-      displayLabel: updatedField.displayLabel,
+    logActivity('variable:updated', userId || 'system', { 
+      varId,
+      displayLabel: updatedVariable.displayLabel,
       changes: Object.keys(updates).filter(k => k !== 'updatedBy')
     });
     
     // Broadcast SSE event
     broadcast({ 
-      type: 'field:updated', 
-      fieldId,
-      field: updatedField,
+      type: 'variable:updated', 
+      varId,
+      variable: updatedVariable,
       changes: updates,
       userId: userId || 'system'
     });
     
-    return res.json({ ok: true, field: updatedField });
+    return res.json({ ok: true, variable: updatedVariable });
   } catch (e) {
-    console.error('Error updating field:', e);
-    return res.status(500).json({ error: 'Failed to update field' });
+    console.error('Error updating variable:', e);
+    return res.status(500).json({ error: 'Failed to update variable' });
   }
 });
 
-app.delete('/api/v1/fields/:fieldId', (req, res) => {
+app.delete('/api/v1/variables/:varId', (req, res) => {
   try {
-    const { fieldId } = req.params;
+    const { varId } = req.params;
     const { userId } = req.query;
     
-    // Check if field exists
-    const existingFields = readFields();
-    if (!existingFields[fieldId]) {
-      return res.status(404).json({ error: 'Field not found' });
+    // Check if variable exists
+    const existingVariables = readVariables();
+    if (!existingVariables[varId]) {
+      return res.status(404).json({ error: 'Variable not found' });
     }
     
-    const field = existingFields[fieldId];
+    const variable = existingVariables[varId];
     
-    // Delete field
-    if (!deleteField(fieldId)) {
-      return res.status(500).json({ error: 'Failed to delete field' });
+    // Delete variable
+    if (!deleteVariable(varId)) {
+      return res.status(500).json({ error: 'Failed to delete variable' });
     }
     
     // Log activity
-    logActivity('field:deleted', userId || 'system', { 
-      fieldId,
-      displayLabel: field.displayLabel
+    logActivity('variable:deleted', userId || 'system', { 
+      varId,
+      displayLabel: variable.displayLabel
     });
     
     // Broadcast SSE event
     broadcast({ 
-      type: 'field:deleted', 
-      fieldId,
+      type: 'variable:deleted', 
+      varId,
       userId: userId || 'system'
     });
     
-    return res.json({ ok: true, fieldId });
+    return res.json({ ok: true, varId });
   } catch (e) {
-    console.error('Error deleting field:', e);
-    return res.status(500).json({ error: 'Failed to delete field' });
+    console.error('Error deleting variable:', e);
+    return res.status(500).json({ error: 'Failed to delete variable' });
+  }
+});
+
+// Endpoint specifically for updating just the value
+app.put('/api/v1/variables/:varId/value', (req, res) => {
+  try {
+    const { varId } = req.params;
+    const { value, userId } = req.body;
+    
+    // Check if variable exists
+    const existingVariables = readVariables();
+    if (!existingVariables[varId]) {
+      return res.status(404).json({ error: 'Variable not found' });
+    }
+    
+    const oldValue = existingVariables[varId].value;
+    
+    // Update just the value
+    const updates = {
+      value: value !== undefined ? value : '',
+      updatedBy: userId || 'system'
+    };
+    
+    if (!updateVariable(varId, updates)) {
+      return res.status(500).json({ error: 'Failed to update variable value' });
+    }
+    
+    // Get updated variable
+    const updatedVariables = readVariables();
+    const updatedVariable = updatedVariables[varId];
+    
+    // Log activity with specific valueChanged type
+    logActivity('variable:valueChanged', userId || 'system', { 
+      varId,
+      displayLabel: updatedVariable.displayLabel,
+      oldValue,
+      newValue: value
+    });
+    
+    // Broadcast specific SSE event for value changes
+    broadcast({ 
+      type: 'variable:valueChanged', 
+      varId,
+      variable: updatedVariable,
+      oldValue,
+      newValue: value,
+      userId: userId || 'system'
+    });
+    
+    return res.json({ ok: true, variable: updatedVariable });
+  } catch (e) {
+    console.error('Error updating variable value:', e);
+    return res.status(500).json({ error: 'Failed to update variable value' });
   }
 });
 
