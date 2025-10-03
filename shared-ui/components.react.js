@@ -3561,28 +3561,45 @@
           console.log('🔍 Editor available:', !!editor);
           console.log('🔍 Editor.commands:', !!editor.commands);
           
-          // SuperDoc limitation: Field annotations are metadata overlays, not text content
-          // updateFieldAnnotations only updates annotation properties (color, type), not the displayed text
-          // The text content is part of the document structure, not the annotation
-          // 
-          // For now, web users need to delete and re-insert fields to see updated values
-          // Or we accept that values only update on document reload
-          console.log('ℹ️ SuperDoc web viewer limitation: Field text content cannot be updated in real-time');
-          console.log('ℹ️ Variable value updated in backend. Refresh document or re-insert field to see changes.');
+          // SuperDoc field annotation update strategy:
+          // 1. Find the field annotation by fieldId
+          // 2. Delete the old annotation
+          // 3. Re-insert at the same position with updated displayLabel (text content)
           
-          // Still update the annotation metadata in case it helps in future SuperDoc versions
-          if (editor.commands && typeof editor.commands.updateFieldAnnotations === 'function') {
+          if (editor.helpers?.fieldAnnotation && editor.commands) {
             try {
-              const result = editor.commands.updateFieldAnnotations({
-                fieldId: variable.varId,
-                displayLabel: variable.value || variable.displayLabel,
-                fieldType: 'TEXTINPUT',
-                fieldColor: '#980043',
-                type: variable.type
-              });
-              console.log('✅ Updated SuperDoc field annotation metadata:', variable.displayLabel, 'Result:', result);
+              // Find the field annotation(s) by fieldId
+              const annotations = editor.helpers.fieldAnnotation.findFieldAnnotationsByFieldId(variable.varId, editor.state);
+              
+              if (annotations && annotations.length > 0) {
+                console.log(`🔍 Found ${annotations.length} annotation(s) for field ${variable.varId}`);
+                
+                // Process each annotation (in case field appears multiple times)
+                annotations.forEach(({ pos, node }) => {
+                  const oldLabel = node.attrs.displayLabel;
+                  const newLabel = variable.value || variable.displayLabel;
+                  
+                  console.log(`📝 Updating annotation at pos ${pos}: "${oldLabel}" → "${newLabel}"`);
+                  
+                  // Delete the old annotation
+                  editor.commands.deleteFieldAnnotations(variable.varId);
+                  
+                  // Re-insert with updated displayLabel at the same position
+                  editor.commands.addFieldAnnotation(pos, {
+                    fieldId: variable.varId,
+                    displayLabel: newLabel,
+                    fieldType: 'TEXTINPUT',
+                    fieldColor: '#980043',
+                    type: variable.type
+                  });
+                  
+                  console.log(`✅ Replaced annotation at pos ${pos} with new value`);
+                });
+              } else {
+                console.log(`ℹ️ Field ${variable.varId} not found in document (not yet inserted or already removed)`);
+              }
             } catch (error) {
-              console.error('❌ Failed to update SuperDoc field metadata:', error);
+              console.error('❌ Failed to update SuperDoc field:', error);
             }
           } else {
             console.warn('⚠️ SuperDoc updateFieldAnnotations command not available');
