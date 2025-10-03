@@ -3961,42 +3961,30 @@
                           fontWeight: '600'
                         }
                       }),
-                      React.createElement('button', {
+                      React.createElement(UIButton, {
                         key: 'save',
+                        label: 'Save',
+                        variant: 'primary',
                         onClick: (e) => {
-                          e.stopPropagation();
+                          e?.stopPropagation?.();
                           handleRename(variable.varId, editingNames[variable.varId]);
                         },
-                        style: {
-                          padding: '4px 6px',
-                          fontSize: '11px',
-                          border: 'none',
-                          borderRadius: '3px',
-                          background: '#10b981',
-                          color: 'white',
-                          cursor: 'pointer'
-                        }
-                      }, '✓'),
-                      React.createElement('button', {
+                        style: { padding: '4px 8px', fontSize: '12px' }
+                      }),
+                      React.createElement(UIButton, {
                         key: 'cancel',
+                        label: 'Cancel',
+                        variant: 'secondary',
                         onClick: (e) => {
-                          e.stopPropagation();
+                          e?.stopPropagation?.();
                           setEditingNames(prev => {
                             const updated = { ...prev };
                             delete updated[variable.varId];
                             return updated;
                           });
                         },
-                        style: {
-                          padding: '4px 6px',
-                          fontSize: '11px',
-                          border: 'none',
-                          borderRadius: '3px',
-                          background: '#6b7280',
-                          color: 'white',
-                          cursor: 'pointer'
-                        }
-                      }, '✕')
+                        style: { padding: '4px 8px', fontSize: '12px' }
+                      })
                     ])
                   : React.createElement('div', {
                       key: 'name-display',
@@ -4018,44 +4006,26 @@
                           whiteSpace: 'nowrap'
                         }
                       }, variable.displayLabel),
-                      React.createElement('button', {
+                      React.createElement(UIButton, {
                         key: 'edit',
+                        label: 'Edit',
+                        variant: 'tertiary',
                         onClick: (e) => {
-                          e.stopPropagation();
+                          e?.stopPropagation?.();
                           setEditingNames(prev => ({ ...prev, [variable.varId]: variable.displayLabel }));
                         },
-                        title: 'Rename',
-                        style: {
-                          padding: '2px 4px',
-                          fontSize: '12px',
-                          border: 'none',
-                          borderRadius: '3px',
-                          background: 'transparent',
-                          color: '#6b7280',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center'
-                        }
-                      }, '✏️'),
-                      React.createElement('button', {
+                        style: { padding: '4px 8px', fontSize: '12px' }
+                      }),
+                      React.createElement(UIButton, {
                         key: 'delete',
+                        label: 'Delete',
+                        variant: 'tertiary',
                         onClick: (e) => {
-                          e.stopPropagation();
+                          e?.stopPropagation?.();
                           handleDelete(variable.varId, variable.displayLabel);
                         },
-                        title: 'Delete',
-                        style: {
-                          padding: '2px 4px',
-                          fontSize: '12px',
-                          border: 'none',
-                          borderRadius: '3px',
-                          background: 'transparent',
-                          color: '#ef4444',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center'
-                        }
-                      }, '🗑️')
+                        style: { padding: '4px 8px', fontSize: '12px', color: '#ef4444' }
+                      })
                     ]),
                 React.createElement('div', {
                   key: 'meta',
