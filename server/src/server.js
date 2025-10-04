@@ -18,14 +18,11 @@ const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'gemma3:1b'; // Smaller, faster model
 
 // Default System Prompt - Single source of truth
-const DEFAULT_SYSTEM_PROMPT = `You are OG Assist, an AI assistant aware of the current document context.
+const DEFAULT_SYSTEM_PROMPT = `BE CONCISE. BE CONCISE. BE CONCISE. BE CONCISE. BE CONCISE. BE CONCISE.
 
-Current Document Context:
-{DOCUMENT_CONTEXT}
+Reference this document:
 
-Be concise. Reference specific details from the contract when relevant.
-
-MOST IMPORTANT IS TO BE CONCISE AND ONLY SAY RELEVANT THINGS`;
+{DOCUMENT_CONTEXT}`;
 
 // Dynamic document context loading
 let DOCUMENT_CONTEXT = '';

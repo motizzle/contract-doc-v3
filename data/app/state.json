@@ -1,11 +1,14 @@
 {
   "checkedOutBy": null,
-  "lastUpdated": "2025-10-04T05:28:58.737Z",
-  "revision": 753,
-  "documentVersion": 1,
+  "lastUpdated": "2025-10-04T05:52:32.755Z",
+  "revision": 758,
+  "documentVersion": 3,
   "title": "Contract Management",
   "status": "draft",
-  "updatedBy": null,
-  "updatedPlatform": null,
-  "approvalsRevision": 311
+  "updatedBy": {
+    "userId": "user2",
+    "label": "Kent Uckey"
+  },
+  "updatedPlatform": "word",
+  "approvalsRevision": 318
 }

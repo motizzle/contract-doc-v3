@@ -4484,6 +4484,15 @@
       const aiLabelRef = React.useRef(null);
       const wfLabelRef = React.useRef(null);
       const msgLabelRef = React.useRef(null);
+      
+      // Factory reset: navigate back to AI tab
+      React.useEffect(() => {
+        const onFactoryReset = () => {
+          setActiveTab('AI');
+        };
+        window.addEventListener('factoryReset', onFactoryReset);
+        return () => window.removeEventListener('factoryReset', onFactoryReset);
+      }, []);
       const verLabelRef = React.useRef(null);
       const actLabelRef = React.useRef(null);
       const cmpLabelRef = React.useRef(null);
