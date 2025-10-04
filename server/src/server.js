@@ -15,12 +15,18 @@ const { generateReply } = require('./lib/llm');
 const LLM_PROVIDER = process.env.LLM_PROVIDER || 'ollama'; // 'ollama' or 'openai'
 const LLM_USE_OPENAI = String(process.env.LLM_USE_OPENAI || '').toLowerCase() === 'true';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'gemma3:1b'; // Smaller, faster model
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2:3b'; // Better reasoning, still fast
 
 // Default System Prompt - Single source of truth
-const DEFAULT_SYSTEM_PROMPT = `BE CONCISE. BE CONCISE. BE CONCISE. BE CONCISE. BE CONCISE. BE CONCISE.
+const DEFAULT_SYSTEM_PROMPT = `You are a helpful AI assistant. Answer questions based on the provided document context.
 
-Reference this document:
+Rules:
+- Give clear, accurate answers
+- If the answer isn't in the document, say "I don't see that information in the document"
+- Be concise but complete
+- Show your reasoning when helpful
+
+Document context:
 
 {DOCUMENT_CONTEXT}`;
 
@@ -29,10 +35,11 @@ let DOCUMENT_CONTEXT = '';
 let DOCUMENT_LAST_MODIFIED = null;
 
 // Function to load document context from file
-function loadDocumentContext() {
+async function loadDocumentContext() {
   try {
     const fs = require('fs');
     const path = require('path');
+    const mammoth = require('mammoth');
 
     // Try working directory first (more recent), then app directory
     const workingDocPath = path.join(__dirname, '..', '..', 'data', 'working', 'documents', 'default.docx');
@@ -51,38 +58,38 @@ function loadDocumentContext() {
       if (DOCUMENT_LAST_MODIFIED !== currentModified) {
         console.log(`📄 Loading document from: ${docPath}`);
 
-        // For now, use the known document content we extracted earlier
-        // TODO: Implement proper DOCX text extraction
-        DOCUMENT_CONTEXT = `This Contract ("Contract") is made between OpenGov ("OG") and our Most Valuable Partners/Products ("MVPs"). OG wants to build some amazing stuff, and MVPs want OG to build some amazing features. Increased velocity towards a shared goal is our objective.
+        // Extract full text from DOCX using mammoth
+        const result = await mammoth.extractRawText({ path: docPath });
+        DOCUMENT_CONTEXT = result.value.trim();
 
-Key points from the contract:
-- Contract documents are not handled like regular documents - they lose formatting, redlining, commenting, and Word features
-- 2026 goal: independent contract document experience
-- Core infrastructure includes invisible work necessary for baseline functionality
-- Technology is moving incredibly fast - need to catch up
-
-This is the current document context you're working with.`;
+        if (!DOCUMENT_CONTEXT || DOCUMENT_CONTEXT.length === 0) {
+          console.warn('⚠️ Document appears to be empty');
+          DOCUMENT_CONTEXT = 'Document is empty or could not be read.';
+        }
 
         DOCUMENT_LAST_MODIFIED = currentModified;
-        console.log(`📄 Document context loaded (${DOCUMENT_CONTEXT.length} characters)`);
+        console.log(`📄 Document context loaded (${DOCUMENT_CONTEXT.length} characters, ${Math.round(DOCUMENT_CONTEXT.length/4)} tokens approx)`);
       }
     } else {
-      console.warn('⚠️ No document found, using basic context');
-      DOCUMENT_CONTEXT = 'No document found. Basic context about OpenGov contract management available.';
+      console.warn('⚠️ No document found at:', workingDocPath, 'or', appDocPath);
+      DOCUMENT_CONTEXT = 'No document found. Please upload or create a document to analyze.';
     }
   } catch (error) {
-    console.warn('⚠️ Error loading document context:', error.message);
-    DOCUMENT_CONTEXT = 'Document loading error. Basic context about OpenGov available.';
+    console.error('❌ Error loading document context:', error.message);
+    DOCUMENT_CONTEXT = 'Document loading error. Please check the document file.';
   }
 }
 
 // Load document context on startup (preloaded)
-loadDocumentContext();
+(async () => {
+  await loadDocumentContext();
+  console.log('✅ Document context ready for LLM');
+})();
 
 // Function to get current system prompt (document preloaded on startup)
-function getSystemPrompt() {
+async function getSystemPrompt() {
   // Check for document updates (handles refresh button and file changes)
-  loadDocumentContext();
+  await loadDocumentContext();
 
   const customPromptPath = path.join(dataAppDir, 'config', 'system-prompt.txt');
   let basePrompt = '';
@@ -2016,7 +2023,8 @@ app.post('/api/v1/events/client', async (req, res) => {
     }
     if ((type === 'chat' || type === 'approvals:message') && text) {
       try {
-        const result = await generateReply({ messages: [{ role: 'user', content: text }], systemPrompt: getSystemPrompt() });
+        const systemPrompt = await getSystemPrompt();
+        const result = await generateReply({ messages: [{ role: 'user', content: text }], systemPrompt });
         if (result && result.ok && result.content) {
           const replyText = String(result.content).trim();
           if (type === 'chat') {
