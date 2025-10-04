@@ -1,13 +1,212 @@
 {
-  "var-1759548702436-e7ie5kfkw": {
-    "varId": "var-1759548702436-e7ie5kfkw",
-    "displayLabel": "test",
+  "var-sig-001": {
+    "varId": "var-sig-001",
+    "displayLabel": "Buyer Representative",
+    "type": "signature",
+    "email": "buyer.rep@company.com",
+    "value": "Buyer Representative",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-sig-002": {
+    "varId": "var-sig-002",
+    "displayLabel": "Seller Representative",
+    "type": "signature",
+    "email": "seller.rep@vendor.com",
+    "value": "Seller Representative",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-sig-003": {
+    "varId": "var-sig-003",
+    "displayLabel": "Project Manager",
+    "type": "signature",
+    "email": "pm@company.com",
+    "value": "Project Manager",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-sig-004": {
+    "varId": "var-sig-004",
+    "displayLabel": "Legal Counsel",
+    "type": "signature",
+    "email": "legal@company.com",
+    "value": "Legal Counsel",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-sig-005": {
+    "varId": "var-sig-005",
+    "displayLabel": "Finance Director",
+    "type": "signature",
+    "email": "finance@company.com",
+    "value": "Finance Director",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-sig-006": {
+    "varId": "var-sig-006",
+    "displayLabel": "Procurement Officer",
+    "type": "signature",
+    "email": "procurement@company.com",
+    "value": "Procurement Officer",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-sig-007": {
+    "varId": "var-sig-007",
+    "displayLabel": "Compliance Officer",
+    "type": "signature",
+    "email": "compliance@company.com",
+    "value": "Compliance Officer",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-sig-008": {
+    "varId": "var-sig-008",
+    "displayLabel": "Witness 1",
+    "type": "signature",
+    "email": "witness1@company.com",
+    "value": "Witness 1",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-sig-009": {
+    "varId": "var-sig-009",
+    "displayLabel": "Witness 2",
+    "type": "signature",
+    "email": "witness2@company.com",
+    "value": "Witness 2",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-sig-010": {
+    "varId": "var-sig-010",
+    "displayLabel": "Notary Public",
+    "type": "signature",
+    "email": "notary@certify.com",
+    "value": "Notary Public",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-val-001": {
+    "varId": "var-val-001",
+    "displayLabel": "Contract Amount",
     "type": "value",
-    "category": "Uncategorized",
-    "value": "111",
-    "createdBy": "user2",
-    "createdAt": "2025-10-04T03:31:42.437Z",
-    "updatedBy": "user2",
-    "updatedAt": "2025-10-04T03:32:02.988Z"
+    "value": "$250,000.00",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-val-002": {
+    "varId": "var-val-002",
+    "displayLabel": "Start Date",
+    "type": "value",
+    "value": "January 15, 22222222",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "user1",
+    "updatedAt": "2025-10-04T05:03:02.088Z"
+  },
+  "var-val-003": {
+    "varId": "var-val-003",
+    "displayLabel": "End Date",
+    "type": "value",
+    "value": "December 31, 2025",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-val-004": {
+    "varId": "var-val-004",
+    "displayLabel": "Company Name",
+    "type": "value",
+    "value": "ACME Corporation",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-val-005": {
+    "varId": "var-val-005",
+    "displayLabel": "Vendor Name",
+    "type": "value",
+    "value": "Tech Solutions Inc",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-val-006": {
+    "varId": "var-val-006",
+    "displayLabel": "Project Name",
+    "type": "value",
+    "value": "Infrastructure Upgrade",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-val-007": {
+    "varId": "var-val-007",
+    "displayLabel": "Contract Number",
+    "type": "value",
+    "value": "CNT-2025-001",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-val-008": {
+    "varId": "var-val-008",
+    "displayLabel": "Purchase Order",
+    "type": "value",
+    "value": "PO-2025-001",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-val-009": {
+    "varId": "var-val-009",
+    "displayLabel": "Payment Terms",
+    "type": "value",
+    "value": "Net 30",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-val-010": {
+    "varId": "var-val-010",
+    "displayLabel": "Delivery Address",
+    "type": "value",
+    "value": "123 Main St, City, State 12345",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
   }
 }

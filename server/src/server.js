@@ -486,8 +486,8 @@ function buildActivityMessage(type, details = {}) {
       return {
         action: 'created variable',
         target: 'variable',
-        details: { varId: details.varId, displayLabel: details.displayLabel, category: details.category },
-        message: `${userLabel} created variable "${details.displayLabel}"${details.category ? ` in ${details.category}` : ''}`
+        details: { varId: details.varId, displayLabel: details.displayLabel },
+        message: `${userLabel} created variable "${details.displayLabel}"`
       };
 
     case 'variable:updated':
@@ -1001,11 +1001,16 @@ app.get('/api/v1/variables', (req, res) => {
 
 app.post('/api/v1/variables', (req, res) => {
   try {
-    const { varId, displayLabel, type, category, value, userId } = req.body;
+    const { varId, displayLabel, type, category, value, email, userId } = req.body;
     
     // Validation
     if (!displayLabel) {
       return res.status(400).json({ error: 'Missing required field: displayLabel' });
+    }
+    
+    // Validate email for signatures
+    if (type === 'signature' && !email) {
+      return res.status(400).json({ error: 'Email is required for signature variables' });
     }
     
     // Generate varId if not provided
@@ -1023,7 +1028,6 @@ app.post('/api/v1/variables', (req, res) => {
       varId: generatedVarId,
       displayLabel,
       type: type || 'value',
-      category: category || 'Uncategorized',
       value: value || displayLabel,
       createdBy: userId || 'system',
       createdAt: new Date().toISOString(),
@@ -1031,8 +1035,9 @@ app.post('/api/v1/variables', (req, res) => {
       updatedAt: new Date().toISOString()
     };
     
-    // Add docusignRole for signature type
+    // Add email and docusignRole for signature type
     if (type === 'signature') {
+      variable.email = email || null;
       variable.docusignRole = req.body.docusignRole || null;
     }
     
@@ -1044,8 +1049,7 @@ app.post('/api/v1/variables', (req, res) => {
     // Log activity
     logActivity('variable:created', userId || 'system', { 
       varId: generatedVarId, 
-      displayLabel,
-      category
+      displayLabel
     });
     
     // Broadcast SSE event
@@ -1065,7 +1069,7 @@ app.post('/api/v1/variables', (req, res) => {
 app.put('/api/v1/variables/:varId', (req, res) => {
   try {
     const { varId } = req.params;
-    const { displayLabel, type, category, value, docusignRole, userId } = req.body;
+    const { displayLabel, type, category, value, email, docusignRole, userId } = req.body;
     
     // Check if variable exists
     const existingVariables = readVariables();
@@ -1081,6 +1085,7 @@ app.put('/api/v1/variables/:varId', (req, res) => {
     if (type !== undefined) updates.type = type;
     if (category !== undefined) updates.category = category;
     if (value !== undefined) updates.value = value;
+    if (email !== undefined) updates.email = email;
     if (docusignRole !== undefined) updates.docusignRole = docusignRole;
     
     // Update variable

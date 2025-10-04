@@ -1,63 +1,7 @@
 [
   {
-    "id": "act_1759548622178_qonyixg6s",
-    "timestamp": 1759548622178,
-    "type": "message:send",
-    "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
-      "platform": "web"
-    },
-    "action": "sent message",
-    "target": "message",
-    "details": {
-      "to": [
-        "user1"
-      ],
-      "channel": "approvals"
-    },
-    "message": "Kent Uckey sent a message to Warren Peace"
-  },
-  {
-    "id": "act_1759548633933_5y5klvee3",
-    "timestamp": 1759548633933,
-    "type": "message:send",
-    "user": {
-      "id": "bot",
-      "label": "bot",
-      "platform": "server"
-    },
-    "action": "sent message",
-    "target": "message",
-    "details": {
-      "to": [
-        "user1"
-      ],
-      "channel": "approvals"
-    },
-    "message": "bot sent a message to Warren Peace"
-  },
-  {
-    "id": "act_1759548702439_8lsuj20ic",
-    "timestamp": 1759548702439,
-    "type": "variable:created",
-    "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
-      "platform": "web"
-    },
-    "action": "created variable",
-    "target": "variable",
-    "details": {
-      "varId": "var-1759548702436-e7ie5kfkw",
-      "displayLabel": "test",
-      "category": "Uncategorized"
-    },
-    "message": "Kent Uckey created variable \"test\" in Uncategorized"
-  },
-  {
-    "id": "act_1759548704704_sh36mgesr",
-    "timestamp": 1759548704704,
+    "id": "act_1759554173468_h9q5sowxb",
+    "timestamp": 1759554173468,
     "type": "variable:valueChanged",
     "user": {
       "id": "user2",
@@ -67,128 +11,26 @@
     "action": "changed variable value",
     "target": "variable",
     "details": {
-      "varId": "var-1759548702436-e7ie5kfkw",
-      "displayLabel": "test"
+      "varId": "var-val-002",
+      "displayLabel": "Start Date"
     },
-    "message": "Kent Uckey changed \"test\" to \"undefined\""
+    "message": "Kent Uckey changed \"Start Date\" to \"undefined\""
   },
   {
-    "id": "act_1759548706185_vv52vhl8w",
-    "timestamp": 1759548706185,
+    "id": "act_1759554182089_2bychn7ci",
+    "timestamp": 1759554182089,
     "type": "variable:valueChanged",
     "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
+      "id": "user1",
+      "label": "Warren Peace",
       "platform": "web"
     },
     "action": "changed variable value",
     "target": "variable",
     "details": {
-      "varId": "var-1759548702436-e7ie5kfkw",
-      "displayLabel": "test"
+      "varId": "var-val-002",
+      "displayLabel": "Start Date"
     },
-    "message": "Kent Uckey changed \"test\" to \"undefined\""
-  },
-  {
-    "id": "act_1759548707371_smx2jj0l8",
-    "timestamp": 1759548707371,
-    "type": "variable:valueChanged",
-    "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
-      "platform": "web"
-    },
-    "action": "changed variable value",
-    "target": "variable",
-    "details": {
-      "varId": "var-1759548702436-e7ie5kfkw",
-      "displayLabel": "test"
-    },
-    "message": "Kent Uckey changed \"test\" to \"undefined\""
-  },
-  {
-    "id": "act_1759548708436_m8hbrje7d",
-    "timestamp": 1759548708436,
-    "type": "variable:valueChanged",
-    "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
-      "platform": "web"
-    },
-    "action": "changed variable value",
-    "target": "variable",
-    "details": {
-      "varId": "var-1759548702436-e7ie5kfkw",
-      "displayLabel": "test"
-    },
-    "message": "Kent Uckey changed \"test\" to \"undefined\""
-  },
-  {
-    "id": "act_1759548716188_9ltn3vt99",
-    "timestamp": 1759548716188,
-    "type": "variable:valueChanged",
-    "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
-      "platform": "web"
-    },
-    "action": "changed variable value",
-    "target": "variable",
-    "details": {
-      "varId": "var-1759548702436-e7ie5kfkw",
-      "displayLabel": "test"
-    },
-    "message": "Kent Uckey changed \"test\" to \"undefined\""
-  },
-  {
-    "id": "act_1759548717758_f96wcgvbq",
-    "timestamp": 1759548717758,
-    "type": "variable:valueChanged",
-    "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
-      "platform": "web"
-    },
-    "action": "changed variable value",
-    "target": "variable",
-    "details": {
-      "varId": "var-1759548702436-e7ie5kfkw",
-      "displayLabel": "test"
-    },
-    "message": "Kent Uckey changed \"test\" to \"undefined\""
-  },
-  {
-    "id": "act_1759548719058_e3xzsdl1l",
-    "timestamp": 1759548719058,
-    "type": "variable:valueChanged",
-    "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
-      "platform": "web"
-    },
-    "action": "changed variable value",
-    "target": "variable",
-    "details": {
-      "varId": "var-1759548702436-e7ie5kfkw",
-      "displayLabel": "test"
-    },
-    "message": "Kent Uckey changed \"test\" to \"undefined\""
-  },
-  {
-    "id": "act_1759548722990_ald8hvq0y",
-    "timestamp": 1759548722990,
-    "type": "variable:valueChanged",
-    "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
-      "platform": "web"
-    },
-    "action": "changed variable value",
-    "target": "variable",
-    "details": {
-      "varId": "var-1759548702436-e7ie5kfkw",
-      "displayLabel": "test"
-    },
-    "message": "Kent Uckey changed \"test\" to \"undefined\""
+    "message": "Warren Peace changed \"Start Date\" to \"undefined\""
   }
 ]

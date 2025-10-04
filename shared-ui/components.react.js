@@ -112,7 +112,9 @@
       }, [viewingVersion]);
       const [isConnected, setIsConnected] = React.useState(false);
       const [lastTs, setLastTs] = React.useState(0);
-      const [userId, setUserId] = React.useState('user2');
+      // Default user: Warren Peace (user1) for web, Kent Ucky (user2) for Word add-in
+      const isWordAddin = typeof Office !== 'undefined' && Office.context && Office.context.host;
+      const [userId, setUserId] = React.useState(isWordAddin ? 'user2' : 'user1');
       const [role, setRole] = React.useState('editor');
       const [users, setUsers] = React.useState([]);
       const [logs, setLogs] = React.useState([]);
@@ -3406,12 +3408,31 @@
       const [showModal, setShowModal] = React.useState(false);
       const [variableName, setVariableName] = React.useState('');
       const [variableType, setVariableType] = React.useState('value');
-      const [isInserting, setIsInserting] = React.useState(false);
+      const [variableEmail, setVariableEmail] = React.useState('');
+      const [isCreating, setIsCreating] = React.useState(false);
       const [variables, setVariables] = React.useState({});
       const [isLoading, setIsLoading] = React.useState(true);
       const [editingValues, setEditingValues] = React.useState({});
       const [editingNames, setEditingNames] = React.useState({});
+      const [filterType, setFilterType] = React.useState('all'); // 'all', 'value', 'signature'
       const saveTimeouts = React.useRef({});
+
+      // Helper: Get variable colors from CSS variables
+      const getVariableColors = () => {
+        try {
+          const styles = getComputedStyle(document.documentElement);
+          return {
+            borderColor: styles.getPropertyValue('--variable-border-color').trim() || '#0E6F7F',
+            highlightColor: styles.getPropertyValue('--variable-highlight-color').trim() || '#F1FAFC'
+          };
+        } catch (error) {
+          // Fallback to hardcoded values if CSS variables aren't available
+          return {
+            borderColor: '#0E6F7F',
+            highlightColor: '#F1FAFC'
+          };
+        }
+      };
 
       // Load variables from backend
       React.useEffect(() => {
@@ -3558,15 +3579,15 @@
                     : (variable.value || variable.displayLabel);
                   console.log(`🔄 Updating Word CC (type: ${variable.type}): "${cc.text}" → "${displayText}"`);
                   
-                  // Load lock status
-                  cc.load('lockContents');
+                  // Load lock status - only cannotEdit and cannotDelete exist in Word JS API
+                  cc.load(['cannotEdit', 'cannotDelete']);
                   await context.sync();
                   
-                  const wasLocked = cc.lockContents;
+                  const wasLocked = cc.cannotEdit;
                   
                   // Temporarily unlock if locked
                   if (wasLocked) {
-                    cc.lockContents = false;
+                    cc.cannotEdit = false;
                     await context.sync();
                   }
                   
@@ -3575,11 +3596,10 @@
                   cc.insertText(displayText, Word.InsertLocation.start);
                   await context.sync();
                   
-                  // Re-lock if it was locked
-                  if (wasLocked) {
-                    cc.lockContents = true;
-                    await context.sync();
-                  }
+                  // Re-lock (always lock after update to ensure consistency)
+                  cc.cannotEdit = true;
+                  cc.cannotDelete = false; // Allow deletion via delete button
+                  await context.sync();
                   
                   console.log('✅ Updated Word Content Control:', displayText);
                   updated = true;
@@ -3667,12 +3687,13 @@
                   
                   console.log(`📝 Updating Field Annotation ${i + 1}/${annotations.length} at pos ${pos}: "${oldLabel}" → "${displayText}"`);
                   
+                  const colors = getVariableColors();
                   editor.commands.deleteFieldAnnotation({ node, pos });
                   editor.commands.addFieldAnnotation(pos, {
                     fieldId: variable.varId,
                     displayLabel: displayText,
                     fieldType: 'TEXTINPUT',
-                    fieldColor: '#980043',
+                    fieldColor: colors.borderColor,
                     type: variable.type
                   });
                   
@@ -3845,23 +3866,36 @@
         }
       };
 
-      const handleInsert = async () => {
+      const handleCreate = async () => {
         const name = variableName.trim();
+        const email = variableEmail.trim();
         if (!name) return;
+        
+        // Validate email for signatures
+        if (variableType === 'signature' && !email) {
+          console.error('❌ Email is required for signatures');
+          return;
+        }
 
-        setIsInserting(true);
+        setIsCreating(true);
         try {
           // Create variable via API (server will generate varId if not provided)
+          const body = {
+            displayLabel: name,
+            type: variableType,
+            value: '',
+            userId: currentUser || 'user1'
+          };
+          
+          // Add email for signatures
+          if (variableType === 'signature') {
+            body.email = email;
+          }
+          
           const response = await fetch(`${API_BASE}/api/v1/variables`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              displayLabel: name,
-              type: variableType,
-              category: variableType === 'signature' ? 'Signatures' : 'Uncategorized',
-              value: '',
-              userId: currentUser || 'user1'
-            })
+            body: JSON.stringify(body)
           });
 
           if (!response.ok) {
@@ -3869,83 +3903,36 @@
           }
 
           const result = await response.json();
-          const variable = result.variable;
+          console.log('✅ Variable created:', result.variable.displayLabel);
 
-          // Insert variable into document - platform specific
-          const isWordAddin = typeof Office !== 'undefined' && Office.context && Office.context.host;
-          
-          if (isWordAddin) {
-            // Word add-in: Insert into actual Word document using Content Controls
-            try {
-              await Word.run(async (context) => {
-                const range = context.document.getSelection();
-                const contentControl = range.insertContentControl();
-                contentControl.title = name;
-                contentControl.tag = variable.varId;
-                contentControl.appearance = 'BoundingBox'; // BoundingBox hides the title, Tags shows it
-                contentControl.color = '#980043';
-                // Insert the VALUE (which will be name if no value provided)
-                const displayText = variable.value || name;
-                contentControl.insertText(displayText, 'Replace');
-                contentControl.font.highlightColor = '#FFC0CB';
-                contentControl.font.bold = true;
-                
-                await context.sync();
-                
-                // Lock contents AFTER inserting text
-                contentControl.lockContents = true;
-                await context.sync();
-                console.log('✅ Variable inserted into Word document:', displayText);
-              });
-            } catch (wordError) {
-              console.error('❌ Failed to insert into Word document:', wordError);
-            }
-          } else {
-            // Web viewer: Insert into SuperDoc editor
-            if (window.superdocInstance && window.superdocInstance.editor) {
-              const editor = window.superdocInstance.editor;
-              
-              if (editor.commands && typeof editor.commands.addFieldAnnotationAtSelection === 'function') {
-                // Insert the VALUE (which will be name if no value provided)
-                const displayText = variable.value || name;
-                editor.commands.addFieldAnnotationAtSelection({
-                  fieldId: variable.varId,
-                  displayLabel: displayText,
-                  fieldType: 'TEXTINPUT',
-                  fieldColor: '#980043',
-                  type: variableType
-                });
-                console.log('✅ Variable inserted into SuperDoc document:', displayText);
-              } else {
-                console.warn('⚠️ SuperDoc Field Annotation plugin not loaded.');
-              }
-            } else {
-              console.warn('⚠️ SuperDoc instance not available.');
-            }
-          }
+          // Note: Variable is now created and will appear in the list
+          // User must click "Insert" button to add it to the document
 
         } catch (error) {
-          console.error('❌ Error inserting variable:', error);
+          console.error('❌ Error creating variable:', error);
         } finally {
           // Always close modal and reset, even on error
           setShowModal(false);
           setVariableName('');
+          setVariableEmail('');
           setVariableType('value');
-          setIsInserting(false);
+          setIsCreating(false);
         }
       };
 
       const handleKeyPress = (e) => {
         if (e.key === 'Enter') {
-          handleInsert();
+          handleCreate();
         } else if (e.key === 'Escape') {
           setShowModal(false);
           setVariableName('');
+          setVariableEmail('');
         }
       };
 
       // Modal
       const modal = showModal ? React.createElement('div', {
+        className: 'd-flex items-center justify-center',
         style: {
           position: 'fixed',
           top: 0,
@@ -3953,19 +3940,16 @@
           right: 0,
           bottom: 0,
           background: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
           zIndex: 10000
         },
         onClick: () => {
           setShowModal(false);
           setVariableName('');
+          setVariableEmail('');
         }
       }, React.createElement('div', {
+        className: 'bg-white rounded-lg',
         style: {
-          background: 'white',
-          borderRadius: '8px',
           padding: '24px',
           width: '400px',
           maxWidth: '90%',
@@ -3975,44 +3959,40 @@
       }, [
         React.createElement('h3', {
           key: 'title',
-          style: { margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }
+          className: 'text-lg font-semibold mb-16'
         }, 'Create Variable'),
         React.createElement('div', {
           key: 'type-selector',
-          style: { marginBottom: '12px' }
+          className: 'mb-12'
         }, [
           React.createElement('label', {
             key: 'label',
-            style: { display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }
+            className: 'd-block mb-6 text-sm font-medium'
           }, 'Type'),
           React.createElement('div', {
             key: 'types',
-            style: { display: 'flex', gap: '8px' }
+            className: 'd-flex gap-8'
           }, [
             React.createElement('button', {
               key: 'value',
               onClick: () => setVariableType('value'),
+              className: 'flex-1 text-sm input-border-radius',
               style: {
-                flex: 1,
                 padding: '8px',
-                fontSize: '14px',
-                border: variableType === 'value' ? '2px solid #6d5ef1' : '1px solid #d1d5db',
-                borderRadius: '4px',
-                background: variableType === 'value' ? '#ede9fe' : 'white',
+                border: variableType === 'value' ? '2px solid var(--btn-primary-bg)' : '1px solid var(--color-gray-300)',
+                background: variableType === 'value' ? 'var(--color-indigo-50)' : 'var(--color-white)',
                 cursor: 'pointer',
                 fontWeight: variableType === 'value' ? '600' : '400'
               }
-            }, 'Value'),
+            }, 'Variable'),
             React.createElement('button', {
               key: 'signature',
               onClick: () => setVariableType('signature'),
+              className: 'flex-1 text-sm input-border-radius',
               style: {
-                flex: 1,
                 padding: '8px',
-                fontSize: '14px',
-                border: variableType === 'signature' ? '2px solid #6d5ef1' : '1px solid #d1d5db',
-                borderRadius: '4px',
-                background: variableType === 'signature' ? '#ede9fe' : 'white',
+                border: variableType === 'signature' ? '2px solid var(--btn-primary-bg)' : '1px solid var(--color-gray-300)',
+                background: variableType === 'signature' ? 'var(--color-indigo-50)' : 'var(--color-white)',
                 cursor: 'pointer',
                 fontWeight: variableType === 'signature' ? '600' : '400'
               }
@@ -4020,15 +4000,34 @@
           ])
         ]),
         React.createElement('input', {
-          key: 'input',
+          key: 'input-name',
           type: 'text',
           value: variableName,
           onChange: (e) => setVariableName(e.target.value),
           onKeyDown: handleKeyPress,
           placeholder: variableType === 'value' ? 'e.g., Contract Amount' : 'e.g., Party A Signature',
           autoFocus: true,
-          className: 'w-full input-padding input-border input-border-radius text-base mb-16'
+          className: 'input-padding input-border input-border-radius text-base mb-12',
+          style: { 
+            width: '100%',
+            boxSizing: 'border-box'
+          }
         }),
+        // Email field for signatures (required)
+        variableType === 'signature' ? React.createElement('input', {
+          key: 'input-email',
+          type: 'email',
+          value: variableEmail,
+          onChange: (e) => setVariableEmail(e.target.value),
+          onKeyDown: handleKeyPress,
+          placeholder: 'Email address (required)',
+          required: true,
+          className: 'input-padding input-border input-border-radius text-base mb-16',
+          style: { 
+            width: '100%',
+            boxSizing: 'border-box'
+          }
+        }) : null,
         React.createElement('div', {
           key: 'buttons',
           className: 'd-flex gap-8 justify-end'
@@ -4040,16 +4039,17 @@
             onClick: () => {
               setShowModal(false);
               setVariableName('');
+              setVariableEmail('');
             },
-            disabled: isInserting
+            disabled: isCreating
           }),
           React.createElement(UIButton, {
-            key: 'insert',
-            label: isInserting ? 'Inserting...' : 'Insert',
+            key: 'create',
+            label: isCreating ? 'Creating...' : 'Create',
             variant: 'primary',
-            onClick: handleInsert,
-            disabled: !variableName.trim() || isInserting,
-            isLoading: isInserting
+            onClick: handleCreate,
+            disabled: !variableName.trim() || (variableType === 'signature' && !variableEmail.trim()) || isCreating,
+            isLoading: isCreating
           })
         ])
       ])) : null;
@@ -4059,11 +4059,24 @@
         modal,
         React.createElement('div', {
           key: 'header',
-          className: 'd-flex justify-end items-center'
+          className: 'd-flex justify-between items-center gap-8'
         }, [
+          // Filter dropdown
+          React.createElement('select', {
+            key: 'filter',
+            value: filterType,
+            onChange: (e) => setFilterType(e.target.value),
+            className: 'input-padding input-border input-border-radius text-sm',
+            style: { minWidth: '120px' }
+          }, [
+            React.createElement('option', { key: 'all', value: 'all' }, 'All'),
+            React.createElement('option', { key: 'value', value: 'value' }, 'Variables'),
+            React.createElement('option', { key: 'signature', value: 'signature' }, 'Signatures')
+          ]),
+          // Create button
           React.createElement(UIButton, {
             key: 'add',
-            label: '+ Enter Variable',
+            label: '+ Create Variable',
             onClick: () => setShowModal(true),
             variant: 'primary'
           })
@@ -4075,11 +4088,17 @@
             }, 'Loading variables...');
           }
 
-          const variablesList = Object.values(variables);
+          let variablesList = Object.values(variables);
+          
+          // Apply filter
+          if (filterType !== 'all') {
+            variablesList = variablesList.filter(v => v.type === filterType);
+          }
+          
           if (variablesList.length === 0) {
             return React.createElement('div', {
               className: 'text-gray-500 p-8'
-            }, 'No variables yet.');
+            }, filterType === 'all' ? 'No variables yet.' : `No ${filterType === 'signature' ? 'signatures' : 'variables'} yet.`);
           }
 
           // Show variables list with inline value editing - card style matches Versions panel
@@ -4165,10 +4184,10 @@
                         }
                       }, variable.displayLabel),
                     ]),
-                React.createElement('div', {
+                variable.type === 'signature' ? React.createElement('div', {
                   key: 'meta',
                   className: 'text-sm text-gray-500'
-                }, `${variable.type === 'signature' ? '✍️ Signature' : '📝 Value'} • ${variable.category || 'Uncategorized'}`)
+                }, `Signature${variable.email ? ' • ' + variable.email : ''}`) : null
               ]),
               // Only show action buttons when not editing
               editingNames[variable.varId] === undefined ? React.createElement('div', {
@@ -4221,20 +4240,23 @@
                       await Word.run(async (context) => {
                         const range = context.document.getSelection();
                         const contentControl = range.insertContentControl();
+                        const colors = getVariableColors();
                         contentControl.title = freshVariable.displayLabel;
                         contentControl.tag = freshVariable.varId;
                         contentControl.appearance = 'BoundingBox'; // BoundingBox hides the title, Tags shows it
-                        contentControl.color = '#980043';
+                        contentControl.color = colors.borderColor;
                         contentControl.insertText(displayText, 'Replace');
-                        contentControl.font.highlightColor = '#FFC0CB';
+                        contentControl.font.highlightColor = colors.borderColor; // Use same color for highlight
                         contentControl.font.bold = true;
                         
                         await context.sync();
                         
-                        // Lock contents AFTER inserting text
-                        contentControl.lockContents = true;
+                        // Lock the content control (Word JS API properties)
+                        contentControl.cannotEdit = true;
+                        contentControl.cannotDelete = false;
+                        
                         await context.sync();
-                        console.log('✅ Variable inserted into Word document (locked):', displayText);
+                        console.log('✅ Variable inserted and LOCKED in Word document:', displayText);
                       });
                     } catch (error) {
                       console.error('❌ Failed to insert into Word document:', error);
@@ -4251,14 +4273,15 @@
                       return;
                     }
                     
-                    try {
-                      editor.commands.addFieldAnnotationAtSelection({
-                        fieldId: freshVariable.varId,
-                        displayLabel: displayText,
-                        fieldType: 'TEXTINPUT',
-                        fieldColor: '#980043',
-                        type: freshVariable.type
-                      });
+                      try {
+                        const colors = getVariableColors();
+                        editor.commands.addFieldAnnotationAtSelection({
+                          fieldId: freshVariable.varId,
+                          displayLabel: displayText,
+                          fieldType: 'TEXTINPUT',
+                          fieldColor: colors.borderColor,
+                          type: freshVariable.type
+                        });
                       console.log('✅ Variable inserted into SuperDoc:', freshVariable.displayLabel);
                     } catch (error) {
                       console.error('❌ Failed to insert into SuperDoc:', error);
@@ -4269,24 +4292,15 @@
             ]) : null
             ]),
             // Value input (only for value type, not signatures)
-            variable.type !== 'signature' ? React.createElement('div', {
+            variable.type !== 'signature' ? React.createElement('input', {
               key: 'value',
-              className: 'mt-8'
-            }, [
-              React.createElement('label', {
-                key: 'label',
-                className: 'd-block text-sm text-gray-500 mb-4 font-medium'
-              }, 'Value:'),
-              React.createElement('input', {
-                key: 'input',
-                type: 'text',
-                value: editingValues[variable.varId] !== undefined ? editingValues[variable.varId] : (variable.value || ''),
-                onChange: (e) => handleValueChange(variable.varId, e.target.value),
-                placeholder: 'Enter value...',
-                onClick: (e) => e.stopPropagation(),
-                className: 'w-full font-mono text-base input-padding input-border input-border-radius'
-              })
-            ]) : null
+              type: 'text',
+              value: editingValues[variable.varId] !== undefined ? editingValues[variable.varId] : (variable.value || ''),
+              onChange: (e) => handleValueChange(variable.varId, e.target.value),
+              placeholder: 'Enter value...',
+              onClick: (e) => e.stopPropagation(),
+              className: 'w-full font-mono text-base input-padding input-border input-border-radius mt-8'
+            }) : null
           ])));
         })()
       ]);
