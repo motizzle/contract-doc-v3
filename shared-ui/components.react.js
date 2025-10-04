@@ -3530,11 +3530,25 @@
           }
         };
 
-        const handleVariablesReset = () => {
-          console.log('🔄 Variables reset event received - clearing all variables');
+        const handleVariablesReset = async () => {
+          console.log('🔄 Variables reset event received - reloading from backend');
           setVariables({});
           setEditingValues({});
           setEditingNames({});
+          
+          // Reload variables from backend (they should be restored from seed)
+          try {
+            const response = await fetch(`${API_BASE}/api/v1/variables`);
+            if (response.ok) {
+              const data = await response.json();
+              setVariables(data.variables || {});
+              console.log('✅ Variables reloaded after reset:', Object.keys(data.variables || {}).length);
+            } else {
+              console.error('❌ Failed to reload variables after reset');
+            }
+          } catch (error) {
+            console.error('❌ Error reloading variables after reset:', error);
+          }
         };
 
         // Listen to window custom events dispatched by main SSE handler
@@ -4107,200 +4121,264 @@
             className: 'border border-gray-200 rounded-xl bg-white',
             style: { padding: '14px 16px' }
           }, [
-            // Variable header with name and buttons
-            React.createElement('div', {
-              key: 'header',
-              className: 'd-flex justify-between items-center mb-8'
-            }, [
-              React.createElement('div', {
-                key: 'info',
-                className: 'flex-1 min-w-0'
-              }, [
-                // Name - editable or display
-                editingNames[variable.varId] !== undefined
-                  ? React.createElement('div', {
-                      key: 'name-edit',
-                      className: 'd-flex gap-4 mb-2'
-                    }, [
-                      React.createElement('input', {
-                        key: 'input',
-                        type: 'text',
-                        value: editingNames[variable.varId],
-                        onChange: (e) => setEditingNames(prev => ({ ...prev, [variable.varId]: e.target.value })),
-                        onKeyDown: (e) => {
-                          if (e.key === 'Enter') {
-                            handleRename(variable.varId, editingNames[variable.varId]);
-                          } else if (e.key === 'Escape') {
-                            setEditingNames(prev => {
-                              const updated = { ...prev };
-                              delete updated[variable.varId];
-                              return updated;
-                            });
+            // EDIT MODE - Show editable fields
+            editingNames[variable.varId] !== undefined
+              ? React.createElement('div', {
+                  key: 'edit-mode',
+                  className: 'd-flex flex-column gap-12'
+                }, [
+                  // Name input
+                  React.createElement('div', { key: 'name-field' }, [
+                    React.createElement('label', {
+                      key: 'label',
+                      className: 'd-block text-sm text-gray-500 mb-4 font-medium'
+                    }, variable.type === 'signature' ? 'Signature Name' : 'Variable Name'),
+                    React.createElement('input', {
+                      key: 'input',
+                      type: 'text',
+                      value: editingNames[variable.varId],
+                      onChange: (e) => setEditingNames(prev => ({ ...prev, [variable.varId]: e.target.value })),
+                      onClick: (e) => e.stopPropagation(),
+                      className: 'w-full font-mono text-base input-padding input-border input-border-radius'
+                    })
+                  ]),
+                  // Value input
+                  React.createElement('div', { key: 'value-field' }, [
+                    // Only show label for signatures (Email Address), no label for value types
+                    variable.type === 'signature' ? React.createElement('label', {
+                      key: 'label',
+                      className: 'd-block text-sm text-gray-500 mb-4 font-medium'
+                    }, 'Email Address') : null,
+                    React.createElement('input', {
+                      key: 'input',
+                      type: 'text',
+                      value: editingValues[variable.varId] !== undefined 
+                        ? editingValues[variable.varId] 
+                        : (variable.type === 'signature' ? (variable.email || '') : (variable.value || '')),
+                      onChange: (e) => setEditingValues(prev => ({ ...prev, [variable.varId]: e.target.value })),
+                      onClick: (e) => e.stopPropagation(),
+                      className: 'w-full font-mono text-base input-padding input-border input-border-radius',
+                      placeholder: variable.type === 'signature' ? 'Enter email address...' : 'Enter value...'
+                    })
+                  ]),
+                  // Buttons
+                  React.createElement('div', {
+                    key: 'buttons',
+                    className: 'd-flex gap-8 justify-end'
+                  }, [
+                    React.createElement(UIButton, {
+                      key: 'cancel',
+                      label: 'Cancel',
+                      variant: 'secondary',
+                      onClick: (e) => {
+                        e?.stopPropagation?.();
+                        setEditingNames(prev => {
+                          const updated = { ...prev };
+                          delete updated[variable.varId];
+                          return updated;
+                        });
+                        setEditingValues(prev => {
+                          const updated = { ...prev };
+                          delete updated[variable.varId];
+                          return updated;
+                        });
+                      }
+                    }),
+                    React.createElement(UIButton, {
+                      key: 'save',
+                      label: 'Save',
+                      variant: 'primary',
+                      onClick: async (e) => {
+                        e?.stopPropagation?.();
+                        
+                        // Save name if changed
+                        if (editingNames[variable.varId] !== variable.displayLabel) {
+                          await handleRename(variable.varId, editingNames[variable.varId]);
+                        }
+                        
+                        const currentValue = editingValues[variable.varId];
+                        
+                        // For signatures, the "value" field is actually the email
+                        if (variable.type === 'signature') {
+                          if (currentValue !== undefined && currentValue !== variable.email) {
+                            try {
+                              const response = await fetch(`${API_BASE}/api/v1/variables/${variable.varId}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  email: currentValue,
+                                  userId: currentUser || 'user1'
+                                })
+                              });
+                              
+                              if (response.ok) {
+                                console.log('✅ Signature email updated:', currentValue);
+                              } else {
+                                console.error('❌ Failed to update signature email');
+                              }
+                            } catch (error) {
+                              console.error('❌ Error updating signature email:', error);
+                            }
                           }
-                        },
-                        onClick: (e) => e.stopPropagation(),
-                        autoFocus: true,
-                        className: 'flex-1 text-lg font-semibold',
-                        style: {
-                          padding: '4px 6px',
-                          border: '1px solid #6d5ef1',
-                          borderRadius: '3px'
+                        } else {
+                          // For value types, save the value
+                          if (currentValue !== undefined && currentValue !== variable.value) {
+                            await handleValueChange(variable.varId, currentValue);
+                          }
                         }
-                      }),
-                      React.createElement(UIButton, {
-                        key: 'save',
-                        label: 'Save',
-                        variant: 'primary',
-                        onClick: (e) => {
-                          e?.stopPropagation?.();
-                          handleRename(variable.varId, editingNames[variable.varId]);
-                        }
-                      }),
-                      React.createElement(UIButton, {
-                        key: 'cancel',
-                        label: 'Cancel',
-                        variant: 'secondary',
-                        onClick: (e) => {
-                          e?.stopPropagation?.();
-                          setEditingNames(prev => {
-                            const updated = { ...prev };
-                            delete updated[variable.varId];
-                            return updated;
-                          });
-                        }
-                      })
-                    ])
-                  : React.createElement('div', {
-                      key: 'name-display',
-                      className: 'd-flex items-center gap-6 mb-2'
+                        
+                        // Exit edit mode
+                        setEditingNames(prev => {
+                          const updated = { ...prev };
+                          delete updated[variable.varId];
+                          return updated;
+                        });
+                      }
+                    })
+                  ])
+                ])
+              // READ-ONLY MODE - Show display with buttons
+              : React.createElement('div', {
+                  key: 'read-mode',
+                  className: 'd-flex flex-column gap-8'
+                }, [
+                  // Header with name and buttons
+                  React.createElement('div', {
+                    key: 'header',
+                    className: 'd-flex justify-between items-center'
+                  }, [
+                    React.createElement('div', {
+                      key: 'info',
+                      className: 'flex-1 min-w-0'
                     }, [
-                      React.createElement('span', {
-                        key: 'text',
-                        className: 'font-semibold text-lg flex-1',
+                      React.createElement('div', {
+                        key: 'name',
+                        className: 'font-semibold text-lg mb-2',
                         style: {
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap'
                         }
                       }, variable.displayLabel),
+                      variable.type === 'signature' ? React.createElement('div', {
+                        key: 'meta',
+                        className: 'text-sm text-gray-500'
+                      }, `Signature${variable.email ? ' • ' + variable.email : ''}`) : null
                     ]),
-                variable.type === 'signature' ? React.createElement('div', {
-                  key: 'meta',
-                  className: 'text-sm text-gray-500'
-                }, `Signature${variable.email ? ' • ' + variable.email : ''}`) : null
-              ]),
-              // Only show action buttons when not editing
-              editingNames[variable.varId] === undefined ? React.createElement('div', {
-                key: 'buttons',
-                className: 'd-flex gap-8 items-center'
-              }, [
-                React.createElement(UIButton, {
-                  key: 'edit',
-                  label: 'Edit',
-                  variant: 'tertiary',
-                  onClick: (e) => {
-                    e?.stopPropagation?.();
-                    setEditingNames(prev => ({ ...prev, [variable.varId]: variable.displayLabel }));
-                  }
-                }),
-                React.createElement(UIButton, {
-                  key: 'delete',
-                  label: 'Delete',
-                  variant: 'tertiary',
-                  onClick: (e) => {
-                    e?.stopPropagation?.();
-                    handleDelete(variable.varId, variable.displayLabel);
-                  }
-                }),
-                React.createElement(UIButton, {
-                  key: 'insert',
-                  label: 'Insert',
-                  variant: 'primary',
-                  onClick: async (e) => {
-                  e?.stopPropagation?.();
-                  
-                  // Get fresh data from state to avoid stale closure issues
-                  const freshVariable = variables[variable.varId];
-                  if (!freshVariable) {
-                    console.error('❌ Variable not found in state:', variable.varId);
-                    return;
-                  }
-                  
-                  console.log('🔵 Insert variable clicked:', freshVariable.displayLabel);
-                  
-                  // For signatures, use displayLabel; for values, use value (or label as fallback)
-                  const displayText = freshVariable.type === 'signature' 
-                    ? freshVariable.displayLabel 
-                    : (freshVariable.value || freshVariable.displayLabel);
-                  
-                  const isWordAddin = typeof Office !== 'undefined' && Office.context && Office.context.host;
-                  
-                  if (isWordAddin) {
-                    try {
-                      await Word.run(async (context) => {
-                        const range = context.document.getSelection();
-                        const contentControl = range.insertContentControl();
-                        const colors = getVariableColors();
-                        contentControl.title = freshVariable.displayLabel;
-                        contentControl.tag = freshVariable.varId;
-                        contentControl.appearance = 'BoundingBox'; // BoundingBox hides the title, Tags shows it
-                        contentControl.color = colors.borderColor;
-                        contentControl.insertText(displayText, 'Replace');
-                        contentControl.font.highlightColor = colors.borderColor; // Use same color for highlight
-                        contentControl.font.bold = true;
-                        
-                        await context.sync();
-                        
-                        // Lock the content control (Word JS API properties)
-                        contentControl.cannotEdit = true;
-                        contentControl.cannotDelete = false;
-                        
-                        await context.sync();
-                        console.log('✅ Variable inserted and LOCKED in Word document:', displayText);
-                      });
-                    } catch (error) {
-                      console.error('❌ Failed to insert into Word document:', error);
+                    React.createElement('div', {
+                      key: 'buttons',
+                      className: 'd-flex gap-8 items-center'
+                    }, [
+                      React.createElement(UIButton, {
+                        key: 'edit',
+                        label: 'Edit',
+                        variant: 'tertiary',
+                        onClick: (e) => {
+                          e?.stopPropagation?.();
+                          setEditingNames(prev => ({ ...prev, [variable.varId]: variable.displayLabel }));
+                          // For signatures, load email; for values, load value
+                          const editValue = variable.type === 'signature' ? (variable.email || '') : (variable.value || '');
+                          setEditingValues(prev => ({ ...prev, [variable.varId]: editValue }));
+                        }
+                      }),
+                      React.createElement(UIButton, {
+                        key: 'delete',
+                        label: 'Delete',
+                        variant: 'tertiary',
+                        onClick: (e) => {
+                          e?.stopPropagation?.();
+                          handleDelete(variable.varId, variable.displayLabel);
+                        }
+                      }),
+                      React.createElement(UIButton, {
+                        key: 'insert',
+                        label: 'Insert',
+                        variant: 'primary',
+                        onClick: async (e) => {
+                          e?.stopPropagation?.();
+                          
+                          // Get fresh data from state to avoid stale closure issues
+                          const freshVariable = variables[variable.varId];
+                          if (!freshVariable) {
+                            console.error('❌ Variable not found in state:', variable.varId);
+                            return;
+                          }
+                          
+                          console.log('🔵 Insert variable clicked:', freshVariable.displayLabel);
+                          
+                          // For signatures, use displayLabel; for values, use value (or label as fallback)
+                          const displayText = freshVariable.type === 'signature' 
+                            ? freshVariable.displayLabel 
+                            : (freshVariable.value || freshVariable.displayLabel);
+                          
+                          const isWordAddin = typeof Office !== 'undefined' && Office.context && Office.context.host;
+                          
+                          if (isWordAddin) {
+                            try {
+                              await Word.run(async (context) => {
+                                const range = context.document.getSelection();
+                                const contentControl = range.insertContentControl();
+                                const colors = getVariableColors();
+                                contentControl.title = freshVariable.displayLabel;
+                                contentControl.tag = freshVariable.varId;
+                                contentControl.appearance = 'BoundingBox';
+                                contentControl.color = colors.borderColor;
+                                contentControl.insertText(displayText, 'Replace');
+                                contentControl.font.highlightColor = colors.highlightColor;
+                                contentControl.font.bold = true;
+                                
+                                await context.sync();
+                                
+                                contentControl.cannotEdit = true;
+                                contentControl.cannotDelete = false;
+                                
+                                await context.sync();
+                                console.log('✅ Variable inserted and LOCKED in Word document:', displayText);
+                              });
+                            } catch (error) {
+                              console.error('❌ Failed to insert into Word document:', error);
+                            }
+                          } else {
+                            if (!window.superdocInstance || !window.superdocInstance.editor) {
+                              console.error('❌ SuperDoc not available');
+                              return;
+                            }
+                            
+                            const editor = window.superdocInstance.editor;
+                            if (!editor.commands || typeof editor.commands.addFieldAnnotationAtSelection !== 'function') {
+                              console.error('❌ Field Annotation plugin not loaded');
+                              return;
+                            }
+                            
+                            try {
+                              const colors = getVariableColors();
+                              editor.commands.addFieldAnnotationAtSelection({
+                                fieldId: freshVariable.varId,
+                                displayLabel: displayText,
+                                fieldType: 'TEXTINPUT',
+                                fieldColor: colors.borderColor,
+                                type: freshVariable.type
+                              });
+                              console.log('✅ Variable inserted into SuperDoc:', freshVariable.displayLabel);
+                            } catch (error) {
+                              console.error('❌ Failed to insert into SuperDoc:', error);
+                            }
+                          }
+                        }
+                      })
+                    ])
+                  ]),
+                  // Value display (read-only) - show email for signatures, value for value types
+                  React.createElement('div', {
+                    key: 'value',
+                    className: 'text-sm text-gray-600 font-mono',
+                    style: {
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
                     }
-                  } else {
-                    if (!window.superdocInstance || !window.superdocInstance.editor) {
-                      console.error('❌ SuperDoc not available');
-                      return;
-                    }
-                    
-                    const editor = window.superdocInstance.editor;
-                    if (!editor.commands || typeof editor.commands.addFieldAnnotationAtSelection !== 'function') {
-                      console.error('❌ Field Annotation plugin not loaded');
-                      return;
-                    }
-                    
-                      try {
-                        const colors = getVariableColors();
-                        editor.commands.addFieldAnnotationAtSelection({
-                          fieldId: freshVariable.varId,
-                          displayLabel: displayText,
-                          fieldType: 'TEXTINPUT',
-                          fieldColor: colors.borderColor,
-                          type: freshVariable.type
-                        });
-                      console.log('✅ Variable inserted into SuperDoc:', freshVariable.displayLabel);
-                    } catch (error) {
-                      console.error('❌ Failed to insert into SuperDoc:', error);
-                    }
-                  }
-                }
-              })
-            ]) : null
-            ]),
-            // Value input (only for value type, not signatures)
-            variable.type !== 'signature' ? React.createElement('input', {
-              key: 'value',
-              type: 'text',
-              value: editingValues[variable.varId] !== undefined ? editingValues[variable.varId] : (variable.value || ''),
-              onChange: (e) => handleValueChange(variable.varId, e.target.value),
-              placeholder: 'Enter value...',
-              onClick: (e) => e.stopPropagation(),
-              className: 'w-full font-mono text-base input-padding input-border input-border-radius mt-8'
-            }) : null
+                  }, variable.type === 'signature' ? (variable.email || '') : (variable.value || variable.displayLabel))
+                ])
           ])));
         })()
       ]);

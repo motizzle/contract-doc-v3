@@ -1646,8 +1646,25 @@ app.post('/api/v1/factory-reset', (req, res) => {
     try { if (fs.existsSync(messagesFilePath)) fs.rmSync(messagesFilePath); } catch {}
     // Clear chat history
     try { if (fs.existsSync(chatFilePath)) fs.rmSync(chatFilePath); } catch {}
-    // Clear variables
-    try { if (fs.existsSync(variablesFilePath)) fs.rmSync(variablesFilePath); } catch {}
+    // Restore variables to seed data (don't delete them!)
+    const variablesSeedPath = path.join(dataAppDir, 'variables.seed.json');
+    try {
+      console.log('🔍 Factory reset: Looking for seed file at:', variablesSeedPath);
+      console.log('🔍 Seed file exists?', fs.existsSync(variablesSeedPath));
+      console.log('🔍 Target variables file:', variablesFilePath);
+      
+      if (fs.existsSync(variablesSeedPath)) {
+        fs.copyFileSync(variablesSeedPath, variablesFilePath);
+        console.log('✅ Variables restored from seed data');
+      } else {
+        console.error('❌ Seed file not found! Variables will be empty.');
+        if (fs.existsSync(variablesFilePath)) {
+          fs.rmSync(variablesFilePath);
+        }
+      }
+    } catch (e) {
+      console.error('❌ Failed to restore variables from seed:', e.message);
+    }
     // Remove snapshots entirely
     const snapDir = path.join(dataWorkingDir, 'snapshots');
     if (fs.existsSync(snapDir)) {
@@ -2398,6 +2415,31 @@ function tryCreateHttpsServer() {
   if (allowHttp) return null;
   throw new Error('No HTTPS certificate available. Install Office dev certs or provide server/config/dev-cert.pfx. Set ALLOW_HTTP=true to use HTTP for dev only.');
 }
+
+// Initialize variables with seed data if none exist
+function initializeVariables() {
+  const variablesSeedPath = path.join(dataAppDir, 'variables.seed.json');
+  try {
+    console.log('🔍 Checking for variables at:', variablesFilePath);
+    console.log('🔍 Seed file location:', variablesSeedPath);
+    console.log('🔍 Seed file exists?', fs.existsSync(variablesSeedPath));
+    
+    if (!fs.existsSync(variablesFilePath) && fs.existsSync(variablesSeedPath)) {
+      console.log('📦 Initializing variables from seed data...');
+      fs.copyFileSync(variablesSeedPath, variablesFilePath);
+      console.log('✅ Variables initialized with seed data');
+    } else if (fs.existsSync(variablesFilePath)) {
+      console.log('✅ Variables file already exists');
+    } else if (!fs.existsSync(variablesSeedPath)) {
+      console.error('❌ Seed file not found at:', variablesSeedPath);
+    }
+  } catch (e) {
+    console.error('❌ Failed to initialize variables from seed:', e.message);
+  }
+}
+
+// Initialize on startup
+initializeVariables();
 
 const httpsServer = tryCreateHttpsServer();
 let serverInstance;
