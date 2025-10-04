@@ -3558,10 +3558,28 @@
                     : (variable.value || variable.displayLabel);
                   console.log(`🔄 Updating Word CC (type: ${variable.type}): "${cc.text}" → "${displayText}"`);
                   
-                  // Get the range and replace all text at once
-                  const range = cc.getRange(Word.RangeLocation.whole);
-                  range.insertText(displayText, Word.InsertLocation.replace);
+                  // Load lock status
+                  cc.load('lockContents');
                   await context.sync();
+                  
+                  const wasLocked = cc.lockContents;
+                  
+                  // Temporarily unlock if locked
+                  if (wasLocked) {
+                    cc.lockContents = false;
+                    await context.sync();
+                  }
+                  
+                  // Clear existing text and insert new text (preserves Content Control)
+                  cc.clear();
+                  cc.insertText(displayText, Word.InsertLocation.start);
+                  await context.sync();
+                  
+                  // Re-lock if it was locked
+                  if (wasLocked) {
+                    cc.lockContents = true;
+                    await context.sync();
+                  }
                   
                   console.log('✅ Updated Word Content Control:', displayText);
                   updated = true;
@@ -3872,6 +3890,10 @@
                 contentControl.font.highlightColor = '#FFC0CB';
                 contentControl.font.bold = true;
                 
+                await context.sync();
+                
+                // Lock contents AFTER inserting text
+                contentControl.lockContents = true;
                 await context.sync();
                 console.log('✅ Variable inserted into Word document:', displayText);
               });
@@ -4208,7 +4230,11 @@
                         contentControl.font.bold = true;
                         
                         await context.sync();
-                        console.log('✅ Variable inserted into Word document:', displayText);
+                        
+                        // Lock contents AFTER inserting text
+                        contentControl.lockContents = true;
+                        await context.sync();
+                        console.log('✅ Variable inserted into Word document (locked):', displayText);
                       });
                     } catch (error) {
                       console.error('❌ Failed to insert into Word document:', error);

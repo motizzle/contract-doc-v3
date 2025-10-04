@@ -1,13 +1,13 @@
 {
-  "var-1759547622029-11ogravci": {
-    "varId": "var-1759547622029-11ogravci",
-    "displayLabel": "Var 3",
+  "var-1759548702436-e7ie5kfkw": {
+    "varId": "var-1759548702436-e7ie5kfkw",
+    "displayLabel": "test",
     "type": "value",
     "category": "Uncategorized",
-    "value": "something",
+    "value": "111",
     "createdBy": "user2",
-    "createdAt": "2025-10-04T03:13:42.029Z",
+    "createdAt": "2025-10-04T03:31:42.437Z",
     "updatedBy": "user2",
-    "updatedAt": "2025-10-04T03:15:31.351Z"
+    "updatedAt": "2025-10-04T03:32:02.988Z"
   }
 }
