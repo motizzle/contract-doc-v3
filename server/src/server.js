@@ -1817,9 +1817,9 @@ app.post('/api/v1/checkout/override', (req, res) => {
 });
 
 // API endpoint to refresh document context
-app.post('/api/v1/refresh-document', (req, res) => {
+app.post('/api/v1/refresh-document', async (req, res) => {
   try {
-    loadDocumentContext();
+    await loadDocumentContext();
     res.json({
       ok: true,
       message: 'Document context refreshed',
