@@ -111,6 +111,54 @@ export function mountSuperdoc(options) {
           hasDeleteCommand: typeof actualEditor.commands.deleteFieldAnnotations === 'function',
           hasGetAllHelper: actualEditor.helpers && actualEditor.helpers.fieldAnnotation && typeof actualEditor.helpers.fieldAnnotation.getAllFieldAnnotations === 'function'
         });
+        
+        // DEBUG: Check if any Field Annotations exist in the loaded document
+        try {
+          const doc = actualEditor.view.state.doc;
+          const annotations = [];
+          const contentControls = [];
+          
+          doc.descendants((node, pos) => {
+            if (node.type.name === 'fieldAnnotation') {
+              annotations.push({ fieldId: node.attrs.fieldId, displayLabel: node.attrs.displayLabel, pos });
+            }
+            
+            // Extract Word Content Control data
+            if (node.type.name === 'structuredContent') {
+              // Navigate the nested structure to find varId (w:tag) and title (w:alias)
+              let varId = null;
+              let title = null;
+              let contentText = node.textContent || '';
+              
+              // Deep search for w:tag and w:alias in sdtPr.elements
+              if (node.attrs?.sdtPr?.elements) {
+                for (const elem of node.attrs.sdtPr.elements) {
+                  if (elem.name === 'w:tag' && elem.attributes?.['w:val']) {
+                    varId = elem.attributes['w:val'];
+                  }
+                  if (elem.name === 'w:alias' && elem.attributes?.['w:val']) {
+                    title = elem.attributes['w:val'];
+                  }
+                }
+              }
+              
+              contentControls.push({
+                type: 'structuredContent',
+                varId,
+                title,
+                text: contentText,
+                pos,
+                hasVarId: !!varId
+              });
+            }
+          });
+          
+          console.log(`🔍 Field Annotations loaded:`, annotations);
+          console.log(`🔍 Content Controls (Word Variables) loaded:`, contentControls);
+          console.log(`📊 Summary: ${annotations.length} Field Annotations, ${contentControls.filter(cc => cc.hasVarId).length} Word Variables`);
+        } catch (err) {
+          console.error('Failed to check for loaded annotations:', err);
+        }
       }
     },
   });

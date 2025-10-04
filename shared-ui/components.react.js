@@ -392,8 +392,8 @@
                   window.dispatchEvent(new CustomEvent('approval:complete', { detail: p }));
                 } catch {}
               }
-              // Handle variable events
-              if (p && p.type && p.type.startsWith('variable:')) {
+              // Handle variable events (both singular and plural)
+              if (p && p.type && (p.type.startsWith('variable:') || p.type.startsWith('variables:'))) {
                 try {
                   window.dispatchEvent(new CustomEvent(p.type, { detail: p }));
                   console.log('📡 Dispatched window event:', p.type, p);
@@ -3457,13 +3457,20 @@
             const data = event.detail || {};
             console.log('📡 SSE variable:updated received:', data);
             if (data.variable) {
+              const updatedVariable = data.variable;
               setVariables(prev => {
-                const updated = { ...prev, [data.variable.varId]: data.variable };
+                const updated = { ...prev, [updatedVariable.varId]: updatedVariable };
                 console.log('🔄 Variables state updated:', updated);
                 return updated;
               });
-              // Variable renamed - name is metadata, doesn't affect document display
-              // Document shows value, not name
+              // For signature variables, update document when label changes
+              // (signatures have no value, so they display the label)
+              if (updatedVariable.type === 'signature') {
+                console.log('🔄 Signature label updated - updating document to show new label:', updatedVariable.displayLabel);
+                // Use the variable data from SSE event (which has the new label), not from state
+                updateVariableInDocument(updatedVariable);
+              }
+              // For value variables, name is metadata and doesn't affect document display
             }
           } catch (error) {
             console.error('Failed to handle variable:updated event:', error);
@@ -3472,9 +3479,13 @@
 
         const handleVariableValueChanged = (event) => {
           try {
+            console.log('📡 SSE variable:valueChanged received:', event.detail);
             const data = event.detail || {};
             if (data.variable) {
+              console.log('🔄 Updating variable in state and document:', data.variable.varId, data.variable.value);
               setVariables(prev => ({ ...prev, [data.variable.varId]: data.variable }));
+              // Update the editing value to reflect the change in the input field
+              setEditingValues(prev => ({ ...prev, [data.variable.varId]: data.variable.value }));
               // Value changed - update document to show new value
               updateVariableInDocument(data.variable);
             }
@@ -3499,7 +3510,10 @@
         };
 
         const handleVariablesReset = () => {
+          console.log('🔄 Variables reset event received - clearing all variables');
           setVariables({});
+          setEditingValues({});
+          setEditingNames({});
         };
 
         // Listen to window custom events dispatched by main SSE handler
@@ -3531,17 +3545,31 @@
               contentControls.load('items');
               await context.sync();
               
+              let updated = false;
               for (let i = 0; i < contentControls.items.length; i++) {
                 const cc = contentControls.items[i];
-                cc.load('tag,title');
+                cc.load('tag,title,text');
                 await context.sync();
                 
                 if (cc.tag === variable.varId) {
-                  const displayText = variable.value || variable.displayLabel;
-                  cc.insertText(displayText, 'Replace');
+                  // For signatures, use displayLabel; for values, use value (or label as fallback)
+                  const displayText = variable.type === 'signature' 
+                    ? variable.displayLabel 
+                    : (variable.value || variable.displayLabel);
+                  console.log(`🔄 Updating Word CC (type: ${variable.type}): "${cc.text}" → "${displayText}"`);
+                  
+                  // Get the range and replace all text at once
+                  const range = cc.getRange(Word.RangeLocation.whole);
+                  range.insertText(displayText, Word.InsertLocation.replace);
                   await context.sync();
+                  
                   console.log('✅ Updated Word Content Control:', displayText);
+                  updated = true;
                 }
+              }
+              
+              if (!updated) {
+                console.log(`⚠️ No Content Control found with tag: ${variable.varId}`);
               }
             });
           } catch (error) {
@@ -3568,49 +3596,138 @@
           
           if (editor.view && editor.view.state && editor.commands) {
             try {
-              console.log(`🔄 Attempting to update field ${variable.varId} with new value: "${variable.value || variable.displayLabel}"`);
+              // For signatures, use displayLabel; for values, use value (or label as fallback)
+              const displayText = variable.type === 'signature' 
+                ? variable.displayLabel 
+                : (variable.value || variable.displayLabel);
+              console.log(`🔄 Attempting to update field ${variable.varId} (type: ${variable.type}) with new text: "${displayText}"`);
               
               const doc = editor.view.state.doc;
               const annotations = [];
+              const contentControls = [];
+              const allNodes = [];
               
-              // Manually walk the document to find field annotation nodes
+              // Manually walk the document to find BOTH field annotations AND content controls
               doc.descendants((node, pos) => {
+                // Debug: collect all node types
+                allNodes.push({ type: node.type.name, attrs: node.attrs, pos });
+                
+                // Find Field Annotations (web-created variables)
                 if (node.type.name === 'fieldAnnotation' && node.attrs.fieldId === variable.varId) {
-                  annotations.push({ node, pos });
+                  annotations.push({ node, pos, source: 'fieldAnnotation' });
+                }
+                
+                // Find Content Controls (Word-created variables)
+                if (node.type.name === 'structuredContent') {
+                  // Extract varId from w:tag in sdtPr.elements
+                  let ccVarId = null;
+                  if (node.attrs?.sdtPr?.elements) {
+                    for (const elem of node.attrs.sdtPr.elements) {
+                      if (elem.name === 'w:tag' && elem.attributes?.['w:val']) {
+                        ccVarId = elem.attributes['w:val'];
+                        break;
+                      }
+                    }
+                  }
+                  
+                  if (ccVarId === variable.varId) {
+                    contentControls.push({ node, pos, source: 'contentControl' });
+                  }
                 }
               });
               
-              console.log(`🔍 Found ${annotations.length} annotation(s) for field ${variable.varId}`);
+              const totalFound = annotations.length + contentControls.length;
+              console.log(`🔍 Document contains ${allNodes.length} total nodes`);
+              console.log(`🔍 Node types in document:`, [...new Set(allNodes.map(n => n.type))]);
+              console.log(`🔍 Found ${annotations.length} Field Annotations + ${contentControls.length} Content Controls = ${totalFound} total for ${variable.varId}`);
               
+              // Update Field Annotations (web-created variables)
               if (annotations.length > 0) {
-                // Process in reverse order to maintain positions
                 for (let i = annotations.length - 1; i >= 0; i--) {
                   const { node, pos } = annotations[i];
                   const oldLabel = node.attrs.displayLabel;
-                  // Display the variable VALUE in the document
-                  // The label/name is just metadata for identification in the sidepane
-                  const newLabel = variable.value || variable.displayLabel;
                   
-                  console.log(`📝 Updating annotation ${i + 1}/${annotations.length} at pos ${pos}: "${oldLabel}" → "${newLabel}"`);
+                  console.log(`📝 Updating Field Annotation ${i + 1}/${annotations.length} at pos ${pos}: "${oldLabel}" → "${displayText}"`);
                   
-                  // Delete the specific annotation
-                  const deleteResult = editor.commands.deleteFieldAnnotation({ node, pos });
-                  console.log(`🗑️ Delete result:`, deleteResult);
-                  
-                  // Re-insert with new displayLabel (value) at the same position
-                  const insertResult = editor.commands.addFieldAnnotation(pos, {
+                  editor.commands.deleteFieldAnnotation({ node, pos });
+                  editor.commands.addFieldAnnotation(pos, {
                     fieldId: variable.varId,
-                    displayLabel: newLabel,
+                    displayLabel: displayText,
                     fieldType: 'TEXTINPUT',
                     fieldColor: '#980043',
                     type: variable.type
                   });
-                  console.log(`➕ Insert result:`, insertResult);
                   
-                  console.log(`✅ Replaced annotation ${i + 1}/${annotations.length}`);
+                  console.log(`✅ Replaced Field Annotation ${i + 1}/${annotations.length}`);
                 }
-              } else {
-                console.log(`ℹ️ Field ${variable.varId} not found in document (not yet inserted)`);
+              }
+              
+              // Update Content Controls (Word-created variables)
+              if (contentControls.length > 0) {
+                console.log(`ℹ️ Found ${contentControls.length} Content Control(s) to update`);
+                
+                for (let i = 0; i < contentControls.length; i++) {
+                  const { node, pos } = contentControls[i];
+                  
+                  console.log(`🔄 Updating Content Control ${i + 1}/${contentControls.length} at pos ${pos}`);
+                  console.log(`   Old text: "${node.textContent}"`);
+                  console.log(`   New text: "${displayText}"`);
+                  
+                  try {
+                    // Create a transaction to update the text content
+                    // Content Controls have a complex structure with sdtContent inside
+                    // We need to find and replace the text nodes within
+                    const { state, dispatch } = editor.view;
+                    const tr = state.tr;
+                    
+                    // Find the text node(s) inside the structuredContent node
+                    // The structure is: structuredContent > (possibly other nodes) > text
+                    let textStart = null;
+                    let textEnd = null;
+                    
+                    node.descendants((childNode, childPos) => {
+                      if (childNode.isText || childNode.type.name === 'text') {
+                        if (textStart === null) {
+                          // First text node - calculate absolute position
+                          textStart = pos + childPos + 1; // +1 because pos is before the node
+                        }
+                        textEnd = pos + childPos + 1 + childNode.nodeSize;
+                      }
+                    });
+                    
+                    if (textStart !== null && textEnd !== null) {
+                      // Replace the text content
+                      tr.replaceWith(textStart, textEnd, state.schema.text(displayText));
+                      dispatch(tr);
+                      console.log(`✅ Content Control text updated: ${textStart} → ${textEnd}`);
+                    } else {
+                      // If no text found, try to insert at the beginning of the content
+                      console.log(`⚠️ No text nodes found in Content Control, attempting to insert text`);
+                      
+                      // Try to find sdtContent and insert text there
+                      let insertPos = null;
+                      node.descendants((childNode, childPos) => {
+                        if (insertPos === null && childNode.type.name === 'paragraph') {
+                          insertPos = pos + childPos + 2; // +1 for node boundary, +1 to get inside
+                        }
+                      });
+                      
+                      if (insertPos !== null) {
+                        tr.insertText(displayText, insertPos);
+                        dispatch(tr);
+                        console.log(`✅ Content Control text inserted at pos ${insertPos}`);
+                      } else {
+                        console.error(`❌ Could not find insertion point in Content Control`);
+                      }
+                    }
+                  } catch (error) {
+                    console.error(`❌ Failed to update Content Control:`, error, error.stack);
+                  }
+                }
+              }
+              
+              if (totalFound === 0) {
+                console.log(`ℹ️ Variable ${variable.varId} not found in document (not yet inserted)`);
               }
             } catch (error) {
               console.error('❌ Failed to update SuperDoc field:', error, error.stack);
@@ -3747,7 +3864,7 @@
                 const contentControl = range.insertContentControl();
                 contentControl.title = name;
                 contentControl.tag = variable.varId;
-                contentControl.appearance = 'Tags';
+                contentControl.appearance = 'BoundingBox'; // BoundingBox hides the title, Tags shows it
                 contentControl.color = '#980043';
                 // Insert the VALUE (which will be name if no value provided)
                 const displayText = variable.value || name;
@@ -4060,7 +4177,20 @@
                   variant: 'primary',
                   onClick: async (e) => {
                   e?.stopPropagation?.();
-                  console.log('🔵 Insert variable clicked:', variable.displayLabel);
+                  
+                  // Get fresh data from state to avoid stale closure issues
+                  const freshVariable = variables[variable.varId];
+                  if (!freshVariable) {
+                    console.error('❌ Variable not found in state:', variable.varId);
+                    return;
+                  }
+                  
+                  console.log('🔵 Insert variable clicked:', freshVariable.displayLabel);
+                  
+                  // For signatures, use displayLabel; for values, use value (or label as fallback)
+                  const displayText = freshVariable.type === 'signature' 
+                    ? freshVariable.displayLabel 
+                    : (freshVariable.value || freshVariable.displayLabel);
                   
                   const isWordAddin = typeof Office !== 'undefined' && Office.context && Office.context.host;
                   
@@ -4069,11 +4199,10 @@
                       await Word.run(async (context) => {
                         const range = context.document.getSelection();
                         const contentControl = range.insertContentControl();
-                        contentControl.title = variable.displayLabel;
-                        contentControl.tag = variable.varId;
-                        contentControl.appearance = 'Tags';
+                        contentControl.title = freshVariable.displayLabel;
+                        contentControl.tag = freshVariable.varId;
+                        contentControl.appearance = 'BoundingBox'; // BoundingBox hides the title, Tags shows it
                         contentControl.color = '#980043';
-                        const displayText = variable.value || variable.displayLabel;
                         contentControl.insertText(displayText, 'Replace');
                         contentControl.font.highlightColor = '#FFC0CB';
                         contentControl.font.bold = true;
@@ -4098,13 +4227,13 @@
                     
                     try {
                       editor.commands.addFieldAnnotationAtSelection({
-                        fieldId: variable.varId,
-                        displayLabel: variable.value || variable.displayLabel,
+                        fieldId: freshVariable.varId,
+                        displayLabel: displayText,
                         fieldType: 'TEXTINPUT',
                         fieldColor: '#980043',
-                        type: variable.type
+                        type: freshVariable.type
                       });
-                      console.log('✅ Variable inserted into SuperDoc:', variable.displayLabel);
+                      console.log('✅ Variable inserted into SuperDoc:', freshVariable.displayLabel);
                     } catch (error) {
                       console.error('❌ Failed to insert into SuperDoc:', error);
                     }

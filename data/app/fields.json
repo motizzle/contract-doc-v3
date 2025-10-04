@@ -1,0 +1,15 @@
+{
+  "field-1759451046749-bjtdjq34r": {
+    "fieldId": "field-1759451046749-bjtdjq34r",
+    "displayLabel": "te",
+    "fieldType": "TEXTINPUT",
+    "fieldColor": "#980043",
+    "type": "text",
+    "category": "Uncategorized",
+    "defaultValue": "",
+    "createdBy": "user1",
+    "createdAt": "2025-10-03T00:24:06.757Z",
+    "updatedBy": "user1",
+    "updatedAt": "2025-10-03T00:24:06.757Z"
+  }
+}

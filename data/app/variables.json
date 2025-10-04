@@ -1,24 +1,13 @@
 {
-  "field-1759451046749-bjtdjq34r": {
-    "varId": "field-1759451046749-bjtdjq34r",
-    "displayLabel": "te",
+  "var-1759547622029-11ogravci": {
+    "varId": "var-1759547622029-11ogravci",
+    "displayLabel": "Var 3",
     "type": "value",
     "category": "Uncategorized",
-    "value": "asdfafdadfa",
-    "createdBy": "user1",
-    "createdAt": "2025-10-03T00:24:06.757Z",
-    "updatedBy": "user1",
-    "updatedAt": "2025-10-03T05:10:39.172Z"
-  },
-  "var-1759467806609-cl9hpmfwh": {
-    "varId": "var-1759467806609-cl9hpmfwh",
-    "displayLabel": "Total Contract Value",
-    "type": "value",
-    "category": "Financial - Updated",
-    "value": "500",
-    "createdBy": "test-user",
-    "createdAt": "2025-10-03T05:03:26.609Z",
-    "updatedBy": "user1",
-    "updatedAt": "2025-10-03T05:10:06.028Z"
+    "value": "something",
+    "createdBy": "user2",
+    "createdAt": "2025-10-04T03:13:42.029Z",
+    "updatedBy": "user2",
+    "updatedAt": "2025-10-04T03:15:31.351Z"
   }
 }

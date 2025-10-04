@@ -336,3 +336,4 @@ await fetch('https://localhost:4001/api/v1/fields/does-not-exist', {
 
 **Phase 2:** Add UI tab with "Enter Variable" button that calls SuperDoc commands
 
+

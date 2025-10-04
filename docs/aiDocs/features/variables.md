@@ -416,51 +416,115 @@ editor.on('fieldAnnotationDropped', ({ sourceField }) => {
 
 ## Implementation Phases
 
-### Phase 1 - Server Storage & Basic UI (MVP)
-**Goal:** Store field definitions server-side, basic panel UI
+### Phase 1 - Infrastructure & Data Flow (Backend Only)
+**Goal:** Build and test the complete backend infrastructure without UI
 
+**Deliverables:**
 - [ ] Server-side storage (`data/app/fields.json`)
 - [ ] API endpoints (GET, POST, PUT, DELETE `/api/v1/fields`)
-- [ ] Fields panel React component (new tab in sidepane)
-- [ ] List fields with categories (reuse existing card styling)
-- [ ] Insert button [↻] calls SuperDoc `addFieldAnnotationAtSelection`
 - [ ] SSE broadcasting (field:created, field:updated, field:deleted)
 - [ ] Activity logging (field operations)
-- [ ] Works on both Word add-in and web
+- [ ] Verify SuperDoc Field Annotation plugin is loaded
+- [ ] Test SuperDoc commands work: `addFieldAnnotationAtSelection`, `updateFieldAnnotations`, `deleteFieldAnnotations`
 
-**Estimated:** 2-3 days
+**Testing:**
+- [ ] Use Postman/curl to test all API endpoints
+- [ ] Verify fields.json is created and updated correctly
+- [ ] Test SSE events are broadcast properly
+- [ ] Console test: Insert field via SuperDoc command in browser devtools
+- [ ] Verify activity log captures field operations
 
-### Phase 2 - Field Editor & Management
-**Goal:** Create/edit fields from UI
+**Success Criteria:**
+- Can CRUD fields via API
+- Fields persist in `data/app/fields.json`
+- SSE broadcasts field changes
+- Can manually insert field into document via console
 
-- [ ] Field editor modal (create new field)
-- [ ] Edit existing fields (click field in document → modal)
-- [ ] Listen to SuperDoc `fieldAnnotationClicked` event
-- [ ] Category management (create, rename categories)
-- [ ] Search/filter fields in panel
-- [ ] Delete field + optionally remove from document
-- [ ] Field color picker
+**Estimated:** 1-2 days
 
-**Estimated:** 2-3 days
+### Phase 2 - Basic UI Wireframe (Minimal Insert)
+**Goal:** New tab with simple "Enter Variable" button that inserts into document
 
-### Phase 3 - Enhanced UX
-**Goal:** Power user features
+**Deliverables:**
+- [ ] New "Fields" tab in bottom panel (alongside Messages, Activity, Versions)
+- [ ] Simple wireframe UI:
+  - Header: "Fields" with [+ Enter Variable] button
+  - Body: Empty placeholder text (e.g., "No fields yet")
+- [ ] Click [+ Enter Variable] → Opens simple prompt modal
+- [ ] Modal: "Enter field name: [____] [Cancel] [Insert]"
+- [ ] Insert button → Calls SuperDoc `addFieldAnnotationAtSelection` at cursor
+- [ ] Field is inserted into document with basic defaults (text type, default color)
+- [ ] Works on both Word add-in and web viewer
 
-- [ ] Highlight all field instances when clicking field name in panel
+**Testing:**
+- [ ] Open Fields tab, click "Enter Variable"
+- [ ] Type a field name, click Insert
+- [ ] Field appears in document at cursor position
+- [ ] Field is functional (can see the field annotation in document)
+- [ ] Repeat on both web and Word add-in
+
+**Success Criteria:**
+- Fields tab is visible and accessible
+- Can insert a basic field into document from UI
+- Field shows up in document with SuperDoc styling
+
+**Estimated:** 1 day
+
+### Phase 3 - Configure View & Storage (Full Feature)
+**Goal:** Full field management UI with list, edit, categories, and persistence
+
+**Deliverables:**
+- [ ] Update Fields tab to show list of all fields (grouped by category)
+- [ ] Each field shows: name, type, category, color
+- [ ] Click field name → Highlight all instances in document
+- [ ] Click [↻] button next to field → Insert at cursor
+- [ ] Click [+ Enter Variable] → Opens full field editor modal:
+  - Field Label* (required)
+  - Field Type dropdown (Text, Signature, Image, Checkbox)
+  - Category dropdown (with "Create new..." option)
+  - Color picker
+  - Default Value (optional)
+- [ ] Click field in document → Opens edit modal (listen to `fieldAnnotationClicked`)
+- [ ] Edit modal has [Delete] button → Removes field definition and optionally from document
+- [ ] Search/filter fields by name or category
+- [ ] Real-time sync: When user creates/edits field, all clients update via SSE
+- [ ] Category management (create new, rename)
+
+**Testing:**
+- [ ] Create multiple fields with different types and categories
+- [ ] Verify fields appear in list grouped by category
+- [ ] Insert field from list into document
+- [ ] Click field in document, edit properties, verify changes reflected
+- [ ] Delete field, verify removed from list and (optionally) document
+- [ ] Test with two users: User A creates field, verify User B sees it immediately
+
+**Success Criteria:**
+- Full CRUD operations on fields from UI
+- Fields grouped by category in panel
+- Can insert, edit, delete fields seamlessly
+- Real-time sync works across clients
+- Works on both platforms
+
+**Estimated:** 3-4 days
+
+### Phase 4 - Enhanced UX (Polish)
+**Goal:** Power user features and refinements
+
 - [ ] Drag & drop from panel to document (SuperDoc native support)
 - [ ] Quick stats (# of instances per field in document)
 - [ ] Field validation rules (required, format, etc.)
 - [ ] Bulk operations (delete multiple, update multiple)
 - [ ] Export/import field definitions (JSON)
-
-**Estimated:** 2-4 days
-
-### Phase 4 - Advanced Features (Future)
 - [ ] Field templates (predefined sets for contract types)
+
+**Estimated:** 2-3 days
+
+### Phase 5 - Advanced Features (Future)
 - [ ] Conditional fields (show/hide based on other field values)
 - [ ] Field history/audit trail
 - [ ] Field permissions (role-based access)
 - [ ] Integration with approvals (require approval to change fields)
+- [ ] Field autocomplete/suggestions
 
 ## Technical Considerations
 
