@@ -394,6 +394,13 @@
                   window.dispatchEvent(new CustomEvent('approval:complete', { detail: p }));
                 } catch {}
               }
+              // Handle status changes (for banner drop celebration)
+              if (p && p.type === 'status') {
+                try {
+                  window.dispatchEvent(new CustomEvent('status:change', { detail: p }));
+                  console.log('📡 Status changed to:', p.status);
+                } catch {}
+              }
               // Handle variable events (both singular and plural)
               if (p && p.type && (p.type.startsWith('variable:') || p.type.startsWith('variables:'))) {
                 try {
@@ -1285,6 +1292,91 @@
       );
     }
 
+    function BannerDropEffect() {
+      const [showBanner, setShowBanner] = React.useState(false);
+
+      // Listen for status change to 'final'
+      React.useEffect(() => {
+        const handleStatusChange = (event) => {
+          try {
+            const data = event.detail || {};
+            console.log('🎉 Banner: Status change event received:', data);
+            // Check if status changed to 'final'
+            if (data.status === 'final') {
+              console.log('🎉 Banner: Triggering banner drop!');
+              setShowBanner(true);
+              
+              // Auto-dismiss after 4 seconds
+              setTimeout(() => {
+                setShowBanner(false);
+              }, 4000);
+            }
+          } catch (err) {
+            console.error('❌ Banner error:', err);
+          }
+        };
+
+        // Listen for custom status:change events dispatched from main SSE handler
+        window.addEventListener('status:change', handleStatusChange);
+        return () => window.removeEventListener('status:change', handleStatusChange);
+      }, []);
+
+      if (!showBanner) return null;
+
+      // Check if we're in web (has navbar) or add-in (no navbar)
+      const isWeb = typeof Office === 'undefined';
+      const topOffset = isWeb ? '48px' : 0; // Web has 48px navbar at top
+
+      // Banner styles
+      const bannerContainer = {
+        position: 'fixed',
+        top: topOffset,
+        left: 0,
+        right: 0,
+        zIndex: 10000,
+        display: 'flex',
+        justifyContent: 'center',
+        pointerEvents: 'none'
+      };
+
+      const banner = {
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        color: '#ffffff',
+        padding: '20px 40px',
+        borderRadius: '0 0 12px 12px',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+        fontSize: '24px',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        animation: 'bannerDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        pointerEvents: 'auto',
+        minWidth: '400px',
+        maxWidth: '90vw'
+      };
+
+      const icon = {
+        display: 'inline-block',
+        marginRight: '12px',
+        fontSize: '28px'
+      };
+
+      const message = {
+        display: 'block',
+        fontSize: '16px',
+        fontWeight: 'normal',
+        marginTop: '8px',
+        opacity: 0.95
+      };
+
+      return React.createElement('div', { style: bannerContainer }, [
+        React.createElement('div', { key: 'banner', style: banner }, [
+          React.createElement('span', { key: 'icon', style: icon }, '🎉'),
+          React.createElement('span', { key: 'title' }, 'Document Finalized!'),
+          React.createElement('span', { key: 'message', style: message }, 'Great work finalizing this document!')
+        ])
+      ]);
+    }
+
     function ApprovalCelebration() {
       const [showCelebration, setShowCelebration] = React.useState(false);
 
@@ -1365,19 +1457,73 @@
           if (navigator?.clipboard?.writeText) await navigator.clipboard.writeText(text);
         } catch {}
       };
+      const exportToCSV = () => {
+        try {
+          // Build CSV with headers
+          const headers = ['Timestamp', 'Type', 'User', 'Action', 'Target', 'Message'];
+          const rows = (activities || []).slice().reverse().map(activity => {
+            if (typeof activity === 'string') {
+              return [activity, '', '', '', '', activity];
+            }
+            const timestamp = activity.timestamp ? new Date(activity.timestamp).toLocaleString() : '';
+            const type = activity.type || '';
+            const user = activity.user || '';
+            const action = activity.action || '';
+            const target = activity.target || '';
+            const message = activity.message || '';
+            // Escape CSV values (wrap in quotes if they contain commas, quotes, or newlines)
+            const escape = (val) => {
+              const str = String(val || '');
+              if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                return '"' + str.replace(/"/g, '""') + '"';
+              }
+              return str;
+            };
+            return [timestamp, type, user, action, target, message].map(escape);
+          });
+          const csv = [headers.join(',')].concat(rows.map(row => row.join(','))).join('\n');
+          
+          // Create download link
+          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+          const link = document.createElement('a');
+          const url = URL.createObjectURL(blob);
+          link.setAttribute('href', url);
+          link.setAttribute('download', `activity-log-${new Date().toISOString().slice(0, 10)}.csv`);
+          link.style.visibility = 'hidden';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          console.error('Failed to export CSV:', err);
+        }
+      };
+      const isAddin = typeof Office !== 'undefined';
       const list = (activities || []).length
         ? React.createElement('div', { className: 'notifications-list', style: { maxHeight: 'none', overflow: 'visible' } }, (activities || []).slice().reverse().map((activity, index) => renderNotification(activity, index)).filter(Boolean))
         : React.createElement('div', { className: 'text-gray-500', style: { padding: 8 } }, 'No activity yet.');
-      // Layout: column fills available height; only the list area scrolls
-      const containerStyle = { display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 };
-      const listWrapStyle = { flex: 1, minHeight: 0, overflowY: 'auto', padding: '3px 0 8px 0' };
-      const footer = React.createElement('div', { className: 'd-flex items-center justify-end', style: { padding: '10px 8px', background: '#fff', borderTop: '1px solid #e5e7eb' } }, [
-        React.createElement(UIButton, { key: 'copy', label: 'Copy', onClick: copy, variant: 'primary' })
+      
+      const footerBar = React.createElement('div', { 
+        className: 'd-flex flex-column gap-8', 
+        style: { 
+          width: '100%', 
+          boxSizing: 'border-box', 
+          paddingTop: 8, 
+          paddingBottom: isAddin ? 8 : 12, 
+          paddingLeft: isAddin ? 0 : 12, 
+          paddingRight: isAddin ? 0 : 12 
+        } 
+      }, [
+        React.createElement(UIButton, { key: 'copy', label: 'Copy', onClick: copy, variant: 'primary' }),
+        React.createElement(UIButton, { key: 'export', label: 'Export to CSV', onClick: exportToCSV, variant: 'secondary' })
       ]);
-      return React.createElement('div', { style: containerStyle }, [
-        React.createElement('div', { key: 'list-wrap', style: listWrapStyle }, list),
-        footer
+      
+      const wrap = React.createElement('div', { style: { width: '100%', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' } }, [
+        React.createElement('div', { key: 'list', style: { flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: isAddin ? '8px' : '12px' } }, [list]),
+        React.createElement('div', { key: 'footer', style: { flexShrink: 0, background: '#fff', borderTop: '1px solid #e5e7eb' } }, [footerBar])
       ]);
+      
+      return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, height: '100%' } }, [wrap]);
     }
 
     function MessagingPanel() {
@@ -4746,12 +4892,12 @@
           }, React.createElement('span', { ref: variablesLabelRef, style: { display: 'inline-block' } }, 'Variables')),
         React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
-        React.createElement('div', { key: 'tabbody', className: activeTab === 'AI' ? '' : 'mt-3', style: { flex: 1, minHeight: 0, overflowY: activeTab === 'AI' ? 'hidden' : 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', padding: activeTab === 'AI' ? '0' : '0 8px 112px 8px', marginTop: activeTab === 'AI' ? 0 : undefined } }, [
+        React.createElement('div', { key: 'tabbody', className: (activeTab === 'AI' || activeTab === 'Activity') ? '' : 'mt-3', style: { flex: 1, minHeight: 0, overflowY: (activeTab === 'AI' || activeTab === 'Activity') ? 'hidden' : 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', padding: (activeTab === 'AI' || activeTab === 'Activity') ? '0' : '0 8px 112px 8px', marginTop: (activeTab === 'AI' || activeTab === 'Activity') ? 0 : undefined } }, [
           React.createElement('div', { key: 'wrap-ai', style: { display: (activeTab === 'AI' ? 'flex' : 'none'), flex: 1, height: '100%', flexDirection: 'column' } }, React.createElement(ChatConsole, { key: 'chat' })),
           React.createElement('div', { key: 'wrap-workflow', style: { display: (activeTab === 'Workflow' ? 'block' : 'none') } }, React.createElement(WorkflowApprovalsPanel, { key: 'workflow' })),
           React.createElement('div', { key: 'wrap-messaging', style: { display: (activeTab === 'Messaging' ? 'block' : 'none') } }, React.createElement(MessagingPanel, { key: 'messaging' })),
           React.createElement('div', { key: 'wrap-versions', style: { display: (activeTab === 'Versions' ? 'block' : 'none') } }, React.createElement(VersionsPanel, { key: 'versions' })),
-          React.createElement('div', { key: 'wrap-activity', style: { display: (activeTab === 'Activity' ? 'block' : 'none') } }, React.createElement(ActivityPanel, { key: 'activity' })),
+          React.createElement('div', { key: 'wrap-activity', style: { display: (activeTab === 'Activity' ? 'flex' : 'none'), flex: 1, height: '100%', flexDirection: 'column' } }, React.createElement(ActivityPanel, { key: 'activity' })),
           React.createElement('div', { key: 'wrap-compare', style: { display: (activeTab === 'Comparison' ? 'block' : 'none') } }, React.createElement(ComparisonTab, { key: 'compare' })),
           React.createElement('div', { key: 'wrap-variables', style: { display: (activeTab === 'Variables' ? 'block' : 'none') } }, React.createElement(VariablesPanel, { key: 'variables' }))
         ])
@@ -4766,7 +4912,7 @@
 
       const container = React.createElement('div', { style: { display: 'flex', flexDirection: 'column', height: ((typeof Office === 'undefined') ? '100vh' : undefined), flex: ((typeof Office === 'undefined') ? undefined : 1), minHeight: 0 } }, [topPanel, assistantPanel]);
 
-      return React.createElement(ThemeProvider, null, React.createElement(React.Fragment, null, [container, React.createElement(ApprovalCelebration, { key: 'celebration' })]));
+      return React.createElement(ThemeProvider, null, React.createElement(React.Fragment, null, [container, React.createElement(BannerDropEffect, { key: 'banner' }), React.createElement(ApprovalCelebration, { key: 'celebration' })]));
     }
 
     const root = ReactDOM.createRoot(rootEl);
