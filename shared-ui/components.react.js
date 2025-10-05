@@ -1841,6 +1841,117 @@
       }
     } catch {}
 
+    // Web viewer: listen for navigation events and jump to text using SuperDoc
+    try {
+      if (typeof window !== 'undefined' && typeof Office === 'undefined') {
+        window.removeEventListener && window.removeEventListener('document:navigate', window.__ogWebDocNavigateHandler || (()=>{}));
+        const webHandler = async (event) => {
+          try {
+            const detail = event && event.detail ? event.detail : (event && event.payload ? event.payload : {});
+            const text = String(detail && (detail.text || ''));
+            const changeType = String(detail && (detail.changeType || 'change'));
+            const contextBefore = String(detail && (detail.contextBefore || ''));
+            const contextAfter = String(detail && (detail.contextAfter || ''));
+            const targetVersion = Number(detail && detail.targetVersion ? detail.targetVersion : 0);
+            console.log('[UI Web] document:navigate event', { textLen: text.length, changeType, hasCtx: !!(contextBefore || contextAfter) });
+            
+            if (!text || !window.superdocInstance || !window.superdocInstance.editor) return;
+            
+            // If a specific version is provided, load it first
+            if (Number.isFinite(targetVersion) && targetVersion > 0) {
+              try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: targetVersion } })); } catch {}
+              await new Promise(res => setTimeout(res, 900));
+            }
+            
+            const editor = window.superdocInstance.editor;
+            const state = editor.view.state;
+            const doc = state.doc;
+            
+            // Normalize text for comparison
+            const norm = (s) => String(s || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+            const searchText = norm(text);
+            const beforeNorm = norm(contextBefore);
+            const afterNorm = norm(contextAfter);
+            
+            let foundPos = null;
+            let foundSize = 0;
+            
+            // Search through document for matching text
+            doc.descendants((node, pos) => {
+              if (foundPos !== null) return false; // Already found
+              if (!node.isText) return;
+              
+              const nodeText = norm(node.text);
+              
+              // Try exact match first
+              if (nodeText.includes(searchText)) {
+                foundPos = pos + nodeText.indexOf(searchText);
+                foundSize = text.length;
+                return false;
+              }
+              
+              // Try with context
+              if (beforeNorm || afterNorm) {
+                const contextWindow = norm(`${contextBefore} ${text} ${contextAfter}`);
+                if (nodeText.includes(contextWindow)) {
+                  foundPos = pos + nodeText.indexOf(searchText);
+                  foundSize = text.length;
+                  return false;
+                }
+              }
+            });
+            
+            if (foundPos !== null) {
+              // Create selection at found position
+              const tr = state.tr;
+              const $pos = doc.resolve(foundPos);
+              const selection = state.selection.constructor.near($pos);
+              tr.setSelection(selection);
+              
+              // Apply highlighting decoration
+              const highlightColor = changeType === 'addition' ? '#c6f6d5' : (changeType === 'deletion' ? '#fed7d7' : '#fef3c7');
+              const from = foundPos;
+              const to = foundPos + foundSize;
+              
+              // Dispatch transaction
+              editor.view.dispatch(tr.scrollIntoView());
+              
+              // Add temporary highlight by wrapping in a mark (if marks are available)
+              console.log('[UI Web] Found and scrolled to text at position:', foundPos);
+              
+              // Find the DOM element and add temporary CSS class
+              setTimeout(() => {
+                try {
+                  const domAtPos = editor.view.domAtPos(foundPos);
+                  if (domAtPos && domAtPos.node) {
+                    let element = domAtPos.node;
+                    if (element.nodeType === Node.TEXT_NODE) {
+                      element = element.parentElement;
+                    }
+                    if (element) {
+                      element.style.backgroundColor = highlightColor;
+                      element.style.transition = 'background-color 2s ease-out';
+                      setTimeout(() => {
+                        element.style.backgroundColor = '';
+                      }, 2000);
+                    }
+                  }
+                } catch (e) {
+                  console.warn('[UI Web] Could not highlight text:', e);
+                }
+              }, 100);
+            } else {
+              console.warn('[UI Web] document:navigate: no match found', { searchText, textLen: text.length });
+            }
+          } catch (e) {
+            console.error('[UI Web] document:navigate error:', e);
+          }
+        };
+        window.__ogWebDocNavigateHandler = webHandler;
+        window.addEventListener('document:navigate', webHandler);
+      }
+    } catch {}
+
     // Comparison Tab
     function ComparisonTab() {
       const API_BASE = getApiBase();
@@ -1985,12 +2096,12 @@
               fontSize: '14px', 
               color: '#4b5563', 
               lineHeight: '1.5',
-              marginBottom: isAddin ? '12px' : '0'
+              marginBottom: '12px' // Always show margin for button
             } 
           }, String(d.text || '')),
-          isAddin ? React.createElement('div', { key: 'f', className: 'd-flex justify-end' }, 
+          React.createElement('div', { key: 'f', className: 'd-flex justify-end' }, 
             React.createElement(UIButton, { label: 'Jump to location', onClick: () => jump(d), variant: 'secondary' })
-          ) : null
+          )
         ].filter(Boolean));
       });
 
