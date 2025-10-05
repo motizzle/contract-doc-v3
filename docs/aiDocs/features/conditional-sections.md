@@ -93,93 +93,163 @@ Question: "Is this a multi-year contract?"
 
 ## 2. Sections Management
 
-### Creating Sections
+### **Leveraging Native Section Support**
 
-#### UI: Sections Tab (Sidepane)
+**Key Insight:** SuperDoc (web) and Word already support sections natively. We don't reinvent this - we **enhance** it with conditional logic.
+
+#### How Users Create Sections
+**In the Document** (Primary Method):
+- **Web (SuperDoc)**: Click in document → "Insert Section" → Name it
+- **Word**: Click in document → Insert Content Control → Set properties
+- **Natural workflow**: Create sections where you need them
+
+**Sidepane Role:**
+- **Dashboard view** of all sections in document
+- **Control panel** for conditional logic
+- **Not** a creation tool - just management
+
+### Sections Tab (Sidepane) - Dashboard View
+
+#### UI: Sections Dashboard
 ```
 ┌────────────────────────────────────┐
-│ Sections                      [+]  │ ← Create Section button
+│ Sections in Document          🔄   │ ← Refresh/sync button
+├────────────────────────────────────┤
+│ 🔍 Search sections...              │
+│ [All] [Visible] [Hidden] [Rules]   │ ← Filter tabs
 ├────────────────────────────────────┤
 │ ┌────────────────────────────────┐│
-│ │ Federal Compliance             ││
-│ │ 🟢 Visible • 3 rules           ││
-│ │ [Edit] [Toggle] [Insert]      ││
+│ │ Federal Compliance             ││ ← Detected from document
+│ │ 🟢 Visible                     ││
+│ │ Page 3 • 150 words             ││
+│ │                                ││
+│ │ Conditional Logic:             ││
+│ │ ⚙️ No rules (always visible)   ││
+│ │                                ││
+│ │ [Add Rule] [Jump to] [Hide]    ││
 │ └────────────────────────────────┘│
 │ ┌────────────────────────────────┐│
 │ │ Renewal Terms                  ││
-│ │ 🔴 Hidden • 1 rule             ││
-│ │ [Edit] [Toggle] [Insert]      ││
+│ │ 🔴 Hidden • 1 rule active      ││
+│ │ Page 7 • 230 words             ││
+│ │                                ││
+│ │ IF "Multi-year?" = YES         ││
+│ │ THEN Show this section         ││
+│ │                                ││
+│ │ [Edit Rule] [Jump to] [Show]   ││
 │ └────────────────────────────────┘│
 │ ┌────────────────────────────────┐│
 │ │ Payment Schedule               ││
-│ │ 🟢 Visible • No rules          ││
-│ │ [Edit] [Toggle] [Insert]      ││
+│ │ 🟢 Visible                     ││
+│ │ Page 12 • 85 words             ││
+│ │                                ││
+│ │ ⚠️ Warning: No section found   ││ ← If deleted from doc
+│ │ [Remove from tracking]         ││
 │ └────────────────────────────────┘│
 └────────────────────────────────────┘
 ```
 
-#### Create Section Modal
-```
-┌──────────────────────────────────────┐
-│ Create Section                   [X] │
-├──────────────────────────────────────┤
-│ Section Label:                       │
-│ [Federal Compliance Requirements___] │
-│                                      │
-│ Section Content:                     │
-│ ┌──────────────────────────────────┐│
-│ │ All federal contracts must...    ││
-│ │                                  ││
-│ │ [Rich text editor]               ││
-│ └──────────────────────────────────┘│
-│                                      │
-│ Initial Visibility:                  │
-│ ○ Visible  ● Hidden                 │
-│                                      │
-│            [Cancel]  [Create]        │
-└──────────────────────────────────────┘
-```
+### Section Detection & Sync
 
-#### Section Properties
+#### How Sections Are Discovered
+**Web (SuperDoc):**
+- Listen for SuperDoc section creation/deletion events
+- Auto-detect sections in document on load
+- Extract section ID, title, position, content
+
+**Word (Content Controls):**
+- Scan document for Content Controls with type="section" (or custom tag)
+- Extract Control ID, title, position, content
+- Monitor for changes via Word JS API events
+
+#### Server-Side Tracking
 ```javascript
+// data/app/sections.json
 {
-  sectionId: 'section_001', // Auto-generated
-  label: 'Federal Compliance Requirements',
-  content: 'Rich text content...', // HTML or markdown
-  visible: false, // Default visibility
-  position: 0, // Order in document
-  rules: [], // Conditional rules
-  style: {
-    borderColor: '#3b82f6',
-    backgroundColor: '#eff6ff',
-    borderWidth: 2
-  },
-  metadata: {
-    wordCount: 150,
-    lastModified: '2025-03-15T10:00:00Z'
+  "sections": {
+    "section_sdoc_abc123": { // SuperDoc section ID
+      "sectionId": "section_sdoc_abc123",
+      "label": "Federal Compliance Requirements",
+      "source": "superdoc", // superdoc | word
+      "visible": true,
+      "rules": [], // Conditional rules applied to this
+      "lastSeen": "2025-03-15T10:00:00Z",
+      "metadata": {
+        "pageNumber": 3,
+        "wordCount": 150,
+        "createdBy": "user1"
+      }
+    },
+    "section_word_xyz789": { // Word Content Control ID
+      "sectionId": "section_word_xyz789",
+      "label": "Renewal Terms",
+      "source": "word",
+      "visible": false, // Hidden by rule
+      "rules": ["rule_001"],
+      "lastSeen": "2025-03-15T10:05:00Z"
+    }
   }
 }
 ```
 
+#### Sync Flow
+```
+1. User creates section in document
+   ↓
+2. Platform detects new section
+   ↓
+3. Send to server: POST /api/v1/sections/register
+   {
+     sectionId: "section_sdoc_abc123",
+     label: "Federal Compliance",
+     source: "superdoc"
+   }
+   ↓
+4. Server stores section metadata
+   ↓
+5. SSE broadcasts to all clients
+   ↓
+6. Sidepane updates to show new section
+```
+
 ### Managing Sections
 
-#### Toggle Section On/Off
-- **Manual Toggle**: Click "Toggle" button in sidepane
-- **Instant Update**: Document updates immediately
-- **Broadcast**: SSE notifies all clients
-- **Override Rules**: Manual toggle temporarily overrides conditional logic
-  - Show warning: "This section has conditional rules. Manual toggle will override them."
+#### Toggle Section Visibility
+**From Sidepane:**
+- Click "Hide" or "Show" button
+- Section visibility updates in document
+- **Both platforms**: Section hidden/shown using native APIs
+  - SuperDoc: `section.setVisibility(false)`
+  - Word: `contentControl.appearance = 'Hidden'` or custom CSS class
 
-#### Edit Section
-- Update label
-- Edit content (rich text editor)
-- Change default visibility
-- Manage associated rules
+**Manual Toggle:**
+- Temporarily overrides conditional rules
+- Warning shown if rules exist
+- Can be reset to "Follow Rules" mode
 
-#### Insert Section
-- Click "Insert" to place section at cursor position
-- In Word: Inserts Content Control
-- In Web: Inserts SuperDoc annotation or styled div
+#### Apply Conditional Logic
+**Add Rule Button:**
+- Opens rule editor modal
+- Configure question → answer → action
+- Rule saved server-side
+- Associates rule with this section
+
+**Edit Rules:**
+- Modify existing rules
+- Enable/disable rules
+- Delete rules
+
+#### Jump to Section
+- Click "Jump to" button
+- Document scrolls to section
+- Section highlighted temporarily
+- Works on both platforms (existing "Jump to location" feature)
+
+#### Section Not Found
+- If section deleted from document but still tracked
+- Show warning in sidepane
+- Offer "Remove from tracking" button
+- Cleanup orphaned rules
 
 ---
 
@@ -437,31 +507,32 @@ function evaluateSectionVisibility(section, questions, rules) {
 
 ## Implementation Phases
 
-### Phase 1: Foundation (5-7 days)
-**Goal:** Basic sections with manual toggle
+### Phase 1: Section Discovery & Dashboard (3-4 days)
+**Goal:** Detect sections in document and display in sidepane
 
 **Backend:**
 - [ ] Data models for sections, questions, rules
 - [ ] Storage: `data/app/sections.json`
 - [ ] API endpoints:
-  - `GET /api/v1/sections` - List all sections
-  - `POST /api/v1/sections` - Create section
-  - `PUT /api/v1/sections/:id` - Update section
-  - `DELETE /api/v1/sections/:id` - Delete section
+  - `POST /api/v1/sections/register` - Register section from document
+  - `GET /api/v1/sections` - List all tracked sections
   - `PUT /api/v1/sections/:id/toggle` - Toggle visibility
+  - `DELETE /api/v1/sections/:id/untrack` - Remove from tracking
 - [ ] SSE broadcasting for section changes
 
 **Frontend:**
-- [ ] Sections tab in sidepane
-- [ ] Section cards UI
-- [ ] Create/edit section modal
-- [ ] Manual toggle functionality
-- [ ] Insert section into document (Word + Web)
+- [ ] Sections tab in sidepane (dashboard view)
+- [ ] Section cards UI (read-only display)
+- [ ] Scan document for existing sections on load
+- [ ] Listen for section create/delete events in document
+- [ ] Auto-register new sections with server
 
-**Document Rendering:**
-- [ ] Word: Insert as Content Control
-- [ ] Web: Insert as styled div or SuperDoc annotation
-- [ ] Show/hide logic on both platforms
+**Platform Integration:**
+- [ ] **Web (SuperDoc):** Hook into section creation/deletion events
+- [ ] **Word:** Scan Content Controls, detect section-type controls
+- [ ] Show/hide logic using native APIs
+  - SuperDoc: `section.setVisibility()`
+  - Word: `contentControl.appearance` or CSS class
 
 ### Phase 2: Questions System (3-4 days)
 **Goal:** Question management and answers
@@ -523,38 +594,70 @@ function evaluateSectionVisibility(section, questions, rules) {
 
 ### Sections Endpoints
 
+#### POST /api/v1/sections/register
+**Purpose:** Register a section that was created in the document
+
+```javascript
+Request: {
+  sectionId: "section_sdoc_abc123", // Native ID from platform
+  label: "Federal Compliance Requirements",
+  source: "superdoc" | "word",
+  visible: true,
+  metadata: {
+    pageNumber: 3,
+    wordCount: 150
+  }
+}
+Response: {
+  section: { /* registered section */ },
+  isNew: true // true if first time seeing this section
+}
+```
+
 #### GET /api/v1/sections
+**Purpose:** Get all tracked sections
+
 ```javascript
 Response: {
   sections: {
-    "section_001": { /* section object */ }
+    "section_sdoc_abc123": {
+      sectionId: "section_sdoc_abc123",
+      label: "Federal Compliance Requirements",
+      source: "superdoc",
+      visible: true,
+      rules: ["rule_001"],
+      lastSeen: "2025-03-15T10:00:00Z"
+    }
   }
 }
 ```
 
-#### POST /api/v1/sections
-```javascript
-Request: {
-  label: "Federal Compliance Requirements",
-  content: "Rich text content...",
-  visible: false,
-  position: 0
-}
-Response: {
-  section: { /* created section */ }
-}
-```
-
 #### PUT /api/v1/sections/:id/toggle
+**Purpose:** Toggle section visibility (show/hide)
+
 ```javascript
 Request: {
-  visible: true,
+  visible: false,
   userId: "user1",
-  override: true // Optional: manual override
+  override: true // Optional: manual override of rules
 }
 Response: {
   section: { /* updated section */ },
-  affectedRules: [...] // Rules that were overridden
+  affectedRules: [...], // Rules that were overridden
+  evaluatedRules: [...] // Rules that were evaluated
+}
+```
+
+#### DELETE /api/v1/sections/:id/untrack
+**Purpose:** Stop tracking a section (doesn't delete from document)
+
+```javascript
+Request: {
+  userId: "user1"
+}
+Response: {
+  ok: true,
+  deletedRules: ["rule_001", "rule_002"] // Associated rules also deleted
 }
 ```
 
@@ -607,18 +710,31 @@ Response: {
 ## SSE Events
 
 ```javascript
-// Section created
+// Section registered (detected in document)
 {
-  type: 'section:created',
-  section: { /* section object */ }
+  type: 'section:registered',
+  section: {
+    sectionId: 'section_sdoc_abc123',
+    label: 'Federal Compliance Requirements',
+    source: 'superdoc',
+    visible: true
+  }
 }
 
 // Section visibility changed
 {
   type: 'section:visibility',
-  sectionId: 'section_001',
-  visible: true,
-  reason: 'manual' | 'rule' | 'answer'
+  sectionId: 'section_sdoc_abc123',
+  visible: false,
+  reason: 'manual' | 'rule' | 'answer',
+  triggeredBy: 'user1' | 'rule_001'
+}
+
+// Section untracked (removed from tracking)
+{
+  type: 'section:untracked',
+  sectionId: 'section_sdoc_abc123',
+  reason: 'deleted' | 'manual'
 }
 
 // Question answered
@@ -626,14 +742,18 @@ Response: {
   type: 'question:answered',
   questionId: 'question_001',
   answer: 'yes',
-  affectedSections: ['section_001', 'section_002']
+  affectedSections: [
+    { sectionId: 'section_001', oldVisible: false, newVisible: true },
+    { sectionId: 'section_002', oldVisible: false, newVisible: true }
+  ]
 }
 
 // Rule created/updated
 {
   type: 'rule:updated',
   ruleId: 'rule_001',
-  rule: { /* rule object */ }
+  rule: { /* rule object */ },
+  affectedSections: ['section_001']
 }
 ```
 
