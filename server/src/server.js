@@ -518,6 +518,86 @@ function buildActivityMessage(type, details = {}) {
         message: `${userLabel} deleted variable "${details.displayLabel}"`
       };
 
+    case 'system:prompt-update':
+      return {
+        action: 'updated system prompt',
+        target: 'system',
+        details: { promptLength: details.promptLength },
+        message: `${userLabel} updated the AI system prompt`
+      };
+
+    case 'system:prompt-reset':
+      return {
+        action: 'reset system prompt',
+        target: 'system',
+        details: {},
+        message: `${userLabel} reset the AI system prompt to default`
+      };
+
+    case 'document:upload':
+      return {
+        action: 'uploaded document',
+        target: 'document',
+        details: { filename: details.filename, size: details.size },
+        message: `${userLabel} uploaded document "${details.filename}"`
+      };
+
+    case 'document:snapshot':
+      return {
+        action: 'created snapshot',
+        target: 'document',
+        details: { version: details.version },
+        message: `${userLabel} created document snapshot${details.version ? ` (v${details.version})` : ''}`
+      };
+
+    case 'document:compile':
+      return {
+        action: 'compiled document',
+        target: 'document',
+        details: { format: details.format, includeExhibits: details.includeExhibits },
+        message: `${userLabel} compiled document${details.format ? ` (${details.format})` : ''}${details.includeExhibits ? ' with exhibits' : ''}`
+      };
+
+    case 'document:send-vendor':
+      return {
+        action: 'sent to vendor',
+        target: 'document',
+        details: { vendor: details.vendor, email: details.email },
+        message: `${userLabel} sent document to ${details.vendor || details.email || 'vendor'}`
+      };
+
+    case 'exhibit:upload':
+      return {
+        action: 'uploaded exhibit',
+        target: 'exhibit',
+        details: { filename: details.filename, size: details.size },
+        message: `${userLabel} uploaded exhibit "${details.filename}"`
+      };
+
+    case 'document:title-change':
+      return {
+        action: 'changed document title',
+        target: 'document',
+        details: { oldTitle: details.oldTitle, newTitle: details.newTitle },
+        message: `${userLabel} changed document title to "${details.newTitle}"`
+      };
+
+    case 'chat:reset':
+      return {
+        action: 'reset chat',
+        target: 'chat',
+        details: {},
+        message: `${userLabel} reset AI chat history`
+      };
+
+    case 'system:factory-reset':
+      return {
+        action: 'performed factory reset',
+        target: 'system',
+        details: {},
+        message: `${userLabel} performed factory reset - all data cleared`
+      };
+
     // Add more activity types as needed
     default:
       return {
@@ -1401,8 +1481,18 @@ app.post('/api/v1/document/upload', upload.single('file'), (req, res) => {
   const dest = path.join(workingDocumentsDir, 'default.docx');
   try {
     fs.copyFileSync(uploaded, dest);
+    const userId = req.body?.userId || 'user1';
+    const platform = req.query?.platform || req.body?.platform || 'web';
     bumpRevision();
-    bumpDocumentVersion(req.body?.userId || 'user1', req.query?.platform || req.body?.platform || null);
+    bumpDocumentVersion(userId, platform);
+    
+    // Log activity
+    logActivity('document:upload', userId, {
+      filename: req.file?.originalname || 'default.docx',
+      size: req.file?.size,
+      platform
+    });
+    
     broadcast({ type: 'documentUpload', name: 'default.docx' });
     res.json({ ok: true });
   } catch (e) {
@@ -1620,7 +1710,17 @@ app.post('/api/v1/document/snapshot', (req, res) => {
   if (!fs.existsSync(snapDir)) fs.mkdirSync(snapDir, { recursive: true });
   const dest = path.join(snapDir, `default-${ts}.docx`);
   try {
+    const userId = req.body?.userId || req.query?.userId || 'user1';
+    const platform = req.query?.platform || req.body?.platform || 'web';
+    
     fs.copyFileSync(src, dest);
+    
+    // Log activity
+    logActivity('document:snapshot', userId, {
+      version: serverState.documentVersion,
+      platform
+    });
+    
     broadcast({ type: 'snapshot', name: path.basename(dest) });
     res.json({ ok: true, path: dest });
   } catch (e) {
@@ -1631,6 +1731,12 @@ app.post('/api/v1/document/snapshot', (req, res) => {
 // Factory reset: wipe working overlays and reset server state
 app.post('/api/v1/factory-reset', (req, res) => {
   try {
+    const userId = req.body?.userId || req.query?.userId || 'system';
+    const platform = req.query?.platform || req.body?.platform || 'web';
+    
+    // Log activity BEFORE clearing activity log!
+    logActivity('system:factory-reset', userId, { platform });
+    
     // Remove working document overlay
     const wDoc = path.join(workingDocumentsDir, 'default.docx');
     if (fs.existsSync(wDoc)) fs.rmSync(wDoc);
@@ -2205,6 +2311,17 @@ app.get('/api/v1/exhibits', (req, res) => {
 app.post('/api/v1/exhibits/upload', upload.single('file'), (req, res) => {
   const uploaded = req.file?.path;
   if (!uploaded) return res.status(400).json({ error: 'No file' });
+  
+  const userId = req.body?.userId || 'user1';
+  const platform = req.query?.platform || req.body?.platform || 'web';
+  
+  // Log activity
+  logActivity('exhibit:upload', userId, {
+    filename: req.file?.originalname || path.basename(uploaded),
+    size: req.file?.size,
+    platform
+  });
+  
   broadcast({ type: 'exhibitUpload', name: path.basename(uploaded) });
   res.json({ ok: true });
 });
@@ -2212,6 +2329,8 @@ app.post('/api/v1/exhibits/upload', upload.single('file'), (req, res) => {
 // Compile: convert current DOCX to PDF (LibreOffice), then merge selected exhibits (PDF)
 app.post('/api/v1/compile', async (req, res) => {
   try {
+    const userId = req.body?.userId || 'user1';
+    const platform = req.query?.platform || req.body?.platform || 'web';
     const names = Array.isArray(req.body?.exhibits) ? req.body.exhibits.filter(Boolean) : [];
     const outName = `packet-${Date.now()}.pdf`;
     const outPath = path.join(compiledDir, outName);
@@ -2240,6 +2359,15 @@ app.post('/api/v1/compile', async (req, res) => {
     if (!merged) return res.status(500).json({ error: 'merge_failed' });
     fs.writeFileSync(outPath, merged);
     try { if (convertedPath && fs.existsSync(convertedPath)) fs.rmSync(convertedPath); } catch {}
+    
+    // Log activity
+    logActivity('document:compile', userId, {
+      format: 'pdf',
+      includeExhibits: names.length > 0,
+      exhibitCount: names.length,
+      platform
+    });
+    
     broadcast({ type: 'compile', name: outName });
     return res.json({ ok: true, url: `/compiled/${encodeURIComponent(outName)}` });
   } catch (e) {
@@ -2315,8 +2443,16 @@ async function mergePdfs(pdfBuffers) {
 
 // Send to Vendor (prototype): no-op with SSE echo
 app.post('/api/v1/send-vendor', (req, res) => {
-  const { from = 'user', message = '', vendorName = "Moti's Builders", userId = 'user1' } = req.body || {};
+  const { from = 'user', message = '', vendorName = "Moti's Builders", userId = 'user1', vendorEmail = '' } = req.body || {};
   const payload = { from, message: String(message).slice(0, 200), vendorName };
+  
+  // Log activity
+  logActivity('document:send-vendor', userId, {
+    vendor: vendorName,
+    email: vendorEmail,
+    platform: req.query?.platform || req.body?.platform || 'web'
+  });
+  
   broadcast({ type: 'sendVendor', payload, userId });
   res.json({ ok: true });
 });
