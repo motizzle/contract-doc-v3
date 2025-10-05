@@ -1,277 +1,76 @@
 [
   {
-    "id": "act_1759556886861_buqh2wx2v",
-    "timestamp": 1759556886861,
-    "type": "document:checkout",
+    "id": "act_1759564230413_15q8xfqat",
+    "timestamp": 1759564230413,
+    "type": "system:error",
     "user": {
-      "id": "user1",
-      "label": "Warren Peace",
+      "id": "system",
+      "label": "system",
       "platform": "web"
     },
-    "action": "checked out",
-    "target": "document",
-    "details": {},
-    "message": "Warren Peace checked out document"
-  },
-  {
-    "id": "act_1759556902629_wh6q2m924",
-    "timestamp": 1759556902629,
-    "type": "document:save",
-    "user": {
-      "id": "user1",
-      "label": "Warren Peace",
-      "platform": "web"
-    },
-    "action": "saved progress",
-    "target": "document",
+    "action": "encountered error",
+    "target": "system",
     "details": {
-      "autoSave": false,
-      "version": 2
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
     },
-    "message": "Warren Peace saved a new version of the document (v2)"
+    "message": "System error: LLM error: Request timeout"
   },
   {
-    "id": "act_1759556929044_qke0aokty",
-    "timestamp": 1759556929044,
-    "type": "message:send",
+    "id": "act_1759564247228_nmw9tjwy0",
+    "timestamp": 1759564247228,
+    "type": "system:error",
     "user": {
-      "id": "user1",
-      "label": "Warren Peace",
+      "id": "system",
+      "label": "system",
       "platform": "web"
     },
-    "action": "sent message",
-    "target": "message",
+    "action": "encountered error",
+    "target": "system",
     "details": {
-      "to": [
-        "user2"
-      ],
-      "channel": "approvals"
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
     },
-    "message": "Warren Peace sent a message to Kent Uckey"
+    "message": "System error: LLM error: Request timeout"
   },
   {
-    "id": "act_1759556930509_n7el4p2pk",
-    "timestamp": 1759556930509,
-    "type": "message:send",
+    "id": "act_1759564273430_xa7t805a7",
+    "timestamp": 1759564273430,
+    "type": "system:error",
     "user": {
-      "id": "bot",
-      "label": "bot",
-      "platform": "server"
+      "id": "system",
+      "label": "system",
+      "platform": "web"
     },
-    "action": "sent message",
-    "target": "message",
+    "action": "encountered error",
+    "target": "system",
     "details": {
-      "to": [
-        "user2"
-      ],
-      "channel": "approvals"
+      "error": "LLM error: Request timeout",
+      "source": "llm",
+      "userId": "system",
+      "user": {
+        "id": "system",
+        "label": "system",
+        "platform": "web"
+      }
     },
-    "message": "bot sent a message to Kent Uckey"
+    "message": "System error: LLM error: Request timeout"
   },
   {
-    "id": "act_1759556938752_go4703931",
-    "timestamp": 1759556938752,
-    "type": "message:send",
-    "user": {
-      "id": "user1",
-      "label": "Warren Peace",
-      "platform": "web"
-    },
-    "action": "sent message",
-    "target": "message",
-    "details": {
-      "to": [
-        "user2"
-      ],
-      "channel": "approvals"
-    },
-    "message": "Warren Peace sent a message to Kent Uckey"
-  },
-  {
-    "id": "act_1759556944648_i3xjd2mcf",
-    "timestamp": 1759556944648,
-    "type": "message:send",
-    "user": {
-      "id": "bot",
-      "label": "bot",
-      "platform": "server"
-    },
-    "action": "sent message",
-    "target": "message",
-    "details": {
-      "to": [
-        "user2"
-      ],
-      "channel": "approvals"
-    },
-    "message": "bot sent a message to Kent Uckey"
-  },
-  {
-    "id": "act_1759557087646_9yfghbgfe",
-    "timestamp": 1759557087646,
-    "type": "version:view",
-    "user": {
-      "id": "user1",
-      "label": "Warren Peace",
-      "platform": "word"
-    },
-    "action": "viewed version",
-    "target": "version",
-    "details": {
-      "version": 1,
-      "platform": "word"
-    },
-    "message": "Warren Peace viewed version v1"
-  },
-  {
-    "id": "act_1759557105741_vmlfk6q0v",
-    "timestamp": 1759557105741,
-    "type": "version:view",
-    "user": {
-      "id": "user1",
-      "label": "Warren Peace",
-      "platform": "word"
-    },
-    "action": "viewed version",
-    "target": "version",
-    "details": {
-      "version": 1,
-      "platform": "word"
-    },
-    "message": "Warren Peace viewed version v1"
-  },
-  {
-    "id": "act_1759557110378_jqjznbkek",
-    "timestamp": 1759557110378,
-    "type": "document:checkout:override",
-    "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
-      "platform": "web"
-    },
-    "action": "overrode checkout",
-    "target": "document",
-    "details": {
-      "previousUserId": "user1"
-    },
-    "message": "Kent Uckey overrode Warren Peace's checkout"
-  },
-  {
-    "id": "act_1759557119189_kdzv84gur",
-    "timestamp": 1759557119189,
-    "type": "document:checkout",
-    "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
-      "platform": "web"
-    },
-    "action": "checked out",
-    "target": "document",
-    "details": {},
-    "message": "Kent Uckey checked out document"
-  },
-  {
-    "id": "act_1759557137533_0953l49sw",
-    "timestamp": 1759557137533,
-    "type": "document:save",
-    "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
-      "platform": "web"
-    },
-    "action": "saved progress",
-    "target": "document",
-    "details": {
-      "autoSave": false,
-      "version": 3
-    },
-    "message": "Kent Uckey saved a new version of the document (v3)"
-  },
-  {
-    "id": "act_1759557152757_4rogys5r5",
-    "timestamp": 1759557152757,
-    "type": "document:checkout:cancel",
-    "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
-      "platform": "web"
-    },
-    "action": "cancelled checkout",
-    "target": "document",
-    "details": {},
-    "message": "Kent Uckey cancelled document checkout"
-  },
-  {
-    "id": "act_1759557184787_g1m2gm7fn",
-    "timestamp": 1759557184787,
-    "type": "version:view",
-    "user": {
-      "id": "user1",
-      "label": "Warren Peace",
-      "platform": "web"
-    },
-    "action": "viewed version",
-    "target": "version",
-    "details": {
-      "version": 3,
-      "platform": "web"
-    },
-    "message": "Warren Peace viewed version v3"
-  },
-  {
-    "id": "act_1759557187510_rc44bnm7u",
-    "timestamp": 1759557187510,
-    "type": "version:view",
-    "user": {
-      "id": "user1",
-      "label": "Warren Peace",
-      "platform": "web"
-    },
-    "action": "viewed version",
-    "target": "version",
-    "details": {
-      "version": 2,
-      "platform": "web"
-    },
-    "message": "Warren Peace viewed version v2"
-  },
-  {
-    "id": "act_1759557190484_kx6785vwl",
-    "timestamp": 1759557190484,
-    "type": "version:view",
-    "user": {
-      "id": "user1",
-      "label": "Warren Peace",
-      "platform": "web"
-    },
-    "action": "viewed version",
-    "target": "version",
-    "details": {
-      "version": 3,
-      "platform": "web"
-    },
-    "message": "Warren Peace viewed version v3"
-  },
-  {
-    "id": "act_1759557192351_5d5entak4",
-    "timestamp": 1759557192351,
-    "type": "version:view",
-    "user": {
-      "id": "user1",
-      "label": "Warren Peace",
-      "platform": "web"
-    },
-    "action": "viewed version",
-    "target": "version",
-    "details": {
-      "version": 2,
-      "platform": "web"
-    },
-    "message": "Warren Peace viewed version v2"
-  },
-  {
-    "id": "act_1759557255580_2ti47ohd6",
-    "timestamp": 1759557255580,
+    "id": "act_1759596142081_gttd9ph0w",
+    "timestamp": 1759596142081,
     "type": "workflow:approve",
     "user": {
       "id": "user2",
@@ -290,8 +89,8 @@
     "message": "Kent Uckey approved (1/5)"
   },
   {
-    "id": "act_1759557257350_y6oqdxbew",
-    "timestamp": 1759557257350,
+    "id": "act_1759596143584_8t75e8llp",
+    "timestamp": 1759596143584,
     "type": "workflow:approve",
     "user": {
       "id": "user2",
@@ -310,8 +109,8 @@
     "message": "Kent Uckey approved on behalf of Yuri Lee Laffed (2/5)"
   },
   {
-    "id": "act_1759557259212_il1fvg8ye",
-    "timestamp": 1759557259212,
+    "id": "act_1759596145834_psbzog97h",
+    "timestamp": 1759596145834,
     "type": "workflow:approve",
     "user": {
       "id": "user2",
@@ -330,8 +129,8 @@
     "message": "Kent Uckey approved on behalf of Hugh R Ewe (3/5)"
   },
   {
-    "id": "act_1759557261141_dgwxp4zlh",
-    "timestamp": 1759557261141,
+    "id": "act_1759596147139_rphtttn1v",
+    "timestamp": 1759596147139,
     "type": "workflow:approve",
     "user": {
       "id": "user2",
@@ -350,280 +149,50 @@
     "message": "Kent Uckey approved on behalf of Gettysburger King (4/5)"
   },
   {
-    "id": "act_1759557263031_50o15iecs",
-    "timestamp": 1759557263031,
-    "type": "workflow:approve",
+    "id": "act_1759596147941_iycs2n5xk",
+    "timestamp": 1759596147941,
+    "type": "document:checkout",
     "user": {
       "id": "user2",
       "label": "Kent Uckey",
       "platform": "web"
     },
-    "action": "approved",
-    "target": "workflow",
-    "details": {
-      "targetUserId": "user1",
-      "progress": {
-        "approved": 5,
-        "total": 5
-      }
-    },
-    "message": "Kent Uckey approved on behalf of Warren Peace (5/5)"
+    "action": "checked out",
+    "target": "document",
+    "details": {},
+    "message": "Kent Uckey checked out document"
   },
   {
-    "id": "act_1759557263034_s00vrygi6",
-    "timestamp": 1759557263034,
-    "type": "workflow:complete",
+    "id": "act_1759596168948_qanguic9h",
+    "timestamp": 1759596168948,
+    "type": "document:save",
     "user": {
       "id": "user2",
       "label": "Kent Uckey",
       "platform": "web"
     },
-    "action": "completed approvals",
-    "target": "workflow",
-    "details": {
-      "total": 5,
-      "approved": 5
-    },
-    "message": "All approvals completed"
-  },
-  {
-    "id": "act_1759557363095_j09y4unu3",
-    "timestamp": 1759557363095,
-    "type": "message:send",
-    "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
-      "platform": "web"
-    },
-    "action": "sent message",
-    "target": "message",
-    "details": {
-      "to": [
-        "user3"
-      ],
-      "channel": "approvals"
-    },
-    "message": "Kent Uckey sent a message to Yuri Lee Laffed"
-  },
-  {
-    "id": "act_1759557372925_8i4feu0nh",
-    "timestamp": 1759557372925,
-    "type": "message:send",
-    "user": {
-      "id": "bot",
-      "label": "bot",
-      "platform": "server"
-    },
-    "action": "sent message",
-    "target": "message",
-    "details": {
-      "to": [
-        "user3"
-      ],
-      "channel": "approvals"
-    },
-    "message": "bot sent a message to Yuri Lee Laffed"
-  },
-  {
-    "id": "act_1759557386311_qaocveqgy",
-    "timestamp": 1759557386311,
-    "type": "message:send",
-    "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
-      "platform": "web"
-    },
-    "action": "sent message",
-    "target": "message",
-    "details": {
-      "to": [
-        "user3"
-      ],
-      "channel": "approvals"
-    },
-    "message": "Kent Uckey sent a message to Yuri Lee Laffed"
-  },
-  {
-    "id": "act_1759557391248_7h3j9une4",
-    "timestamp": 1759557391248,
-    "type": "message:send",
-    "user": {
-      "id": "bot",
-      "label": "bot",
-      "platform": "server"
-    },
-    "action": "sent message",
-    "target": "message",
-    "details": {
-      "to": [
-        "user3"
-      ],
-      "channel": "approvals"
-    },
-    "message": "bot sent a message to Yuri Lee Laffed"
-  },
-  {
-    "id": "act_1759557396899_i8djhei3r",
-    "timestamp": 1759557396899,
-    "type": "message:send",
-    "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
-      "platform": "web"
-    },
-    "action": "sent message",
-    "target": "message",
-    "details": {
-      "to": [
-        "user5"
-      ],
-      "channel": "approvals"
-    },
-    "message": "Kent Uckey sent a message to Gettysburger King"
-  },
-  {
-    "id": "act_1759557401212_hp73uudcu",
-    "timestamp": 1759557401212,
-    "type": "message:send",
-    "user": {
-      "id": "bot",
-      "label": "bot",
-      "platform": "server"
-    },
-    "action": "sent message",
-    "target": "message",
-    "details": {
-      "to": [
-        "user5"
-      ],
-      "channel": "approvals"
-    },
-    "message": "bot sent a message to Gettysburger King"
-  },
-  {
-    "id": "act_1759557466181_lz6lfcjp1",
-    "timestamp": 1759557466181,
-    "type": "message:send",
-    "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
-      "platform": "web"
-    },
-    "action": "sent message",
-    "target": "message",
-    "details": {
-      "to": [
-        "user1"
-      ],
-      "channel": "approvals"
-    },
-    "message": "Kent Uckey sent a message to Warren Peace"
-  },
-  {
-    "id": "act_1759557473113_1k5wlz5jg",
-    "timestamp": 1759557473113,
-    "type": "message:send",
-    "user": {
-      "id": "bot",
-      "label": "bot",
-      "platform": "server"
-    },
-    "action": "sent message",
-    "target": "message",
-    "details": {
-      "to": [
-        "user1"
-      ],
-      "channel": "approvals"
-    },
-    "message": "bot sent a message to Warren Peace"
-  },
-  {
-    "id": "act_1759557789667_x5urd1nhl",
-    "timestamp": 1759557789667,
-    "type": "system:prompt-update",
-    "user": {
-      "id": "system",
-      "label": "system",
-      "platform": "web"
-    },
-    "action": "performed action",
+    "action": "saved progress",
     "target": "document",
     "details": {
-      "promptLength": 42,
-      "userId": "system",
-      "user": {
-        "id": "system",
-        "label": "system",
-        "platform": "web"
-      }
+      "autoSave": false,
+      "version": 2
     },
-    "message": "system performed system prompt-update"
+    "message": "Kent Uckey saved a new version of the document (v2)"
   },
   {
-    "id": "act_1759557863538_3m1dd80hd",
-    "timestamp": 1759557863538,
-    "type": "system:prompt-update",
+    "id": "act_1759596169029_o8lzpqafi",
+    "timestamp": 1759596169029,
+    "type": "document:checkin",
     "user": {
-      "id": "system",
-      "label": "system",
+      "id": "user2",
+      "label": "Kent Uckey",
       "platform": "web"
     },
-    "action": "performed action",
+    "action": "checked in",
     "target": "document",
     "details": {
-      "promptLength": 71,
-      "userId": "system",
-      "user": {
-        "id": "system",
-        "label": "system",
-        "platform": "web"
-      }
+      "version": 2
     },
-    "message": "system performed system prompt-update"
-  },
-  {
-    "id": "act_1759557935212_lq03eh4og",
-    "timestamp": 1759557935212,
-    "type": "system:prompt-update",
-    "user": {
-      "id": "system",
-      "label": "system",
-      "platform": "web"
-    },
-    "action": "performed action",
-    "target": "document",
-    "details": {
-      "promptLength": 117,
-      "userId": "system",
-      "user": {
-        "id": "system",
-        "label": "system",
-        "platform": "web"
-      }
-    },
-    "message": "system performed system prompt-update"
-  },
-  {
-    "id": "act_1759557958278_ugl3pk6wd",
-    "timestamp": 1759557958278,
-    "type": "system:prompt-update",
-    "user": {
-      "id": "system",
-      "label": "system",
-      "platform": "web"
-    },
-    "action": "performed action",
-    "target": "document",
-    "details": {
-      "promptLength": 117,
-      "userId": "system",
-      "user": {
-        "id": "system",
-        "label": "system",
-        "platform": "web"
-      }
-    },
-    "message": "system performed system prompt-update"
+    "message": "Kent Uckey checked in document (v2)"
   }
 ]
