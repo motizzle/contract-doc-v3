@@ -1444,9 +1444,15 @@
       return null; // No DOM elements needed - confetti.js handles everything
     }
 
-    function ActivityPanel() {
+    function ActivityPanel(props) {
+      const { isActive } = props;
       const { activities, renderNotification, markActivitiesSeen } = React.useContext(StateContext);
-      React.useEffect(() => { try { markActivitiesSeen?.(); } catch {} }, [markActivitiesSeen]);
+      // Only mark activities as seen when the tab is actually active
+      React.useEffect(() => { 
+        if (isActive) {
+          try { markActivitiesSeen?.(); } catch {} 
+        }
+      }, [isActive, markActivitiesSeen]);
       const copy = async () => {
         try {
           const text = (activities || []).slice().reverse().map(activity => {
@@ -4800,8 +4806,8 @@
       }, [activeTab]);
 
       React.useEffect(() => { recalcUnderline(); }, [recalcUnderline]);
-      // Recalculate underline if the Workflow or Messages tab label width changes due to count updates
-      React.useEffect(() => { recalcUnderline(); }, [approvalsSummary, messagingCount, recalcUnderline]);
+      // Recalculate underline if the Workflow, Messages, or Activity tab label width changes due to count updates
+      React.useEffect(() => { recalcUnderline(); }, [approvalsSummary, messagingCount, activities, lastSeenActivityId, recalcUnderline]);
       React.useEffect(() => {
         const onResize = () => recalcUnderline();
         window.addEventListener('resize', onResize);
@@ -4852,29 +4858,15 @@
             key: 'tab-activity',
             className: activeTab === 'Activity' ? 'tab tab--active' : 'tab',
             onClick: () => setActiveTab('Activity'),
-            style: { background: 'transparent', border: 'none', padding: '8px 6px', cursor: 'pointer', color: activeTab === 'Activity' ? '#111827' : '#6B7280', fontWeight: 600, position: 'relative' }
+            style: { background: 'transparent', border: 'none', padding: '8px 6px 8px 6px', cursor: 'pointer', color: activeTab === 'Activity' ? '#111827' : '#6B7280', fontWeight: 600, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: '2px' }
           }, [
-            React.createElement('span', { key: 'label', ref: actLabelRef, style: { display: 'inline-block' } }, 'Activity'),
-            activities && lastSeenActivityId ? (() => {
+            (() => {
+              if (!activities || !Array.isArray(activities) || activities.length === 0) return null;
               const unseenCount = activities.filter(a => !lastSeenActivityId || a.id > lastSeenActivityId).length;
-              return unseenCount > 0 ? React.createElement('span', {
-                key: 'badge',
-                className: 'ui-badge badge-activity',
-                style: {
-                  position: 'absolute',
-                  top: '-8px',
-                  right: '-8px',
-                  background: '#ef4444',
-                  color: 'white',
-                  borderRadius: '10px',
-                  padding: '2px 6px',
-                  fontSize: '11px',
-                  fontWeight: 'bold',
-                  minWidth: '16px',
-                  textAlign: 'center'
-                }
-              }, String(unseenCount)) : null;
-            })() : null
+              if (unseenCount === 0) return null;
+              return React.createElement('span', { key: 'count', style: { fontSize: '11px', lineHeight: '1' } }, `(${unseenCount})`);
+            })(),
+            React.createElement('span', { key: 'label', ref: actLabelRef, style: { display: 'inline-block' } }, 'Activity')
           ]),
           // New Comparison tab
           React.createElement('button', {
@@ -4897,7 +4889,7 @@
           React.createElement('div', { key: 'wrap-workflow', style: { display: (activeTab === 'Workflow' ? 'block' : 'none') } }, React.createElement(WorkflowApprovalsPanel, { key: 'workflow' })),
           React.createElement('div', { key: 'wrap-messaging', style: { display: (activeTab === 'Messaging' ? 'block' : 'none') } }, React.createElement(MessagingPanel, { key: 'messaging' })),
           React.createElement('div', { key: 'wrap-versions', style: { display: (activeTab === 'Versions' ? 'block' : 'none') } }, React.createElement(VersionsPanel, { key: 'versions' })),
-          React.createElement('div', { key: 'wrap-activity', style: { display: (activeTab === 'Activity' ? 'flex' : 'none'), flex: 1, height: '100%', flexDirection: 'column' } }, React.createElement(ActivityPanel, { key: 'activity' })),
+          React.createElement('div', { key: 'wrap-activity', style: { display: (activeTab === 'Activity' ? 'flex' : 'none'), flex: 1, height: '100%', flexDirection: 'column' } }, React.createElement(ActivityPanel, { key: 'activity', isActive: activeTab === 'Activity' })),
           React.createElement('div', { key: 'wrap-compare', style: { display: (activeTab === 'Comparison' ? 'block' : 'none') } }, React.createElement(ComparisonTab, { key: 'compare' })),
           React.createElement('div', { key: 'wrap-variables', style: { display: (activeTab === 'Variables' ? 'block' : 'none') } }, React.createElement(VariablesPanel, { key: 'variables' }))
         ])
