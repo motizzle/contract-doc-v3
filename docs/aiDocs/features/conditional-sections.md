@@ -1,7 +1,34 @@
 # Conditional Sections & Document Automation
 
 ## Overview
-Enable dynamic document composition through conditional sections that show/hide based on configurable rules. Sections are managed server-side (like variables) and rendered natively on each platform (Word + Web), with visibility controlled by simple conditional logic.
+Enable dynamic document composition through conditional sections that auto-insert/delete based on configurable rules. Sections are managed server-side and rendered using **SuperDoc's native `documentSection` feature**, providing a unified implementation across web viewer and Word add-in.
+
+## Key Architecture Decision (October 2025)
+
+**✅ Use SuperDoc Native Sections**
+
+After testing, we confirmed that SuperDoc's `documentSection` nodes:
+- ✅ **Persist** through save/reload cycles
+- ✅ **Export** to .docx files correctly
+- ✅ **Work identically** in web viewer AND Word add-in
+- ✅ **Use same API** everywhere (no platform-specific code needed)
+
+**Benefits:**
+1. **Single Backend Process** - Same SuperDoc instance for both platforms
+2. **Unified Implementation** - Same code works everywhere
+3. **Native Features** - Leverage SuperDoc's intended design
+4. **Simpler Codebase** - No Content Control workarounds
+5. **Future-Proof** - SuperDoc updates improve our features
+
+**Implementation:**
+```javascript
+// SAME CODE for web viewer AND Word add-in:
+editor.commands.createDocumentSection({
+  id: 'sec-001',
+  title: 'Federal Compliance Requirements',
+  html: '<p><strong>Content...</strong></p>'
+});
+```
 
 ---
 
@@ -29,84 +56,109 @@ Question: "Is this a multi-year contract?"
 
 ## 1. Cross-Platform Parity
 
-### Architecture (Similar to Variables)
+### Architecture (Using SuperDoc Native Sections)
 
 **Server-Side** (Source of Truth)
 ```javascript
 // data/app/sections.json
 {
   "sections": {
-    "section_001": {
-      "sectionId": "section_001",
-      "label": "Federal Compliance Requirements",
-      "content": "...", // Rich text content
-      "visible": true,
-      "position": 0, // Order in document
-      "rules": ["rule_001"], // Conditional rules that control this
-      "createdAt": "2025-03-15T10:00:00Z",
-      "updatedAt": "2025-03-15T10:00:00Z"
+    "sec-001": {
+      "sectionId": "sec-001",
+      "title": "Federal Compliance Requirements",
+      "content": "<p><strong>Rich HTML content...</strong></p>",
+      "insertWhen": {
+        "questionId": "question-001",
+        "answer": "yes"
+      },
+      "createdBy": "user1",
+      "createdAt": "2025-10-15T10:00:00Z",
+      "updatedAt": "2025-10-15T10:00:00Z"
     }
-  },
+  }
+}
+
+// data/app/questions.json
+{
   "questions": {
-    "question_001": {
-      "questionId": "question_001",
+    "question-001": {
+      "questionId": "question-001",
       "text": "Are you using federal funds?",
       "answer": null, // "yes" | "no" | null
-      "type": "boolean"
-    }
-  },
-  "rules": {
-    "rule_001": {
-      "ruleId": "rule_001",
-      "questionId": "question_001",
-      "condition": "equals", // equals | not_equals
-      "value": "yes",
-      "action": "show", // show | hide
-      "targetSectionId": "section_001"
+      "affectsSection": ["sec-001"],
+      "createdBy": "user1",
+      "createdAt": "2025-10-15T10:00:00Z"
     }
   }
 }
 ```
 
-**Client-Side Rendering**
+**Client-Side Rendering (UNIFIED)**
 
-**Word Add-in:**
-- Sections rendered as **Content Controls** (like variables)
-- Content Control has:
-  - `tag`: `section_001`
-  - `title`: Section label
-  - `content`: Rich text from server
-  - `appearance`: 'BoundingBox' (visible section boundary)
-  - Custom style/color to distinguish from variables
+**Both Web Viewer AND Word Add-in:**
+- Sections rendered as **SuperDoc `documentSection` nodes**
+- Same API works on both platforms (no platform detection!)
+- Insertion:
+  ```javascript
+  editor.commands.createDocumentSection({
+    id: 'sec-001',
+    title: 'Federal Compliance Requirements',
+    html: '<p><strong>Content...</strong></p>'
+  });
+  ```
+- Detection:
+  ```javascript
+  editor.view.state.doc.descendants((node, pos) => {
+    if (node.type.name === 'documentSection') {
+      // Found section at position
+    }
+  });
+  ```
+- Deletion:
+  ```javascript
+  editor.commands.removeSectionById('sec-001');
+  ```
 
-**Web Viewer:**
-- Sections rendered as **SuperDoc Section Annotations** (new plugin)
-- Or fallback to styled `<div>` with section metadata
-- Visual indicator (border, background, section label)
+**Key Benefits:**
+- ✅ **Single codebase** - No platform-specific logic
+- ✅ **Native features** - Leverages SuperDoc's intended design
+- ✅ **Simpler** - No Content Control workarounds
+- ✅ **Unified backend** - Same SuperDoc instance for web and Word
 
 **Synchronization:**
-- SSE broadcasts when sections/questions/rules change
-- Clients re-evaluate rules and show/hide sections
-- Both platforms update in real-time
+- SSE broadcasts when questions answered
+- All clients auto-insert/delete sections based on answers
+- Real-time updates across all users
 
 ---
 
 ## 2. Sections Management
 
-### **Leveraging Native Section Support**
+### **Leveraging Native SuperDoc Sections**
 
-**Key Insight:** SuperDoc (web) and Word already support sections natively. We don't reinvent this - we **enhance** it with conditional logic.
+**Key Insight:** SuperDoc's `documentSection` feature now works reliably and persists across save/reload cycles. We use this native feature with added conditional logic.
 
 #### How Users Create Sections
-**In the Document** (Primary Method):
-- **Web (SuperDoc)**: Click in document → "Insert Section" → Name it
-- **Word**: Click in document → Insert Content Control → Set properties
-- **Natural workflow**: Create sections where you need them
+
+**Option 1: From Sidepane (Recommended)**
+- Create section template in "Sections" tab
+- Configure title, content, and conditional rule
+- Click "Insert" to add to document (or auto-inserts when conditions met)
+
+**Option 2: In Document (Advanced)**
+- Use SuperDoc's native section creation UI (if available)
+- Section automatically detected and registered server-side
+- Can add conditional logic afterward via sidepane
+
+**Key Difference from Variables:**
+- **Variables**: Small inline fields (company name, dates)
+- **Sections**: Large blocks of content (entire paragraphs, clauses, tables)
+- **Both**: Use SuperDoc, but different node types (`documentSection` vs `structuredContent`)
 
 **Sidepane Role:**
-- **Dashboard view** of all sections in document
-- **Control panel** for conditional logic
-- **Not** a creation tool - just management
+- **Template library** of available sections
+- **In-document view** showing what's currently inserted
+- **Control panel** for conditional logic (questions and rules)
 
 ### Sections Tab (Sidepane) - Dashboard View
 
@@ -152,41 +204,82 @@ Question: "Is this a multi-year contract?"
 ### Section Detection & Sync
 
 #### How Sections Are Discovered
-**Web (SuperDoc):**
-- Listen for SuperDoc section creation/deletion events
-- Auto-detect sections in document on load
-- Extract section ID, title, position, content
+**Unified Detection via SuperDoc `documentSection` Nodes**
 
-**Word (Content Controls):**
-- Scan document for Content Controls with type="section" (or custom tag)
-- Extract Control ID, title, position, content
-- Monitor for changes via Word JS API events
+SuperDoc's native section feature creates `documentSection` nodes that persist in the document. Same detection code works on web viewer AND Word add-in.
+
+**Detection Code (UNIFIED for Both Platforms):**
+```javascript
+// Works identically in web viewer AND Word add-in
+const editor = window.superdocInstance.editor;
+const sectionsInDocument = [];
+
+editor.view.state.doc.descendants((node, pos) => {
+  if (node.type.name === 'documentSection') {
+    const section = {
+      sectionId: node.attrs.id,
+      title: node.attrs.title,
+      description: node.attrs.description,
+      position: pos,
+      isLocked: node.attrs.isLocked
+    };
+    
+    sectionsInDocument.push(section);
+  }
+});
+
+// Register with server
+fetch(`${API_BASE}/api/v1/sections/sync`, {
+  method: 'POST',
+  body: JSON.stringify({ sectionsInDocument })
+});
+```
+
+**Key Attributes:**
+- `node.attrs.id` → Section ID (unique identifier)
+- `node.attrs.title` → Section Title (display name)
+- `node.attrs.description` → Optional description
+- `node.attrs.isLocked` → Whether section can be edited
+- `pos` → Position in document
+
+**Benefits:**
+- ✅ **Single API** - Same code for web and Word add-in
+- ✅ **No platform detection** - No `if (Office)` checks needed
+- ✅ **Native feature** - Leverages SuperDoc's intended design
+- ✅ **Simpler** - Direct node inspection, no XML parsing
+- ✅ **Reliable** - SuperDoc handles persistence automatically
 
 #### Server-Side Tracking
 ```javascript
 // data/app/sections.json
 {
   "sections": {
-    "section_sdoc_abc123": { // SuperDoc section ID
-      "sectionId": "section_sdoc_abc123",
-      "label": "Federal Compliance Requirements",
-      "source": "superdoc", // superdoc | word
-      "visible": true,
-      "rules": [], // Conditional rules applied to this
-      "lastSeen": "2025-03-15T10:00:00Z",
-      "metadata": {
-        "pageNumber": 3,
-        "wordCount": 150,
-        "createdBy": "user1"
-      }
+    "sec-001": {
+      "sectionId": "sec-001",
+      "title": "Federal Compliance Requirements",
+      "content": "<p><strong>Rich HTML content...</strong></p>",
+      "insertWhen": {
+        "questionId": "question-001",
+        "answer": "yes"
+      },
+      "currentlyInDocument": false, // Tracked via detection
+      "lastSeen": "2025-10-15T10:00:00Z",
+      "createdBy": "user1",
+      "createdAt": "2025-10-15T10:00:00Z",
+      "updatedAt": "2025-10-15T10:00:00Z"
     },
-    "section_word_xyz789": { // Word Content Control ID
-      "sectionId": "section_word_xyz789",
-      "label": "Renewal Terms",
-      "source": "word",
-      "visible": false, // Hidden by rule
-      "rules": ["rule_001"],
-      "lastSeen": "2025-03-15T10:05:00Z"
+    "sec-002": {
+      "sectionId": "sec-002",
+      "title": "Renewal Terms",
+      "content": "<p>Multi-year contract renewal terms...</p>",
+      "insertWhen": {
+        "questionId": "question-002",
+        "answer": "yes"
+      },
+      "currentlyInDocument": true, // Currently inserted
+      "lastSeen": "2025-10-15T10:05:00Z",
+      "createdBy": "user1",
+      "createdAt": "2025-10-15T10:00:00Z"
     }
   }
 }
@@ -194,38 +287,51 @@ Question: "Is this a multi-year contract?"
 
 #### Sync Flow
 ```
-1. User creates section in document
+1. Page loads → Detect sections in document
    ↓
-2. Platform detects new section
+2. Client scans for documentSection nodes
    ↓
-3. Send to server: POST /api/v1/sections/register
+3. Send to server: POST /api/v1/sections/sync
    {
-     sectionId: "section_sdoc_abc123",
-     label: "Federal Compliance",
-     source: "superdoc"
+     sectionsInDocument: [
+       { sectionId: "sec-001", title: "...", position: 123 }
+     ]
    }
    ↓
-4. Server stores section metadata
+4. Server updates "currentlyInDocument" status
    ↓
-5. SSE broadcasts to all clients
+5. SSE broadcasts current state to all clients
    ↓
-6. Sidepane updates to show new section
+6. Sidepane updates to show accurate status
 ```
 
 ### Managing Sections
 
-#### Toggle Section Visibility
+#### Insert/Delete Sections
 **From Sidepane:**
-- Click "Hide" or "Show" button
-- Section visibility updates in document
-- **Both platforms**: Section hidden/shown using native APIs
-  - SuperDoc: `section.setVisibility(false)`
-  - Word: `contentControl.appearance = 'Hidden'` or custom CSS class
+- **Template Library**: Click "Insert" to manually add section
+- **Auto-Insert**: Answer question → section auto-inserts if conditions met
+- **Manual Delete**: Click "Delete" on in-document section
+- **Auto-Delete**: Change answer → section auto-deletes if conditions no longer met
 
-**Manual Toggle:**
-- Temporarily overrides conditional rules
-- Warning shown if rules exist
-- Can be reset to "Follow Rules" mode
+**Implementation (UNIFIED):**
+```javascript
+// Insert (same code for web and Word add-in)
+editor.commands.createDocumentSection({
+  id: 'sec-001',
+  title: 'Federal Compliance Requirements',
+  html: '<p><strong>Content...</strong></p>'
+});
+
+// Delete (same code for web and Word add-in)
+editor.commands.removeSectionById('sec-001');
+```
+
+**Manual Override:**
+- Users can manually insert conditional sections before answering questions
+- Users can manually delete auto-inserted sections
+- Warning shown: "This section is controlled by a question"
+- Status tracked separately: "Manual override" vs "Auto-managed"
 
 #### Apply Conditional Logic
 **Add Rule Button:**
@@ -507,86 +613,140 @@ function evaluateSectionVisibility(section, questions, rules) {
 
 ## Implementation Phases
 
-### Phase 1: Section Discovery & Dashboard (3-4 days)
-**Goal:** Detect sections in document and display in sidepane
+### Phase 1: Questions System (3-4 days)
+**Goal:** Foundation for conditional logic
 
 **Backend:**
-- [ ] Data models for sections, questions, rules
-- [ ] Storage: `data/app/sections.json`
-- [ ] API endpoints:
-  - `POST /api/v1/sections/register` - Register section from document
-  - `GET /api/v1/sections` - List all tracked sections
-  - `PUT /api/v1/sections/:id/toggle` - Toggle visibility
-  - `DELETE /api/v1/sections/:id/untrack` - Remove from tracking
-- [ ] SSE broadcasting for section changes
-
-**Frontend:**
-- [ ] Sections tab in sidepane (dashboard view)
-- [ ] Section cards UI (read-only display)
-- [ ] Scan document for existing sections on load
-- [ ] Listen for section create/delete events in document
-- [ ] Auto-register new sections with server
-
-**Platform Integration:**
-- [ ] **Web (SuperDoc):** Hook into section creation/deletion events
-- [ ] **Word:** Scan Content Controls, detect section-type controls
-- [ ] Show/hide logic using native APIs
-  - SuperDoc: `section.setVisibility()`
-  - Word: `contentControl.appearance` or CSS class
-
-### Phase 2: Questions System (3-4 days)
-**Goal:** Question management and answers
-
-**Backend:**
+- [ ] Data model: `data/app/questions.json`
 - [ ] API endpoints:
   - `GET /api/v1/questions` - List all questions
   - `POST /api/v1/questions` - Create question
-  - `PUT /api/v1/questions/:id` - Update question
+  - `PUT /api/v1/questions/:id` - Update question text
   - `PUT /api/v1/questions/:id/answer` - Set answer
   - `DELETE /api/v1/questions/:id` - Delete question
+- [ ] SSE broadcasting for question changes
 
 **Frontend:**
 - [ ] Questions tab in sidepane
-- [ ] Question cards with radio buttons
-- [ ] Create/edit question modal
-- [ ] Answer selection UI
-- [ ] Visual feedback when questions affect sections
+- [ ] Question cards with Yes/No radio buttons
+- [ ] Create question modal
+- [ ] Answer selection with immediate feedback
+- [ ] SSE listeners for real-time updates
 
-### Phase 3: Conditional Rules (4-5 days)
-**Goal:** Connect questions to sections
+**Testing:**
+- [ ] Create question via UI
+- [ ] Answer question (no sections yet, just save answer)
+- [ ] Verify SSE broadcasts to all clients
+- [ ] Test multi-user scenario
+
+**Deliverable:** Working questions tab with create/answer/delete
+
+### Phase 2: Sections System (2-3 days)
+**Goal:** Section templates using SuperDoc native sections
 
 **Backend:**
+- [ ] Data model: `data/app/sections.json`
 - [ ] API endpoints:
-  - `GET /api/v1/rules` - List all rules
-  - `POST /api/v1/rules` - Create rule
-  - `PUT /api/v1/rules/:id` - Update rule
-  - `DELETE /api/v1/rules/:id` - Delete rule
-- [ ] Rule evaluation engine
-- [ ] Automatic section visibility updates
+  - `GET /api/v1/sections` - List all section templates
+  - `POST /api/v1/sections` - Create section template
+  - `PUT /api/v1/sections/:id` - Update section
+  - `DELETE /api/v1/sections/:id` - Delete section
+  - `POST /api/v1/sections/sync` - Sync in-document sections
+- [ ] SSE broadcasting for section changes
 
 **Frontend:**
-- [ ] Rule editor modal
-- [ ] Rule configuration UI
-- [ ] Rule preview
-- [ ] Show rule status on section cards
-- [ ] Real-time section updates when answers change
+- [ ] Sections tab in sidepane (template library + in-document view)
+- [ ] Section template cards
+- [ ] Create section modal (title, content, conditional rule)
+- [ ] Rich text editor for section content (simple WYSIWYG)
+- [ ] Manual insert button for each template
+- [ ] **Unified Detection (SAME CODE for web + Word!):**
+  ```javascript
+  editor.view.state.doc.descendants((node, pos) => {
+    if (node.type.name === 'documentSection') {
+      // Found section - register with server
+    }
+  });
+  ```
 
-### Phase 4: UX Enhancements (2-3 days)
-**Goal:** Polish and usability
+**Testing:**
+- [ ] Create section template
+- [ ] Manually insert template into document using `createDocumentSection()`
+- [ ] Verify section appears in "In Document" list
+- [ ] Refresh page - section still there (persistence verified!)
+- [ ] Save document - section persists in .docx
+- [ ] Test in both web AND Word add-in (should be identical!)
 
-**Frontend:**
-- [ ] Drag-and-drop section reordering
-- [ ] Search/filter sections and questions
-- [ ] Bulk operations (delete multiple, toggle multiple)
-- [ ] Rule templates (common patterns)
-- [ ] Validation and error handling
-- [ ] Undo/redo for section changes
-- [ ] Keyboard shortcuts
+**Deliverable:** Section templates can be created, inserted, and detected
+
+### Phase 3: Auto-Insert/Delete Logic (3-4 days)
+**Goal:** Conditional magic using unified SuperDoc APIs
 
 **Backend:**
-- [ ] Activity logging for section operations
-- [ ] Section versioning (track changes to sections)
-- [ ] Export rules as JSON
+- [ ] Rule evaluation engine (when question answered, which sections to insert/delete)
+- [ ] Modify `PUT /api/v1/questions/:id/answer` to evaluate rules
+- [ ] Return `triggeredInsertions` and `triggeredDeletions`
+- [ ] SSE event: `question:answered` with affected sections
+
+**Frontend:**
+- [ ] **Auto-Insert Handler (UNIFIED for web + Word!):**
+  ```javascript
+  window.addEventListener('question:answered', (event) => {
+    const { triggeredInsertions, triggeredDeletions } = event.detail;
+    
+    // Insert sections (same code everywhere!)
+    triggeredInsertions.forEach(section => {
+      editor.commands.createDocumentSection({
+        id: section.sectionId,
+        title: section.title,
+        html: section.content
+      });
+    });
+    
+    // Delete sections (same code everywhere!)
+    triggeredDeletions.forEach(sectionId => {
+      editor.commands.removeSectionById(sectionId);
+    });
+  });
+  ```
+- [ ] Visual feedback (toasts, highlights)
+- [ ] Update section status in sidepane
+- [ ] Show which sections each question affects
+
+**Testing:**
+- [ ] Answer question "yes" → Section auto-inserts at end of doc
+- [ ] Change to "no" → Section auto-deletes
+- [ ] Change back to "yes" → Section re-inserts
+- [ ] Multiple sections per question
+- [ ] Multi-user: User A answers, User B sees section insert
+- [ ] **Critical:** Test in both web AND Word add-in (should behave identically!)
+
+**Deliverable:** Fully working conditional sections with auto-insert/delete
+
+### Phase 4: Polish & UX (2-3 days)
+**Goal:** Production-ready feature
+
+**Backend:**
+- [ ] Activity logging (question answers, section insertions/deletions)
+- [ ] Validation (warn if deleting question with active sections)
+- [ ] Prevent circular dependencies
+
+**Frontend:**
+- [ ] Search/filter questions and sections
+- [ ] Bulk operations (delete multiple questions)
+- [ ] Enhanced status indicators
+- [ ] Preview section content before insert
+- [ ] Help & onboarding (tooltips, empty states)
+- [ ] Confirmation dialogs for destructive actions
+
+**Testing:**
+- [ ] Full E2E workflow (create question → create section → answer → verify insert)
+- [ ] Cross-platform parity check (web vs Word add-in)
+- [ ] Multi-user scenario (2+ users)
+- [ ] Performance with 20+ questions, 50+ sections
+- [ ] Activity log completeness
+
+**Deliverable:** Production-ready conditional sections feature
 
 ---
 

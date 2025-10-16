@@ -1,0 +1,465 @@
+# Comments Sync — Specification
+
+## Summary
+
+Enable Word-style commenting and track changes across web viewer and Word add-in with role-based permissions. Comments and tracked changes appear in real-time for all users with proper visibility controls based on user role (editor/suggester/viewer).
+
+## Problem Statement
+
+Currently, comments and tracked changes are **not visible** in the web viewer because:
+1. SuperDoc `comments` module is not configured in initialization
+2. Missing `window.__IS_DEBUG__ = false` global (required by SuperDoc 0.14.19 for track changes)
+3. No UI container for comments sidebar
+4. No synchronization of comment events across platforms
+
+This was previously implemented (per `docs/fromV2/superdoc-role-and-autoload.md`) but has been removed from the current codebase.
+
+## Role-Based Document Modes
+
+SuperDoc supports three document modes that map to our user roles:
+
+| User Role | Document Mode | Permissions |
+|-----------|--------------|-------------|
+| **Editor** | `editing` (default) or user-selectable | Full editing, can switch to suggesting/viewing |
+| **Suggester** | `suggesting` (locked) | Track changes only, comment creating, editing and viewing, cannot make direct edits |
+| **Viewer** | `viewing` (locked) | Read-only, can view comments but cannot create/edit |
+
+### Mode Switching (Editor Only)
+
+Editors can toggle between modes via dropdown:
+- **Editing** — Direct edits to document
+- **Suggesting** — All changes tracked (like suggester role)
+- **Viewing** — Read-only preview (like viewer role)
+
+**Implementation:**
+- Mode switching requires SuperDoc re-initialization (not `setDocumentMode()` post-init)
+- Store user's mode preference in session state
+- Broadcast mode changes via SSE so all clients see accurate "who's editing" status
+
+## Comments Module Configuration
+
+### Web Viewer (`web/superdoc-init.js`)
+
+**Before SuperDoc loads:**
+```html
+<script>
+  window.__IS_DEBUG__ = false;
+</script>
+```
+
+**SuperDoc initialization:**
+```javascript
+const superdoc = new Ctor({
+  selector: options.selector,
+  toolbar: toolbarSelector,
+  documentMode: getUserDocumentMode(), // 'editing' | 'suggesting' | 'viewing'
+  role: getUserRole(), // 'editor' | 'suggester' | 'viewer'
+  modules: {
+    toolbar: toolbarModuleCfg,
+    fieldAnnotation: {
+      enabled: true,
+      allowCreate: true,
+      allowEdit: true,
+      allowDelete: true
+    },
+    comments: {
+      readOnly: documentMode === 'viewing',
+      allowResolve: documentMode !== 'viewing',
+      element: '#comments-container', // New container in layout
+      useInternalExternalComments: false, // Phase 2 feature
+      suppressInternalExternalComments: false
+    }
+  },
+  onCommentsUpdate: handleCommentEvent,
+  // ... rest of config
+});
+```
+
+### HTML Layout Changes (`web/view.html`)
+
+Add comments container to the right pane:
+
+```html
+<div id="layout">
+  <div id="editor-col">
+    <div id="superdoc-toolbar"></div>
+    <div id="superdoc"></div>
+  </div>
+  <aside id="pane">
+    <div id="app-root"></div>
+    <div id="comments-container"></div> <!-- NEW -->
+  </aside>
+</div>
+```
+
+**Styling:**
+```css
+#comments-container {
+  flex: 1;
+  overflow-y: auto;
+  border-top: 1px solid #eee;
+  background: #fafafa;
+}
+```
+
+### Word Add-in
+
+Word add-in uses native Word comments (Office.js), **not** SuperDoc comments. SuperDoc instance in add-in is hidden and used only for field annotations API.
+
+**No changes needed** — Word's native commenting already respects role permissions via document protection.
+
+## Comment Event Handling
+
+### Event Types
+
+SuperDoc fires `onCommentsUpdate` for:
+- `pending` — User selected text, about to add comment
+- `add` — New comment created
+- `update` — Comment text edited
+- `delete` — Comment removed
+- `resolved` — Comment marked resolved
+- `selected` — Comment clicked/selected
+
+### Event Handler (`web/superdoc-init.js`)
+
+```javascript
+function handleCommentEvent({ type, comment, meta }) {
+  // Log for diagnostics
+  console.log('Comment event:', type, comment);
+  
+  // Broadcast to other clients via SSE (optional for MVP)
+  if (['add', 'update', 'delete', 'resolved'].includes(type)) {
+    fetch('/api/comments/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type,
+        comment,
+        userId: getCurrentUser().userId,
+        timestamp: Date.now()
+      })
+    }).catch(err => console.error('Comment sync failed:', err));
+  }
+  
+  // Show notification for resolved comments
+  if (type === 'resolved') {
+    showNotification(`Comment resolved by ${comment.resolvedByName}`);
+  }
+}
+```
+
+## Track Changes Integration
+
+Track changes automatically generate special comments:
+
+```javascript
+// Track change comment structure
+{
+  commentId: 'tc-uuid',
+  trackedChange: true,
+  trackedChangeType: 'insertion' | 'deletion',
+  deletedText: 'text that was removed', // only for deletions
+  readOnly: true, // cannot edit track change comments
+  creatorName: 'John Smith',
+  creatorEmail: 'john@example.com',
+  createdTime: 1234567890
+}
+```
+
+**Accept/Reject handlers** (optional Phase 2):
+```javascript
+onCommentsUpdate: ({ type, comment }) => {
+  if (comment.trackedChange) {
+    // Show accept/reject UI for tracked changes
+    comment.onAccept = () => applyTrackedChange(comment.commentId);
+    comment.onReject = () => rejectTrackedChange(comment.commentId);
+  }
+}
+```
+
+## Role-Based Permissions Matrix
+
+| Action | Editor (editing) | Editor (suggesting) | Suggester | Viewer |
+|--------|------------------|---------------------|-----------|--------|
+| View comments | ✅ | ✅ | ✅ | ✅ |
+| Add comment | ✅ | ✅ | ✅ | ❌ |
+| Edit own comment | ✅ | ✅ | ✅ | ❌ |
+| Edit others' comment | ✅ | ❌ | ❌ | ❌ |
+| Delete own comment | ✅ | ✅ | ✅ | ❌ |
+| Delete others' comment | ✅ | ❌ | ❌ | ❌ |
+| Resolve comment | ✅ | ✅ | ✅ | ❌ |
+| Direct edits | ✅ | ❌ | ❌ | ❌ |
+| Track changes | ✅ | ✅ (forced) | ✅ (forced) | ❌ |
+| View track changes | ✅ | ✅ | ✅ | ✅ |
+| Accept/reject changes | ✅ | ❌ | ❌ | ❌ |
+
+## Server-Side (Optional MVP, Required for Phase 2)
+
+### Endpoints
+
+**POST /api/comments/sync**
+```javascript
+Request: {
+  type: 'add' | 'update' | 'delete' | 'resolved',
+  comment: { /* comment object */ },
+  userId: 'user1',
+  timestamp: 1234567890
+}
+Response: {
+  ok: true
+}
+```
+
+**GET /api/comments/:documentId**
+```javascript
+Response: {
+  comments: [
+    { commentId, commentText, creatorName, creatorEmail, createdTime, ... }
+  ]
+}
+```
+
+### SSE Broadcasting
+
+Broadcast comment events to all connected clients:
+
+```javascript
+// SSE event structure
+{
+  type: 'comment:add' | 'comment:update' | 'comment:delete' | 'comment:resolved',
+  comment: { /* full comment object */ },
+  userId: 'user1',
+  timestamp: 1234567890
+}
+```
+
+**Client listener:**
+```javascript
+eventSource.addEventListener('comment:add', (event) => {
+  const { comment } = JSON.parse(event.data);
+  // SuperDoc will handle this via its own sync if both users have it open
+  // This is backup for edge cases
+  showNotification(`${comment.creatorName} added a comment`);
+});
+```
+
+## Import/Export Behavior
+
+### Importing Comments (from DOCX)
+
+Word comments are automatically imported by SuperDoc with `importedId` field:
+
+```javascript
+{
+  commentId: 'uuid-generated',
+  importedId: 'w15:123', // Original Word comment ID
+  importedAuthor: {
+    name: 'John Smith (imported)',
+    email: 'john@company.com'
+  },
+  parentCommentId: 'parent-uuid' // Threaded replies preserved
+}
+```
+
+### Exporting Comments (to DOCX)
+
+Use `commentsType` parameter in export:
+
+```javascript
+// Include comments in export
+const blob = await superdoc.exportDocx({
+  commentsType: 'external', // or 'all'
+  isFinalDoc: false
+});
+
+// Clean export (no comments)
+const cleanBlob = await superdoc.exportDocx({
+  commentsType: 'clean',
+  isFinalDoc: true
+});
+```
+
+## Implementation Phases
+
+### Phase 1: Basic Comments (MVP) — 2-3 days
+
+**Goal:** See comments and track changes in web viewer
+
+**Changes:**
+- [ ] Add `window.__IS_DEBUG__ = false` to `web/view.html` (before SuperDoc script)
+- [ ] Add `#comments-container` to HTML layout
+- [ ] Configure `modules.comments` in `web/superdoc-init.js`
+- [ ] Add `onCommentsUpdate` handler (console logging only for MVP)
+- [ ] Map user role → `documentMode` and `role` params
+- [ ] Test: Create comment in web viewer → appears in sidebar
+- [ ] Test: Make edit in "suggesting" mode → tracked change appears as comment
+- [ ] Test: Import DOCX with comments → comments visible
+
+**Acceptance:**
+- Comments and track changes visible in web viewer
+- Role-based permissions enforced (view-only for viewers)
+- No crashes or console errors
+
+### Phase 2: Cross-Platform Sync — 2-3 days
+
+**Goal:** Real-time comment sync between web and Word add-in
+
+**Server:**
+- [ ] `POST /api/comments/sync` endpoint
+- [ ] `GET /api/comments/:documentId` endpoint
+- [ ] SSE broadcasting for comment events
+- [ ] Store comments in `data/app/comments.json` (per document)
+
+**Client:**
+- [ ] Send comment events to server in `onCommentsUpdate`
+- [ ] Listen for SSE comment events
+- [ ] Show notifications for remote comment changes
+- [ ] Handle conflicts (last-write-wins for MVP)
+
+**Acceptance:**
+- User A adds comment in web → User B sees notification
+- Comments persist after page reload
+- Multi-user commenting without data loss
+
+### Phase 3: Advanced Features — 3-4 days (Optional)
+
+**Features:**
+- Accept/reject track changes UI
+- Comment threads and replies
+- Internal vs external comments (dual system)
+- Comment filtering (by user, resolved/unresolved)
+- Comment search
+- Export with/without comments
+
+## Testing Strategy
+
+### Unit Tests
+
+**Test: Role permissions**
+```javascript
+test('viewer cannot create comments', () => {
+  const config = getCommentsConfig('viewer', 'viewing');
+  expect(config.readOnly).toBe(true);
+});
+
+test('editor in suggesting mode creates tracked changes', () => {
+  const config = getCommentsConfig('editor', 'suggesting');
+  expect(config.readOnly).toBe(false);
+  // Track changes should be enabled at SuperDoc level
+});
+```
+
+### Integration Tests
+
+**Test: Comment creation flow**
+1. Initialize SuperDoc with comments module
+2. Select text in editor
+3. Trigger comment creation
+4. Verify `onCommentsUpdate` fires with type='add'
+5. Verify comment appears in sidebar
+
+**Test: Track changes in suggesting mode**
+1. Initialize SuperDoc with documentMode='suggesting'
+2. Make text edit
+3. Verify tracked change comment created
+4. Verify `trackedChange: true` flag set
+
+### E2E Tests (Manual for MVP)
+
+**Scenario: Editor workflow**
+1. Editor logs in → sees editing mode
+2. Makes direct edit → text changes immediately (no track change)
+3. Switches to "suggesting" mode
+4. Makes edit → tracked change appears as comment
+5. Resolves comment → comment marked resolved
+6. Exports DOCX → comments included
+
+**Scenario: Suggester workflow**
+1. Suggester logs in → locked to suggesting mode
+2. Makes edit → tracked change appears automatically
+3. Adds comment → comment appears in sidebar
+4. Cannot switch to editing mode (dropdown disabled)
+5. Cannot make direct edits
+
+**Scenario: Viewer workflow**
+1. Viewer logs in → locked to viewing mode
+2. Can see all comments and track changes
+3. Cannot create new comments (UI disabled)
+4. Cannot make any edits
+5. Cannot resolve comments
+
+## State Matrix Integration
+
+Update state matrix to include comment/mode configuration:
+
+```javascript
+// In /api/state response
+{
+  user: {
+    userId: 'user1',
+    role: 'editor',
+    documentMode: 'editing' // current mode choice
+  },
+  config: {
+    comments: {
+      enabled: true,
+      canCreate: role !== 'viewer',
+      canResolve: role !== 'viewer',
+      canEdit: role === 'editor'
+    },
+    trackChanges: {
+      enabled: documentMode === 'suggesting',
+      forced: role === 'suggester' // always on for suggesters
+    },
+    modeToggle: {
+      visible: role === 'editor',
+      options: ['editing', 'suggesting', 'viewing'],
+      current: documentMode
+    }
+  }
+}
+```
+
+## Open Questions
+
+1. **Comment persistence:** Store in separate JSON file or embed in DOCX?
+   - **Recommendation:** Store in `data/app/comments/:documentId.json` for MVP, embed in DOCX on export
+
+2. **Conflict resolution:** What if two users edit same comment simultaneously?
+   - **Recommendation:** Last-write-wins for MVP; show warning "Comment updated by another user"
+
+3. **Word add-in comments:** Sync SuperDoc comments ↔ Word native comments?
+   - **Recommendation:** Not for MVP. Each platform uses its native system. Unify in Phase 3.
+
+4. **Comment notifications:** Email/push when mentioned?
+   - **Recommendation:** Phase 3 feature. MVP uses in-app notifications only.
+
+5. **Accept/reject UI:** How to present tracked changes for review?
+   - **Recommendation:** Phase 3. MVP shows tracked changes as read-only comments.
+
+## Success Metrics
+
+**Phase 1 (MVP):**
+- ✅ Comments visible in web viewer
+- ✅ Track changes visible in web viewer
+- ✅ Role permissions enforced
+- ✅ No console errors
+- ✅ Import DOCX with comments works
+
+**Phase 2:**
+- ✅ Comments persist after reload
+- ✅ Real-time sync between users
+- ✅ SSE broadcasts within 500ms
+- ✅ No comment data loss in concurrent editing
+
+**Phase 3:**
+- ✅ Accept/reject workflow functional
+- ✅ Internal/external comment separation
+- ✅ Export with comment filtering
+
+## References
+
+- SuperDoc Comments Module: https://docs.superdoc.dev/guide/modules#comments
+- Our lessons learned: `docs/fromV2/superdoc-role-and-autoload.md`
+- Comment documentation page: `docs/aiDocs/features/conditional-sections.md` (user provided)
+
