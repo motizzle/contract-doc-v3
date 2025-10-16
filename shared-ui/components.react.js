@@ -147,6 +147,21 @@
         } catch {}
       }, []);
 
+      // Sync current user state to window.userStateBridge for SuperDoc
+      React.useEffect(() => {
+        try {
+          if (typeof window !== 'undefined' && window.userStateBridge) {
+            window.userStateBridge.userId = userId;
+            window.userStateBridge.role = role;
+            const user = users.find(u => u.id === userId || u.label === userId);
+            if (user) {
+              window.userStateBridge.displayName = user.label || userId;
+              window.userStateBridge.email = user.email || '';
+            }
+          }
+        } catch {}
+      }, [userId, role, users]);
+
       // Notification formatting system
       const NOTIFICATION_TYPES = {
         success: { icon: '✅', color: '#10b981', bgColor: '#d1fae5', borderColor: '#34d399' },
@@ -360,6 +375,12 @@
                 setUserId(me.id || me.label);
                 setRole(me.role || 'editor');
               }
+              // Update user state bridge for SuperDoc
+              try {
+                if (typeof window !== 'undefined' && window.userStateBridge) {
+                  window.userStateBridge.users = items;
+                }
+              } catch {}
             }
           } catch {}
         })();
@@ -783,6 +804,18 @@
             const plat = (typeof Office !== 'undefined') ? 'word' : 'web';
             setUserId(nextUserId);
             if (nextRole) setRole(nextRole);
+            // Update user state bridge for SuperDoc
+            try {
+              if (typeof window !== 'undefined' && window.userStateBridge) {
+                window.userStateBridge.userId = nextUserId;
+                window.userStateBridge.role = nextRole || window.userStateBridge.role;
+                const user = users.find(u => u.id === nextUserId || u.label === nextUserId);
+                if (user) {
+                  window.userStateBridge.displayName = user.label || nextUserId;
+                  window.userStateBridge.email = user.email || '';
+                }
+              }
+            } catch {}
             addLog(`Switched to user: ${nextUserId}`, 'user');
             // Reset loadedVersion to 0 when switching users to avoid stale banner state
             setLoadedVersion(0);

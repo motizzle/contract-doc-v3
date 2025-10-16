@@ -31,7 +31,7 @@ SuperDoc document mode is determined by user role at initialization. Editors can
 function getModeForRole(role) {
   const roleMap = {
     'viewer': 'viewing',
-    'suggester': 'suggesting', 
+    'suggester': 'suggesting',
     'vendor': 'suggesting',
     'editor': 'editing'  // Default, but editor can change
   };
@@ -80,6 +80,71 @@ When user switches in the dropdown (e.g., Warren Peace → Jane Smith):
 
 ## Comments Module Configuration
 
+### User State Bridge
+
+SuperDoc needs access to current user information (role, display name, etc.) which is managed by React. A **shared state bridge** connects the two systems:
+
+**Bridge definition** (`web/superdoc-init.js`):
+```javascript
+// Shared state - populated by React, read by SuperDoc
+window.userStateBridge = {
+  userId: 'user1',
+  role: 'editor',
+  displayName: 'User',
+  email: '',
+  users: []  // Full users array from /api/v1/users
+};
+
+// Helper functions for SuperDoc
+export function getCurrentUserId() { 
+  return window.userStateBridge?.userId || 'user1'; 
+}
+
+export function getCurrentRole() { 
+  return window.userStateBridge?.role || 'editor'; 
+}
+
+export function getModeForRole(role) {
+  const roleMap = {
+    'viewer': 'viewing',
+    'suggester': 'suggesting',
+    'vendor': 'suggesting',
+    'editor': 'editing'
+  };
+  return roleMap[role] || 'editing';
+}
+
+export function getUserDisplayName() {
+  const userId = getCurrentUserId();
+  const users = window.userStateBridge?.users || [];
+  const user = users.find(u => u.id === userId || u.label === userId);
+  return user?.label || 'User';
+}
+
+export function getUserEmail() {
+  const userId = getCurrentUserId();
+  const users = window.userStateBridge?.users || [];
+  const user = users.find(u => u.id === userId || u.label === userId);
+  return user?.email || '';
+}
+```
+
+**React populates the bridge** (`shared-ui/components.react.js`):
+```javascript
+// In StateProvider - sync user state to bridge whenever it changes
+React.useEffect(() => {
+  if (window.userStateBridge) {
+    window.userStateBridge.userId = userId;
+    window.userStateBridge.role = role;
+    const user = users.find(u => u.id === userId);
+    if (user) {
+      window.userStateBridge.displayName = user.label;
+      window.userStateBridge.email = user.email || '';
+    }
+  }
+}, [userId, role, users]);
+```
+
 ### Web Viewer (`web/superdoc-init.js`)
 
 **Before SuperDoc loads:**
@@ -91,7 +156,7 @@ When user switches in the dropdown (e.g., Warren Peace → Jane Smith):
 
 **SuperDoc initialization:**
 ```javascript
-// Get current user's role from state
+// Get current user's role from state bridge
 const userRole = getCurrentRole(); // 'editor' | 'suggester' | 'viewer'
 const documentMode = getModeForRole(userRole); // 'editing' | 'suggesting' | 'viewing'
 
@@ -140,10 +205,14 @@ Add comments container to the right pane:
 </div>
 ```
 
-**Styling:**
+**Styling (already applied in `web/view.html`):**
 ```css
+#app-root {
+  flex: 0 0 auto;  /* Takes only space needed for content */
+}
+
 #comments-container {
-  flex: 1;
+  flex: 1;  /* Takes all remaining vertical space */
   overflow-y: auto;
   border-top: 1px solid #eee;
   background: #fafafa;
@@ -292,14 +361,21 @@ const cleanBlob = await superdoc.exportDocx({
 **Goal:** Make comments and track changes visible in web viewer
 
 **Changes:**
-- [ ] Add `window.__IS_DEBUG__ = false` to `web/view.html` (before SuperDoc script)
-- [ ] Add `#comments-container` to HTML layout
-- [ ] Configure `modules.comments` in `web/superdoc-init.js`
-- [ ] Add `onCommentsUpdate` handler (logging only)
-- [ ] Set `role` param based on current user (enables SuperDoc's mode switcher for editors)
-- [ ] Set `documentMode` param to initial mode for user's role
-- [ ] Verify SuperDoc toolbar shows mode switcher for editors
-- [ ] Verify SuperDoc exports include comments in DOCX
+- [x] Add `window.__IS_DEBUG__ = false` to `web/view.html` (before SuperDoc script) — **COMPLETED**
+- [x] Add `#comments-container` to HTML layout — **COMPLETED**
+- [x] Fix CSS layout (`#app-root` flex property) — **COMPLETED**
+- [x] Create user state bridge (`window.userStateBridge`) — **COMPLETED**
+- [x] Add helper functions (getCurrentRole, getUserDisplayName, etc.) — **COMPLETED**  
+- [x] Sync React state to bridge (useEffect in StateProvider) — **COMPLETED**
+- [x] Configure export to include comments (`commentsType: 'external'`) — **COMPLETED**
+- [x] Configure `modules.comments` in `mountSuperdoc()` function — **COMPLETED**
+- [x] Add `onCommentsUpdate` handler in `web/view.html` — **COMPLETED**
+- [x] Set `role` param based on current user (enables SuperDoc's mode switcher) — **COMPLETED**
+- [x] Set `documentMode` param to initial mode for user's role — **COMPLETED**
+- [x] Pass user info (name, email) to SuperDoc — **COMPLETED**
+- [ ] **TEST:** Verify SuperDoc toolbar shows mode switcher for editors
+- [ ] **TEST:** Verify comments visible in sidebar
+- [ ] **TEST:** Verify SuperDoc exports include comments in DOCX
 
 **Testing:**
 - [ ] Create comment in web viewer → appears in sidebar

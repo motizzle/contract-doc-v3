@@ -53,9 +53,13 @@ export async function ensureSuperDocLoaded() {
  * @param {string} options.selector - CSS selector for editor container
  * @param {string} options.toolbar - CSS selector for toolbar container
  * @param {string|File|Object} options.document - URL, File, or SuperDoc doc config
- * @param {string} [options.documentMode] - 'editing' | 'viewing'
+ * @param {string} [options.documentMode] - 'editing' | 'suggesting' | 'viewing'
+ * @param {string} [options.role] - 'editor' | 'suggester' | 'viewer'
+ * @param {Object} [options.user] - User info {name, email}
  * @param {boolean} [options.pagination]
  * @param {boolean} [options.rulers]
+ * @param {string} [options.commentsContainer] - CSS selector for comments sidebar
+ * @param {Function} [options.onCommentsUpdate] - Callback for comment events
  */
 export function mountSuperdoc(options) {
   const Ctor = detectCtor();
@@ -68,9 +72,21 @@ export function mountSuperdoc(options) {
       return Object.assign({ selector: toolbarSelector, hideButtons: false, responsiveToContainer: true }, t);
     } catch { return { selector: toolbarSelector, hideButtons: false, responsiveToContainer: true }; }
   })();
+  
+  // Configure comments module if container provided
+  const commentsModule = options.commentsContainer ? {
+    enabled: true,
+    readOnly: options.role === 'viewer',
+    allowResolve: options.role !== 'viewer',
+    element: options.commentsContainer
+  } : undefined;
+  
   const superdoc = new Ctor({
     selector: options.selector,
     toolbar: toolbarSelector,
+    role: options.role || 'editor',
+    documentMode: options.documentMode ?? 'editing',
+    user: options.user || undefined,
     modules: { 
       toolbar: toolbarModuleCfg,
       fieldAnnotation: {
@@ -78,15 +94,16 @@ export function mountSuperdoc(options) {
         allowCreate: true,
         allowEdit: true,
         allowDelete: true
-      }
+      },
+      ...(commentsModule ? { comments: commentsModule } : {})
     },
     document: options.document,
-    documentMode: options.documentMode ?? 'editing',
     pagination: options.pagination ?? true,
     rulers: options.rulers ?? true,
     // Prefer same-origin collab proxy; choose ws/wss based on page protocol
     collab: { url: (function(){ try { const p = location.protocol === 'http:' ? 'ws' : 'wss'; return `${p}://localhost:4001/collab`; } catch { return 'wss://localhost:4001/collab'; } })() },
     onReady: (e) => console.log('SuperDoc ready', e),
+    ...(typeof options.onCommentsUpdate === 'function' ? { onCommentsUpdate: options.onCommentsUpdate } : {}),
     onEditorCreate: (e) => {
       console.log('Editor created (wrapper)', e);
       
@@ -245,10 +262,16 @@ export function mountSuperdoc(options) {
       };
       // Per SuperDoc docs: use exportDocx()/exportPdf() to obtain a Blob
       // https://docs.superdoc.dev/guide/resources#implementing-export-functionality
-      window.superdocAPI.export = async (format = 'docx') => {
+      window.superdocAPI.export = async (format = 'docx', options = {}) => {
         try {
           if (format === 'docx' && typeof superdoc.exportDocx === 'function') {
-            const blob = await superdoc.exportDocx();
+            // Default export options: include comments, not final doc
+            const exportOptions = {
+              commentsType: options.commentsType || 'external',
+              isFinalDoc: options.isFinalDoc || false,
+              ...options
+            };
+            const blob = await superdoc.exportDocx(exportOptions);
             return await blobToBase64(blob);
           }
           if (format === 'pdf' && typeof superdoc.exportPdf === 'function') {
@@ -269,6 +292,54 @@ export function mountSuperdoc(options) {
 }
 
 
+// User State Bridge - shared state between React and SuperDoc
+if (typeof window !== 'undefined') {
+  window.userStateBridge = window.userStateBridge || {
+    userId: 'user1',
+    role: 'editor',
+    displayName: 'User',
+    email: '',
+    users: []
+  };
+}
+
+/**
+ * Helper functions to read current user state from React
+ * These are populated by React's StateProvider when it mounts
+ */
+export function getCurrentUserId() {
+  return window.userStateBridge?.userId || 'user1';
+}
+
+export function getCurrentRole() {
+  return window.userStateBridge?.role || 'editor';
+}
+
+export function getModeForRole(role) {
+  const roleMap = {
+    'viewer': 'viewing',
+    'suggester': 'suggesting',
+    'vendor': 'suggesting',
+    'editor': 'editing'
+  };
+  return roleMap[role] || 'editing';
+}
+
+export function getUserDisplayName() {
+  const userId = getCurrentUserId();
+  const users = window.userStateBridge?.users || [];
+  const user = users.find(u => u.id === userId || u.label === userId);
+  // Fallback chain: user.label → bridge.displayName → userId → 'User'
+  return user?.label || window.userStateBridge?.displayName || userId || 'User';
+}
+
+export function getUserEmail() {
+  const userId = getCurrentUserId();
+  const users = window.userStateBridge?.users || [];
+  const user = users.find(u => u.id === userId || u.label === userId);
+  return user?.email || window.userStateBridge?.email || '';
+}
+
 // Bridge for React-controlled hosting from the right pane
 try {
   if (typeof window !== 'undefined') {
@@ -282,7 +353,7 @@ try {
       try { g.superdocInstance = mountSuperdoc({ selector, toolbar, document: doc, documentMode: mode, pagination: true, rulers: true }); } catch {}
       return g.superdocInstance || null;
     };
-    g.SuperDocBridge.open = function open(doc) {
+    g.SuperDocBridge.open = function open(doc, options = {}) {
       const selector = '#superdoc';
       const toolbar = '#superdoc-toolbar';
       try {
@@ -292,7 +363,30 @@ try {
         const newContainer = document.createElement('div'); newContainer.id = 'superdoc'; newContainer.style.flex = '1';
         oldToolbar?.replaceWith(newToolbar); oldContainer?.replaceWith(newContainer);
       } catch {}
-      try { g.superdocInstance = mountSuperdoc({ selector, toolbar, document: doc, documentMode: 'editing', pagination: true, rulers: true }); } catch {}
+      
+      // Preserve user context and comments configuration when reloading
+      const userRole = getCurrentRole();
+      const documentMode = getModeForRole(userRole);
+      
+      console.log('🔄 SuperDocBridge.open() - Role:', userRole, '| Mode:', documentMode, '| User:', getUserDisplayName());
+      
+      try { 
+        g.superdocInstance = mountSuperdoc({ 
+          selector, 
+          toolbar, 
+          document: doc, 
+          role: userRole,
+          documentMode: documentMode,
+          user: {
+            name: getUserDisplayName(),
+            email: getUserEmail()
+          },
+          pagination: true, 
+          rulers: true,
+          commentsContainer: '#comments-container',
+          onCommentsUpdate: options.onCommentsUpdate
+        }); 
+      } catch {}
       return g.superdocInstance || null;
     };
     g.SuperDocBridge.destroy = function destroy() {

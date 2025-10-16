@@ -25,27 +25,65 @@
     #editor-col { position: relative; z-index: 1; display: flex; flex-direction: column; min-width: 0; flex: 1; }
     #superdoc { position: relative; z-index: 1; flex: 1; min-height: 0; }
     #pane { position: relative; z-index: 5; border-left: 1px solid #eee; display: flex; flex-direction: column; background: #fff; box-shadow: -2px 0 8px rgba(0,0,0,0.08); }
-    #app-root { background: #fff; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    #app-root { background: #fff; display: flex; flex-direction: column; flex: 0 0 auto; min-height: 0; }
+    #comments-container { flex: 1; overflow-y: auto; border-top: 1px solid #eee; background: #fafafa; }
   </style>
+  <!-- SuperDoc 0.14.19 requires this global for track changes to work -->
+  <script>
+    window.__IS_DEBUG__ = false;
+  </script>
   <!-- React UMD (local) and React entry (shared) -->
   <script defer src="/vendor/react/react.production.min.js"></script>
   <script defer src="/vendor/react/react-dom.production.min.js"></script>
   <script defer src="/ui/components.react.js?v=activity-badge-v2"></script>
   <script type="module">
-    import { ensureSuperDocLoaded, mountSuperdoc } from '/web/superdoc-init.js?v=debug-cc-clean';
+    import { ensureSuperDocLoaded, mountSuperdoc, getCurrentRole, getModeForRole, getUserDisplayName, getUserEmail } from '/web/superdoc-init.js?v=debug-cc-clean';
+    
+    // Comment event handler
+    function handleCommentEvent({ type, comment, meta }) {
+      console.log('💬 Comment event:', type, comment);
+      
+      // Update local UI state based on comment events
+      if (type === 'resolved') {
+        console.log('✅ Comment resolved:', comment?.commentId);
+      } else if (type === 'add') {
+        console.log('➕ Comment added:', comment?.commentId);
+      } else if (type === 'delete') {
+        console.log('🗑️ Comment deleted:', comment?.commentId);
+      } else if (type === 'trackedChange') {
+        console.log('📝 Tracked change:', comment);
+      }
+      
+      // Comments automatically persist in SuperDoc's internal state
+      // They save to DOCX when user clicks Save or Check-in
+    }
+    
     window.addEventListener('load', async () => {
       try {
         await ensureSuperDocLoaded();
-        // Mount SuperDoc editor
+        
+        // Get current user's role and mode
+        const userRole = getCurrentRole();
+        const documentMode = getModeForRole(userRole);
+        
+        // Mount SuperDoc editor with comments enabled
         mountSuperdoc({
           selector: '#superdoc',
           toolbar: '#superdoc-toolbar',
           document: '/documents/working/default.docx',
-          documentMode: 'editing',
+          role: userRole,
+          documentMode: documentMode,
+          user: {
+            name: getUserDisplayName(),
+            email: getUserEmail()
+          },
           pagination: true,
-          rulers: true
+          rulers: true,
+          commentsContainer: '#comments-container',
+          onCommentsUpdate: handleCommentEvent
         });
-        console.log('✅ SuperDoc mounted in web viewer');
+        console.log('✅ SuperDoc mounted in web viewer with comments enabled');
+        console.log('👤 User:', getUserDisplayName(), '| Role:', userRole, '| Mode:', documentMode);
       } catch (error) {
         console.error('❌ Failed to load SuperDoc:', error);
       }
@@ -63,6 +101,7 @@
     </div>
     <aside id="pane">
       <div id="app-root"></div>
+      <div id="comments-container"></div>
     </aside>
   </div>
   <script>
