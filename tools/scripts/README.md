@@ -17,32 +17,27 @@ Quick-access scripts for development and testing.
 
 ### Automated Tests
 
-**Recommended: Use before commits and merges**
+**Before committing or merging:**
 
-- **`run-all-tests.bat`** - Complete test suite with clean state ⭐
-  - **Factory resets** before running (clean state)
-  - Runs Jest unit tests
-  - Runs Playwright E2E tests
+- **`run-all-tests.bat`** ⭐ **Recommended**
+  - Factory resets before running (clean state)
+  - Enables test mode (prevents SSE conflicts)
+  - Runs Jest unit tests (65 tests)
+  - Runs Playwright E2E tests (15 tests)
   - Clear pass/fail summary
   - **Use this before committing or merging to main**
 
-- **`run-tests-report.bat`** - Same as above + markdown report
-  - Factory resets first
-  - Runs full test suite (Jest + Playwright)
+- **`run-tests-report.bat`** - Same as above + generates markdown report
   - Creates timestamped report in `test-results/`
   - Perfect for sharing test failures with the team
   - Report includes: test output, exit codes, git context
 
-**Legacy/Development:**
+**During development:**
 
-- **`run-tests.bat`** - Run tests without factory reset
-  - No state cleanup (assumes clean state)
-  - Useful for quick checks during development
-
-- **`test-quick.bat`** - Run Jest unit tests only (30 seconds)
-  - Faster feedback during development
+- **`test-quick.bat`** - Run Jest unit tests only (~30 seconds)
+  - Faster feedback loop for quick checks
   - Skips E2E tests
-  - No factory reset
+  - No factory reset or test mode
 
 ### Manual Testing
 - **`smoke.ps1`** - Backend smoke test (health check, SSE validation)
