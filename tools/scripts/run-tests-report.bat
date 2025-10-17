@@ -21,8 +21,19 @@ set REPORT_FILE=%REPORT_DIR%\test-report-%TIMESTAMP%.md
 echo Creating test report: %REPORT_FILE%
 echo.
 
-REM Factory reset first
+REM Enable test mode to prevent SSE broadcast conflicts
 set API_BASE=https://localhost:4001
+echo [Pre-Test] Enabling Test Mode...
+curl -X POST %API_BASE%/api/v1/test-mode -H "Content-Type: application/json" -d "{\"enabled\":true}" -k --silent --show-error --fail >nul 2>&1
+if !ERRORLEVEL! EQU 0 (
+    echo [OK] Test mode enabled
+) else (
+    echo [WARNING] Failed to enable test mode
+)
+timeout /t 1 /nobreak >nul
+echo.
+
+REM Factory reset
 echo [Pre-Test] Factory Reset - Cleaning state...
 curl -X POST %API_BASE%/api/v1/factory-reset -H "Content-Type: application/json" -d "{\"userId\":\"test\"}" -k --silent --show-error --fail >nul 2>&1
 if !ERRORLEVEL! EQU 0 (
@@ -181,6 +192,16 @@ REM Clean up temp files
 del "%REPORT_DIR%\jest-output.txt" 2>nul
 del "%REPORT_DIR%\playwright-output.txt" 2>nul
 del "%REPORT_DIR%\playwright-install.txt" 2>nul
+
+echo.
+echo [Post-Test] Disabling Test Mode...
+curl -X POST %API_BASE%/api/v1/test-mode -H "Content-Type: application/json" -d "{\"enabled\":false}" -k --silent --show-error --fail >nul 2>&1
+if !ERRORLEVEL! EQU 0 (
+    echo [OK] Test mode disabled - SSE broadcasts re-enabled
+) else (
+    echo [WARNING] Failed to disable test mode
+)
+echo.
 
 echo (Press any key to close this window)
 pause >nul

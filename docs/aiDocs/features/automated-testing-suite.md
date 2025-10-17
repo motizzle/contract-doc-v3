@@ -4,7 +4,7 @@
 **Priority:** High
 **Platforms:** Cross-platform (Server, Web, Word Add-in)
 **Related:** All features
-**Test Count:** 79 tests (64 Jest + 15 Playwright)
+**Test Count:** 80 tests (65 Jest + 15 Playwright)
 
 ---
 
@@ -367,17 +367,21 @@ test-results/
 
 ```bash
 run-all-tests.bat:
+  0. Enable test mode (disable SSE broadcasts, disconnect clients)
   1. Factory reset via API (clean state)
-  2. Run Jest tests (64 tests: API, state, data, workflows)
+  2. Run Jest tests (65 tests: API, state, data, workflows, test-mode)
      - Exit on first failure? No, collect all failures
   3. Run Playwright tests (15 tests: UI, browser automation)
      - Exit on first failure? No, collect all failures
   4. Generate summary (pass/fail)
-  5. Exit 0 (all pass) or 1 (any fail)
+  5. Disable test mode (re-enable SSE broadcasts)
+  6. Exit 0 (all pass) or 1 (any fail)
 
 run-tests-report.bat:
   Same as above + generates timestamped markdown report
 ```
+
+**Test Mode:** Prevents browser freeze by disabling SSE broadcasts during test execution. See `operations/test-mode-fix.md` for details.
 
 ### Factory Reset Integration
 
@@ -707,5 +711,5 @@ at Object.toBe (tests/api.test.js:239:23)
 ---
 
 **Last Updated:** October 17, 2025
-**Status:** ✅ Implemented & Passing (79/79 tests)
+**Status:** ✅ Implemented & Passing (80/80 tests)
 

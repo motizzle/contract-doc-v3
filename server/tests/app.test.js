@@ -57,6 +57,20 @@ describe('Phase 1: Infrastructure', () => {
     expect(res.body.ok).toBe(true);
   });
 
+  test('test-mode endpoint works (enable/disable)', async () => {
+    // Enable test mode
+    const enableRes = await request('POST', '/api/v1/test-mode', { enabled: true });
+    expect(enableRes.status).toBe(200);
+    expect(enableRes.body.ok).toBe(true);
+    expect(enableRes.body.testMode).toBe(true);
+
+    // Disable test mode
+    const disableRes = await request('POST', '/api/v1/test-mode', { enabled: false });
+    expect(disableRes.status).toBe(200);
+    expect(disableRes.body.ok).toBe(true);
+    expect(disableRes.body.testMode).toBe(false);
+  });
+
   test('API routes are registered correctly', async () => {
     const endpoints = [
       '/api/v1/health',

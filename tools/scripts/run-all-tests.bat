@@ -10,6 +10,21 @@ set SCRIPT_DIR=%~dp0
 set SERVER_DIR=%SCRIPT_DIR%..\..\server
 set API_BASE=https://localhost:4001
 
+echo [Step 0/4] Enabling Test Mode - Disconnecting SSE clients...
+echo.
+
+REM Enable test mode to prevent SSE broadcast conflicts with open browser tabs
+curl -X POST %API_BASE%/api/v1/test-mode -H "Content-Type: application/json" -d "{\"enabled\":true}" -k --silent --show-error --fail >nul 2>&1
+if !ERRORLEVEL! EQU 0 (
+    echo [OK] Test mode enabled - SSE broadcasts disabled
+) else (
+    echo [WARNING] Failed to enable test mode - server may not be running
+)
+
+echo.
+timeout /t 1 /nobreak >nul
+echo.
+
 echo [Step 1/4] Factory Reset - Cleaning state...
 echo.
 
@@ -118,6 +133,17 @@ if !JEST_EXIT! EQU 0 if !E2E_EXIT! EQU 0 (
     echo.
     echo To debug, run with report:
     echo   tools\scripts\run-tests-report.bat
+)
+
+echo.
+echo --------------------------------
+echo.
+echo [Final Step] Disabling Test Mode - Re-enabling SSE broadcasts...
+curl -X POST %API_BASE%/api/v1/test-mode -H "Content-Type: application/json" -d "{\"enabled\":false}" -k --silent --show-error --fail >nul 2>&1
+if !ERRORLEVEL! EQU 0 (
+    echo [OK] Test mode disabled - SSE broadcasts re-enabled
+) else (
+    echo [WARNING] Failed to disable test mode
 )
 
 echo.

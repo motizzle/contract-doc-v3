@@ -11,12 +11,13 @@ Status legend: [✅ Implemented] [📋 Planned] [🔄 Needs Update] [📝 Draft]
 ### 🏗️ Layer 1: Architecture (System Rules & Behavior)
 > **Authoritative references for how the system works**
 
-- **architecture/STATE-MACHINE.md** [✅ Production Reference]
+- **architecture/state-machine.md** [✅ **AUTHORITATIVE** - Single Source of Truth]
+  - **THE** state machine specification (supersedes all old "state-matrix" docs)
   - State variables, permission rules, button logic
   - State transitions, SSE events, version management
   - **Start here** for debugging permissions or state issues
 
-- **architecture/USER-WORKFLOWS.md** [✅ Production Reference]
+- **architecture/user-workflows.md** [✅ Production Reference]
   - Cross-feature user workflows and integration scenarios
   - Cross-platform synchronization examples
   - **Start here** for understanding user experience
@@ -63,6 +64,7 @@ Status legend: [✅ Implemented] [📋 Planned] [🔄 Needs Update] [📝 Draft]
 
 #### Operations
 - **operations/installation.md** [✅ Implemented]
+- **operations/test-mode-fix.md** [✅ Implemented - Browser freeze fix]
 - **operations/comments-sync-lessons-learned.md** [✅ Implemented]
 - **operations/addin-loading-lessons-learned.md** [✅ Implemented]
 - operations/docker-notes.md [📝 Draft]

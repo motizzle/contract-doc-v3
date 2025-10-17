@@ -797,7 +797,14 @@ function computeApprovalsSummary(list) {
 
 // SSE clients
 const sseClients = new Set();
+
+// Test mode flag - when enabled, SSE broadcasts are disabled and clients are disconnected
+let testMode = false;
+
 function broadcast(event) {
+  // Skip broadcasts during test mode to prevent conflicts with open browser tabs
+  if (testMode) return;
+  
   const enriched = {
     documentId: DOCUMENT_ID,
     revision: serverState.revision,
@@ -1736,6 +1743,33 @@ app.post('/api/v1/document/snapshot', (req, res) => {
     res.json({ ok: true, path: dest });
   } catch (e) {
     res.status(500).json({ error: 'Snapshot failed' });
+  }
+});
+
+// Test mode control: enable/disable SSE broadcasts during automated tests
+app.post('/api/v1/test-mode', (req, res) => {
+  try {
+    const enabled = !!req.body?.enabled;
+    testMode = enabled;
+    
+    if (enabled) {
+      // Disconnect all SSE clients to avoid conflicts during tests
+      console.log(`🧪 Test mode ENABLED - disconnecting ${sseClients.size} SSE clients`);
+      for (const client of sseClients) {
+        try { 
+          client.write('data: {"type":"test-mode-enabled","message":"Server entering test mode. Please refresh."}\n\n');
+          client.end(); 
+        } catch {}
+      }
+      sseClients.clear();
+    } else {
+      console.log('✅ Test mode DISABLED - SSE broadcasts re-enabled');
+    }
+    
+    res.json({ ok: true, testMode });
+  } catch (err) {
+    console.error('❌ Test mode toggle failed:', err);
+    res.status(500).json({ error: 'Failed to toggle test mode' });
   }
 });
 
