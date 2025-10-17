@@ -806,17 +806,18 @@ body {
 #layout {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr auto; /* Editor takes remaining space, sidepane is auto */
-  overflow-x: hidden;
+  grid-template-columns: minmax(600px, 1fr) 530px; /* Editor min 600px, sidepane fixed 530px */
+  overflow-x: auto; /* Allow horizontal scroll when window is too narrow */
   height: calc(100vh - 48px); /* 48px = navbar height */
   margin-top: 48px; /* Push below fixed navbar */
+  min-width: 1130px; /* 600px editor + 530px sidepane = hard minimum */
 }
 
 /* Editor column: contains toolbar + SuperDoc */
 #editor-col {
   display: flex;
   flex-direction: column;
-  min-width: 0; /* Allow flex shrinking */
+  min-width: 0; /* Allow grid to control sizing */
   padding: 0 16px;
   box-sizing: border-box;
 }
@@ -824,7 +825,7 @@ body {
 /* SuperDoc toolbar */
 #superdoc-toolbar {
   position: relative;
-  z-index: 100;
+  z-index: 2; /* Higher than editor (1), lower than sidepane (5) */
   border-bottom: 1px solid #ddd;
   padding: 6px 10px;
   width: 100%;
