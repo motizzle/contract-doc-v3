@@ -753,23 +753,130 @@ body .brand-header-bg .pulse-pill {
   }
 
 /* ------------------------------------------------------
-   SuperDoc toolbar overrides (scoped to web viewer only)
-   Ensures toolbar wraps cleanly within the editor column
-   without reserving right-side space or overflow menus.
+   WEB PLATFORM LAYOUT (server-driven)
+   All layout rules for web viewer - no inline styles!
 ------------------------------------------------------- */
-#layout { display: grid; grid-template-columns: 1fr auto; overflow-x: hidden; height: calc(100vh - var(--banner-h)); }
-#editor-col { min-width: 0; padding: 0 16px; box-sizing: border-box; overflow-x: auto; }
-#superdoc-toolbar, #superdoc { min-width: 1100px; }
-#pane { width: 530px; max-width: 530px; }
+
+/* Top navigation bar (web only) */
+#og-navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  z-index: 10000;
+  display: block;
+}
+#og-navbar .nav-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-size: contain;
+  background-position: left center;
+  background-repeat: no-repeat;
+  /* background-image set in view.html (asset path) */
+}
+
+/* Global body */
+body {
+  margin: 0;
+  font-family: var(--font-family-system);
+  height: 100vh;
+}
+
+/* Banner (background comes from .brand-header-bg) */
+#banner {
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 12px;
+  color: #fff;
+  border-bottom: 0;
+}
+.banner-inner {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+/* Main layout: grid with editor column + sidepane */
+#layout {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto; /* Editor takes remaining space, sidepane is auto */
+  overflow-x: hidden;
+  height: calc(100vh - 48px); /* 48px = navbar height */
+  margin-top: 48px; /* Push below fixed navbar */
+}
+
+/* Editor column: contains toolbar + SuperDoc */
+#editor-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* Allow flex shrinking */
+  padding: 0 16px;
+  box-sizing: border-box;
+}
+
+/* SuperDoc toolbar */
 #superdoc-toolbar {
   position: relative;
   z-index: 100;
   border-bottom: 1px solid #ddd;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
   padding: 6px 10px;
   width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0; /* Don't shrink toolbar */
+  /* Let SuperDoc handle responsive button hiding via hideButtons: true */
+}
+
+/* SuperDoc's internal toolbar element - ensure it respects container width */
+#superdoc-toolbar .superdoc-toolbar {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* SuperDoc editor */
+#superdoc {
+  position: relative;
+  z-index: 1;
+  flex: 1; /* Take remaining vertical space */
+  min-width: 1100px; /* Editor needs horizontal scroll below this */
+  min-height: 0; /* Allow flex shrinking */
+}
+
+/* Right sidepane: contains React app + comments */
+#pane {
+  position: relative;
+  z-index: 5;
+  width: 530px;
+  max-width: 530px;
+  flex-shrink: 0; /* Never shrink sidepane */
+  border-left: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  box-shadow: -2px 0 8px rgba(0,0,0,0.08);
+}
+
+/* React app root */
+#app-root {
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto; /* Don't grow/shrink */
+  min-height: 0;
+}
+
+/* Comments container */
+#comments-container {
+  flex: 1; /* Take remaining space */
+  overflow-y: auto;
+  border-top: 1px solid #eee;
+  background: #fafafa;
 }
 
 /* Standardize buttons inside right pane */
@@ -843,24 +950,16 @@ body .brand-header-bg .pulse-pill {
   text-align: center;
 }
 
-#superdoc-toolbar .superdoc-toolbar {
-  display: flex;
-  flex-wrap: wrap !important;
-  gap: 6px;
-  justify-content: flex-start !important;
-  box-sizing: border-box;
-  width: 100%;
-}
-
-/* Allow groups and items to wrap; undo vendor nowrap/overflow */
-#superdoc-toolbar .superdoc-toolbar * { white-space: normal !important; }
-#superdoc-toolbar .superdoc-toolbar-group-side { min-width: auto !important; }
-
-/* Flatten group sizing and remove spacers so all items participate in wrapping */
-#superdoc-toolbar .superdoc-toolbar > * { flex: 0 1 auto !important; min-width: 0 !important; }
-#superdoc-toolbar .superdoc-toolbar-group-side { flex: 0 0 auto !important; min-width: 0 !important; }
-#superdoc-toolbar .sd-toolbar-spacer,
-#superdoc-toolbar .superdoc-toolbar .spacer { display: none !important; }
+/* Removed custom toolbar layout overrides - let SuperDoc handle responsive consolidation */
+/* The following CSS was preventing hideButtons: true from working:
+   - flex-wrap: wrap !important - forced wrapping instead of overflow menu
+   - min-width overrides - prevented responsive breakpoints
+   - spacer hiding - broke SuperDoc's internal layout logic
+   
+   SuperDoc now handles toolbar responsiveness natively via:
+   - hideButtons: true
+   - responsiveToContainer: false
+*/
 
 /* Cap overly wide controls so more items fit before overflowing */
 #superdoc-toolbar .superdoc-toolbar select,

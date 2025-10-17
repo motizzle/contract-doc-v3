@@ -647,7 +647,7 @@ const serverState = {
   revision: 1,
   // Document update tracking (prototype)
   documentVersion: 1,
-  title: 'Untitled Document',
+  title: 'Redlined & Signed',
   status: 'draft',
   updatedBy: null, // { userId, label }
   updatedPlatform: null, // 'web' | 'word' | null
@@ -1573,8 +1573,8 @@ app.post('/api/v1/save-progress', (req, res) => {
 
     broadcast({ type: 'saveProgress', userId, size: bytes.length });
     // Touch title if empty to encourage naming
-    if (!serverState.title || serverState.title === 'Untitled Document') {
-      serverState.title = 'Untitled Document';
+    if (!serverState.title || serverState.title === 'Redlined & Signed') {
+      serverState.title = 'Redlined & Signed';
       persistState();
     }
     return res.json({ ok: true, revision: serverState.revision });
@@ -1844,7 +1844,7 @@ app.post('/api/v1/factory-reset', (req, res) => {
     // Reset state to baseline and bump revision so clients resync deterministically
     serverState.checkedOutBy = null;
     serverState.documentVersion = 1;
-    serverState.title = 'Untitled Document';
+    serverState.title = 'Redlined & Signed';
     serverState.status = 'draft';
     serverState.updatedBy = null;
     serverState.updatedPlatform = null;

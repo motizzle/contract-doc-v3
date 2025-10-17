@@ -17,6 +17,12 @@ Status legend: [✅ Implemented] [📋 Planned] [🔄 Needs Update] [📝 Draft]
   - State transitions, SSE events, version management
   - **Start here** for debugging permissions or state issues
 
+- **architecture/css-architecture.md** [✅ Production Reference]
+  - Server-driven CSS architecture principles
+  - Web platform layout rules
+  - SuperDoc responsive toolbar integration
+  - **Start here** for styling and layout changes
+
 - **architecture/user-workflows.md** [✅ Production Reference]
   - Cross-feature user workflows and integration scenarios
   - Cross-platform synchronization examples

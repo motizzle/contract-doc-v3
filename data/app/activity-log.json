@@ -1,7 +1,7 @@
 [
   {
-    "id": "act_1760727520350_36rjgcgpv",
-    "timestamp": 1760727520350,
+    "id": "act_1760737628443_2k12v356n",
+    "timestamp": 1760737628443,
     "type": "document:checkout",
     "user": {
       "id": "user1",
@@ -14,8 +14,8 @@
     "message": "Warren Peace checked out document"
   },
   {
-    "id": "act_1760727520567_05vche12c",
-    "timestamp": 1760727520567,
+    "id": "act_1760737633488_ey3iozjsz",
+    "timestamp": 1760737633488,
     "type": "document:checkout:cancel",
     "user": {
       "id": "user1",
@@ -28,61 +28,23 @@
     "message": "Warren Peace cancelled document checkout"
   },
   {
-    "id": "act_1760727520782_cswe8kysl",
-    "timestamp": 1760727520782,
-    "type": "document:checkout",
+    "id": "act_1760737639178_49kntx04e",
+    "timestamp": 1760737639178,
+    "type": "workflow:approve",
     "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
+      "id": "user1",
+      "label": "Warren Peace",
       "platform": "web"
     },
-    "action": "checked out",
-    "target": "document",
-    "details": {},
-    "message": "Kent Uckey checked out document"
-  },
-  {
-    "id": "act_1760727520790_jnu76778e",
-    "timestamp": 1760727520790,
-    "type": "document:checkin",
-    "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
-      "platform": "web"
-    },
-    "action": "checked in",
-    "target": "document",
+    "action": "approved",
+    "target": "workflow",
     "details": {
-      "version": 1
+      "targetUserId": "user1",
+      "progress": {
+        "approved": 1,
+        "total": 5
+      }
     },
-    "message": "Kent Uckey checked in document (v1)"
-  },
-  {
-    "id": "act_1760727527370_z8n5n21ea",
-    "timestamp": 1760727527370,
-    "type": "workflow:request-review",
-    "user": {
-      "id": "user1",
-      "label": "Warren Peace",
-      "platform": "web"
-    },
-    "action": "requested review",
-    "target": "workflow",
-    "details": {},
-    "message": "Warren Peace requested review from approvers"
-  },
-  {
-    "id": "act_1760727527379_sjxpc8gv3",
-    "timestamp": 1760727527379,
-    "type": "workflow:request-review",
-    "user": {
-      "id": "user1",
-      "label": "Warren Peace",
-      "platform": "web"
-    },
-    "action": "requested review",
-    "target": "workflow",
-    "details": {},
-    "message": "Warren Peace requested review from approvers"
+    "message": "Warren Peace approved (1/5)"
   }
 ]

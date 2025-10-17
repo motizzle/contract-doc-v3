@@ -69,8 +69,10 @@ export function mountSuperdoc(options) {
   const toolbarModuleCfg = (function(){
     try {
       const t = (typeof options.toolbar === 'object' && options.toolbar) ? options.toolbar : {};
-      return Object.assign({ selector: toolbarSelector, hideButtons: false, responsiveToContainer: true }, t);
-    } catch { return { selector: toolbarSelector, hideButtons: false, responsiveToContainer: true }; }
+      // Use container-based responsive: measures actual toolbar width after grid layout
+      // hideButtons: true enables overflow menu at narrow widths
+      return Object.assign({ selector: toolbarSelector, hideButtons: true, responsiveToContainer: true }, t);
+    } catch { return { selector: toolbarSelector, hideButtons: true, responsiveToContainer: true }; }
   })();
   
   // Configure comments module if container provided
@@ -102,7 +104,34 @@ export function mountSuperdoc(options) {
     rulers: options.rulers ?? true,
     // Prefer same-origin collab proxy; choose ws/wss based on page protocol
     collab: { url: (function(){ try { const p = location.protocol === 'http:' ? 'ws' : 'wss'; return `${p}://localhost:4001/collab`; } catch { return 'wss://localhost:4001/collab'; } })() },
-    onReady: (e) => console.log('SuperDoc ready', e),
+    onReady: (e) => {
+      console.log('SuperDoc ready', e);
+      // Debug: Check toolbar width
+      try {
+        const toolbarEl = document.querySelector('#superdoc-toolbar');
+        const innerToolbar = document.querySelector('#superdoc-toolbar .superdoc-toolbar');
+        console.log('🔍 Toolbar container width:', toolbarEl?.offsetWidth);
+        console.log('🔍 Inner toolbar width:', innerToolbar?.offsetWidth);
+        console.log('🔍 Window width:', window.innerWidth);
+        console.log('🔍 responsiveToContainer:', toolbarModuleCfg.responsiveToContainer);
+        console.log('🔍 hideButtons:', toolbarModuleCfg.hideButtons);
+      } catch {}
+      
+      // Force toolbar to recalculate after layout is complete
+      try {
+        if (superdoc.toolbar && typeof superdoc.toolbar.updateToolbarState === 'function') {
+          setTimeout(() => {
+            superdoc.toolbar.updateToolbarState();
+            console.log('✅ Toolbar state updated after layout');
+            // Debug again after update
+            const toolbarEl = document.querySelector('#superdoc-toolbar');
+            console.log('🔍 After update - Toolbar width:', toolbarEl?.offsetWidth);
+          }, 100);
+        }
+      } catch (err) {
+        console.warn('Could not update toolbar state:', err);
+      }
+    },
     ...(typeof options.onCommentsUpdate === 'function' ? { onCommentsUpdate: options.onCommentsUpdate } : {}),
     onEditorCreate: (e) => {
       console.log('Editor created (wrapper)', e);
