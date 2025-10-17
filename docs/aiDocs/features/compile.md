@@ -1,5 +1,14 @@
 # Compile Packet (PDF) – Feature Spec
 
+**Status:** ✅ Implemented  
+**Test Coverage:** 4 tests (Phase 13: Exhibits & Compilation)  
+**Last Updated:** August 2024
+
+## Related Documentation
+- `features/automated-testing-suite.md` - Test specifications
+
+---
+
 ## Summary
 Add a Compile action that lets a user select one or more exhibits and generate a single PDF packet: the current document (converted from DOCX) followed by the selected exhibits. The UX matches our existing React modals. Output is served under `/compiled/*` for download.
 

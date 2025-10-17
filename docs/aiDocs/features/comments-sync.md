@@ -532,6 +532,6 @@ Update state matrix to include comment/mode configuration:
 ## References
 
 - SuperDoc Comments Module: https://docs.superdoc.dev/guide/modules#comments
-- Our lessons learned: `docs/fromV2/superdoc-role-and-autoload.md`
-- Comment documentation page: `docs/aiDocs/features/conditional-sections.md` (user provided)
+- Lessons Learned: `docs/aiDocs/operations/comments-sync-lessons-learned.md`
+- Legacy lessons: `docs/fromV2/superdoc-role-and-autoload.md`
 

@@ -1,6 +1,17 @@
-# Check‑in / Check‑out — Design and Implementation
+# Check-in / Check-out Feature
 
-## Why this feature exists (goals)
+**Status:** ✅ Implemented  
+**Test Coverage:** 4 tests (Phase 12: Checkout Operations)  
+**Last Updated:** August 2024
+
+## Related Documentation
+- `architecture/STATE-MACHINE.md` - Complete permission rules and state transitions
+- `architecture/USER-WORKFLOWS.md` - User workflow examples
+- `features/automated-testing-suite.md` - Test specifications
+
+---
+
+## Purpose & Goals
 - Prevent write conflicts by enforcing single‑writer, multi‑reader semantics.
 - Make status obvious across Word add‑in and Web: who has the doc, who can edit.
 - Keep clients in sync via SSE and a single, server‑computed state matrix.
@@ -13,12 +24,16 @@ References: `docs/Project-Summary.md`, `docs/docsByAI/implementation-plan.md`, a
 - The owner can check in (or cancel) the checkout; finalize clears any checkout.
 - The server computes and broadcasts the authoritative state. Clients render UI from the state matrix and do not “guess.”
 
-## Roles and permissions (prototype)
-- Editor: can check out, check in, cancel checkout, finalize/unfinalize.
-- Suggestor/Vendor: can check out and check in; document mode remains suggesting by default.
-- Viewer: view‑only.
+## Permissions
 
-Exact permissions flow through the state matrix and can be tuned in `data/app/users/roles.json`.
+**See `architecture/STATE-MACHINE.md` for complete permission matrix.**
+
+This feature respects role-based permissions:
+- **Viewer:** Cannot checkout
+- **Suggester/Vendor:** Can checkout and checkin
+- **Editor:** Full access including override
+
+Permissions are configured in `data/app/users/roles.json` and enforced by the state matrix.
 
 ## Server responsibilities
 

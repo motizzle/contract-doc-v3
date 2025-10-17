@@ -1,5 +1,16 @@
 # Conditional Sections & Document Automation
 
+**Status:** 📋 Planned - Research Complete  
+**Test Coverage:** Manual tests completed  
+**Last Updated:** October 2025
+
+## Related Documentation
+- `features/conditional-sections-research.md` - Field annotations vs sections research
+- `features/variables.md` - Variable system for conditional logic
+- `architecture/USER-WORKFLOWS.md` - Planned user workflows
+
+---
+
 ## Overview
 Enable dynamic document composition through conditional sections that auto-insert/delete based on configurable rules. Sections are managed server-side and rendered using **SuperDoc's native `documentSection` feature**, providing a unified implementation across web viewer and Word add-in.
 

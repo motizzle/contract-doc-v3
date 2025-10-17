@@ -1,5 +1,16 @@
 # Feature: Approvals (Simple Model)
 
+**Status:** ✅ Implemented  
+**Test Coverage:** 6 tests (Phase 8: Approvals Flow)  
+**Last Updated:** August 2024
+
+## Related Documentation
+- `architecture/STATE-MACHINE.md` - Approval state integration
+- `architecture/USER-WORKFLOWS.md` - Approval workflow examples
+- `features/automated-testing-suite.md` - Test specifications
+
+---
+
 ## Summary
 - Purpose: lightweight approvals where every user can approve for themselves; editors can override others with confirmation.
 - Scope: shared UI (Web + Word taskpane) reading from a single source of truth; minimal server API to persist and broadcast changes.

@@ -60,11 +60,22 @@ async function loadDocumentContext() {
 
         // Extract full text from DOCX using mammoth
         const result = await mammoth.extractRawText({ path: docPath });
-        DOCUMENT_CONTEXT = result.value.trim();
+        let fullText = result.value.trim();
 
-        if (!DOCUMENT_CONTEXT || DOCUMENT_CONTEXT.length === 0) {
+        if (!fullText || fullText.length === 0) {
           console.warn('⚠️ Document appears to be empty');
           DOCUMENT_CONTEXT = 'Document is empty or could not be read.';
+        } else {
+          // Truncate very large documents to prevent overwhelming the LLM
+          const MAX_CONTEXT_LENGTH = 10000; // ~2500 tokens for a 3B model
+          
+          if (fullText.length > MAX_CONTEXT_LENGTH) {
+            const truncated = fullText.substring(0, MAX_CONTEXT_LENGTH);
+            DOCUMENT_CONTEXT = truncated + '\n\n[... document truncated for context window ...]';
+            console.warn(`⚠️ Document truncated from ${fullText.length} to ${MAX_CONTEXT_LENGTH} characters`);
+          } else {
+            DOCUMENT_CONTEXT = fullText;
+          }
         }
 
         DOCUMENT_LAST_MODIFIED = currentModified;
@@ -1799,6 +1810,8 @@ app.post('/api/v1/factory-reset', (req, res) => {
     // Reset state to baseline and bump revision so clients resync deterministically
     serverState.checkedOutBy = null;
     serverState.documentVersion = 1;
+    serverState.title = 'Untitled Document';
+    serverState.status = 'draft';
     serverState.updatedBy = null;
     serverState.updatedPlatform = null;
     serverState.lastUpdated = new Date().toISOString();
