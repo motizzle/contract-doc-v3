@@ -776,8 +776,7 @@
             const isWordHost = (typeof Office !== 'undefined');
             if (isWordHost) { await saveProgressWord(); } else { await saveProgressWebViaDownload(); }
             addLog('Progress saved successfully', 'success');
-            await refresh();
-            // After refresh, fetch the latest matrix and update both viewingVersion AND loadedVersion to the new current
+            // Fetch updated matrix first so local version state updates before any refresh-driven banner logic
             try {
               const plat = isWordHost ? 'word' : 'web';
               const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&userId=${encodeURIComponent(userId)}`;
@@ -788,11 +787,13 @@
                 if (Number.isFinite(v) && v > 0) {
                   console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: saveProgress`);
                   try { setViewingVersion(v); } catch {}
-                  try { setLoadedVersion(v); } catch {} // Fix: Update loadedVersion to prevent banner showing for same user
+                  try { setLoadedVersion(v); } catch {}
                   try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
                 }
               }
             } catch {}
+            // Now refresh other server-driven state (banners list, approvals, etc.)
+            await refresh();
             return true;
           } catch (e) {
             addLog(`Failed to save progress: ${e?.message||e}`, 'error');
