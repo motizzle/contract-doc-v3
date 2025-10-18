@@ -820,7 +820,7 @@ body {
   padding: 0 16px;
   box-sizing: border-box;
   overflow-x: auto; /* Contain horizontal scroll to the editor pane only */
-  overflow-y: hidden;
+  overflow-y: auto; /* Allow document to scroll vertically */
 }
 
 /* SuperDoc toolbar */
