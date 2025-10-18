@@ -806,11 +806,10 @@ body {
 #layout {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(600px, 1fr) 530px; /* Editor min 600px, sidepane fixed 530px */
-  overflow-x: auto; /* Allow horizontal scroll when window is too narrow */
+  grid-template-columns: minmax(0, 1fr) 530px; /* Editor flexes; sidepane fixed 530px */
+  overflow-x: hidden; /* Prevent grid-level scrollbar from overlaying sidepane */
   height: calc(100vh - 48px); /* 48px = navbar height */
   margin-top: 48px; /* Push below fixed navbar */
-  min-width: 1130px; /* 600px editor + 530px sidepane = hard minimum */
 }
 
 /* Editor column: contains toolbar + SuperDoc */
@@ -820,6 +819,8 @@ body {
   min-width: 0; /* Allow grid to control sizing */
   padding: 0 16px;
   box-sizing: border-box;
+  overflow-x: auto; /* Contain horizontal scroll to the editor pane only */
+  overflow-y: hidden;
 }
 
 /* SuperDoc toolbar */
@@ -861,6 +862,8 @@ body {
   flex-direction: column;
   background: #fff;
   box-shadow: -2px 0 8px rgba(0,0,0,0.08);
+  height: calc(100vh - 48px); /* Ensure the pane spans the full viewport height under navbar */
+  min-height: 0;
 }
 
 /* React app root */
@@ -868,14 +871,19 @@ body {
   background: #fff;
   display: flex;
   flex-direction: column;
-  flex: 0 0 auto; /* Don't grow/shrink */
+  flex: 1; /* Grow to fill available space for AI chat positioning */
   min-height: 0;
+  height: 100%; /* Ensure child panels can anchor to bottom reliably */
+  overflow: hidden; /* Confine scrolling to inner lists, not the root */
 }
 
 /* Comments container */
 #comments-container {
-  flex: 1; /* Take remaining space */
-  overflow-y: auto;
+  /* Hide comments panel by default in web viewer; prevent it from consuming space */
+  display: none;
+  flex: 0 0 auto;
+  height: 0;
+  overflow: hidden;
   border-top: 1px solid #eee;
   background: #fafafa;
 }
@@ -1648,7 +1656,7 @@ body {
 }
 
 /* Panels beneath the header */
-.panel { padding: 3px 12px; margin-left: -12px; margin-right: 0; }
+.panel { padding: 8px 12px; margin-left: 0; margin-right: 0; }
 .panel--top { margin-top: 0; background: #F8F8F8; border: 1px solid #E6E6E6; }
 .panel--assistant { margin-top: 0; background: #FFFFFF; overflow: hidden; }
 

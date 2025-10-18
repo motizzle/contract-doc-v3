@@ -4933,7 +4933,7 @@
         (confirm ? React.createElement(ConfirmModal, { title: confirm.title, message: confirm.message, onConfirm: confirm.onConfirm, onClose: onConfirmClose }) : null)
       ]);
 
-      const container = React.createElement('div', { style: { display: 'flex', flexDirection: 'column', height: ((typeof Office === 'undefined') ? '100vh' : undefined), flex: ((typeof Office === 'undefined') ? undefined : 1), minHeight: 0 } }, [topPanel, assistantPanel]);
+      const container = React.createElement('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } }, [topPanel, assistantPanel]);
 
       return React.createElement(ThemeProvider, null, React.createElement(React.Fragment, null, [container, React.createElement(BannerDropEffect, { key: 'banner' }), React.createElement(ApprovalCelebration, { key: 'celebration' })]));
     }
