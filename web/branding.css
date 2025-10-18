@@ -854,8 +854,8 @@ body {
 #pane {
   position: relative;
   z-index: 5;
-  width: 720px;
-  max-width: 720px;
+  width: 850px;
+  max-width: 850px;
   flex-shrink: 0; /* Never shrink sidepane */
   border-left: 1px solid #eee;
   display: flex;

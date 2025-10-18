@@ -2411,7 +2411,7 @@
         showNewThread ? React.createElement(NewThreadModal, { 
           key: 'newthread',
           onClose: () => setShowNewThread(false),
-          onCreate: () => { setShowNewThread(false); loadThreads(); }
+          onCreate: () => { setShowNewThread(false); loadThreads(); loadSummary(); }
         }) : null
       ]);
     }
@@ -2450,14 +2450,30 @@
       async function create() {
         if (!title.trim() || recipients.length === 0) return;
         try {
-          await fetch(`${API_BASE}/api/v1/messages/v2`, {
+          // Include current user in participants
+          const currentUser = users.find(u => u.id === userId);
+          const allParticipants = [
+            { userId, label: currentUser?.label || 'Me', email: currentUser?.email || '', internal: true },
+            ...recipients
+          ];
+          
+          const response = await fetch(`${API_BASE}/api/v1/messages/v2`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: title.trim(), recipients, internal, privileged, text, userId })
+            body: JSON.stringify({ title: title.trim(), recipients: allParticipants, internal, privileged, text, userId })
           });
+          
+          if (!response.ok) {
+            const error = await response.json();
+            console.error('Failed to create thread:', error);
+            alert('Failed to create thread: ' + (error.error || 'Unknown error'));
+            return;
+          }
+          
           onCreate?.();
         } catch (e) {
           console.error('Failed to create thread:', e);
+          alert('Failed to create thread: ' + e.message);
         }
       }
       
