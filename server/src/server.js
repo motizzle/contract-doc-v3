@@ -231,6 +231,197 @@ function updateMessages(updatedMessages) {
   }
 }
 
+// Messages v2 storage functions (threaded messaging with ACP/internal flags)
+function readMessagesV2() {
+  try {
+    if (fs.existsSync(messagesV2FilePath)) {
+      const content = fs.readFileSync(messagesV2FilePath, 'utf8');
+      const cleanContent = content.replace(/^\uFEFF/, '');
+      const data = JSON.parse(cleanContent);
+      return {
+        threads: Array.isArray(data.threads) ? data.threads : [],
+        posts: Array.isArray(data.posts) ? data.posts : []
+      };
+    }
+    return { threads: [], posts: [] };
+  } catch (e) {
+    console.error('Error reading messages v2:', e);
+    return { threads: [], posts: [] };
+  }
+}
+
+function writeMessagesV2(data) {
+  try {
+    fs.writeFileSync(messagesV2FilePath, JSON.stringify(data, null, 2), 'utf8');
+    return true;
+  } catch (e) {
+    console.error('Error writing messages v2:', e);
+    return false;
+  }
+}
+
+function createThread({ title, createdBy, participants, internal, privileged, text }) {
+  const data = readMessagesV2();
+  const threadId = `thread-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const now = Date.now();
+  
+  const thread = {
+    threadId,
+    title: title || 'Untitled thread',
+    createdBy,
+    createdAt: now,
+    participants: participants || [],
+    internal: !!internal,
+    privileged: !!privileged,
+    state: 'open',
+    lastPostAt: now,
+    unreadBy: participants.map(p => p.userId).filter(id => id !== createdBy.userId),
+    deletedAt: null
+  };
+  
+  data.threads.push(thread);
+  
+  // Add first post if text provided
+  if (text && text.trim()) {
+    const post = {
+      postId: `post-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      threadId,
+      author: createdBy,
+      createdAt: now,
+      text: text.trim(),
+      privileged: !!privileged
+    };
+    data.posts.push(post);
+  }
+  
+  writeMessagesV2(data);
+  return { thread, data };
+}
+
+function addPostToThread(threadId, author, text, privileged = false) {
+  const data = readMessagesV2();
+  const thread = data.threads.find(t => t.threadId === threadId);
+  
+  if (!thread) {
+    return { error: 'Thread not found' };
+  }
+  
+  const now = Date.now();
+  const post = {
+    postId: `post-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    threadId,
+    author,
+    createdAt: now,
+    text: text.trim(),
+    privileged: !!privileged
+  };
+  
+  data.posts.push(post);
+  
+  // Update thread lastPostAt and mark unread for all except author
+  thread.lastPostAt = now;
+  thread.unreadBy = thread.participants
+    .map(p => p.userId)
+    .filter(id => id !== author.userId);
+  
+  writeMessagesV2(data);
+  return { post, thread, data };
+}
+
+function updateThreadState(threadId, state) {
+  const data = readMessagesV2();
+  const thread = data.threads.find(t => t.threadId === threadId);
+  
+  if (!thread) {
+    return { error: 'Thread not found' };
+  }
+  
+  thread.state = state;
+  writeMessagesV2(data);
+  return { thread, data };
+}
+
+function updateThreadFlags(threadId, { internal, privileged }) {
+  const data = readMessagesV2();
+  const thread = data.threads.find(t => t.threadId === threadId);
+  
+  if (!thread) {
+    return { error: 'Thread not found' };
+  }
+  
+  if (typeof internal === 'boolean') thread.internal = internal;
+  if (typeof privileged === 'boolean') thread.privileged = privileged;
+  
+  writeMessagesV2(data);
+  return { thread, data };
+}
+
+function markThreadRead(threadId, userId) {
+  const data = readMessagesV2();
+  const thread = data.threads.find(t => t.threadId === threadId);
+  
+  if (!thread) {
+    return { error: 'Thread not found' };
+  }
+  
+  thread.unreadBy = (thread.unreadBy || []).filter(id => id !== userId);
+  
+  writeMessagesV2(data);
+  return { thread, data };
+}
+
+function markThreadUnread(threadId, userId) {
+  const data = readMessagesV2();
+  const thread = data.threads.find(t => t.threadId === threadId);
+  
+  if (!thread) {
+    return { error: 'Thread not found' };
+  }
+  
+  if (!thread.unreadBy) thread.unreadBy = [];
+  if (!thread.unreadBy.includes(userId)) {
+    thread.unreadBy.push(userId);
+  }
+  
+  writeMessagesV2(data);
+  return { thread, data };
+}
+
+function softDeleteThread(threadId) {
+  const data = readMessagesV2();
+  const thread = data.threads.find(t => t.threadId === threadId);
+  
+  if (!thread) {
+    return { error: 'Thread not found' };
+  }
+  
+  thread.deletedAt = Date.now();
+  
+  writeMessagesV2(data);
+  return { thread, data };
+}
+
+function getDiscussionSummary(userId) {
+  const data = readMessagesV2();
+  const threads = data.threads.filter(t => !t.deletedAt);
+  
+  const open = threads.filter(t => t.state === 'open').length;
+  const archived = threads.filter(t => t.state === 'archived').length;
+  const privileged = threads.filter(t => t.privileged).length;
+  const unreadForMe = threads.filter(t => 
+    t.unreadBy && t.unreadBy.includes(userId)
+  ).length;
+  
+  return {
+    messages: {
+      open,
+      archived,
+      privileged,
+      unreadForMe
+    }
+  };
+}
+
 // Chat storage functions (per-user AI chat history)
 function readChat() {
   try {
@@ -630,6 +821,7 @@ const versionsDir = path.join(dataWorkingDir, 'versions');
 const approvalsFilePath = path.join(dataAppDir, 'approvals.json');
 const activityLogFilePath = path.join(dataAppDir, 'activity-log.json');
 const messagesFilePath = path.join(dataAppDir, 'messages.json');
+const messagesV2FilePath = path.join(dataAppDir, 'messages-v2.json');
 const chatFilePath = path.join(dataAppDir, 'chat.json');
 const variablesFilePath = path.join(dataAppDir, 'variables.json');
 
@@ -1057,6 +1249,339 @@ app.post('/api/v1/messages/mark-read', (req, res) => {
   } catch (e) {
     console.error('Error marking messages as read:', e);
     return res.status(500).json({ error: 'Failed to mark messages as read' });
+  }
+});
+
+// Messages v2 API (threaded messaging system)
+// GET /api/v1/messages/v2 - List threads with filters
+app.get('/api/v1/messages/v2', (req, res) => {
+  try {
+    const { state, internal, privileged, search, userId } = req.query;
+    const data = readMessagesV2();
+    let threads = data.threads.filter(t => !t.deletedAt);
+    
+    // Apply filters
+    if (state && state !== 'all') {
+      threads = threads.filter(t => t.state === state);
+    }
+    if (internal === 'true') {
+      threads = threads.filter(t => t.internal === true);
+    } else if (internal === 'false') {
+      threads = threads.filter(t => t.internal === false);
+    }
+    if (privileged === 'true') {
+      threads = threads.filter(t => t.privileged === true);
+    } else if (privileged === 'false') {
+      threads = threads.filter(t => t.privileged === false);
+    }
+    if (search && search.trim()) {
+      const searchLower = search.toLowerCase();
+      threads = threads.filter(t => 
+        t.title.toLowerCase().includes(searchLower) ||
+        t.participants.some(p => p.label.toLowerCase().includes(searchLower))
+      );
+    }
+    
+    // Sort by lastPostAt descending
+    threads.sort((a, b) => b.lastPostAt - a.lastPostAt);
+    
+    // Get posts for each thread
+    const threadsWithPosts = threads.map(thread => ({
+      ...thread,
+      posts: data.posts.filter(p => p.threadId === thread.threadId).sort((a, b) => a.createdAt - b.createdAt),
+      postCount: data.posts.filter(p => p.threadId === thread.threadId).length
+    }));
+    
+    return res.json({ threads: threadsWithPosts });
+  } catch (e) {
+    console.error('Error reading messages v2:', e);
+    return res.status(500).json({ error: 'Failed to read messages' });
+  }
+});
+
+// POST /api/v1/messages/v2 - Create new thread
+app.post('/api/v1/messages/v2', (req, res) => {
+  try {
+    const { title, recipients, internal, privileged, text, userId } = req.body;
+    
+    if (!title || !title.trim()) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+    if (!Array.isArray(recipients) || recipients.length === 0) {
+      return res.status(400).json({ error: 'At least one recipient is required' });
+    }
+    
+    // Get current user info
+    const users = readUsers();
+    const currentUser = users.find(u => u.id === userId);
+    const createdBy = {
+      userId: userId || 'user1',
+      label: currentUser?.label || 'User'
+    };
+    
+    // Create thread
+    const result = createThread({
+      title: title.trim(),
+      createdBy,
+      participants: recipients,
+      internal: !!internal,
+      privileged: !!privileged,
+      text: text || ''
+    });
+    
+    if (result.error) {
+      return res.status(400).json({ error: result.error });
+    }
+    
+    // Broadcast SSE event
+    broadcast({
+      type: 'message:thread-created',
+      thread: result.thread
+    });
+    
+    // Log activity
+    logActivity('message:thread-created', userId, {
+      threadId: result.thread.threadId,
+      title: result.thread.title,
+      recipients: recipients.length
+    });
+    
+    return res.json({ ok: true, thread: result.thread });
+  } catch (e) {
+    console.error('Error creating thread:', e);
+    return res.status(500).json({ error: 'Failed to create thread' });
+  }
+});
+
+// POST /api/v1/messages/v2/:threadId/post - Add post to thread
+app.post('/api/v1/messages/v2/:threadId/post', (req, res) => {
+  try {
+    const { threadId } = req.params;
+    const { text, privileged, userId } = req.body;
+    
+    if (!text || !text.trim()) {
+      return res.status(400).json({ error: 'Message text is required' });
+    }
+    
+    // Get current user info
+    const users = readUsers();
+    const currentUser = users.find(u => u.id === userId);
+    const author = {
+      userId: userId || 'user1',
+      label: currentUser?.label || 'User'
+    };
+    
+    const result = addPostToThread(threadId, author, text, !!privileged);
+    
+    if (result.error) {
+      return res.status(404).json({ error: result.error });
+    }
+    
+    // Broadcast SSE event
+    broadcast({
+      type: 'message:post-added',
+      post: result.post,
+      thread: result.thread
+    });
+    
+    return res.json({ ok: true, post: result.post, thread: result.thread });
+  } catch (e) {
+    console.error('Error adding post:', e);
+    return res.status(500).json({ error: 'Failed to add post' });
+  }
+});
+
+// POST /api/v1/messages/v2/:threadId/state - Update thread state
+app.post('/api/v1/messages/v2/:threadId/state', (req, res) => {
+  try {
+    const { threadId } = req.params;
+    const { state, userId } = req.body;
+    
+    if (!['open', 'resolved', 'archived'].includes(state)) {
+      return res.status(400).json({ error: 'Invalid state. Must be open, resolved, or archived.' });
+    }
+    
+    const result = updateThreadState(threadId, state);
+    
+    if (result.error) {
+      return res.status(404).json({ error: result.error });
+    }
+    
+    // Broadcast SSE event
+    broadcast({
+      type: 'message:state-changed',
+      thread: result.thread
+    });
+    
+    // Log activity
+    logActivity('message:state-changed', userId, {
+      threadId,
+      newState: state
+    });
+    
+    return res.json({ ok: true, thread: result.thread });
+  } catch (e) {
+    console.error('Error updating thread state:', e);
+    return res.status(500).json({ error: 'Failed to update thread state' });
+  }
+});
+
+// POST /api/v1/messages/v2/:threadId/flags - Toggle internal/privileged flags
+app.post('/api/v1/messages/v2/:threadId/flags', (req, res) => {
+  try {
+    const { threadId } = req.params;
+    const { internal, privileged, userId } = req.body;
+    
+    const result = updateThreadFlags(threadId, { internal, privileged });
+    
+    if (result.error) {
+      return res.status(404).json({ error: result.error });
+    }
+    
+    // Broadcast SSE event
+    broadcast({
+      type: 'message:flags-updated',
+      thread: result.thread
+    });
+    
+    // Log activity
+    logActivity('message:flags-updated', userId, {
+      threadId,
+      internal: result.thread.internal,
+      privileged: result.thread.privileged
+    });
+    
+    return res.json({ ok: true, thread: result.thread });
+  } catch (e) {
+    console.error('Error updating thread flags:', e);
+    return res.status(500).json({ error: 'Failed to update thread flags' });
+  }
+});
+
+// POST /api/v1/messages/v2/:threadId/read - Mark thread as read
+app.post('/api/v1/messages/v2/:threadId/read', (req, res) => {
+  try {
+    const { threadId } = req.params;
+    const { userId, unread } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+    
+    const result = unread 
+      ? markThreadUnread(threadId, userId)
+      : markThreadRead(threadId, userId);
+    
+    if (result.error) {
+      return res.status(404).json({ error: result.error });
+    }
+    
+    // Broadcast SSE event
+    broadcast({
+      type: 'message:read',
+      thread: result.thread,
+      userId
+    });
+    
+    return res.json({ ok: true, thread: result.thread });
+  } catch (e) {
+    console.error('Error marking thread read/unread:', e);
+    return res.status(500).json({ error: 'Failed to mark thread read/unread' });
+  }
+});
+
+// POST /api/v1/messages/v2/:threadId/delete - Soft delete thread
+app.post('/api/v1/messages/v2/:threadId/delete', (req, res) => {
+  try {
+    const { threadId } = req.params;
+    const { userId } = req.body;
+    
+    const result = softDeleteThread(threadId);
+    
+    if (result.error) {
+      return res.status(404).json({ error: result.error });
+    }
+    
+    // Broadcast SSE event
+    broadcast({
+      type: 'message:deleted',
+      thread: result.thread
+    });
+    
+    // Log activity
+    logActivity('message:deleted', userId, {
+      threadId,
+      title: result.thread.title
+    });
+    
+    return res.json({ ok: true, thread: result.thread });
+  } catch (e) {
+    console.error('Error deleting thread:', e);
+    return res.status(500).json({ error: 'Failed to delete thread' });
+  }
+});
+
+// GET /api/v1/messages/v2/export.csv - Export threads to CSV
+app.get('/api/v1/messages/v2/export.csv', (req, res) => {
+  try {
+    const { scope, threadIds, includeInternal, includePrivileged, includePosts } = req.query;
+    const data = readMessagesV2();
+    let threads = data.threads.filter(t => !t.deletedAt);
+    
+    // Filter by scope
+    if (scope === 'single' && threadIds) {
+      const ids = threadIds.split(',');
+      threads = threads.filter(t => ids.includes(t.threadId));
+    }
+    
+    // Apply policy filters
+    if (includeInternal !== 'true') {
+      threads = threads.filter(t => !t.internal);
+    }
+    if (includePrivileged !== 'true') {
+      threads = threads.filter(t => !t.privileged);
+    }
+    
+    // Build CSV
+    let csv = 'threadId,title,state,internal,privileged,createdAt,createdBy,participants,lastPostAt,postCount\n';
+    
+    threads.forEach(thread => {
+      const participantNames = thread.participants.map(p => p.label).join('; ');
+      const createdAt = new Date(thread.createdAt).toISOString();
+      const lastPostAt = new Date(thread.lastPostAt).toISOString();
+      const postCount = data.posts.filter(p => p.threadId === thread.threadId).length;
+      
+      csv += `"${thread.threadId}","${thread.title}","${thread.state}",${thread.internal},${thread.privileged},"${createdAt}","${thread.createdBy.label}","${participantNames}","${lastPostAt}",${postCount}\n`;
+      
+      // Include posts if requested
+      if (includePosts === 'true') {
+        const posts = data.posts.filter(p => p.threadId === thread.threadId);
+        posts.forEach(post => {
+          const postCreatedAt = new Date(post.createdAt).toISOString();
+          const text = post.text.replace(/"/g, '""'); // Escape quotes
+          csv += `"${post.postId}","${post.threadId}","${post.author.label}","${postCreatedAt}",${post.privileged},"${text}"\n`;
+        });
+      }
+    });
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="messages-export-${Date.now()}.csv"`);
+    return res.send(csv);
+  } catch (e) {
+    console.error('Error exporting messages:', e);
+    return res.status(500).json({ error: 'Failed to export messages' });
+  }
+});
+
+// GET /api/v1/discussion/summary - Get badge counts
+app.get('/api/v1/discussion/summary', (req, res) => {
+  try {
+    const { userId } = req.query;
+    const summary = getDiscussionSummary(userId || 'user1');
+    return res.json(summary);
+  } catch (e) {
+    console.error('Error getting discussion summary:', e);
+    return res.status(500).json({ error: 'Failed to get discussion summary' });
   }
 });
 
