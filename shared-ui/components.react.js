@@ -2136,6 +2136,435 @@
       }
     } catch {}
 
+    // Messages v2 Panel (threaded messaging with ACP/internal flags)
+    function MessagingV2Panel() {
+      const API_BASE = getApiBase();
+      const { userId, users } = React.useContext(StateContext);
+      
+      const [threads, setThreads] = React.useState([]);
+      const [activeThreadId, setActiveThreadId] = React.useState(null);
+      const [compose, setCompose] = React.useState('');
+      const [filter, setFilter] = React.useState({ state: 'open', internal: 'both', privileged: 'both', search: '' });
+      const [showNewThread, setShowNewThread] = React.useState(false);
+      const [summary, setSummary] = React.useState({ messages: { open: 0, unreadForMe: 0, privileged: 0, archived: 0 } });
+      
+      // Load threads
+      const loadThreads = React.useCallback(async () => {
+        try {
+          const params = new URLSearchParams({
+            userId,
+            state: filter.state,
+            search: filter.search
+          });
+          if (filter.internal !== 'both') params.append('internal', filter.internal);
+          if (filter.privileged !== 'both') params.append('privileged', filter.privileged);
+          
+          const r = await fetch(`${API_BASE}/api/v1/messages/v2?${params}`);
+          if (r.ok) {
+            const data = await r.json();
+            setThreads(data.threads || []);
+          }
+        } catch (e) {
+          console.error('Failed to load threads:', e);
+        }
+      }, [API_BASE, userId, filter]);
+      
+      // Load summary
+      const loadSummary = React.useCallback(async () => {
+        try {
+          const r = await fetch(`${API_BASE}/api/v1/discussion/summary?userId=${userId}`);
+          if (r.ok) {
+            const data = await r.json();
+            setSummary(data);
+          }
+        } catch (e) {
+          console.error('Failed to load summary:', e);
+        }
+      }, [API_BASE, userId]);
+      
+      React.useEffect(() => {
+        loadThreads();
+        loadSummary();
+      }, [loadThreads, loadSummary]);
+      
+      // SSE listener
+      React.useEffect(() => {
+        const handler = (ev) => {
+          const data = ev.detail || {};
+          if (data.type && data.type.startsWith('message:')) {
+            loadThreads();
+            loadSummary();
+          }
+        };
+        window.addEventListener('message:thread-created', handler);
+        window.addEventListener('message:post-added', handler);
+        window.addEventListener('message:state-changed', handler);
+        window.addEventListener('message:flags-updated', handler);
+        window.addEventListener('message:read', handler);
+        window.addEventListener('message:deleted', handler);
+        return () => {
+          window.removeEventListener('message:thread-created', handler);
+          window.removeEventListener('message:post-added', handler);
+          window.removeEventListener('message:state-changed', handler);
+          window.removeEventListener('message:flags-updated', handler);
+          window.removeEventListener('message:read', handler);
+          window.removeEventListener('message:deleted', handler);
+        };
+      }, [loadThreads, loadSummary]);
+      
+      const activeThread = threads.find(t => t.threadId === activeThreadId);
+      
+      async function sendPost() {
+        if (!compose.trim() || !activeThreadId) return;
+        try {
+          await fetch(`${API_BASE}/api/v1/messages/v2/${activeThreadId}/post`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: compose, userId })
+          });
+          setCompose('');
+          loadThreads();
+        } catch (e) {
+          console.error('Failed to send post:', e);
+        }
+      }
+      
+      async function toggleState(newState) {
+        if (!activeThreadId) return;
+        try {
+          await fetch(`${API_BASE}/api/v1/messages/v2/${activeThreadId}/state`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ state: newState, userId })
+          });
+          loadThreads();
+        } catch (e) {
+          console.error('Failed to update state:', e);
+        }
+      }
+      
+      async function toggleFlag(flag, value) {
+        if (!activeThreadId) return;
+        try {
+          const body = { userId };
+          body[flag] = value;
+          await fetch(`${API_BASE}/api/v1/messages/v2/${activeThreadId}/flags`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+          loadThreads();
+        } catch (e) {
+          console.error('Failed to toggle flag:', e);
+        }
+      }
+      
+      async function markRead(threadId) {
+        try {
+          await fetch(`${API_BASE}/api/v1/messages/v2/${threadId}/read`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+          });
+          loadThreads();
+          loadSummary();
+        } catch (e) {
+          console.error('Failed to mark read:', e);
+        }
+      }
+      
+      async function deleteThread() {
+        if (!activeThreadId || !confirm('Delete this thread? (Can be undone within 10 minutes)')) return;
+        try {
+          await fetch(`${API_BASE}/api/v1/messages/v2/${activeThreadId}/delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+          });
+          setActiveThreadId(null);
+          loadThreads();
+        } catch (e) {
+          console.error('Failed to delete thread:', e);
+        }
+      }
+      
+      function exportCSV() {
+        const scope = activeThreadId ? 'single' : 'filtered';
+        const threadIds = activeThreadId || '';
+        const url = `${API_BASE}/api/v1/messages/v2/export.csv?scope=${scope}&threadIds=${threadIds}&includePosts=true`;
+        window.open(url, '_blank');
+      }
+      
+      return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 12, height: '100%', minHeight: 0 } }, [
+        // Filters + New Thread button
+        React.createElement('div', { key: 'filters', style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' } }, [
+          React.createElement('select', { 
+            key: 'state', 
+            value: filter.state, 
+            onChange: e => setFilter({ ...filter, state: e.target.value }),
+            style: { padding: '4px 8px', fontSize: 13 }
+          }, [
+            React.createElement('option', { key: 'open', value: 'open' }, 'Open'),
+            React.createElement('option', { key: 'archived', value: 'archived' }, 'Archived'),
+            React.createElement('option', { key: 'resolved', value: 'resolved' }, 'Resolved')
+          ]),
+          React.createElement('input', { 
+            key: 'search', 
+            placeholder: 'Search…', 
+            value: filter.search, 
+            onChange: e => setFilter({ ...filter, search: e.target.value }),
+            style: { flex: 1, minWidth: 100, padding: '4px 8px', fontSize: 13 }
+          }),
+          React.createElement('button', {
+            key: 'new',
+            onClick: () => setShowNewThread(true),
+            style: { padding: '4px 12px', fontSize: 13, background: '#6d5ef1', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }
+          }, '+ New Thread')
+        ]),
+        
+        // Badges
+        React.createElement('div', { key: 'badges', style: { display: 'flex', gap: 8, fontSize: 12 } }, [
+          React.createElement('span', { key: 'open', style: { padding: '2px 8px', background: '#e0f2fe', borderRadius: 12 } }, `Open: ${summary.messages.open}`),
+          React.createElement('span', { key: 'unread', style: { padding: '2px 8px', background: '#fef3c7', borderRadius: 12 } }, `Unread: ${summary.messages.unreadForMe}`),
+          summary.messages.privileged > 0 ? React.createElement('span', { key: 'priv', style: { padding: '2px 8px', background: '#fce7f3', borderRadius: 12 } }, `ACP: ${summary.messages.privileged}`) : null
+        ]),
+        
+        // Thread list + view (vertical stack)
+        React.createElement('div', { key: 'stack', style: { display: 'grid', gridTemplateRows: '200px 1fr', gap: 12, minHeight: 0, flex: 1 } }, [
+          // Thread list
+          React.createElement('div', { key: 'list', style: { overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff' } }, 
+            threads.length === 0 
+              ? React.createElement('div', { style: { padding: 20, textAlign: 'center', color: '#6b7280' } }, 'No threads')
+              : threads.map(t => React.createElement('div', {
+                  key: t.threadId,
+                  onClick: () => { setActiveThreadId(t.threadId); markRead(t.threadId); },
+                  style: { 
+                    padding: '10px 12px', 
+                    cursor: 'pointer', 
+                    background: t.threadId === activeThreadId ? '#f9fafb' : '#fff', 
+                    borderBottom: '1px solid #f0f0f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }
+                }, [
+                  React.createElement('div', { key: 'content', style: { flex: 1, minWidth: 0 } }, [
+                    React.createElement('div', { key: 'title', style: { fontWeight: 600, fontSize: 13, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 } }, [
+                      React.createElement('span', { key: 'text' }, t.title),
+                      t.unreadBy && t.unreadBy.includes(userId) ? React.createElement('span', { key: 'dot', style: { width: 8, height: 8, borderRadius: '50%', background: '#3b82f6' } }) : null
+                    ]),
+                    React.createElement('div', { key: 'meta', style: { fontSize: 11, color: '#6b7280' } }, `${t.postCount} message${t.postCount !== 1 ? 's' : ''} • ${new Date(t.lastPostAt).toLocaleDateString()}`)
+                  ]),
+                  React.createElement('div', { key: 'chips', style: { display: 'flex', gap: 4, flexShrink: 0 } }, [
+                    t.internal ? React.createElement('span', { key: 'int', style: { padding: '2px 6px', fontSize: 10, background: '#e0f2fe', borderRadius: 4 } }, 'Internal') : null,
+                    t.privileged ? React.createElement('span', { key: 'priv', style: { padding: '2px 6px', fontSize: 10, background: '#fce7f3', borderRadius: 4 } }, 'ACP') : null,
+                    t.state !== 'open' ? React.createElement('span', { key: 'state', style: { padding: '2px 6px', fontSize: 10, background: '#f3f4f6', borderRadius: 4 } }, t.state) : null
+                  ])
+                ]))
+          ),
+          
+          // Thread view + composer
+          React.createElement('div', { key: 'view', style: { display: 'flex', flexDirection: 'column', minHeight: 0, border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff' } }, [
+            // Thread header with actions
+            activeThread ? React.createElement('div', { key: 'header', style: { padding: '10px 12px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' } }, [
+              React.createElement('div', { key: 'title', style: { fontWeight: 600, fontSize: 14 } }, activeThread.title),
+              React.createElement('div', { key: 'actions', style: { display: 'flex', gap: 6 } }, [
+                React.createElement('button', { key: 'resolve', onClick: () => toggleState(activeThread.state === 'resolved' ? 'open' : 'resolved'), style: { padding: '4px 8px', fontSize: 11, background: '#f3f4f6', border: 'none', borderRadius: 4, cursor: 'pointer' } }, activeThread.state === 'resolved' ? 'Reopen' : 'Resolve'),
+                React.createElement('button', { key: 'archive', onClick: () => toggleState('archived'), style: { padding: '4px 8px', fontSize: 11, background: '#f3f4f6', border: 'none', borderRadius: 4, cursor: 'pointer' } }, 'Archive'),
+                React.createElement('button', { key: 'export', onClick: exportCSV, style: { padding: '4px 8px', fontSize: 11, background: '#f3f4f6', border: 'none', borderRadius: 4, cursor: 'pointer' } }, 'Export'),
+                React.createElement('button', { key: 'delete', onClick: deleteThread, style: { padding: '4px 8px', fontSize: 11, background: '#fee2e2', border: 'none', borderRadius: 4, cursor: 'pointer', color: '#dc2626' } }, 'Delete')
+              ])
+            ]) : null,
+            
+            // Posts timeline
+            React.createElement('div', { key: 'timeline', style: { flex: 1, overflow: 'auto', padding: 12 } }, 
+              !activeThread 
+                ? React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#6b7280' } }, 'Select a thread')
+                : (activeThread.posts || []).map(p => React.createElement('div', { key: p.postId, style: { marginBottom: 16 } }, [
+                    React.createElement('div', { key: 'meta', style: { fontSize: 11, color: '#6b7280', marginBottom: 4 } }, `${p.author.label} • ${new Date(p.createdAt).toLocaleString()}`),
+                    React.createElement('div', { key: 'text', style: { fontSize: 13, lineHeight: 1.5 } }, p.text)
+                  ]))
+            ),
+            
+            // Composer
+            activeThread ? React.createElement('div', { key: 'composer', style: { borderTop: '1px solid #e5e7eb', padding: 10, display: 'flex', gap: 8 } }, [
+              React.createElement('textarea', { 
+                key: 'ta', 
+                rows: 2, 
+                value: compose, 
+                onChange: e => setCompose(e.target.value),
+                onKeyDown: e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendPost(); } },
+                placeholder: 'Type a message…', 
+                style: { flex: 1, resize: 'vertical', padding: 8, fontSize: 13, borderRadius: 4, border: '1px solid #e5e7eb' } 
+              }),
+              React.createElement('button', { 
+                key: 'send', 
+                onClick: sendPost,
+                disabled: !compose.trim(),
+                style: { padding: '0 16px', fontSize: 13, background: compose.trim() ? '#6d5ef1' : '#e5e7eb', color: compose.trim() ? '#fff' : '#9ca3af', border: 'none', borderRadius: 4, cursor: compose.trim() ? 'pointer' : 'not-allowed' }
+              }, 'Send')
+            ]) : null
+          ])
+        ]),
+        
+        // New Thread Modal
+        showNewThread ? React.createElement(NewThreadModal, { 
+          key: 'newthread',
+          onClose: () => setShowNewThread(false),
+          onCreate: () => { setShowNewThread(false); loadThreads(); }
+        }) : null
+      ]);
+    }
+    
+    // New Thread Modal
+    function NewThreadModal(props) {
+      const { onClose, onCreate } = props || {};
+      const API_BASE = getApiBase();
+      const { userId, users } = React.useContext(StateContext);
+      
+      const [title, setTitle] = React.useState('');
+      const [recipients, setRecipients] = React.useState([]);
+      const [internal, setInternal] = React.useState(false);
+      const [privileged, setPrivileged] = React.useState(false);
+      const [text, setText] = React.useState('');
+      const [adHocName, setAdHocName] = React.useState('');
+      const [adHocEmail, setAdHocEmail] = React.useState('');
+      
+      function addRecipient(user) {
+        if (recipients.find(r => r.userId === user.id || (r.email === user.email && r.email))) return;
+        setRecipients([...recipients, { userId: user.id, label: user.label, email: user.email || '', internal: true }]);
+      }
+      
+      function addAdHoc() {
+        if (!adHocName.trim() || !adHocEmail.trim()) return;
+        if (recipients.find(r => r.email === adHocEmail.trim())) return;
+        setRecipients([...recipients, { userId: null, label: adHocName.trim(), email: adHocEmail.trim(), internal: false }]);
+        setAdHocName('');
+        setAdHocEmail('');
+      }
+      
+      function removeRecipient(email) {
+        setRecipients(recipients.filter(r => r.email !== email));
+      }
+      
+      async function create() {
+        if (!title.trim() || recipients.length === 0) return;
+        try {
+          await fetch(`${API_BASE}/api/v1/messages/v2`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: title.trim(), recipients, internal, privileged, text, userId })
+          });
+          onCreate?.();
+        } catch (e) {
+          console.error('Failed to create thread:', e);
+        }
+      }
+      
+      return React.createElement('div', { 
+        onClick: onClose,
+        style: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }
+      }, React.createElement('div', { 
+        onClick: e => e.stopPropagation(),
+        style: { background: '#fff', borderRadius: 8, padding: 24, width: '90%', maxWidth: 500, maxHeight: '80vh', overflow: 'auto' }
+      }, [
+        React.createElement('h3', { key: 'title', style: { margin: '0 0 20px 0' } }, 'New Thread'),
+        
+        React.createElement('div', { key: 'form', style: { display: 'flex', flexDirection: 'column', gap: 16 } }, [
+          React.createElement('input', { 
+            key: 'title-input',
+            placeholder: 'Thread title', 
+            value: title, 
+            onChange: e => setTitle(e.target.value),
+            style: { padding: 8, fontSize: 13, borderRadius: 4, border: '1px solid #e5e7eb' }
+          }),
+          
+          React.createElement('div', { key: 'recipients' }, [
+            React.createElement('label', { key: 'label', style: { display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 600 } }, 'Recipients'),
+            React.createElement('div', { key: 'list', style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 } }, 
+              recipients.map(r => React.createElement('span', { 
+                key: r.email, 
+                style: { padding: '4px 8px', background: '#f3f4f6', borderRadius: 12, fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }
+              }, [
+                React.createElement('span', { key: 'name' }, r.label),
+                React.createElement('button', { 
+                  key: 'remove', 
+                  onClick: () => removeRecipient(r.email),
+                  style: { background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 14, color: '#6b7280' }
+                }, '×')
+              ]))
+            ),
+            React.createElement('div', { key: 'add', style: { display: 'flex', gap: 8, marginBottom: 8 } }, [
+              React.createElement('select', { 
+                key: 'select', 
+                onChange: e => { if (e.target.value) { const user = users.find(u => u.id === e.target.value); if (user) addRecipient(user); e.target.value = ''; } },
+                style: { flex: 1, padding: 8, fontSize: 13, borderRadius: 4, border: '1px solid #e5e7eb' }
+              }, [
+                React.createElement('option', { key: 'default', value: '' }, 'Add from directory…'),
+                ...users.filter(u => u.id !== userId).map(u => React.createElement('option', { key: u.id, value: u.id }, u.label))
+              ])
+            ]),
+            React.createElement('div', { key: 'adhoc', style: { display: 'flex', gap: 8 } }, [
+              React.createElement('input', { 
+                key: 'name', 
+                placeholder: 'Name', 
+                value: adHocName, 
+                onChange: e => setAdHocName(e.target.value),
+                style: { flex: 1, padding: 8, fontSize: 13, borderRadius: 4, border: '1px solid #e5e7eb' }
+              }),
+              React.createElement('input', { 
+                key: 'email', 
+                placeholder: 'Email', 
+                value: adHocEmail, 
+                onChange: e => setAdHocEmail(e.target.value),
+                style: { flex: 1, padding: 8, fontSize: 13, borderRadius: 4, border: '1px solid #e5e7eb' }
+              }),
+              React.createElement('button', { 
+                key: 'add', 
+                onClick: addAdHoc,
+                disabled: !adHocName.trim() || !adHocEmail.trim(),
+                style: { padding: '0 12px', fontSize: 13, background: adHocName.trim() && adHocEmail.trim() ? '#6d5ef1' : '#e5e7eb', color: adHocName.trim() && adHocEmail.trim() ? '#fff' : '#9ca3af', border: 'none', borderRadius: 4, cursor: adHocName.trim() && adHocEmail.trim() ? 'pointer' : 'not-allowed' }
+              }, 'Add')
+            ])
+          ]),
+          
+          React.createElement('div', { key: 'flags', style: { display: 'flex', gap: 16 } }, [
+            React.createElement('label', { key: 'internal', style: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 } }, [
+              React.createElement('input', { key: 'check', type: 'checkbox', checked: internal, onChange: e => setInternal(e.target.checked) }),
+              React.createElement('span', { key: 'label' }, 'Internal only')
+            ]),
+            React.createElement('label', { key: 'privileged', style: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 } }, [
+              React.createElement('input', { key: 'check', type: 'checkbox', checked: privileged, onChange: e => setPrivileged(e.target.checked) }),
+              React.createElement('span', { key: 'label' }, 'Attorney-Client Privilege')
+            ])
+          ]),
+          
+          React.createElement('textarea', { 
+            key: 'text',
+            placeholder: 'First message (optional)', 
+            value: text, 
+            onChange: e => setText(e.target.value),
+            rows: 3,
+            style: { padding: 8, fontSize: 13, borderRadius: 4, border: '1px solid #e5e7eb', resize: 'vertical' }
+          })
+        ]),
+        
+        React.createElement('div', { key: 'actions', style: { display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' } }, [
+          React.createElement('button', { 
+            key: 'cancel', 
+            onClick: onClose,
+            style: { padding: '8px 16px', fontSize: 13, background: '#f3f4f6', border: 'none', borderRadius: 4, cursor: 'pointer' }
+          }, 'Cancel'),
+          React.createElement('button', { 
+            key: 'create', 
+            onClick: create,
+            disabled: !title.trim() || recipients.length === 0,
+            style: { padding: '8px 16px', fontSize: 13, background: title.trim() && recipients.length > 0 ? '#6d5ef1' : '#e5e7eb', color: title.trim() && recipients.length > 0 ? '#fff' : '#9ca3af', border: 'none', borderRadius: 4, cursor: title.trim() && recipients.length > 0 ? 'pointer' : 'not-allowed' }
+          }, 'Create Thread')
+        ])
+      ]));
+    }
+
     // Comparison Tab
     function ComparisonTab() {
       const API_BASE = getApiBase();
@@ -4881,6 +5310,14 @@
             React.createElement('span', { key: 'label', ref: msgLabelRef, style: { display: 'inline-block' } }, 'Messages')
           ]),
           React.createElement('button', {
+            key: 'tab-messaging-v2',
+            className: activeTab === 'Messages v2' ? 'tab tab--active' : 'tab',
+            onClick: () => setActiveTab('Messages v2'),
+            style: { background: 'transparent', border: 'none', padding: '8px 6px 8px 6px', cursor: 'pointer', color: activeTab === 'Messages v2' ? '#111827' : '#6B7280', fontWeight: 600, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: '2px' }
+          }, [
+            React.createElement('span', { key: 'label', style: { display: 'inline-block' } }, 'Messages v2')
+          ]),
+          React.createElement('button', {
             key: 'tab-versions',
             className: activeTab === 'Versions' ? 'tab tab--active' : 'tab',
             onClick: () => setActiveTab('Versions'),
@@ -4916,10 +5353,11 @@
           }, React.createElement('span', { ref: variablesLabelRef, style: { display: 'inline-block' } }, 'Variables')),
         React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
-        React.createElement('div', { key: 'tabbody', className: (activeTab === 'AI' || activeTab === 'Activity') ? '' : 'mt-3', style: { flex: 1, minHeight: 0, overflowY: (activeTab === 'AI' || activeTab === 'Activity') ? 'hidden' : 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', padding: (activeTab === 'AI' || activeTab === 'Activity') ? '0' : '0 8px 112px 8px', marginTop: (activeTab === 'AI' || activeTab === 'Activity') ? 0 : undefined } }, [
+        React.createElement('div', { key: 'tabbody', className: (activeTab === 'AI' || activeTab === 'Activity' || activeTab === 'Messages v2') ? '' : 'mt-3', style: { flex: 1, minHeight: 0, overflowY: (activeTab === 'AI' || activeTab === 'Activity' || activeTab === 'Messages v2') ? 'hidden' : 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', padding: (activeTab === 'AI' || activeTab === 'Activity' || activeTab === 'Messages v2') ? '0' : '0 8px 112px 8px', marginTop: (activeTab === 'AI' || activeTab === 'Activity' || activeTab === 'Messages v2') ? 0 : undefined } }, [
           React.createElement('div', { key: 'wrap-ai', style: { display: (activeTab === 'AI' ? 'flex' : 'none'), flex: 1, height: '100%', flexDirection: 'column' } }, React.createElement(ChatConsole, { key: 'chat' })),
           React.createElement('div', { key: 'wrap-workflow', style: { display: (activeTab === 'Workflow' ? 'block' : 'none') } }, React.createElement(WorkflowApprovalsPanel, { key: 'workflow' })),
           React.createElement('div', { key: 'wrap-messaging', style: { display: (activeTab === 'Messaging' ? 'block' : 'none') } }, React.createElement(MessagingPanel, { key: 'messaging' })),
+          React.createElement('div', { key: 'wrap-messaging-v2', style: { display: (activeTab === 'Messages v2' ? 'flex' : 'none'), flexDirection: 'column', height: '100%' } }, React.createElement(MessagingV2Panel, { key: 'messaging-v2' })),
           React.createElement('div', { key: 'wrap-versions', style: { display: (activeTab === 'Versions' ? 'block' : 'none') } }, React.createElement(VersionsPanel, { key: 'versions' })),
           React.createElement('div', { key: 'wrap-activity', style: { display: (activeTab === 'Activity' ? 'flex' : 'none'), flex: 1, height: '100%', flexDirection: 'column' } }, React.createElement(ActivityPanel, { key: 'activity', isActive: activeTab === 'Activity' })),
           React.createElement('div', { key: 'wrap-compare', style: { display: (activeTab === 'Comparison' ? 'block' : 'none') } }, React.createElement(ComparisonTab, { key: 'compare' })),
