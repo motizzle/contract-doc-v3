@@ -1312,7 +1312,7 @@ app.post('/api/v1/messages/v2', (req, res) => {
     }
     
     // Get current user info
-    const users = readUsers();
+    const users = loadUsers();
     const currentUser = users.find(u => u.id === userId);
     const createdBy = {
       userId: userId || 'user1',
@@ -1364,7 +1364,7 @@ app.post('/api/v1/messages/v2/:threadId/post', (req, res) => {
     }
     
     // Get current user info
-    const users = readUsers();
+    const users = loadUsers();
     const currentUser = users.find(u => u.id === userId);
     const author = {
       userId: userId || 'user1',
