@@ -2319,6 +2319,7 @@
                   ]),
                   React.createElement('div', { key: 'right', style: { display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0, marginLeft: 12 } }, [
                     msg.internal ? React.createElement('span', { key: 'int', style: { padding: '3px 8px', fontSize: 11, background: '#e0f2fe', borderRadius: 4, whiteSpace: 'nowrap' } }, 'Internal') : null,
+                    msg.external ? React.createElement('span', { key: 'ext', style: { padding: '3px 8px', fontSize: 11, background: '#fef3c7', borderRadius: 4, whiteSpace: 'nowrap' } }, 'External') : null,
                     msg.privileged ? React.createElement('span', { key: 'priv', style: { padding: '3px 8px', fontSize: 11, background: '#fce7f3', borderRadius: 4, whiteSpace: 'nowrap' } }, 'ACP') : null
                   ])
                 ]);
@@ -2522,6 +2523,18 @@
             } 
           }, thread.internal ? '✓ Internal' : 'Mark Internal'),
           React.createElement('button', { 
+            key: 'external', 
+            onClick: () => toggleFlag('external', !thread.external), 
+            style: { 
+              padding: '4px 10px', 
+              fontSize: 12, 
+              background: thread.external ? '#fef3c7' : '#f3f4f6', 
+              border: 'none', 
+              borderRadius: 4, 
+              cursor: 'pointer' 
+            } 
+          }, thread.external ? '✓ External' : 'Mark External'),
+          React.createElement('button', { 
             key: 'priv', 
             onClick: () => toggleFlag('privileged', !thread.privileged), 
             style: { 
@@ -2681,6 +2694,7 @@
       
       const [recipients, setRecipients] = React.useState([]);
       const [internal, setInternal] = React.useState(false);
+      const [external, setExternal] = React.useState(false);
       const [privileged, setPrivileged] = React.useState(false);
       const [text, setText] = React.useState('');
       const [adHocName, setAdHocName] = React.useState('');
@@ -2721,7 +2735,7 @@
           const response = await fetch(`${API_BASE}/api/v1/messages/v2`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title, recipients: allParticipants, internal, privileged, text, userId })
+            body: JSON.stringify({ title, recipients: allParticipants, internal, external, privileged, text, userId })
           });
           
           if (!response.ok) {
@@ -2796,10 +2810,14 @@
             ])
           ]),
           
-          React.createElement('div', { key: 'flags', style: { display: 'flex', gap: 16 } }, [
+          React.createElement('div', { key: 'flags', style: { display: 'flex', gap: 16, flexWrap: 'wrap' } }, [
             React.createElement('label', { key: 'internal', style: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 } }, [
               React.createElement('input', { key: 'check', type: 'checkbox', checked: internal, onChange: e => setInternal(e.target.checked) }),
               React.createElement('span', { key: 'label' }, 'Internal only')
+            ]),
+            React.createElement('label', { key: 'external', style: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 } }, [
+              React.createElement('input', { key: 'check', type: 'checkbox', checked: external, onChange: e => setExternal(e.target.checked) }),
+              React.createElement('span', { key: 'label' }, 'External')
             ]),
             React.createElement('label', { key: 'privileged', style: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 } }, [
               React.createElement('input', { key: 'check', type: 'checkbox', checked: privileged, onChange: e => setPrivileged(e.target.checked) }),

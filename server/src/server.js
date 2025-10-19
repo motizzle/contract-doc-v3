@@ -260,7 +260,7 @@ function writeMessagesV2(data) {
   }
 }
 
-function createThread({ title, createdBy, participants, internal, privileged, text }) {
+function createThread({ title, createdBy, participants, internal, external, privileged, text }) {
   const data = readMessagesV2();
   const threadId = `thread-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   const now = Date.now();
@@ -272,6 +272,7 @@ function createThread({ title, createdBy, participants, internal, privileged, te
     createdAt: now,
     participants: participants || [],
     internal: !!internal,
+    external: !!external,
     privileged: !!privileged,
     state: 'open',
     lastPostAt: now,
@@ -341,7 +342,7 @@ function updateThreadState(threadId, state) {
   return { thread, data };
 }
 
-function updateThreadFlags(threadId, { internal, privileged }) {
+function updateThreadFlags(threadId, { internal, external, privileged }) {
   const data = readMessagesV2();
   const thread = data.threads.find(t => t.threadId === threadId);
   
@@ -350,6 +351,7 @@ function updateThreadFlags(threadId, { internal, privileged }) {
   }
   
   if (typeof internal === 'boolean') thread.internal = internal;
+  if (typeof external === 'boolean') thread.external = external;
   if (typeof privileged === 'boolean') thread.privileged = privileged;
   
   writeMessagesV2(data);
@@ -1314,7 +1316,7 @@ app.get('/api/v1/messages/v2', (req, res) => {
 // POST /api/v1/messages/v2 - Create new thread
 app.post('/api/v1/messages/v2', (req, res) => {
   try {
-    const { title, recipients, internal, privileged, text, userId } = req.body;
+    const { title, recipients, internal, external, privileged, text, userId } = req.body;
     
     if (!Array.isArray(recipients)) {
       return res.status(400).json({ error: 'Recipients must be an array' });
@@ -1342,6 +1344,7 @@ app.post('/api/v1/messages/v2', (req, res) => {
       createdBy,
       participants: recipients,
       internal: !!internal,
+      external: !!external,
       privileged: !!privileged,
       text: text || ''
     });
@@ -1443,13 +1446,13 @@ app.post('/api/v1/messages/v2/:threadId/state', (req, res) => {
   }
 });
 
-// POST /api/v1/messages/v2/:threadId/flags - Toggle internal/privileged flags
+// POST /api/v1/messages/v2/:threadId/flags - Toggle internal/external/privileged flags
 app.post('/api/v1/messages/v2/:threadId/flags', (req, res) => {
   try {
     const { threadId } = req.params;
-    const { internal, privileged, userId } = req.body;
+    const { internal, external, privileged, userId } = req.body;
     
-    const result = updateThreadFlags(threadId, { internal, privileged });
+    const result = updateThreadFlags(threadId, { internal, external, privileged });
     
     if (result.error) {
       return res.status(404).json({ error: result.error });
