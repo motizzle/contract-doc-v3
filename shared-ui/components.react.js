@@ -2347,11 +2347,12 @@
             style: { 
               padding: '4px 10px', 
               fontSize: 12,
-              background: filter.internal ? '#e0f2fe' : '#f3f4f6',
-              color: filter.internal ? '#0c4a6e' : '#6b7280',
+              background: '#e0f2fe',
+              color: '#0c4a6e',
               border: 'none',
               borderRadius: 4, 
-              cursor: 'pointer'
+              cursor: 'pointer',
+              opacity: filter.internal ? 1 : 0.6
             } 
           }, `Internal: ${summary.messages.internal}`) : null,
           summary.messages.external > 0 ? React.createElement('button', { 
@@ -2360,11 +2361,12 @@
             style: { 
               padding: '4px 10px', 
               fontSize: 12,
-              background: filter.external ? '#fef3c7' : '#f3f4f6',
-              color: filter.external ? '#78350f' : '#6b7280',
+              background: '#fef3c7',
+              color: '#78350f',
               border: 'none',
               borderRadius: 4, 
-              cursor: 'pointer'
+              cursor: 'pointer',
+              opacity: filter.external ? 1 : 0.6
             } 
           }, `External: ${summary.messages.external}`) : null,
           summary.messages.privileged > 0 ? React.createElement('button', { 
@@ -2373,11 +2375,12 @@
             style: { 
               padding: '4px 10px', 
               fontSize: 12,
-              background: filter.privileged ? '#fce7f3' : '#f3f4f6',
-              color: filter.privileged ? '#831843' : '#6b7280',
+              background: '#fce7f3',
+              color: '#831843',
               border: 'none',
               borderRadius: 4, 
-              cursor: 'pointer'
+              cursor: 'pointer',
+              opacity: filter.privileged ? 1 : 0.6
             } 
           }, `Attorney-Client Privilege: ${summary.messages.privileged}`) : null,
           React.createElement('span', { key: 'unread', style: { padding: '4px 10px', fontSize: 12, background: '#f3f4f6', color: '#6b7280', borderRadius: 4 } }, `Unread: ${summary.messages.unreadForMe}`)
