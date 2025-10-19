@@ -2136,7 +2136,7 @@
       }
     } catch {}
 
-    // Messages v2 Panel (full-page messaging with ACP/internal flags)
+    // Messages v2 Panel (full-page messaging with Attorney-Client Privilege/internal flags)
     function MessagingV2Panel() {
       const API_BASE = getApiBase();
       const { currentUser: userId, users } = React.useContext(StateContext);
@@ -2282,7 +2282,7 @@
         React.createElement('div', { key: 'badges', style: { display: 'flex', gap: 8, fontSize: 12 } }, [
           React.createElement('span', { key: 'open', style: { padding: '2px 8px', background: '#e0f2fe', borderRadius: 12 } }, `Open: ${summary.messages.open}`),
           React.createElement('span', { key: 'unread', style: { padding: '2px 8px', background: '#fef3c7', borderRadius: 12 } }, `Unread: ${summary.messages.unreadForMe}`),
-          summary.messages.privileged > 0 ? React.createElement('span', { key: 'priv', style: { padding: '2px 8px', background: '#fce7f3', borderRadius: 12 } }, `ACP: ${summary.messages.privileged}`) : null
+          summary.messages.privileged > 0 ? React.createElement('span', { key: 'priv', style: { padding: '2px 8px', background: '#fce7f3', borderRadius: 12 } }, `Attorney-Client Privilege: ${summary.messages.privileged}`) : null
         ]),
         
         // Message list
@@ -2320,7 +2320,7 @@
                   React.createElement('div', { key: 'right', style: { display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0, marginLeft: 12 } }, [
                     msg.internal ? React.createElement('span', { key: 'int', style: { padding: '3px 8px', fontSize: 11, background: '#e0f2fe', borderRadius: 4, whiteSpace: 'nowrap' } }, 'Internal') : null,
                     msg.external ? React.createElement('span', { key: 'ext', style: { padding: '3px 8px', fontSize: 11, background: '#fef3c7', borderRadius: 4, whiteSpace: 'nowrap' } }, 'External') : null,
-                    msg.privileged ? React.createElement('span', { key: 'priv', style: { padding: '3px 8px', fontSize: 11, background: '#fce7f3', borderRadius: 4, whiteSpace: 'nowrap' } }, 'ACP') : null
+                    msg.privileged ? React.createElement('span', { key: 'priv', style: { padding: '3px 8px', fontSize: 11, background: '#fce7f3', borderRadius: 4, whiteSpace: 'nowrap' } }, 'Attorney-Client Privilege') : null
                   ])
                 ]);
               })
@@ -2569,7 +2569,7 @@
               cursor: 'pointer',
               transition: 'all 0.15s ease'
             } 
-          }, thread.privileged ? '✓ ACP' : 'ACP'),
+          }, thread.privileged ? '✓ Attorney-Client Privilege' : 'Attorney-Client Privilege'),
           React.createElement('button', { 
             key: 'archive', 
             onClick: toggleArchive, 
