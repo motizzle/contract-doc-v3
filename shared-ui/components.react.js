@@ -2789,25 +2789,49 @@
         
         React.createElement('div', { key: 'form', style: { display: 'flex', flexDirection: 'column', gap: 16 } }, [
           React.createElement('div', { key: 'recipients' }, [
-            React.createElement('label', { key: 'label', style: { display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 600 } }, 'Recipients'),
-            React.createElement('div', { key: 'list', style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 } }, 
-              recipients.map(r => React.createElement('span', { 
+            React.createElement('div', { key: 'list', style: { display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, minHeight: recipients.length > 0 ? 'auto' : 0 } }, 
+              recipients.map(r => React.createElement('div', { 
                 key: r.email, 
-                style: { padding: '4px 8px', background: '#f3f4f6', borderRadius: 12, fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }
+                style: { 
+                  padding: '8px 12px', 
+                  background: '#e0f2fe', 
+                  border: '1px solid #bae6fd',
+                  borderRadius: 6, 
+                  fontSize: 13, 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  gap: 2,
+                  position: 'relative',
+                  paddingRight: 32
+                }
               }, [
-                React.createElement('span', { key: 'name' }, r.label),
+                React.createElement('div', { key: 'name', style: { fontWeight: 600, color: '#0c4a6e' } }, r.label),
+                React.createElement('div', { key: 'email', style: { fontSize: 11, color: '#0369a1' } }, r.email),
                 React.createElement('button', { 
                   key: 'remove', 
                   onClick: () => removeRecipient(r.email),
-                  style: { background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 14, color: '#6b7280' }
+                  title: 'Remove',
+                  style: { 
+                    position: 'absolute',
+                    top: 4,
+                    right: 4,
+                    background: 'none', 
+                    border: 'none', 
+                    cursor: 'pointer', 
+                    padding: '2px 6px', 
+                    fontSize: 16, 
+                    color: '#0369a1',
+                    lineHeight: 1
+                  }
                 }, '×')
               ]))
             ),
             React.createElement('div', { key: 'add', style: { display: 'flex', gap: 8, marginBottom: 8 } }, [
               React.createElement('select', { 
-                key: 'select', 
+                key: 'select',
+                className: 'standard-select',
                 onChange: e => { if (e.target.value) { const user = users.find(u => u.id === e.target.value); if (user) addRecipient(user); e.target.value = ''; } },
-                style: { flex: 1, padding: 8, fontSize: 13, borderRadius: 4, border: '1px solid #e5e7eb' }
+                style: { flex: 1 }
               }, [
                 React.createElement('option', { key: 'default', value: '' }, 'Add from directory…'),
                 ...users.filter(u => u.id !== userId && !recipients.some(r => r.userId === u.id)).map(u => React.createElement('option', { key: u.id, value: u.id }, u.label))
