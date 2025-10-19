@@ -2484,6 +2484,12 @@
           const isArchived = thread.archivedBy && thread.archivedBy.includes(userId);
           const newState = isArchived ? 'open' : 'archived';
           
+          // Confirm the action
+          const confirmMessage = isArchived 
+            ? 'Move this message back to Open?' 
+            : 'Archive this message? You can unarchive it later.';
+          if (!confirm(confirmMessage)) return;
+          
           await fetch(`${API_BASE}/api/v1/messages/v2/${threadId}/state`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
