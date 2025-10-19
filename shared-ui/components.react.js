@@ -2433,22 +2433,37 @@
         }
       }
       
-      async function archive() {
+      async function toggleArchive() {
         try {
+          const isArchived = thread.archivedBy && thread.archivedBy.includes(userId);
+          const newState = isArchived ? 'open' : 'archived';
+          
           await fetch(`${API_BASE}/api/v1/messages/v2/${threadId}/state`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ state: 'archived', userId })
+            body: JSON.stringify({ state: newState, userId })
           });
+          
+          // Reload thread
+          const r = await fetch(`${API_BASE}/api/v1/messages/v2?userId=${userId}`);
+          if (r.ok) {
+            const data = await r.json();
+            const foundThread = data.threads.find(t => t.threadId === threadId);
+            if (foundThread) {
+              setThread(foundThread);
+            } else {
+              // Thread is no longer visible (filtered out), go back
+              if (onBack) onBack();
+            }
+          }
           if (onUpdate) onUpdate();
-          if (onBack) onBack();
         } catch (e) {
-          console.error('Failed to archive:', e);
+          console.error('Failed to toggle archive:', e);
         }
       }
       
       async function deleteThread() {
-        if (!confirm('Delete this message? (Can be undone within 10 minutes)')) return;
+        if (!confirm('Delete this message from your view? Other participants will still see it.')) return;
         try {
           await fetch(`${API_BASE}/api/v1/messages/v2/${threadId}/delete`, {
             method: 'POST',
@@ -2557,16 +2572,19 @@
           }, thread.privileged ? '✓ ACP' : 'ACP'),
           React.createElement('button', { 
             key: 'archive', 
-            onClick: archive, 
+            onClick: toggleArchive, 
             style: { 
               padding: '4px 10px', 
               fontSize: 12, 
-              background: '#f3f4f6', 
+              fontWeight: (thread.archivedBy && thread.archivedBy.includes(userId)) ? 600 : 400,
+              color: (thread.archivedBy && thread.archivedBy.includes(userId)) ? '#065f46' : '#6b7280',
+              background: (thread.archivedBy && thread.archivedBy.includes(userId)) ? '#d1fae5' : '#f3f4f6', 
               border: 'none', 
               borderRadius: 4, 
-              cursor: 'pointer' 
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
             } 
-          }, 'Archive'),
+          }, (thread.archivedBy && thread.archivedBy.includes(userId)) ? '✓ Archived' : 'Archive'),
           React.createElement('button', { 
             key: 'export', 
             onClick: exportCSV, 

@@ -277,6 +277,8 @@ function createThread({ title, createdBy, participants, internal, external, priv
     state: 'open',
     lastPostAt: now,
     unreadBy: participants.map(p => p.userId).filter(id => id !== createdBy.userId),
+    archivedBy: [],
+    deletedBy: [],
     deletedAt: null
   };
   
@@ -329,7 +331,7 @@ function addPostToThread(threadId, author, text, privileged = false) {
   return { post, thread, data };
 }
 
-function updateThreadState(threadId, state) {
+function archiveThreadForUser(threadId, userId) {
   const data = readMessagesV2();
   const thread = data.threads.find(t => t.threadId === threadId);
   
@@ -337,7 +339,36 @@ function updateThreadState(threadId, state) {
     return { error: 'Thread not found' };
   }
   
-  thread.state = state;
+  // Initialize archivedBy array if it doesn't exist
+  if (!thread.archivedBy) {
+    thread.archivedBy = [];
+  }
+  
+  // Add userId to archivedBy if not already there
+  if (!thread.archivedBy.includes(userId)) {
+    thread.archivedBy.push(userId);
+  }
+  
+  writeMessagesV2(data);
+  return { thread, data };
+}
+
+function unarchiveThreadForUser(threadId, userId) {
+  const data = readMessagesV2();
+  const thread = data.threads.find(t => t.threadId === threadId);
+  
+  if (!thread) {
+    return { error: 'Thread not found' };
+  }
+  
+  // Initialize archivedBy array if it doesn't exist
+  if (!thread.archivedBy) {
+    thread.archivedBy = [];
+  }
+  
+  // Remove userId from archivedBy
+  thread.archivedBy = thread.archivedBy.filter(id => id !== userId);
+  
   writeMessagesV2(data);
   return { thread, data };
 }
@@ -389,7 +420,7 @@ function markThreadUnread(threadId, userId) {
   return { thread, data };
 }
 
-function softDeleteThread(threadId) {
+function deleteThreadForUser(threadId, userId) {
   const data = readMessagesV2();
   const thread = data.threads.find(t => t.threadId === threadId);
   
@@ -397,7 +428,15 @@ function softDeleteThread(threadId) {
     return { error: 'Thread not found' };
   }
   
-  thread.deletedAt = Date.now();
+  // Initialize deletedBy array if it doesn't exist
+  if (!thread.deletedBy) {
+    thread.deletedBy = [];
+  }
+  
+  // Add userId to deletedBy if not already there
+  if (!thread.deletedBy.includes(userId)) {
+    thread.deletedBy.push(userId);
+  }
   
   writeMessagesV2(data);
   return { thread, data };
@@ -405,14 +444,26 @@ function softDeleteThread(threadId) {
 
 function getDiscussionSummary(userId) {
   const data = readMessagesV2();
-  // Only count threads where user is a participant
-  const threads = data.threads.filter(t => 
-    !t.deletedAt && 
-    (t.participants.some(p => p.userId === userId) || t.createdBy.userId === userId)
-  );
+  // Only count threads where user is a participant and hasn't deleted it
+  const threads = data.threads.filter(t => {
+    const deletedBy = t.deletedBy || [];
+    return !t.deletedAt && 
+           !deletedBy.includes(userId) &&
+           (t.participants.some(p => p.userId === userId) || t.createdBy.userId === userId);
+  });
   
-  const open = threads.filter(t => t.state === 'open').length;
-  const archived = threads.filter(t => t.state === 'archived').length;
+  // Open = not archived by this user
+  const open = threads.filter(t => {
+    const archivedBy = t.archivedBy || [];
+    return !archivedBy.includes(userId);
+  }).length;
+  
+  // Archived = archived by this user
+  const archived = threads.filter(t => {
+    const archivedBy = t.archivedBy || [];
+    return archivedBy.includes(userId);
+  }).length;
+  
   const privileged = threads.filter(t => t.privileged).length;
   const unreadForMe = threads.filter(t => 
     t.unreadBy && t.unreadBy.includes(userId)
@@ -1272,11 +1323,29 @@ app.get('/api/v1/messages/v2', (req, res) => {
         t.participants.some(p => p.userId === userId) || 
         t.createdBy.userId === userId
       );
+      
+      // Filter out threads deleted by this user
+      threads = threads.filter(t => {
+        const deletedBy = t.deletedBy || [];
+        return !deletedBy.includes(userId);
+      });
     }
     
     // Apply filters
     if (state && state !== 'all') {
-      threads = threads.filter(t => t.state === state);
+      if (state === 'archived') {
+        // Show only threads archived by this user
+        threads = threads.filter(t => {
+          const archivedBy = t.archivedBy || [];
+          return archivedBy.includes(userId);
+        });
+      } else {
+        // For 'open', exclude archived threads
+        threads = threads.filter(t => {
+          const archivedBy = t.archivedBy || [];
+          return !archivedBy.includes(userId);
+        });
+      }
     }
     if (internal === 'true') {
       threads = threads.filter(t => t.internal === true);
@@ -1305,6 +1374,8 @@ app.get('/api/v1/messages/v2', (req, res) => {
       internal: thread.internal !== undefined ? thread.internal : false,
       external: thread.external !== undefined ? thread.external : false,
       privileged: thread.privileged !== undefined ? thread.privileged : false,
+      archivedBy: thread.archivedBy || [],
+      deletedBy: thread.deletedBy || [],
       posts: data.posts.filter(p => p.threadId === thread.threadId).sort((a, b) => a.createdAt - b.createdAt),
       postCount: data.posts.filter(p => p.threadId === thread.threadId).length
     }));
@@ -1414,35 +1485,49 @@ app.post('/api/v1/messages/v2/:threadId/post', (req, res) => {
   }
 });
 
-// POST /api/v1/messages/v2/:threadId/state - Update thread state
+// POST /api/v1/messages/v2/:threadId/state - Update thread state (user-specific archive)
 app.post('/api/v1/messages/v2/:threadId/state', (req, res) => {
   try {
     const { threadId } = req.params;
     const { state, userId } = req.body;
     
-    if (!['open', 'resolved', 'archived'].includes(state)) {
-      return res.status(400).json({ error: 'Invalid state. Must be open, resolved, or archived.' });
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
     }
     
-    const result = updateThreadState(threadId, state);
-    
-    if (result.error) {
-      return res.status(404).json({ error: result.error });
+    if (state === 'archived') {
+      // Archive is user-specific - add user to archivedBy array
+      const result = archiveThreadForUser(threadId, userId);
+      if (result.error) {
+        return res.status(404).json({ error: result.error });
+      }
+      
+      broadcast({
+        type: 'message:state-changed',
+        thread: result.thread,
+        userId
+      });
+      
+      logActivity('message:archived', userId, { threadId });
+      return res.json({ ok: true, thread: result.thread });
+    } else if (state === 'open') {
+      // Unarchive is user-specific - remove user from archivedBy array
+      const result = unarchiveThreadForUser(threadId, userId);
+      if (result.error) {
+        return res.status(404).json({ error: result.error });
+      }
+      
+      broadcast({
+        type: 'message:state-changed',
+        thread: result.thread,
+        userId
+      });
+      
+      logActivity('message:unarchived', userId, { threadId });
+      return res.json({ ok: true, thread: result.thread });
     }
     
-    // Broadcast SSE event
-    broadcast({
-      type: 'message:state-changed',
-      thread: result.thread
-    });
-    
-    // Log activity
-    logActivity('message:state-changed', userId, {
-      threadId,
-      newState: state
-    });
-    
-    return res.json({ ok: true, thread: result.thread });
+    return res.status(400).json({ error: 'Invalid state. Must be archived or open.' });
   } catch (e) {
     console.error('Error updating thread state:', e);
     return res.status(500).json({ error: 'Failed to update thread state' });
@@ -1513,13 +1598,17 @@ app.post('/api/v1/messages/v2/:threadId/read', (req, res) => {
   }
 });
 
-// POST /api/v1/messages/v2/:threadId/delete - Soft delete thread
+// POST /api/v1/messages/v2/:threadId/delete - Soft delete thread (user-specific)
 app.post('/api/v1/messages/v2/:threadId/delete', (req, res) => {
   try {
     const { threadId } = req.params;
     const { userId } = req.body;
     
-    const result = softDeleteThread(threadId);
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+    
+    const result = deleteThreadForUser(threadId, userId);
     
     if (result.error) {
       return res.status(404).json({ error: result.error });
@@ -1528,7 +1617,8 @@ app.post('/api/v1/messages/v2/:threadId/delete', (req, res) => {
     // Broadcast SSE event
     broadcast({
       type: 'message:deleted',
-      thread: result.thread
+      thread: result.thread,
+      userId
     });
     
     // Log activity
