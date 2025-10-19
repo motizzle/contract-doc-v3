@@ -128,6 +128,7 @@
       const [approvalsSummary, setApprovalsSummary] = React.useState(null);
       const [approvalsRevision, setApprovalsRevision] = React.useState(0);
       const [messagingCount, setMessagingCount] = React.useState(0);
+      const [messagingV2UnreadCount, setMessagingV2UnreadCount] = React.useState(0);
       const API_BASE = getApiBase();
 
       // Removed excessive logging
@@ -875,7 +876,7 @@
         },
       }), [API_BASE, refresh, userId, addLog, viewingVersion]);
 
-      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, activities, lastSeenActivityId, markActivitiesSeen, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, messagingCount, setMessagingCount, renderNotification, formatNotification, viewingVersion, setViewingVersion, refresh } }, React.createElement(App, { config }));
+      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, activities, lastSeenActivityId, markActivitiesSeen, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, messagingCount, setMessagingCount, messagingV2UnreadCount, setMessagingV2UnreadCount, renderNotification, formatNotification, viewingVersion, setViewingVersion, refresh } }, React.createElement(App, { config }));
     }
 
     function BannerStack(props) {
@@ -2139,7 +2140,7 @@
     // Messages v2 Panel (full-page messaging with Attorney-Client Privilege/internal flags)
     function MessagingV2Panel() {
       const API_BASE = getApiBase();
-      const { currentUser: userId, users } = React.useContext(StateContext);
+      const { currentUser: userId, users, setMessagingV2UnreadCount } = React.useContext(StateContext);
       
       const [messages, setMessages] = React.useState([]);
       const [view, setView] = React.useState('list'); // 'list' or 'conversation'
@@ -2262,11 +2263,15 @@
           if (r.ok) {
             const data = await r.json();
             setSummary(data);
+            // Update global unread count for tab badge
+            if (setMessagingV2UnreadCount && data.messages && data.messages.unreadForMe !== undefined) {
+              setMessagingV2UnreadCount(data.messages.unreadForMe);
+            }
           }
         } catch (e) {
           console.error('Failed to load summary:', e);
         }
-      }, [API_BASE, userId]);
+      }, [API_BASE, userId, setMessagingV2UnreadCount]);
       
       React.useEffect(() => {
         loadMessages();
@@ -5665,7 +5670,7 @@
     function App(props) {
       const [modal, setModal] = React.useState(null);
       const { config } = props;
-      const { documentSource, actions, approvalsSummary, messagingCount, activities, lastSeenActivityId, viewingVersion } = React.useContext(StateContext);
+      const { documentSource, actions, approvalsSummary, messagingCount, messagingV2UnreadCount, activities, lastSeenActivityId, viewingVersion } = React.useContext(StateContext);
       React.useEffect(() => {
         function onOpen(ev) { 
           
@@ -5872,6 +5877,7 @@
             onClick: () => setActiveTab('Messages v2'),
             style: { background: 'transparent', border: 'none', padding: '8px 6px 8px 6px', cursor: 'pointer', color: activeTab === 'Messages v2' ? '#111827' : '#6B7280', fontWeight: 600, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: '2px' }
           }, [
+            messagingV2UnreadCount > 0 ? React.createElement('span', { key: 'badge', style: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '18px', height: '18px', padding: '0 5px', borderRadius: '9px', background: '#ef4444', color: '#fff', fontSize: '11px', fontWeight: 600, lineHeight: '1' } }, messagingV2UnreadCount) : null,
             React.createElement('span', { key: 'label', ref: msgV2LabelRef, style: { display: 'inline-block' } }, 'Messages v2')
           ]),
           React.createElement('button', {
