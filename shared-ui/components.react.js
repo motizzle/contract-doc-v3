@@ -2448,7 +2448,7 @@
       }
       
       async function create() {
-        if (!title.trim()) return;
+        if (!title.trim() || recipients.length === 0) return;
         try {
           // Include current user in participants
           const currentUser = users.find(u => u.id === userId);
@@ -2574,8 +2574,8 @@
           React.createElement('button', { 
             key: 'create', 
             onClick: create,
-            disabled: !title.trim(),
-            style: { padding: '8px 16px', fontSize: 13, background: title.trim() ? '#6d5ef1' : '#e5e7eb', color: title.trim() ? '#fff' : '#9ca3af', border: 'none', borderRadius: 4, cursor: title.trim() ? 'pointer' : 'not-allowed' }
+            disabled: !title.trim() || recipients.length === 0,
+            style: { padding: '8px 16px', fontSize: 13, background: title.trim() && recipients.length > 0 ? '#6d5ef1' : '#e5e7eb', color: title.trim() && recipients.length > 0 ? '#fff' : '#9ca3af', border: 'none', borderRadius: 4, cursor: title.trim() && recipients.length > 0 ? 'pointer' : 'not-allowed' }
           }, 'Create Thread')
         ])
       ]));

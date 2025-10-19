@@ -1310,6 +1310,9 @@ app.post('/api/v1/messages/v2', (req, res) => {
     if (!Array.isArray(recipients)) {
       return res.status(400).json({ error: 'Recipients must be an array' });
     }
+    if (recipients.length === 0) {
+      return res.status(400).json({ error: 'At least one recipient is required' });
+    }
     
     // Get current user info
     const users = loadUsers();
