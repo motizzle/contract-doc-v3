@@ -1357,14 +1357,6 @@ app.get('/api/v1/messages/v2', (req, res) => {
     } else if (privileged === 'false') {
       threads = threads.filter(t => t.privileged === false);
     }
-    if (search && search.trim()) {
-      const searchLower = search.toLowerCase();
-      threads = threads.filter(t => 
-        t.title.toLowerCase().includes(searchLower) ||
-        t.participants.some(p => p.label.toLowerCase().includes(searchLower))
-      );
-    }
-    
     // Sort by lastPostAt descending
     threads.sort((a, b) => b.lastPostAt - a.lastPostAt);
     
@@ -1380,7 +1372,20 @@ app.get('/api/v1/messages/v2', (req, res) => {
       postCount: data.posts.filter(p => p.threadId === thread.threadId).length
     }));
     
-    return res.json({ threads: threadsWithPosts });
+    // Apply search filter after posts are attached (search across title, participants, and all post content)
+    let filteredThreads = threadsWithPosts;
+    if (search && search.trim()) {
+      const searchLower = search.toLowerCase();
+      filteredThreads = threadsWithPosts.filter(t => 
+        t.title.toLowerCase().includes(searchLower) ||
+        t.participants.some(p => p.label.toLowerCase().includes(searchLower)) ||
+        t.participants.some(p => p.email && p.email.toLowerCase().includes(searchLower)) ||
+        t.posts.some(post => post.text && post.text.toLowerCase().includes(searchLower)) ||
+        t.posts.some(post => post.author && post.author.label && post.author.label.toLowerCase().includes(searchLower))
+      );
+    }
+    
+    return res.json({ threads: filteredThreads });
   } catch (e) {
     console.error('Error reading messages v2:', e);
     return res.status(500).json({ error: 'Failed to read messages' });
