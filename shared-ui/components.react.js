@@ -2144,7 +2144,7 @@
       const [messages, setMessages] = React.useState([]);
       const [view, setView] = React.useState('list'); // 'list' or 'conversation'
       const [activeThreadId, setActiveThreadId] = React.useState(null);
-      const [filter, setFilter] = React.useState({ state: 'open', internal: 'both', privileged: 'both', search: '' });
+      const [filter, setFilter] = React.useState({ states: ['open'], internal: 'both', privileged: 'both', search: '' });
       const [showNewMessage, setShowNewMessage] = React.useState(false);
       const [summary, setSummary] = React.useState({ messages: { open: 0, unreadForMe: 0, privileged: 0, archived: 0 } });
       
@@ -2157,22 +2157,49 @@
         return otherParticipants.map(p => p.label).join(', ');
       }
       
+      // Toggle state filter (open, archived)
+      function toggleStateFilter(state) {
+        const currentStates = filter.states || ['open'];
+        let newStates;
+        if (currentStates.includes(state)) {
+          // Remove if present
+          newStates = currentStates.filter(s => s !== state);
+          // Ensure at least one state is selected
+          if (newStates.length === 0) newStates = [state];
+        } else {
+          // Add if not present
+          newStates = [...currentStates, state];
+        }
+        setFilter({ ...filter, states: newStates });
+      }
+      
       // Load messages
       const loadMessages = React.useCallback(async () => {
         try {
-          const params = new URLSearchParams({
-            userId,
-            state: filter.state,
-            search: filter.search
-          });
-          if (filter.internal !== 'both') params.append('internal', filter.internal);
-          if (filter.privileged !== 'both') params.append('privileged', filter.privileged);
+          // Fetch messages for each selected state and combine
+          const states = filter.states || ['open'];
+          const allMessages = [];
           
-          const r = await fetch(`${API_BASE}/api/v1/messages/v2?${params}`);
-          if (r.ok) {
-            const data = await r.json();
-            setMessages(data.threads || []);
+          for (const state of states) {
+            const params = new URLSearchParams({
+              userId,
+              state,
+              search: filter.search
+            });
+            if (filter.internal !== 'both') params.append('internal', filter.internal);
+            if (filter.privileged !== 'both') params.append('privileged', filter.privileged);
+            
+            const r = await fetch(`${API_BASE}/api/v1/messages/v2?${params}`);
+            if (r.ok) {
+              const data = await r.json();
+              allMessages.push(...(data.threads || []));
+            }
           }
+          
+          // Remove duplicates and sort by lastPostAt
+          const uniqueMessages = Array.from(new Map(allMessages.map(m => [m.threadId, m])).values());
+          uniqueMessages.sort((a, b) => b.lastPostAt - a.lastPostAt);
+          setMessages(uniqueMessages);
         } catch (e) {
           console.error('Failed to load messages:', e);
         }
@@ -2252,37 +2279,56 @@
       }
       
       // Otherwise show list view
+      const currentStates = filter.states || ['open'];
       return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 12, height: '100%', minHeight: 0 } }, [
-        // Filters + New Message button
+        // Search + New Message button
         React.createElement('div', { key: 'filters', style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' } }, [
-          React.createElement('select', { 
-            key: 'state',
-            className: 'standard-select',
-            value: filter.state, 
-            onChange: e => setFilter({ ...filter, state: e.target.value })
-          }, [
-            React.createElement('option', { key: 'open', value: 'open' }, 'Open'),
-            React.createElement('option', { key: 'archived', value: 'archived' }, 'Archived')
-          ]),
           React.createElement('input', { 
             key: 'search', 
             placeholder: 'Search…', 
             value: filter.search, 
             onChange: e => setFilter({ ...filter, search: e.target.value }),
-            style: { flex: 1, minWidth: 100, padding: '4px 8px', fontSize: 13 }
+            style: { flex: 1, minWidth: 100, padding: '6px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #e5e7eb' }
           }),
           React.createElement('button', {
             key: 'new',
             onClick: () => setShowNewMessage(true),
-            style: { padding: '4px 12px', fontSize: 13, background: '#6d5ef1', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }
+            style: { padding: '6px 12px', fontSize: 13, background: '#6d5ef1', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }
           }, '+ New Message')
         ]),
         
-        // Badges
-        React.createElement('div', { key: 'badges', style: { display: 'flex', gap: 8, fontSize: 12 } }, [
-          React.createElement('span', { key: 'open', style: { padding: '2px 8px', background: '#e0f2fe', borderRadius: 12 } }, `Open: ${summary.messages.open}`),
-          React.createElement('span', { key: 'unread', style: { padding: '2px 8px', background: '#fef3c7', borderRadius: 12 } }, `Unread: ${summary.messages.unreadForMe}`),
-          summary.messages.privileged > 0 ? React.createElement('span', { key: 'priv', style: { padding: '2px 8px', background: '#fce7f3', borderRadius: 12 } }, `Attorney-Client Privilege: ${summary.messages.privileged}`) : null
+        // Clickable filter badges
+        React.createElement('div', { key: 'badges', style: { display: 'flex', gap: 8, fontSize: 12, flexWrap: 'wrap' } }, [
+          React.createElement('button', { 
+            key: 'open',
+            onClick: () => toggleStateFilter('open'),
+            style: { 
+              padding: '6px 12px', 
+              background: currentStates.includes('open') ? '#e0f2fe' : '#f3f4f6', 
+              color: currentStates.includes('open') ? '#0c4a6e' : '#6b7280',
+              fontWeight: currentStates.includes('open') ? 600 : 400,
+              border: currentStates.includes('open') ? '2px solid #0ea5e9' : '2px solid transparent',
+              borderRadius: 16, 
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            } 
+          }, `Open: ${summary.messages.open}`),
+          React.createElement('button', { 
+            key: 'archived',
+            onClick: () => toggleStateFilter('archived'),
+            style: { 
+              padding: '6px 12px', 
+              background: currentStates.includes('archived') ? '#d1fae5' : '#f3f4f6',
+              color: currentStates.includes('archived') ? '#065f46' : '#6b7280',
+              fontWeight: currentStates.includes('archived') ? 600 : 400,
+              border: currentStates.includes('archived') ? '2px solid #10b981' : '2px solid transparent',
+              borderRadius: 16, 
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            } 
+          }, `Archived: ${summary.messages.archived}`),
+          React.createElement('span', { key: 'unread', style: { padding: '6px 12px', background: '#fef3c7', color: '#78350f', borderRadius: 16, border: '2px solid transparent' } }, `Unread: ${summary.messages.unreadForMe}`),
+          summary.messages.privileged > 0 ? React.createElement('span', { key: 'priv', style: { padding: '6px 12px', background: '#fce7f3', color: '#831843', borderRadius: 16, border: '2px solid transparent' } }, `Attorney-Client Privilege: ${summary.messages.privileged}`) : null
         ]),
         
         // Message list
