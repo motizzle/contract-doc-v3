@@ -1,0 +1,226 @@
+{
+  "messages": [
+    {
+      "messageId": "msg-1760863056593-tnzg4jhua",
+      "title": "User 2",
+      "createdBy": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760863056593,
+      "participants": [
+        {
+          "userId": "user2",
+          "label": "User 2",
+          "email": "user2@test.com",
+          "internal": true
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "state": "open",
+      "lastPostAt": 1760863056593,
+      "unreadBy": [
+        "user2"
+      ],
+      "archivedBy": [],
+      "deletedBy": [
+        "user1"
+      ],
+      "deletedAt": null
+    },
+    {
+      "messageId": "msg-1760863349584-tssnltd1c",
+      "title": "Yuri Lee Laffed",
+      "createdBy": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760863349584,
+      "participants": [
+        {
+          "userId": "user1",
+          "label": "Warren Peace",
+          "email": "",
+          "internal": true
+        },
+        {
+          "userId": "user3",
+          "label": "Yuri Lee Laffed",
+          "email": "",
+          "internal": true
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "state": "open",
+      "lastPostAt": 1760863349584,
+      "unreadBy": [
+        "user3"
+      ],
+      "archivedBy": [],
+      "deletedBy": [],
+      "deletedAt": null
+    },
+    {
+      "messageId": "msg-1760863354100-c2o2cyqix",
+      "title": "Yuri Lee Laffed",
+      "createdBy": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760863354100,
+      "participants": [
+        {
+          "userId": "user1",
+          "label": "Warren Peace",
+          "email": "",
+          "internal": true
+        },
+        {
+          "userId": "user3",
+          "label": "Yuri Lee Laffed",
+          "email": "",
+          "internal": true
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "state": "open",
+      "lastPostAt": 1760863354100,
+      "unreadBy": [
+        "user3"
+      ],
+      "archivedBy": [],
+      "deletedBy": [],
+      "deletedAt": null
+    },
+    {
+      "messageId": "msg-1760863376068-twtkm4m6u",
+      "title": "Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed",
+      "createdBy": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760863376068,
+      "participants": [
+        {
+          "userId": "user1",
+          "label": "Warren Peace",
+          "email": "",
+          "internal": true
+        },
+        {
+          "userId": "user2",
+          "label": "Kent Uckey",
+          "email": "",
+          "internal": true
+        },
+        {
+          "userId": "user5",
+          "label": "Gettysburger King",
+          "email": "",
+          "internal": true
+        },
+        {
+          "userId": "user4",
+          "label": "Hugh R Ewe",
+          "email": "",
+          "internal": true
+        },
+        {
+          "userId": "user3",
+          "label": "Yuri Lee Laffed",
+          "email": "",
+          "internal": true
+        }
+      ],
+      "internal": true,
+      "external": false,
+      "privileged": true,
+      "state": "open",
+      "lastPostAt": 1760863571069,
+      "unreadBy": [
+        "user2",
+        "user5",
+        "user4",
+        "user3"
+      ],
+      "archivedBy": [],
+      "deletedBy": [],
+      "deletedAt": null
+    },
+    {
+      "messageId": "msg-1760863431213-ffbywt9qr",
+      "title": "Gettysburger King",
+      "createdBy": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760863431213,
+      "participants": [
+        {
+          "userId": "user1",
+          "label": "Warren Peace",
+          "email": "",
+          "internal": true
+        },
+        {
+          "userId": "user5",
+          "label": "Gettysburger King",
+          "email": "",
+          "internal": true
+        }
+      ],
+      "internal": false,
+      "external": true,
+      "privileged": false,
+      "state": "open",
+      "lastPostAt": 1760863614847,
+      "unreadBy": [
+        "user5"
+      ],
+      "archivedBy": [],
+      "deletedBy": [],
+      "deletedAt": null
+    }
+  ],
+  "posts": [
+    {
+      "postId": "post-1760863056593-vdabhsw62",
+      "messageId": "msg-1760863056593-tnzg4jhua",
+      "author": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760863056593,
+      "text": "Test message",
+      "privileged": false
+    },
+    {
+      "postId": "post-1760863571069-amn2f9db7",
+      "messageId": "msg-1760863376068-twtkm4m6u",
+      "author": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760863571069,
+      "text": "sup dogs",
+      "privileged": false
+    },
+    {
+      "postId": "post-1760863614847-v2l5uorv1",
+      "messageId": "msg-1760863431213-ffbywt9qr",
+      "author": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760863614847,
+      "text": "u do u boo",
+      "privileged": false
+    }
+  ]
+}

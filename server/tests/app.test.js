@@ -782,20 +782,28 @@ describe('Phase 13: Exhibits & Compilation', () => {
   });
 });
 
-describe('Phase 14: Messages & Notifications', () => {
+describe('Phase 14: Messages (Threaded Messaging)', () => {
 
-  test('GET /api/v1/messages returns message list', async () => {
-    const res = await request('GET', '/api/v1/messages');
+  test('GET /api/v1/messages returns thread list', async () => {
+    const res = await request('GET', '/api/v1/messages?userId=user1');
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body.messages)).toBe(true);
+    expect(Array.isArray(res.body.threads)).toBe(true);
   });
 
-  test('POST /api/v1/messages/mark-read marks message as read', async () => {
-    const res = await request('POST', '/api/v1/messages/mark-read', {
+  test('POST /api/v1/messages creates new thread', async () => {
+    const res = await request('POST', '/api/v1/messages', {
       userId: 'user1',
-      messageId: 'test-message-id'
+      recipients: [
+        { userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }
+      ],
+      text: 'Test message',
+      internal: false,
+      external: false,
+      privileged: false
     });
-    expect([200, 400, 404]).toContain(res.status); // 400 if invalid params
+    expect(res.status).toBe(200);
+    expect(res.body.thread).toBeDefined();
+    expect(res.body.thread.threadId).toBeDefined();
   });
 
   test('POST /api/v1/approvals/notify sends notifications', async () => {
@@ -804,22 +812,5 @@ describe('Phase 14: Messages & Notifications', () => {
       message: 'Please review document'
     });
     expect(res.status).toBe(200);
-  });
-
-  test('messages persist across requests', async () => {
-    // Get messages
-    const res1 = await request('GET', '/api/v1/messages');
-    const initialCount = res1.body.messages.length;
-
-    // Trigger a notification
-    await request('POST', '/api/v1/approvals/notify', {
-      userId: 'user1',
-      message: 'Test notification'
-    });
-    await sleep(200);
-
-    // Check messages again
-    const res2 = await request('GET', '/api/v1/messages');
-    expect(res2.body.messages.length).toBeGreaterThanOrEqual(initialCount);
   });
 });

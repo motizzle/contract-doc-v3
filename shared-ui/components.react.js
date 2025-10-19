@@ -127,8 +127,7 @@
       const [lastError, setLastError] = React.useState(null);
       const [approvalsSummary, setApprovalsSummary] = React.useState(null);
       const [approvalsRevision, setApprovalsRevision] = React.useState(0);
-      const [messagingCount, setMessagingCount] = React.useState(0);
-      const [messagingV2UnreadCount, setMessagingV2UnreadCount] = React.useState(0);
+      const [messagingUnreadCount, setmessagingUnreadCount] = React.useState(0);
       const API_BASE = getApiBase();
 
       // Removed excessive logging
@@ -324,7 +323,7 @@
           const detailsArray = [];
           
           // Add specific details based on activity type
-          if (details.threadId) detailsArray.push(`Thread ID: ${details.threadId}`);
+          if (details.messageId) detailsArray.push(`Message ID: ${details.messageId}`);
           if (details.title) detailsArray.push(`Title: ${details.title}`);
           if (details.recipients !== undefined) detailsArray.push(`Recipients: ${details.recipients}`);
           if (details.targetUserId) {
@@ -629,14 +628,6 @@
               if (p && p.type === 'chat:reset') {
                 try { window.dispatchEvent(new CustomEvent('chat:reset', { detail: p })); } catch {}
               }
-              // Fan out lightweight user messaging events
-              if (p && p.type === 'approvals:message') {
-                try { window.dispatchEvent(new CustomEvent('messaging:message', { detail: p })); } catch {}
-              }
-              // Bridge messaging reset to React app
-              if (p && p.type === 'messaging:reset') {
-                try { window.dispatchEvent(new CustomEvent('messaging:reset', { detail: p })); } catch {}
-              }
               // Handle activity updates
               if (p && p.type === 'activity:new' && p.activity) {
                 setActivities(prev => [...prev, p.activity]);
@@ -686,7 +677,7 @@
                 setLoadedVersion(ver);
                 
                 try { setViewingVersion(ver); } catch {}
-                try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: ver, payload: { threadPlatform: 'web' } } })); } catch {}
+                try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: ver, payload: { messagePlatform: 'web' } } })); } catch {}
               }
             } catch {}
           } catch (e) { addError({ kind: 'doc_init', message: 'Failed to choose initial document', cause: String(e) }); }
@@ -881,7 +872,7 @@
                   console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: saveProgress`);
                   try { setViewingVersion(v); } catch {}
                   try { setLoadedVersion(v); } catch {}
-                  try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
+                  try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { messagePlatform: plat } } })); } catch {}
                 }
               }
             } catch {}
@@ -930,7 +921,7 @@
                       console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: userSwitch`);
                       setViewingVersion(v);
                       setLoadedVersion(v); // Reset loadedVersion to current document version for new user
-                      try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
+                      try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { messagePlatform: plat } } })); } catch {}
                     }
                   } catch {}
                   
@@ -968,7 +959,7 @@
         },
       }), [API_BASE, refresh, userId, addLog, viewingVersion]);
 
-      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, activities, lastSeenActivityId, markActivitiesSeen, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, messagingCount, setMessagingCount, messagingV2UnreadCount, setMessagingV2UnreadCount, renderNotification, formatNotification, viewingVersion, setViewingVersion, refresh } }, React.createElement(App, { config }));
+      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, activities, lastSeenActivityId, markActivitiesSeen, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, messagingUnreadCount, setmessagingUnreadCount, renderNotification, formatNotification, viewingVersion, setViewingVersion, refresh } }, React.createElement(App, { config }));
     }
 
     function BannerStack(props) {
@@ -1011,7 +1002,7 @@
             try { setViewingVersion(serverVersion); } catch {}
             try {
               const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
-              window.dispatchEvent(new CustomEvent('version:view', { detail: { version: serverVersion, payload: { threadPlatform: plat } } }));
+              window.dispatchEvent(new CustomEvent('version:view', { detail: { version: serverVersion, payload: { messagePlatform: plat } } }));
             } catch {}
           }
         } catch {}
@@ -1103,7 +1094,7 @@
               if (v > 0) {
                 setLoadedVersion(v);
                 try { setViewingVersion(v); } catch {}
-                try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
+                try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { messagePlatform: plat } } })); } catch {}
               }
             } catch {}
           } catch {}
@@ -1131,7 +1122,7 @@
               if (v > 0) {
                 setLoadedVersion(v);
                 try { setViewingVersion(v); } catch {}
-                try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
+                try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { messagePlatform: plat } } })); } catch {}
               }
             } catch {}
           } catch {}
@@ -1657,392 +1648,6 @@
       return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, height: '100%' } }, [wrap]);
     }
 
-    // OLD MessagingPanel removed - using MessagingV2Panel exclusively now
-    // The old messaging code has been completely deleted
-    
-    function MessagingPanel() {
-      // Empty stub - old messaging system removed
-      return null;
-    }
-    
-    // [OLD MESSAGING CODE COMPLETELY REMOVED - 370+ lines deleted]
-    // The old messaging panel with its DM/group chat functionality
-    // has been replaced by MessagingV2Panel (threaded conversations)
-    // If you need old functionality, check git history before this commit
-    
-    // MessagingV2Panel starts below (after navigation handlers)
-    
-    // [DELETING OLD MESSAGING CODE - START]
-    /*
-      const viewKey = React.useCallback(() => `og.messaging.view.${String(currentUser || 'default')}`, [currentUser]);
-      
-      // Load messages from server
-      const [messages, setMessages] = React.useState([]);
-      
-      // Fetch messages on mount
-      React.useEffect(() => {
-        const loadMessages = async () => {
-          try {
-            const r = await fetch(`${API_BASE}/api/v1/messages`);
-            if (r.ok) {
-              const j = await r.json();
-              if (Array.isArray(j.messages)) setMessages(j.messages);
-            }
-          } catch {}
-        };
-        loadMessages();
-      }, [API_BASE]);
-      
-      const [text, setText] = React.useState('');
-      const listRef = React.useRef(null);
-      const [view, setView] = React.useState(() => {
-        try {
-          const stored = localStorage.getItem(viewKey());
-          if (stored) return stored;
-        } catch {}
-        return 'list';
-      });
-      const [activePartnerId, setActivePartnerId] = React.useState(() => {
-        try {
-          const stored = localStorage.getItem(activeKey());
-          if (stored) return stored;
-        } catch {}
-        return '';
-      });
-      const [activeGroupIds, setActiveGroupIds] = React.useState([]);
-      const [newSelection, setNewSelection] = React.useState(() => new Set());
-
-      const userLabel = (uid) => {
-        try { const u = (users || []).find(x => (x && (x.id === uid || x.label === uid))); return (u && (u.label || u.id)) || uid; } catch { return uid; }
-      };
-      const userLabelById = (uid) => {
-        try { const u = (users || []).find(x => (x && x.id === uid)); return (u && (u.label || u.id)) || uid; } catch { return uid; }
-      };
-      const initialsOf = (label) => {
-        try { const parts = String(label || '').trim().split(/\s+/).filter(Boolean); if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase(); if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase(); return ''; } catch { return ''; }
-      };
-
-      // Load from localStorage when user changes
-      React.useEffect(() => {
-        try {
-          const storedView = localStorage.getItem(viewKey());
-          const storedActive = localStorage.getItem(activeKey());
-          
-          // Messages loaded from server, just restore UI state
-          setView(storedView || 'list');
-          setActivePartnerId(storedActive || '');
-          setActiveGroupIds([]);
-        } catch {
-          setView('list');
-          setActivePartnerId('');
-          setActiveGroupIds([]);
-        }
-      }, [currentUser, viewKey, activeKey]);
-      
-      // Messages are now stored on server, not in localStorage
-      
-      React.useEffect(() => {
-        try {
-          localStorage.setItem(activeKey(), activePartnerId);
-        } catch {}
-      }, [activePartnerId, activeKey]);
-      
-      React.useEffect(() => {
-        try {
-          localStorage.setItem(viewKey(), view);
-        } catch {}
-      }, [view, viewKey]);
-      React.useEffect(() => {}, [view]);
-      
-      // Factory reset handler
-      React.useEffect(() => {
-        const onFactoryReset = () => {
-          try {
-            setMessages([]);
-            setActivePartnerId('');
-            setActiveGroupIds([]);
-            setView('list');
-            localStorage.removeItem(activeKey());
-            localStorage.removeItem(viewKey());
-          } catch {}
-        };
-        window.addEventListener('factoryReset', onFactoryReset);
-        return () => window.removeEventListener('factoryReset', onFactoryReset);
-      }, [activeKey, viewKey]);
-      
-      // Go home handler (when clicking Messages tab)
-      React.useEffect(() => {
-        const onGoHome = () => {
-          try {
-            setView('list');
-            setActivePartnerId('');
-            setActiveGroupIds([]);
-          } catch {}
-        };
-        window.addEventListener('messaging:goHome', onGoHome);
-        return () => window.removeEventListener('messaging:goHome', onGoHome);
-      }, []);
-
-      // Inbound messages
-      React.useEffect(() => {
-        const onMsg = (ev) => {
-          try {
-            const d = ev.detail || {};
-            if (!d || !d.payload) return;
-            const from = String(d.userId || '');
-            const toRaw = d.payload?.to;
-            const to = Array.isArray(toRaw) ? toRaw.map(String) : String(toRaw || '');
-            const text = String(d.payload.text || '');
-            const clientId = d.payload && d.payload.clientId ? String(d.payload.clientId) : '';
-            const threadId = d.payload && d.payload.threadId ? String(d.payload.threadId) : '';
-            if (!text) return;
-              // Skip if we already have this client-sent message
-              if (clientId && Array.isArray(messages) && messages.some(m => m.clientId && String(m.clientId) === clientId)) return;
-            // Store ALL messages globally with readBy array to track who has read it
-            const readBy = [from]; // Sender has always "read" their own message
-            setMessages(prev => prev.concat({ id: Date.now() + Math.random(), from, to, text, ts: Date.now(), clientId: clientId || undefined, threadId: threadId || undefined, readBy }));
-          } catch {}
-        };
-        const onReset = () => {
-          try {
-            setMessages([]);
-            setActivePartnerId('');
-            setActiveGroupIds([]);
-            setText('');
-          } catch {}
-        };
-        try { window.addEventListener('messaging:message', onMsg); } catch {}
-        try { window.addEventListener('messaging:reset', onReset); } catch {}
-        return () => {
-          try { window.removeEventListener('messaging:message', onMsg); } catch {}
-          try { window.removeEventListener('messaging:reset', onReset); } catch {}
-        };
-      }, [currentUser, messages, activeKey, viewKey]);
-
-      // Do not auto-select a partner on New Chat; user must choose explicitly
-
-      // Scroll thread to bottom
-      React.useEffect(() => {
-        try { const el = listRef.current; if (el) el.scrollTop = el.scrollHeight; } catch {}
-      }, [messages, activePartnerId, view]);
-
-      const send = async () => {
-        const trimmed = String(text || '').trim();
-        const isGroup = Array.isArray(activeGroupIds) && activeGroupIds.length > 0 && !activePartnerId;
-        if (!trimmed || (!activePartnerId && !isGroup)) return;
-        setText('');
-        const clientId = `c_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        const recipients = isGroup ? activeGroupIds.slice() : [String(activePartnerId)];
-        const threadId = isGroup ? `group:${recipients.slice().sort().join(',')}` : `dm:${String(activePartnerId)}`;
-        const mine = { id: Date.now() + Math.random(), from: String(currentUser), to: (isGroup ? recipients : String(activePartnerId)), text: trimmed, ts: Date.now(), clientId, threadId, readBy: [String(currentUser)] };
-        setMessages(prev => prev.concat(mine));
-        try {
-          await fetch(`${API_BASE}/api/v1/events/client`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'approvals:message', payload: { to: recipients, text: trimmed, clientId, threadId }, userId: currentUser }) });
-        } catch {}
-      };
-
-      // Derive conversations (partner -> last message)
-      const convMap = (() => {
-        const map = new Map();
-        for (const m of messages) {
-          const me = String(currentUser);
-          const toArr = Array.isArray(m.to) ? m.to : [String(m.to || '')];
-          if (m.from !== me && !toArr.includes(me)) continue;
-          const tid = m.threadId ? String(m.threadId) : (Array.isArray(m.to) ? `group:${toArr.slice().sort().join(',')}` : `dm:${(m.from === me ? String(m.to) : String(m.from))}`);
-          const prev = map.get(tid);
-          if (!prev || (m.ts || 0) > (prev.ts || 0)) map.set(tid, m);
-        }
-        return map;
-      })();
-      const conversations = Array.from(convMap.entries())
-        .map(([threadId, lastMsg]) => ({ threadId, lastMsg }))
-        .sort((a, b) => (b.lastMsg.ts || 0) - (a.lastMsg.ts || 0));
-
-      const activeThreadId = (Array.isArray(activeGroupIds) && activeGroupIds.length > 0 && !activePartnerId)
-        ? `group:${activeGroupIds.slice().sort().join(',')}`
-        : (activePartnerId ? `dm:${String(activePartnerId)}` : '');
-
-      const threadMessages = messages.filter(m => {
-        const me = String(currentUser);
-        const tid = m.threadId ? String(m.threadId) : (Array.isArray(m.to) ? `group:${(m.to||[]).slice().sort().join(',')}` : `dm:${(m.from === me ? String(m.to) : String(m.from))}`);
-        return activeThreadId && tid === activeThreadId;
-      });
-
-      // Update messaging count in context - count unread messages (not read by currentUser)
-      React.useEffect(() => {
-        if (setMessagingCount) {
-          const me = String(currentUser);
-          const unreadCount = messages.filter(m => {
-            // Message is unread if currentUser is involved (to/from) but not in readBy array
-            const toArr = Array.isArray(m.to) ? m.to : [String(m.to || '')];
-            const involvesMe = (m.from === me || toArr.includes(me));
-            const hasRead = Array.isArray(m.readBy) && m.readBy.includes(me);
-            return involvesMe && !hasRead;
-          }).length;
-          setMessagingCount(unreadCount);
-        }
-      }, [messages, currentUser, setMessagingCount]);
-
-      // Header
-      const headerList = React.createElement('div', { className: 'd-flex items-center justify-end', style: { padding: '4px 8px' } }, [
-        React.createElement(UIButton, { key: 'new', label: 'New Chat', variant: 'primary', onClick: () => { setActivePartnerId(''); setView('new'); } })
-      ]);
-
-      const listCards = (conversations || []).map((c, i) => {
-          const tid = c.threadId;
-          const isGroup = String(tid || '').startsWith('group:');
-          const label = isGroup
-            ? (String(tid).slice(6).split(',').map(s => userLabelById(String(s).trim())).join(', '))
-            : userLabel(String(tid).slice(3));
-          const preview = (c.lastMsg && c.lastMsg.text) ? c.lastMsg.text : '';
-          const time = c.lastMsg && c.lastMsg.ts ? new Date(c.lastMsg.ts).toLocaleTimeString() : '';
-          // Check if thread has unread messages (messages not read by currentUser)
-          const me = String(currentUser);
-          const hasUnread = messages.some(m => {
-            const mTid = m.threadId ? String(m.threadId) : (Array.isArray(m.to) ? `group:${(m.to||[]).slice().sort().join(',')}` : `dm:${(m.from === me ? String(m.to) : String(m.from))}`);
-            const toArr = Array.isArray(m.to) ? m.to : [String(m.to || '')];
-            const involvesMe = (m.from === me || toArr.includes(me));
-            const hasRead = Array.isArray(m.readBy) && m.readBy.includes(me);
-            return mTid === tid && involvesMe && !hasRead;
-          });
-          return React.createElement('div', { key: tid || i, onClick: async () => {
-              // Mark all messages in this thread as read via API
-              try {
-                const r = await fetch(`${API_BASE}/api/v1/messages/mark-read`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ threadId: tid, userId: me })
-                });
-                if (r.ok) {
-                  const j = await r.json();
-                  if (Array.isArray(j.messages)) setMessages(j.messages);
-                }
-              } catch {}
-              
-              if (isGroup) { setActivePartnerId(''); setActiveGroupIds(String(tid).slice(6).split(',').filter(Boolean)); }
-              else { setActiveGroupIds([]); setActivePartnerId(String(tid).slice(3)); }
-              setView('thread');
-            },
-            className: `messaging-card ${hasUnread ? 'messaging-card--unread' : ''} d-flex items-center`}, [
-              hasUnread ? React.createElement('div', { key: 'badge', className: 'messaging-card__unread-badge' }) : null,
-              React.createElement('div', { key: 'av', className: 'avatar-initials', style: { marginRight: 10 } }, initialsOf(label)),
-              React.createElement('div', { key: 'txt', className: 'd-flex flex-column', style: { flex: 1, minWidth: 0 } }, [
-                React.createElement('div', { key: 'n', className: `messaging-card__name ${hasUnread ? 'messaging-card__name--unread' : ''}`, style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, label),
-                React.createElement('div', { key: 'p', className: `messaging-card__preview ${hasUnread ? 'messaging-card__preview--unread' : ''} text-sm text-gray-600`, style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, preview)
-              ]),
-              React.createElement('div', { key: 't', className: 'text-xs text-gray-500' }, time)
-            ]);
-        });
-
-      const listView = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [
-        headerList,
-        (listCards.length
-          ? React.createElement('div', { key: 'cards', className: 'd-flex flex-column gap-8' }, listCards)
-          : React.createElement('div', { key: 'empty', className: 'text-gray-500', style: { padding: '8px' } }, 'No chats yet. Click New Chat to start.'))
-      ]);
-
-      // Contact picker (New Chat)
-      const onToggleNewSelect = (pid) => {
-        setNewSelection(prev => {
-          const n = new Set(prev);
-          if (n.has(pid)) n.delete(pid); else n.add(pid);
-          return n;
-        });
-      };
-
-      const startNewChats = () => {
-        const ids = Array.from(newSelection);
-        if (!ids.length) return;
-        if (ids.length === 1) {
-          setActiveGroupIds([]);
-          setActivePartnerId(ids[0]);
-        } else {
-          setActivePartnerId('');
-          setActiveGroupIds(ids);
-        }
-        setView('thread');
-        setNewSelection(new Set());
-      };
-
-      const newChatView = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [
-        React.createElement('div', { key: 'hdr', className: 'd-flex items-center justify-between', style: { padding: '4px 8px' } }, [
-          React.createElement('div', { key: 'l', className: 'd-flex items-center gap-8' }, [
-            React.createElement('button', { key: 'back', onClick: () => setView('list'), style: { background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 18 } }, '⬅'),
-            React.createElement('div', { key: 'lbl', className: 'font-semibold' }, 'New Chat')
-          ]),
-          React.createElement(UIButton, { key: 'start', label: 'Start', onClick: startNewChats, variant: 'primary', disabled: !newSelection.size })
-        ]),
-        React.createElement('div', { key: 'pick', style: { border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' } },
-          React.createElement('div', { style: { maxHeight: 320, overflowY: 'auto', background: '#fff' } },
-            (users || []).filter(u => (u?.id || u?.label) && (u.id || u.label) !== currentUser)
-              .map((u, i) => {
-                const pid = u.id || u.label;
-                const label = userLabel(pid);
-                const checked = newSelection.has(pid);
-                return React.createElement('label', { key: pid || i, className: 'd-flex items-center', style: { padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' } }, [
-                  React.createElement('input', { key: 'cb', type: 'checkbox', checked, onChange: () => onToggleNewSelect(pid), style: { marginRight: 10 } }),
-                  React.createElement('div', { key: 'av', className: 'avatar-initials', style: { marginRight: 10 } }, initialsOf(label)),
-                  React.createElement('div', { key: 'n', className: 'font-medium' }, label)
-                ]);
-              })
-          )
-        )
-      ]);
-
-      // Thread header and body
-      const headerThread = React.createElement('div', { className: 'd-flex items-center gap-8', style: { padding: '4px 8px' } }, [
-        React.createElement('button', { key: 'back', onClick: () => setView('list'), style: { background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 18 } }, '⬅'),
-        React.createElement('div', { key: 'lbl', className: 'font-semibold' }, (activePartnerId ? userLabel(activePartnerId) : (activeGroupIds || []).map(s => userLabelById(String(s).trim())).join(', ')))
-      ]);
-
-      const isGroupThread = !!(activeThreadId && String(activeThreadId).startsWith('group:'));
-      function colorClassForUser(uid) {
-        try {
-          const palette = ['alt-1','alt-2','alt-3','alt-4'];
-          let sum = 0; const s = String(uid || '');
-          for (let i = 0; i < s.length; i++) sum = (sum + s.charCodeAt(i)) | 0;
-          const idx = Math.abs(sum) % palette.length;
-          return palette[idx];
-        } catch { return 'alt-1'; }
-      }
-      const threadList = threadMessages.length ? React.createElement('div', { ref: listRef, style: { padding: 8, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' } },
-        threadMessages.map(m => {
-          const mine = String(m.from) === String(currentUser);
-          const rowCls = 'chat-bubble-row ' + (mine ? 'mine' : 'other');
-          let bubbleCls = 'chat-bubble ' + (mine ? 'mine' : 'other');
-          if (!mine) {
-            // DM: light gray; Group: deterministic alternating palette per participant
-            if (isGroupThread) {
-              bubbleCls += (' ' + colorClassForUser(m.from));
-            } else {
-              bubbleCls += ' other-gray';
-            }
-          }
-          const ts = m.ts ? new Date(m.ts).toLocaleTimeString() : '';
-          return React.createElement('div', { key: m.id, className: rowCls }, [
-            React.createElement('div', { key: 'ts', className: 'chat-timestamp ' + (mine ? 'mine' : 'other') }, ts),
-            React.createElement('div', { key: 'b', className: bubbleCls }, String(m.text || ''))
-          ]);
-        })
-      ) : null;
-
-      const onComposerKeyDown = (e) => {
-        try {
-          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
-        } catch {}
-      };
-      const composer = React.createElement('div', { className: 'd-flex items-center gap-8' }, [
-        React.createElement('input', { key: 'inp', type: 'text', placeholder: 'Write a message…', value: text, onChange: (e) => setText(e.target.value), onKeyDown: onComposerKeyDown, className: 'input-padding input-border input-border-radius', style: { flex: 1 } }),
-        React.createElement(UIButton, { key: 'send', label: 'Send', onClick: send, variant: 'primary', disabled: (!activePartnerId && (!(Array.isArray(activeGroupIds) && activeGroupIds.length))) })
-      ]);
-
-      const threadView = React.createElement('div', { className: 'd-flex flex-column gap-8' }, [headerThread, (threadList || null), composer]);
-
-      return (view === 'list') ? listView : (view === 'new' ? newChatView : threadView);
-    } 
-    // END OF OLD MESSAGING CODE - All above code is commented out and removed
-    */
-
     // Word add-in: listen for navigation events and jump to text
     try {
       if (typeof window !== 'undefined') {
@@ -2243,24 +1848,24 @@
       }
     } catch {}
 
-    // Messages v2 Panel (full-page messaging with Attorney-Client Privilege/internal flags)
-    function MessagingV2Panel() {
+    // Messages Panel (full-page messaging with Attorney-Client Privilege/internal flags)
+    function MessagingPanel() {
       const API_BASE = getApiBase();
-      const { currentUser: userId, users, setMessagingV2UnreadCount } = React.useContext(StateContext);
+      const { currentUser: userId, users, setmessagingUnreadCount } = React.useContext(StateContext);
       
       const [messages, setMessages] = React.useState([]);
       const [view, setView] = React.useState('list'); // 'list' or 'conversation'
-      const [activeThreadId, setActiveThreadId] = React.useState(null);
+      const [activeMessageId, setActiveMessageId] = React.useState(null);
       const [filter, setFilter] = React.useState({ states: ['open'], internal: false, external: false, privileged: false, unread: false, search: '' });
       const [showNewMessage, setShowNewMessage] = React.useState(false);
       const [showExportModal, setShowExportModal] = React.useState(false);
       const [summary, setSummary] = React.useState({ messages: { open: 0, unreadForMe: 0, privileged: 0, internal: 0, external: 0, archived: 0 } });
       
-      // Compute thread title from current user's perspective
+      // Compute message title from current user's perspective
       // Show names of other participants (excluding current user)
-      function getThreadTitle(thread) {
-        if (!thread || !thread.participants) return 'Unknown';
-        const otherParticipants = thread.participants.filter(p => p.userId !== userId);
+      function getMessageTitle(message) {
+        if (!message || !message.participants) return 'Unknown';
+        const otherParticipants = message.participants.filter(p => p.userId !== userId);
         if (otherParticipants.length === 0) return 'Me';
         return otherParticipants.map(p => p.label).join(', ');
       }
@@ -2287,8 +1892,8 @@
       }
       
       // Open conversation view
-      function openConversation(threadId) {
-        setActiveThreadId(threadId);
+      function openConversation(messageId) {
+        setActiveMessageId(messageId);
         setView('conversation');
       }
       
@@ -2306,15 +1911,15 @@
               search: filter.search
             });
             
-            const r = await fetch(`${API_BASE}/api/v1/messages/v2?${params}`);
+            const r = await fetch(`${API_BASE}/api/v1/messages?${params}`);
             if (r.ok) {
               const data = await r.json();
-              allMessages.push(...(data.threads || []));
+              allMessages.push(...(data.messages || []));
             }
           }
           
           // Remove duplicates
-          let uniqueMessages = Array.from(new Map(allMessages.map(m => [m.threadId, m])).values());
+          let uniqueMessages = Array.from(new Map(allMessages.map(m => [m.messageId, m])).values());
           
           // Apply client-side flag filters
           if (filter.internal) {
@@ -2346,14 +1951,14 @@
             const data = await r.json();
             setSummary(data);
             // Update global unread count for tab badge
-            if (setMessagingV2UnreadCount && data.messages && data.messages.unreadForMe !== undefined) {
-              setMessagingV2UnreadCount(data.messages.unreadForMe);
+            if (setmessagingUnreadCount && data.messages && data.messages.unreadForMe !== undefined) {
+              setmessagingUnreadCount(data.messages.unreadForMe);
             }
           }
         } catch (e) {
           console.error('Failed to load summary:', e);
         }
-      }, [API_BASE, userId, setMessagingV2UnreadCount]);
+      }, [API_BASE, userId, setmessagingUnreadCount]);
       
       React.useEffect(() => {
         loadMessages();
@@ -2369,14 +1974,14 @@
             loadSummary();
           }
         };
-        window.addEventListener('message:thread-created', handler);
+        window.addEventListener('message:created', handler);
         window.addEventListener('message:post-added', handler);
         window.addEventListener('message:state-changed', handler);
         window.addEventListener('message:flags-updated', handler);
         window.addEventListener('message:read', handler);
         window.addEventListener('message:deleted', handler);
         return () => {
-          window.removeEventListener('message:thread-created', handler);
+          window.removeEventListener('message:created', handler);
           window.removeEventListener('message:post-added', handler);
           window.removeEventListener('message:state-changed', handler);
           window.removeEventListener('message:flags-updated', handler);
@@ -2390,7 +1995,7 @@
         const onFactoryReset = () => {
           setMessages([]);
           setView('list');
-          setActiveThreadId(null);
+          setActiveMessageId(null);
           setSummary({ messages: { open: 0, unreadForMe: 0, privileged: 0, internal: 0, external: 0, archived: 0 } });
           loadMessages();
           loadSummary();
@@ -2400,12 +2005,12 @@
       }, [loadMessages, loadSummary]);
       
       // If viewing conversation, show conversation page
-      if (view === 'conversation' && activeThreadId) {
-        return React.createElement(MessageConversationView, {
-          threadId: activeThreadId,
+      if (view === 'conversation' && activeMessageId) {
+        return React.createElement(ConversationView, {
+          messageId: activeMessageId,
           userId: userId,
-          getThreadTitle: getThreadTitle,
-          onBack: () => { setView('list'); setActiveThreadId(null); },
+          getMessageTitle: getMessageTitle,
+          onBack: () => { setView('list'); setActiveMessageId(null); },
           onUpdate: () => { loadMessages(); loadSummary(); }
         });
       }
@@ -2516,10 +2121,10 @@
             ? React.createElement('div', { style: { padding: 40, textAlign: 'center', color: '#6b7280' } }, 'No messages')
             : messages.map(msg => {
                 const isUnread = msg.unreadBy && msg.unreadBy.includes(userId);
-                const displayTitle = getThreadTitle(msg);
+                const displayTitle = getMessageTitle(msg);
                 return React.createElement('div', {
-                  key: msg.threadId,
-                  onClick: () => openConversation(msg.threadId),
+                  key: msg.messageId,
+                  onClick: () => openConversation(msg.messageId),
                   style: { 
                     border: '1px solid #e5e7eb',
                     borderRadius: 6,
@@ -2552,7 +2157,7 @@
         ),
         
         // New Message Modal
-        showNewMessage ? React.createElement(NewThreadModal, { 
+        showNewMessage ? React.createElement(NewMessageModal, { 
           key: 'newmsg',
           onClose: () => setShowNewMessage(false),
           onCreate: () => { setShowNewMessage(false); loadMessages(); loadSummary(); }
@@ -2562,7 +2167,7 @@
         showExportModal ? React.createElement(ExportModal, {
           key: 'exportmodal',
           messages: messages,
-          getThreadTitle: getThreadTitle,
+          getMessageTitle: getMessageTitle,
           onClose: () => setShowExportModal(false),
           userId: userId
         }) : null
@@ -2571,20 +2176,20 @@
     
     // Export Modal - select conversations to export
     function ExportModal(props) {
-      const { messages, getThreadTitle, onClose, userId } = props;
+      const { messages, getMessageTitle, onClose, userId } = props;
       const API_BASE = getApiBase();
       const [selectedIds, setSelectedIds] = React.useState([]);
       
-      function toggleSelection(threadId) {
-        if (selectedIds.includes(threadId)) {
-          setSelectedIds(selectedIds.filter(id => id !== threadId));
+      function toggleSelection(messageId) {
+        if (selectedIds.includes(messageId)) {
+          setSelectedIds(selectedIds.filter(id => id !== messageId));
         } else {
-          setSelectedIds([...selectedIds, threadId]);
+          setSelectedIds([...selectedIds, messageId]);
         }
       }
       
       function selectAll() {
-        setSelectedIds(messages.map(m => m.threadId));
+        setSelectedIds(messages.map(m => m.messageId));
       }
       
       function clearAll() {
@@ -2596,8 +2201,8 @@
           alert('Please select at least one conversation to export');
           return;
         }
-        const threadIdsParam = selectedIds.join(',');
-        const url = `${API_BASE}/api/v1/messages/v2/export.csv?scope=multiple&threadIds=${threadIdsParam}&includePosts=true`;
+        const messageIdsParam = selectedIds.join(',');
+        const url = `${API_BASE}/api/v1/messages/export.csv?scope=multiple&messageIds=${messageIdsParam}&includePosts=true`;
         window.open(url, '_blank');
         onClose();
       }
@@ -2662,10 +2267,10 @@
             messages.length === 0
               ? React.createElement('div', { style: { padding: 20, textAlign: 'center', color: '#6b7280' } }, 'No conversations available')
               : messages.map(msg => {
-                  const isChecked = selectedIds.includes(msg.threadId);
-                  const displayTitle = getThreadTitle(msg);
+                  const isChecked = selectedIds.includes(msg.messageId);
+                  const displayTitle = getMessageTitle(msg);
                   return React.createElement('label', {
-                    key: msg.threadId,
+                    key: msg.messageId,
                     style: {
                       display: 'flex',
                       alignItems: 'center',
@@ -2682,7 +2287,7 @@
                       key: 'checkbox',
                       type: 'checkbox',
                       checked: isChecked,
-                      onChange: () => toggleSelection(msg.threadId),
+                      onChange: () => toggleSelection(msg.messageId),
                       style: { cursor: 'pointer', width: 16, height: 16, flexShrink: 0 }
                     }),
                     React.createElement('div', { key: 'info', style: { flex: 1, minWidth: 0 } }, [
@@ -2721,50 +2326,50 @@
     }
     
     // Message Conversation View (full-page view for a single thread)
-    function MessageConversationView(props) {
-      const { threadId, userId: propsUserId, getThreadTitle, onBack, onUpdate } = props || {};
+    function ConversationView(props) {
+      const { messageId, userId: propsUserId, getMessageTitle, onBack, onUpdate } = props || {};
       const API_BASE = getApiBase();
       const { currentUser: contextUserId } = React.useContext(StateContext);
       const userId = propsUserId || contextUserId;
       
-      const [thread, setThread] = React.useState(null);
+      const [message, setMessage] = React.useState(null);
       const [composeText, setComposeText] = React.useState('');
       const [showConfirmModal, setShowConfirmModal] = React.useState(null); // 'archive' or 'delete'
       const listRef = React.useRef(null);
       const isAddin = typeof Office !== 'undefined';
       
-      // Load thread details
+      // Load message details
       React.useEffect(() => {
-        const loadThread = async () => {
+        const loadMessage = async () => {
           try {
-            const r = await fetch(`${API_BASE}/api/v1/messages/v2?userId=${userId}`);
+            const r = await fetch(`${API_BASE}/api/v1/messages?userId=${userId}`);
             if (r.ok) {
               const data = await r.json();
-              const foundThread = data.threads.find(t => t.threadId === threadId);
-              if (foundThread) {
-                setThread(foundThread);
+              const foundMessage = data.messages.find(t => t.messageId === messageId);
+              if (foundMessage) {
+                setMessage(foundMessage);
                 // Mark as read when opened
                 markRead();
               }
             }
           } catch (e) {
-            console.error('Failed to load thread:', e);
+            console.error('Failed to load message:', e);
           }
         };
-        loadThread();
-      }, [API_BASE, userId, threadId]);
+        loadMessage();
+      }, [API_BASE, userId, messageId]);
       
       // Auto-scroll to bottom when messages change
       React.useEffect(() => {
         if (listRef.current) {
           listRef.current.scrollTop = listRef.current.scrollHeight;
         }
-      }, [thread?.posts]);
+      }, [message?.posts]);
       
       async function markRead() {
         try {
           // Mark as read (unread=false)
-          await fetch(`${API_BASE}/api/v1/messages/v2/${threadId}/read`, {
+          await fetch(`${API_BASE}/api/v1/messages/${messageId}/read`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ unread: false, userId })
@@ -2779,18 +2384,18 @@
         const text = composeText.trim();
         if (!text) return;
         try {
-          await fetch(`${API_BASE}/api/v1/messages/v2/${threadId}/post`, {
+          await fetch(`${API_BASE}/api/v1/messages/${messageId}/post`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text, userId })
           });
           setComposeText('');
-          // Reload thread
-          const r = await fetch(`${API_BASE}/api/v1/messages/v2?userId=${userId}`);
+          // Reload message
+          const r = await fetch(`${API_BASE}/api/v1/messages?userId=${userId}`);
           if (r.ok) {
             const data = await r.json();
-            const foundThread = data.threads.find(t => t.threadId === threadId);
-            if (foundThread) setThread(foundThread);
+            const foundMessage = data.messages.find(t => t.messageId === messageId);
+            if (foundMessage) setMessage(foundMessage);
           }
           if (onUpdate) onUpdate();
         } catch (e) {
@@ -2802,17 +2407,17 @@
         try {
           const body = { userId };
           body[flag] = value;
-          await fetch(`${API_BASE}/api/v1/messages/v2/${threadId}/flags`, {
+          await fetch(`${API_BASE}/api/v1/messages/${messageId}/flags`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
           });
-          // Reload thread
-          const r = await fetch(`${API_BASE}/api/v1/messages/v2?userId=${userId}`);
+          // Reload message
+          const r = await fetch(`${API_BASE}/api/v1/messages?userId=${userId}`);
           if (r.ok) {
             const data = await r.json();
-            const foundThread = data.threads.find(t => t.threadId === threadId);
-            if (foundThread) setThread(foundThread);
+            const foundMessage = data.messages.find(t => t.messageId === messageId);
+            if (foundMessage) setMessage(foundMessage);
           }
           if (onUpdate) onUpdate();
         } catch (e) {
@@ -2823,20 +2428,20 @@
       async function toggleRead() {
         try {
           // Simple toggle: if currently unread, mark as read (unread=false), and vice versa
-          const isCurrentlyUnread = thread.unreadBy && thread.unreadBy.includes(userId);
+          const isCurrentlyUnread = message.unreadBy && message.unreadBy.includes(userId);
           
-          await fetch(`${API_BASE}/api/v1/messages/v2/${threadId}/read`, {
+          await fetch(`${API_BASE}/api/v1/messages/${messageId}/read`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ unread: !isCurrentlyUnread, userId })
           });
           
-          // Reload thread
-          const r = await fetch(`${API_BASE}/api/v1/messages/v2?userId=${userId}`);
+          // Reload message
+          const r = await fetch(`${API_BASE}/api/v1/messages?userId=${userId}`);
           if (r.ok) {
             const data = await r.json();
-            const foundThread = data.threads.find(t => t.threadId === threadId);
-            if (foundThread) setThread(foundThread);
+            const foundMessage = data.messages.find(t => t.messageId === messageId);
+            if (foundMessage) setMessage(foundMessage);
           }
           if (onUpdate) onUpdate();
         } catch (e) {
@@ -2850,24 +2455,24 @@
       
       async function confirmArchive() {
         try {
-          const isArchived = thread.archivedBy && thread.archivedBy.includes(userId);
+          const isArchived = message.archivedBy && message.archivedBy.includes(userId);
           const newState = isArchived ? 'open' : 'archived';
           
-          await fetch(`${API_BASE}/api/v1/messages/v2/${threadId}/state`, {
+          await fetch(`${API_BASE}/api/v1/messages/${messageId}/state`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ state: newState, userId })
           });
           
-          // Reload thread
-          const r = await fetch(`${API_BASE}/api/v1/messages/v2?userId=${userId}`);
+          // Reload message
+          const r = await fetch(`${API_BASE}/api/v1/messages?userId=${userId}`);
           if (r.ok) {
             const data = await r.json();
-            const foundThread = data.threads.find(t => t.threadId === threadId);
-            if (foundThread) {
-              setThread(foundThread);
+            const foundMessage = data.messages.find(t => t.messageId === messageId);
+            if (foundMessage) {
+              setMessage(foundMessage);
             } else {
-              // Thread is no longer visible (filtered out), go back
+              // Message is no longer visible (filtered out), go back
               if (onBack) onBack();
             }
           }
@@ -2879,13 +2484,13 @@
         }
       }
       
-      function deleteThread() {
+      function deleteMessage() {
         setShowConfirmModal('delete');
       }
       
       async function confirmDelete() {
         try {
-          await fetch(`${API_BASE}/api/v1/messages/v2/${threadId}/delete`, {
+          await fetch(`${API_BASE}/api/v1/messages/${messageId}/delete`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId })
@@ -2900,11 +2505,11 @@
       }
       
       function exportCSV() {
-        const url = `${API_BASE}/api/v1/messages/v2/export.csv?scope=single&threadIds=${threadId}&includePosts=true`;
+        const url = `${API_BASE}/api/v1/messages/export.csv?scope=single&messageIds=${messageId}&includePosts=true`;
         window.open(url, '_blank');
       }
       
-      if (!thread) {
+      if (!message) {
         return React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' } }, 'Loading...');
       }
       
@@ -2945,9 +2550,9 @@
             }
           }, '←'),
           React.createElement('div', { key: 'title', style: { flex: 1 } }, [
-            React.createElement('div', { key: 'name', style: { fontWeight: 600, fontSize: 15 } }, getThreadTitle ? getThreadTitle(thread) : thread.title),
-            thread.participants && thread.participants.length > 0 ? React.createElement('div', { key: 'emails', style: { fontSize: 11, color: '#9ca3af', marginTop: 2 } }, 
-              thread.participants.filter(p => p.userId !== userId).map(p => p.email).filter(e => e).join(', ')
+            React.createElement('div', { key: 'name', style: { fontWeight: 600, fontSize: 15 } }, getMessageTitle ? getMessageTitle(message) : message.title),
+            message.participants && message.participants.length > 0 ? React.createElement('div', { key: 'emails', style: { fontSize: 11, color: '#9ca3af', marginTop: 2 } }, 
+              message.participants.filter(p => p.userId !== userId).map(p => p.email).filter(e => e).join(', ')
             ) : null
           ]),
           // Archive and Delete icons on the right
@@ -2955,7 +2560,7 @@
             React.createElement('button', { 
               key: 'archive-icon', 
               onClick: toggleArchive,
-              title: (thread.archivedBy && thread.archivedBy.includes(userId)) ? 'Unarchive' : 'Archive',
+              title: (message.archivedBy && message.archivedBy.includes(userId)) ? 'Unarchive' : 'Archive',
               style: { 
                 background: 'transparent',
                 border: 'none',
@@ -2968,7 +2573,7 @@
             }, '🗄️'),
             React.createElement('button', { 
               key: 'delete-icon', 
-              onClick: deleteThread,
+              onClick: deleteMessage,
               title: 'Delete',
               style: { 
                 background: 'transparent',
@@ -2985,53 +2590,53 @@
         React.createElement('div', { key: 'actions', style: { display: 'flex', gap: 6, flexWrap: 'wrap' } }, [
           React.createElement('button', { 
             key: 'internal', 
-            onClick: () => toggleFlag('internal', !thread.internal), 
+            onClick: () => toggleFlag('internal', !message.internal), 
             style: { 
               padding: '4px 10px', 
               fontSize: 12, 
-              fontWeight: thread.internal ? 600 : 400,
-              color: thread.internal ? '#0c4a6e' : '#6b7280',
-              background: thread.internal ? '#e0f2fe' : '#f3f4f6', 
+              fontWeight: message.internal ? 600 : 400,
+              color: message.internal ? '#0c4a6e' : '#6b7280',
+              background: message.internal ? '#e0f2fe' : '#f3f4f6', 
               border: 'none', 
               borderRadius: 4, 
               cursor: 'pointer',
               transition: 'all 0.15s ease'
             } 
-          }, thread.internal ? '✓ Internal' : 'Internal'),
+          }, message.internal ? '✓ Internal' : 'Internal'),
           React.createElement('button', { 
             key: 'external', 
-            onClick: () => toggleFlag('external', !thread.external), 
+            onClick: () => toggleFlag('external', !message.external), 
             style: { 
               padding: '4px 10px', 
               fontSize: 12, 
-              fontWeight: thread.external ? 600 : 400,
-              color: thread.external ? '#78350f' : '#6b7280',
-              background: thread.external ? '#fef3c7' : '#f3f4f6', 
+              fontWeight: message.external ? 600 : 400,
+              color: message.external ? '#78350f' : '#6b7280',
+              background: message.external ? '#fef3c7' : '#f3f4f6', 
               border: 'none', 
               borderRadius: 4, 
               cursor: 'pointer',
               transition: 'all 0.15s ease'
             } 
-          }, thread.external ? '✓ External' : 'External'),
+          }, message.external ? '✓ External' : 'External'),
           React.createElement('button', { 
             key: 'priv', 
-            onClick: () => toggleFlag('privileged', !thread.privileged), 
+            onClick: () => toggleFlag('privileged', !message.privileged), 
             style: { 
               padding: '4px 10px', 
               fontSize: 12, 
-              fontWeight: thread.privileged ? 600 : 400,
-              color: thread.privileged ? '#831843' : '#6b7280',
-              background: thread.privileged ? '#fce7f3' : '#f3f4f6', 
+              fontWeight: message.privileged ? 600 : 400,
+              color: message.privileged ? '#831843' : '#6b7280',
+              background: message.privileged ? '#fce7f3' : '#f3f4f6', 
               border: 'none', 
               borderRadius: 4, 
               cursor: 'pointer',
               transition: 'all 0.15s ease'
             } 
-          }, thread.privileged ? '✓ Attorney-Client Privilege' : 'Attorney-Client Privilege'),
+          }, message.privileged ? '✓ Attorney-Client Privilege' : 'Attorney-Client Privilege'),
           React.createElement('button', { 
             key: 'read',
             onClick: toggleRead,
-            title: (thread.unreadBy && thread.unreadBy.includes(userId)) ? 'Mark as read' : 'Mark as unread',
+            title: (message.unreadBy && message.unreadBy.includes(userId)) ? 'Mark as read' : 'Mark as unread',
             style: { 
               padding: '4px 10px', 
               fontSize: 12,
@@ -3043,7 +2648,7 @@
               cursor: 'pointer',
               transition: 'all 0.15s ease'
             } 
-          }, (thread.unreadBy && thread.unreadBy.includes(userId)) ? '📧 Unread' : '📬 Read'),
+          }, (message.unreadBy && message.unreadBy.includes(userId)) ? '📧 Unread' : '📬 Read'),
           React.createElement('button', { 
             key: 'export', 
             onClick: exportCSV, 
@@ -3061,7 +2666,7 @@
       
       // Message history (scrollable middle) - styled like AI chat
       // Helper: determine if this is a group conversation (3+ participants)
-      const allParticipants = thread && thread.participants ? [thread.createdBy, ...thread.participants] : [];
+      const allParticipants = message && message.participants ? [message.createdBy, ...message.participants] : [];
       const isGroupConversation = allParticipants.length >= 3;
       
       // Helper: color class for user (for group conversations)
@@ -3091,7 +2696,7 @@
           background: '#fff'
         } 
       }, 
-        (thread.posts || []).map(p => {
+        (message.posts || []).map(p => {
           const mine = String(p.author.userId) === String(userId);
           const rowCls = 'chat-bubble-row ' + (mine ? 'mine' : 'other');
           let bubbleCls = 'chat-bubble ' + (mine ? 'mine' : 'other');
@@ -3199,12 +2804,12 @@
         }, [
           React.createElement('h3', { key: 'title', style: { margin: '0 0 12px 0', fontSize: 16, fontWeight: 600 } }, 
             showConfirmModal === 'archive' 
-              ? (thread.archivedBy && thread.archivedBy.includes(userId) ? 'Unarchive Conversation?' : 'Archive Conversation?')
+              ? (message.archivedBy && message.archivedBy.includes(userId) ? 'Unarchive Conversation?' : 'Archive Conversation?')
               : 'Delete Conversation?'
           ),
           React.createElement('p', { key: 'message', style: { margin: '0 0 20px 0', fontSize: 14, color: '#6b7280' } },
             showConfirmModal === 'archive'
-              ? (thread.archivedBy && thread.archivedBy.includes(userId) 
+              ? (message.archivedBy && message.archivedBy.includes(userId) 
                   ? 'Move this conversation back to your open messages?'
                   : 'This will move the conversation to your archived messages. You can unarchive it later.')
               : 'This will remove the conversation from your view. Other participants will still see it.'
@@ -3229,7 +2834,7 @@
                 fontWeight: 500
               }
             }, showConfirmModal === 'archive' 
-                ? (thread.archivedBy && thread.archivedBy.includes(userId) ? 'Unarchive' : 'Archive')
+                ? (message.archivedBy && message.archivedBy.includes(userId) ? 'Unarchive' : 'Archive')
                 : 'Delete')
           ])
         ])
@@ -3246,7 +2851,7 @@
     }
     
     // New Message Modal
-    function NewThreadModal(props) {
+    function NewMessageModal(props) {
       const { onClose, onCreate } = props || {};
       const API_BASE = getApiBase();
       const { currentUser: userId, users } = React.useContext(StateContext);
@@ -3281,41 +2886,83 @@
           return;
         }
         try {
-          // Include current user in participants
+          // Check for existing conversation with same participants
+          const checkResponse = await fetch(`${API_BASE}/api/v1/messages?userId=${userId}`);
+          if (checkResponse.ok) {
+            const existingData = await checkResponse.json();
+            
+            // Get the recipient user IDs (not including current user)
+            const newRecipientIds = recipients.map(p => p.userId).filter(Boolean).sort();
+            
+            // Check if any existing message has the exact same participants
+            // Note: server stores createdBy separately from participants array
+            const duplicateMessage = existingData.messages.find(msg => {
+              const msgRecipientIds = msg.participants.map(p => p.userId).filter(Boolean).sort();
+              
+              // Check if this is the same set of recipients (excluding creator)
+              // We need to check both cases: user is creator OR user is in participants
+              const msgCreator = msg.createdBy.userId;
+              
+              // If current user created the message, compare with message's participants
+              if (msgCreator === userId) {
+                return msgRecipientIds.length === newRecipientIds.length &&
+                       msgRecipientIds.every((id, idx) => id === newRecipientIds[idx]);
+              }
+              
+              // If current user is a participant, we need to check if the creator + other participants match
+              // Get all participants including creator, excluding current user
+              const allMsgParticipantIds = [msgCreator, ...msg.participants.map(p => p.userId)]
+                .filter(Boolean)
+                .filter(id => id !== userId)
+                .sort();
+              
+              return allMsgParticipantIds.length === newRecipientIds.length &&
+                     allMsgParticipantIds.every((id, idx) => id === newRecipientIds[idx]);
+            });
+            
+            if (duplicateMessage) {
+              alert('You already have a conversation with these participants. Please use the existing conversation.');
+              return;
+            }
+            
+            // ADDITIONAL VALIDATION: Prevent multiple one-on-one conversations with same person
+            if (recipients.length === 1) {
+              const recipientUserId = recipients[0].userId;
+              
+              // Look for any existing one-on-one message with this specific recipient
+              const existingOneOnOne = existingData.messages.find(msg => {
+                // A one-on-one has exactly 1 person in participants array
+                if (msg.participants.length !== 1) return false;
+                
+                const msgRecipient = msg.participants[0].userId;
+                const msgCreator = msg.createdBy.userId;
+                
+                // Check both scenarios:
+                // 1. Current user created message, recipient is in participants
+                // 2. Recipient created message, current user is in participants
+                return (msgCreator === userId && msgRecipient === recipientUserId) ||
+                       (msgCreator === recipientUserId && msgRecipient === userId);
+              });
+              
+              if (existingOneOnOne) {
+                const recipientName = recipients[0].label;
+                alert(`You already have a one-on-one conversation with ${recipientName}. Please use the existing conversation or add more participants to create a group chat.`);
+                return;
+              }
+            }
+          }
+          
+          // Include current user in participants for sending to server
           const currentUser = users.find(u => u.id === userId);
           const allParticipants = [
             { userId, label: currentUser?.label || 'Me', email: currentUser?.email || '', internal: true },
             ...recipients
           ];
           
-          // Check for existing conversation with same participants
-          const checkResponse = await fetch(`${API_BASE}/api/v1/messages/v2?userId=${userId}`);
-          if (checkResponse.ok) {
-            const existingData = await checkResponse.json();
-            const newParticipantIds = allParticipants.map(p => p.userId).filter(Boolean).sort();
-            
-            // Check if any existing thread has the exact same participants
-            const duplicateThread = existingData.threads.find(thread => {
-              const threadParticipantIds = [
-                thread.createdBy.userId,
-                ...thread.participants.map(p => p.userId)
-              ].filter(Boolean).sort();
-              
-              // Same length and all IDs match
-              return threadParticipantIds.length === newParticipantIds.length &&
-                     threadParticipantIds.every((id, idx) => id === newParticipantIds[idx]);
-            });
-            
-            if (duplicateThread) {
-              alert('You already have a conversation with these participants. Please use the existing conversation.');
-              return;
-            }
-          }
-          
           // Auto-generate title from participants (excluding current user)
           const title = recipients.map(r => r.label).join(', ');
           
-          const response = await fetch(`${API_BASE}/api/v1/messages/v2`, {
+          const response = await fetch(`${API_BASE}/api/v1/messages`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ title, recipients: allParticipants, internal, external, privileged, text, userId })
@@ -3746,9 +3393,9 @@
             const d = ev.detail;
             const text = d && d.payload && d.payload.text;
             const from = d && d.userId || 'bot';
-            const threadPlatform = d && d.payload && d.payload.threadPlatform;
+            const messagePlatform = d && d.payload && d.payload.messagePlatform;
             // Ignore messages from other platforms (isolate threads)
-            try { if (typeof Office !== 'undefined') { if (threadPlatform && threadPlatform !== 'word') return; } else { if (threadPlatform && threadPlatform !== 'web') return; } } catch {}
+            try { if (typeof Office !== 'undefined') { if (messagePlatform && messagePlatform !== 'word') return; } else { if (messagePlatform && messagePlatform !== 'web') return; } } catch {}
             // Ignore echo of our own message (server broadcasts user messages too)
             if (!text || String(from) === String(currentUser)) return;
             setMessages((m) => { const next = (m || []).concat(`[${from}] ${text}`); return next; });
@@ -3759,7 +3406,7 @@
             const d = ev.detail;
             const isGlobal = !!(d && d.payload && d.payload.all);
             const forUser = String(d && d.userId || 'default');
-            const threadPlatform = d && d.payload && d.payload.threadPlatform;
+            const messagePlatform = d && d.payload && d.payload.messagePlatform;
             const currentPlatform = typeof Office !== 'undefined' ? 'word' : 'web';
             
 
@@ -3787,11 +3434,11 @@
             // Ignore resets from other platforms
             try {
               if (typeof Office !== 'undefined') {
-                if (threadPlatform && threadPlatform !== 'word') {
+                if (messagePlatform && messagePlatform !== 'word') {
                   return;
                 }
               } else {
-                if (threadPlatform && threadPlatform !== 'web') {
+                if (messagePlatform && messagePlatform !== 'web') {
                   return;
                 }
               }
@@ -3815,8 +3462,8 @@
             if (!text) return;
 
             // Check platform compatibility
-            const threadPlatform = d && d.payload && d.payload.threadPlatform;
-            try { if (typeof Office !== 'undefined') { if (threadPlatform && threadPlatform !== 'word') return; } else { if (threadPlatform && threadPlatform !== 'web') return; } } catch {}
+            const messagePlatform = d && d.payload && d.payload.messagePlatform;
+            try { if (typeof Office !== 'undefined') { if (messagePlatform && messagePlatform !== 'word') return; } else { if (messagePlatform && messagePlatform !== 'web') return; } } catch {}
 
             // For streaming, we need to handle incremental updates to the last message
             setMessages((m) => {
@@ -3838,8 +3485,8 @@
             const fullText = String(d && d.payload && d.payload.fullText || '');
 
             // Check platform compatibility
-            const threadPlatform = d && d.payload && d.payload.threadPlatform;
-            try { if (typeof Office !== 'undefined') { if (threadPlatform && threadPlatform !== 'word') return; } else { if (threadPlatform && threadPlatform !== 'web') return; } } catch {}
+            const messagePlatform = d && d.payload && d.payload.messagePlatform;
+            try { if (typeof Office !== 'undefined') { if (messagePlatform && messagePlatform !== 'word') return; } else { if (messagePlatform && messagePlatform !== 'web') return; } } catch {}
 
             // Replace the last message with the complete text
             setMessages((m) => {
@@ -4062,10 +3709,10 @@
             const d = ev && ev.detail;
             const n = Number(d && d.version);
             if (!Number.isFinite(n) || n < 1) return;
-            const threadPlatform = d && d.payload && d.payload.threadPlatform;
+            const messagePlatform = d && d.payload && d.payload.messagePlatform;
             
             // Keep platforms separate: ignore view events from the other platform
-            try { if (typeof Office !== 'undefined') { if (threadPlatform && threadPlatform !== 'word') return; } else { if (threadPlatform && threadPlatform !== 'web') return; } } catch {}
+            try { if (typeof Office !== 'undefined') { if (messagePlatform && messagePlatform !== 'word') return; } else { if (messagePlatform && messagePlatform !== 'web') return; } } catch {}
             // Ensure the list reflects the newest versions
             try { await refresh(); } catch {}
             
@@ -4232,7 +3879,7 @@
               if (v > 0) {
                 setLoadedVersion(v);
                 try { setViewingVersion(v); } catch {}
-                try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { threadPlatform: plat } } })); } catch {}
+                try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { messagePlatform: plat } } })); } catch {}
               }
             } catch {}
           } catch {}
@@ -4590,7 +4237,7 @@
               try { if (typeof setLoadedVersion === 'function') setLoadedVersion(currentVersion); } catch {}
               try {
                 const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
-                window.dispatchEvent(new CustomEvent('version:view', { detail: { version: currentVersion, payload: { threadPlatform: plat } } }));
+                window.dispatchEvent(new CustomEvent('version:view', { detail: { version: currentVersion, payload: { messagePlatform: plat } } }));
               } catch {}
             } finally { onClose?.(); }
           } else {
@@ -4625,7 +4272,7 @@
               try { if (typeof setLoadedVersion === 'function') setLoadedVersion(versionToUse); } catch {}
               try {
                 const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
-                window.dispatchEvent(new CustomEvent('version:view', { detail: { version: versionToUse, payload: { threadPlatform: plat } } }));
+                window.dispatchEvent(new CustomEvent('version:view', { detail: { version: versionToUse, payload: { messagePlatform: plat } } }));
               } catch {}
             } finally { onClose?.(); }
           } else {
@@ -5995,7 +5642,7 @@
     function App(props) {
       const [modal, setModal] = React.useState(null);
       const { config } = props;
-      const { documentSource, actions, approvalsSummary, messagingCount, messagingV2UnreadCount, activities, lastSeenActivityId, viewingVersion } = React.useContext(StateContext);
+      const { documentSource, actions, approvalsSummary, messagingUnreadCount, activities, lastSeenActivityId, viewingVersion } = React.useContext(StateContext);
       React.useEffect(() => {
         function onOpen(ev) { 
           
@@ -6091,7 +5738,7 @@
       const tabbarRef = React.useRef(null);
       const aiLabelRef = React.useRef(null);
       const wfLabelRef = React.useRef(null);
-      const msgV2LabelRef = React.useRef(null);
+      const msgLabelRef = React.useRef(null);
       
       // Factory reset: navigate back to AI tab
       React.useEffect(() => {
@@ -6132,8 +5779,8 @@
             ? aiLabelRef.current
             : (activeTab === 'Workflow'
               ? wfLabelRef.current
-              : (activeTab === 'Messages v2'
-                  ? msgV2LabelRef.current
+              : (activeTab === 'Messages'
+                  ? msgLabelRef.current
                   : (activeTab === 'Versions'
                     ? verLabelRef.current
                     : (activeTab === 'Activity'
@@ -6152,7 +5799,7 @@
 
       React.useEffect(() => { recalcUnderline(); }, [recalcUnderline]);
       // Recalculate underline if the Workflow, Messages, or Activity tab label width changes due to count updates
-      React.useEffect(() => { recalcUnderline(); }, [approvalsSummary, messagingCount, activities, lastSeenActivityId, recalcUnderline]);
+      React.useEffect(() => { recalcUnderline(); }, [approvalsSummary, messagingUnreadCount, activities, lastSeenActivityId, recalcUnderline]);
       React.useEffect(() => {
         const onResize = () => recalcUnderline();
         window.addEventListener('resize', onResize);
@@ -6179,13 +5826,13 @@
             React.createElement('span', { key: 'label', ref: wfLabelRef, style: { display: 'inline-block' } }, 'Workflow')
           ]),
           React.createElement('button', {
-            key: 'tab-messaging-v2',
-            className: activeTab === 'Messages v2' ? 'tab tab--active' : 'tab',
-            onClick: () => setActiveTab('Messages v2'),
-            style: { background: 'transparent', border: 'none', padding: '8px 6px 8px 6px', cursor: 'pointer', color: activeTab === 'Messages v2' ? '#111827' : '#6B7280', fontWeight: 600, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: '2px' }
+            key: 'tab-messaging',
+            className: activeTab === 'Messages' ? 'tab tab--active' : 'tab',
+            onClick: () => setActiveTab('Messages'),
+            style: { background: 'transparent', border: 'none', padding: '8px 6px 8px 6px', cursor: 'pointer', color: activeTab === 'Messages' ? '#111827' : '#6B7280', fontWeight: 600, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: '2px' }
           }, [
-            messagingV2UnreadCount > 0 ? React.createElement('span', { key: 'count', style: { fontSize: '11px', lineHeight: '1' } }, `(${messagingV2UnreadCount})`) : null,
-            React.createElement('span', { key: 'label', ref: msgV2LabelRef, style: { display: 'inline-block' } }, 'Messages v2')
+            messagingUnreadCount > 0 ? React.createElement('span', { key: 'count', style: { fontSize: '11px', lineHeight: '1' } }, `(${messagingUnreadCount})`) : null,
+            React.createElement('span', { key: 'label', ref: msgLabelRef, style: { display: 'inline-block' } }, 'Messages')
           ]),
           React.createElement('button', {
             key: 'tab-versions',
@@ -6223,10 +5870,10 @@
           }, React.createElement('span', { ref: variablesLabelRef, style: { display: 'inline-block' } }, 'Variables')),
         React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
-        React.createElement('div', { key: 'tabbody', className: (activeTab === 'AI' || activeTab === 'Activity' || activeTab === 'Messages v2') ? '' : 'mt-3', style: { flex: 1, minHeight: 0, overflowY: (activeTab === 'AI' || activeTab === 'Activity' || activeTab === 'Messages v2') ? 'hidden' : 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', padding: (activeTab === 'AI' || activeTab === 'Activity' || activeTab === 'Messages v2') ? '0' : '0 8px 112px 8px', marginTop: (activeTab === 'AI' || activeTab === 'Activity' || activeTab === 'Messages v2') ? 0 : undefined } }, [
+        React.createElement('div', { key: 'tabbody', className: (activeTab === 'AI' || activeTab === 'Activity' || activeTab === 'Messages') ? '' : 'mt-3', style: { flex: 1, minHeight: 0, overflowY: (activeTab === 'AI' || activeTab === 'Activity' || activeTab === 'Messages') ? 'hidden' : 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', padding: (activeTab === 'AI' || activeTab === 'Activity' || activeTab === 'Messages') ? '0' : '0 8px 112px 8px', marginTop: (activeTab === 'AI' || activeTab === 'Activity' || activeTab === 'Messages') ? 0 : undefined } }, [
           React.createElement('div', { key: 'wrap-ai', style: { display: (activeTab === 'AI' ? 'flex' : 'none'), flex: 1, height: '100%', flexDirection: 'column' } }, React.createElement(ChatConsole, { key: 'chat' })),
           React.createElement('div', { key: 'wrap-workflow', style: { display: (activeTab === 'Workflow' ? 'block' : 'none') } }, React.createElement(WorkflowApprovalsPanel, { key: 'workflow' })),
-          React.createElement('div', { key: 'wrap-messaging-v2', style: { display: (activeTab === 'Messages v2' ? 'flex' : 'none'), flexDirection: 'column', height: '100%' } }, React.createElement(MessagingV2Panel, { key: 'messaging-v2' })),
+          React.createElement('div', { key: 'wrap-messaging', style: { display: (activeTab === 'Messages' ? 'flex' : 'none'), flexDirection: 'column', height: '100%' } }, React.createElement(MessagingPanel, { key: 'messaging' })),
           React.createElement('div', { key: 'wrap-versions', style: { display: (activeTab === 'Versions' ? 'block' : 'none') } }, React.createElement(VersionsPanel, { key: 'versions' })),
           React.createElement('div', { key: 'wrap-activity', style: { display: (activeTab === 'Activity' ? 'flex' : 'none'), flex: 1, height: '100%', flexDirection: 'column' } }, React.createElement(ActivityPanel, { key: 'activity', isActive: activeTab === 'Activity' })),
           React.createElement('div', { key: 'wrap-compare', style: { display: (activeTab === 'Comparison' ? 'block' : 'none') } }, React.createElement(ComparisonTab, { key: 'compare' })),

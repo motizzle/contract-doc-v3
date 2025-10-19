@@ -193,81 +193,43 @@ function logActivity(type, userId, details = {}) {
   }
 }
 
-// Messages storage functions
+// Messages storage functions (conversation messaging with ACP/internal flags)
 function readMessages() {
   try {
     if (fs.existsSync(messagesFilePath)) {
       const content = fs.readFileSync(messagesFilePath, 'utf8');
       const cleanContent = content.replace(/^\uFEFF/, '');
-      const messages = JSON.parse(cleanContent);
-      return Array.isArray(messages) ? messages : [];
-    }
-    return [];
-  } catch (e) {
-    console.error('Error reading messages:', e);
-    return [];
-  }
-}
-
-function saveMessage(message) {
-  try {
-    const messages = readMessages();
-    messages.push(message);
-    fs.writeFileSync(messagesFilePath, JSON.stringify(messages, null, 2), 'utf8');
-    return true;
-  } catch (e) {
-    console.error('Error saving message:', e);
-    return false;
-  }
-}
-
-function updateMessages(updatedMessages) {
-  try {
-    fs.writeFileSync(messagesFilePath, JSON.stringify(updatedMessages, null, 2), 'utf8');
-    return true;
-  } catch (e) {
-    console.error('Error updating messages:', e);
-    return false;
-  }
-}
-
-// Messages v2 storage functions (threaded messaging with ACP/internal flags)
-function readMessagesV2() {
-  try {
-    if (fs.existsSync(messagesV2FilePath)) {
-      const content = fs.readFileSync(messagesV2FilePath, 'utf8');
-      const cleanContent = content.replace(/^\uFEFF/, '');
       const data = JSON.parse(cleanContent);
       return {
-        threads: Array.isArray(data.threads) ? data.threads : [],
+        messages: Array.isArray(data.messages) ? data.messages : [],
         posts: Array.isArray(data.posts) ? data.posts : []
       };
     }
-    return { threads: [], posts: [] };
+    return { messages: [], posts: [] };
   } catch (e) {
-    console.error('Error reading messages v2:', e);
-    return { threads: [], posts: [] };
+    console.error('Error reading messages:', e);
+    return { messages: [], posts: [] };
   }
 }
 
-function writeMessagesV2(data) {
+function writeMessages(data) {
   try {
-    fs.writeFileSync(messagesV2FilePath, JSON.stringify(data, null, 2), 'utf8');
+    fs.writeFileSync(messagesFilePath, JSON.stringify(data, null, 2), 'utf8');
     return true;
   } catch (e) {
-    console.error('Error writing messages v2:', e);
+    console.error('Error writing messages:', e);
     return false;
   }
 }
 
-function createThread({ title, createdBy, participants, internal, external, privileged, text }) {
-  const data = readMessagesV2();
-  const threadId = `thread-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+function createMessage({ title, createdBy, participants, internal, external, privileged, text }) {
+  const data = readMessages();
+  const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   const now = Date.now();
   
-  const thread = {
-    threadId,
-    title: title || 'Untitled thread',
+  const message = {
+    messageId,
+    title: title || 'Untitled message',
     createdBy,
     createdAt: now,
     participants: participants || [],
@@ -282,13 +244,13 @@ function createThread({ title, createdBy, participants, internal, external, priv
     deletedAt: null
   };
   
-  data.threads.push(thread);
+  data.messages.push(message);
   
   // Add first post if text provided
   if (text && text.trim()) {
     const post = {
       postId: `post-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      threadId,
+      messageId,
       author: createdBy,
       createdAt: now,
       text: text.trim(),
@@ -297,22 +259,22 @@ function createThread({ title, createdBy, participants, internal, external, priv
     data.posts.push(post);
   }
   
-  writeMessagesV2(data);
-  return { thread, data };
+  writeMessages(data);
+  return { message, data };
 }
 
-function addPostToThread(threadId, author, text, privileged = false) {
-  const data = readMessagesV2();
-  const thread = data.threads.find(t => t.threadId === threadId);
+function addPostToMessage(messageId, author, text, privileged = false) {
+  const data = readMessages();
+  const message = data.messages.find(m => m.messageId === messageId);
   
-  if (!thread) {
-    return { error: 'Thread not found' };
+  if (!message) {
+    return { error: 'Message not found' };
   }
   
   const now = Date.now();
   const post = {
     postId: `post-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    threadId,
+    messageId,
     author,
     createdAt: now,
     text: text.trim(),
@@ -321,156 +283,156 @@ function addPostToThread(threadId, author, text, privileged = false) {
   
   data.posts.push(post);
   
-  // Update thread lastPostAt and mark unread for all except author
-  thread.lastPostAt = now;
-  thread.unreadBy = thread.participants
+  // Update message lastPostAt and mark unread for all except author
+  message.lastPostAt = now;
+  message.unreadBy = message.participants
     .map(p => p.userId)
     .filter(id => id !== author.userId);
   
-  writeMessagesV2(data);
-  return { post, thread, data };
+  writeMessages(data);
+  return { post, message, data };
 }
 
-function archiveThreadForUser(threadId, userId) {
-  const data = readMessagesV2();
-  const thread = data.threads.find(t => t.threadId === threadId);
+function archiveMessageForUser(messageId, userId) {
+  const data = readMessages();
+  const message = data.messages.find(m => m.messageId === messageId);
   
-  if (!thread) {
-    return { error: 'Thread not found' };
+  if (!message) {
+    return { error: 'Message not found' };
   }
   
   // Initialize archivedBy array if it doesn't exist
-  if (!thread.archivedBy) {
-    thread.archivedBy = [];
+  if (!message.archivedBy) {
+    message.archivedBy = [];
   }
   
   // Add userId to archivedBy if not already there
-  if (!thread.archivedBy.includes(userId)) {
-    thread.archivedBy.push(userId);
+  if (!message.archivedBy.includes(userId)) {
+    message.archivedBy.push(userId);
   }
   
-  writeMessagesV2(data);
-  return { thread, data };
+  writeMessages(data);
+  return { message, data };
 }
 
-function unarchiveThreadForUser(threadId, userId) {
-  const data = readMessagesV2();
-  const thread = data.threads.find(t => t.threadId === threadId);
+function unarchiveMessageForUser(messageId, userId) {
+  const data = readMessages();
+  const message = data.messages.find(m => m.messageId === messageId);
   
-  if (!thread) {
-    return { error: 'Thread not found' };
+  if (!message) {
+    return { error: 'Message not found' };
   }
   
   // Initialize archivedBy array if it doesn't exist
-  if (!thread.archivedBy) {
-    thread.archivedBy = [];
+  if (!message.archivedBy) {
+    message.archivedBy = [];
   }
   
   // Remove userId from archivedBy
-  thread.archivedBy = thread.archivedBy.filter(id => id !== userId);
+  message.archivedBy = message.archivedBy.filter(id => id !== userId);
   
-  writeMessagesV2(data);
-  return { thread, data };
+  writeMessages(data);
+  return { message, data };
 }
 
-function updateThreadFlags(threadId, { internal, external, privileged }) {
-  const data = readMessagesV2();
-  const thread = data.threads.find(t => t.threadId === threadId);
+function updateMessageFlags(messageId, { internal, external, privileged }) {
+  const data = readMessages();
+  const message = data.messages.find(m => m.messageId === messageId);
   
-  if (!thread) {
-    return { error: 'Thread not found' };
+  if (!message) {
+    return { error: 'Message not found' };
   }
   
-  if (typeof internal === 'boolean') thread.internal = internal;
-  if (typeof external === 'boolean') thread.external = external;
-  if (typeof privileged === 'boolean') thread.privileged = privileged;
+  if (typeof internal === 'boolean') message.internal = internal;
+  if (typeof external === 'boolean') message.external = external;
+  if (typeof privileged === 'boolean') message.privileged = privileged;
   
-  writeMessagesV2(data);
-  return { thread, data };
+  writeMessages(data);
+  return { message, data };
 }
 
-function markThreadRead(threadId, userId) {
-  const data = readMessagesV2();
-  const thread = data.threads.find(t => t.threadId === threadId);
+function markMessageRead(messageId, userId) {
+  const data = readMessages();
+  const message = data.messages.find(m => m.messageId === messageId);
   
-  if (!thread) {
-    return { error: 'Thread not found' };
+  if (!message) {
+    return { error: 'Message not found' };
   }
   
-  thread.unreadBy = (thread.unreadBy || []).filter(id => id !== userId);
+  message.unreadBy = (message.unreadBy || []).filter(id => id !== userId);
   
-  writeMessagesV2(data);
-  return { thread, data };
+  writeMessages(data);
+  return { message, data };
 }
 
-function markThreadUnread(threadId, userId) {
-  const data = readMessagesV2();
-  const thread = data.threads.find(t => t.threadId === threadId);
+function markMessageUnread(messageId, userId) {
+  const data = readMessages();
+  const message = data.messages.find(m => m.messageId === messageId);
   
-  if (!thread) {
-    return { error: 'Thread not found' };
+  if (!message) {
+    return { error: 'Message not found' };
   }
   
-  if (!thread.unreadBy) thread.unreadBy = [];
-  if (!thread.unreadBy.includes(userId)) {
-    thread.unreadBy.push(userId);
+  if (!message.unreadBy) message.unreadBy = [];
+  if (!message.unreadBy.includes(userId)) {
+    message.unreadBy.push(userId);
   }
   
-  writeMessagesV2(data);
-  return { thread, data };
+  writeMessages(data);
+  return { message, data };
 }
 
-function deleteThreadForUser(threadId, userId) {
-  const data = readMessagesV2();
-  const thread = data.threads.find(t => t.threadId === threadId);
+function deleteMessageForUser(messageId, userId) {
+  const data = readMessages();
+  const message = data.messages.find(m => m.messageId === messageId);
   
-  if (!thread) {
-    return { error: 'Thread not found' };
+  if (!message) {
+    return { error: 'Message not found' };
   }
   
   // Initialize deletedBy array if it doesn't exist
-  if (!thread.deletedBy) {
-    thread.deletedBy = [];
+  if (!message.deletedBy) {
+    message.deletedBy = [];
   }
   
   // Add userId to deletedBy if not already there
-  if (!thread.deletedBy.includes(userId)) {
-    thread.deletedBy.push(userId);
+  if (!message.deletedBy.includes(userId)) {
+    message.deletedBy.push(userId);
   }
   
-  writeMessagesV2(data);
-  return { thread, data };
+  writeMessages(data);
+  return { message, data };
 }
 
 function getDiscussionSummary(userId) {
-  const data = readMessagesV2();
-  // Only count threads where user is a participant and hasn't deleted it
-  const threads = data.threads.filter(t => {
-    const deletedBy = t.deletedBy || [];
-    return !t.deletedAt && 
+  const data = readMessages();
+  // Only count messages where user is a participant and hasn't deleted it
+  const messages = data.messages.filter(m => {
+    const deletedBy = m.deletedBy || [];
+    return !m.deletedAt && 
            !deletedBy.includes(userId) &&
-           (t.participants.some(p => p.userId === userId) || t.createdBy.userId === userId);
+           (m.participants.some(p => p.userId === userId) || m.createdBy.userId === userId);
   });
   
   // Open = not archived by this user
-  const open = threads.filter(t => {
-    const archivedBy = t.archivedBy || [];
+  const open = messages.filter(m => {
+    const archivedBy = m.archivedBy || [];
     return !archivedBy.includes(userId);
   }).length;
   
   // Archived = archived by this user
-  const archived = threads.filter(t => {
-    const archivedBy = t.archivedBy || [];
+  const archived = messages.filter(m => {
+    const archivedBy = m.archivedBy || [];
     return archivedBy.includes(userId);
   }).length;
   
-  const privileged = threads.filter(t => t.privileged).length;
-  const internal = threads.filter(t => t.internal).length;
-  const external = threads.filter(t => t.external).length;
-  // Count CONVERSATIONS with unread messages, not individual messages
-  // This is the number of threads that have the user in their unreadBy array
-  const unreadForMe = threads.filter(t => 
-    t.unreadBy && t.unreadBy.includes(userId)
+  const privileged = messages.filter(m => m.privileged).length;
+  const internal = messages.filter(m => m.internal).length;
+  const external = messages.filter(m => m.external).length;
+  // Count CONVERSATIONS with unread posts, not individual posts
+  // This is the number of messages that have the user in their unreadBy array
+  const unreadForMe = messages.filter(m => 
+    m.unreadBy && m.unreadBy.includes(userId)
   ).length;
   
   return {
@@ -872,13 +834,13 @@ function buildActivityMessage(type, details = {}) {
         message: `${userLabel} performed factory reset - all data cleared`
       };
 
-    // Messages v2 activity types
-    case 'message:thread-created':
+    // Messages activity types
+    case 'message:created':
       return {
         action: 'started conversation',
         target: 'message',
         details: { 
-          threadId: details.threadId, 
+          messageId: details.messageId, 
           title: details.title, 
           recipients: details.recipients,
           recipientsList: details.recipientsList,  // Array of recipient objects with names/emails
@@ -896,7 +858,7 @@ function buildActivityMessage(type, details = {}) {
         action: 'archived conversation',
         target: 'message',
         details: { 
-          threadId: details.threadId,
+          messageId: details.messageId,
           title: details.title,
           participants: details.participants,
           postCount: details.postCount,
@@ -910,7 +872,7 @@ function buildActivityMessage(type, details = {}) {
         action: 'unarchived conversation',
         target: 'message',
         details: { 
-          threadId: details.threadId,
+          messageId: details.messageId,
           title: details.title,
           participants: details.participants,
           postCount: details.postCount,
@@ -924,7 +886,7 @@ function buildActivityMessage(type, details = {}) {
         action: 'updated conversation flags',
         target: 'message',
         details: { 
-          threadId: details.threadId, 
+          messageId: details.messageId, 
           title: details.title,
           internal: details.internal,
           external: details.external,
@@ -947,7 +909,7 @@ function buildActivityMessage(type, details = {}) {
         action: 'deleted conversation',
         target: 'message',
         details: { 
-          threadId: details.threadId, 
+          messageId: details.messageId, 
           title: details.title,
           participants: details.participants,
           postCount: details.postCount,
@@ -980,7 +942,6 @@ const versionsDir = path.join(dataWorkingDir, 'versions');
 const approvalsFilePath = path.join(dataAppDir, 'approvals.json');
 const activityLogFilePath = path.join(dataAppDir, 'activity-log.json');
 const messagesFilePath = path.join(dataAppDir, 'messages.json');
-const messagesV2FilePath = path.join(dataAppDir, 'messages-v2.json');
 const chatFilePath = path.join(dataAppDir, 'chat.json');
 const variablesFilePath = path.join(dataAppDir, 'variables.json');
 
@@ -1372,63 +1333,24 @@ app.get('/api/v1/activity', (req, res) => {
 });
 
 // Messages API
+// Messages API (conversation messaging with ACP/internal flags)
+// GET /api/v1/messages - List conversations with filters
 app.get('/api/v1/messages', (req, res) => {
   try {
-    const messages = readMessages();
-    return res.json({ messages });
-  } catch (e) {
-    console.error('Error reading messages:', e);
-    return res.status(500).json({ error: 'Failed to read messages' });
-  }
-});
-
-app.post('/api/v1/messages/mark-read', (req, res) => {
-  try {
-    const { threadId, userId } = req.body;
-    if (!threadId || !userId) {
-      return res.status(400).json({ error: 'Missing threadId or userId' });
-    }
-    
-    const messages = readMessages();
-    const updatedMessages = messages.map(m => {
-      const me = String(userId);
-      const mTid = m.threadId ? String(m.threadId) : (Array.isArray(m.to) ? `group:${(m.to||[]).slice().sort().join(',')}` : `dm:${(m.from === me ? String(m.to) : String(m.from))}`);
-      
-      if (mTid === threadId) {
-        const readBy = Array.isArray(m.readBy) ? m.readBy : [];
-        if (!readBy.includes(me)) {
-          return { ...m, readBy: [...readBy, me] };
-        }
-      }
-      return m;
-    });
-    
-    updateMessages(updatedMessages);
-    return res.json({ ok: true, messages: updatedMessages });
-  } catch (e) {
-    console.error('Error marking messages as read:', e);
-    return res.status(500).json({ error: 'Failed to mark messages as read' });
-  }
-});
-
-// Messages v2 API (threaded messaging system)
-// GET /api/v1/messages/v2 - List threads with filters
-app.get('/api/v1/messages/v2', (req, res) => {
-  try {
     const { state, internal, privileged, search, userId } = req.query;
-    const data = readMessagesV2();
-    let threads = data.threads.filter(t => !t.deletedAt);
+    const data = readMessages();
+    let messages = data.messages.filter(m => !m.deletedAt);
     
-    // Filter by participant - only show threads where userId is a participant
+    // Filter by participant - only show conversations where userId is a participant
     if (userId) {
-      threads = threads.filter(t => 
-        t.participants.some(p => p.userId === userId) || 
-        t.createdBy.userId === userId
+      messages = messages.filter(m => 
+        m.participants.some(p => p.userId === userId) || 
+        m.createdBy.userId === userId
       );
       
-      // Filter out threads deleted by this user
-      threads = threads.filter(t => {
-        const deletedBy = t.deletedBy || [];
+      // Filter out conversations deleted by this user
+      messages = messages.filter(m => {
+        const deletedBy = m.deletedBy || [];
         return !deletedBy.includes(userId);
       });
     }
@@ -1436,66 +1358,66 @@ app.get('/api/v1/messages/v2', (req, res) => {
     // Apply filters
     if (state && state !== 'all') {
       if (state === 'archived') {
-        // Show only threads archived by this user
-        threads = threads.filter(t => {
-          const archivedBy = t.archivedBy || [];
+        // Show only conversations archived by this user
+        messages = messages.filter(m => {
+          const archivedBy = m.archivedBy || [];
           return archivedBy.includes(userId);
         });
       } else {
-        // For 'open', exclude archived threads
-        threads = threads.filter(t => {
-          const archivedBy = t.archivedBy || [];
+        // For 'open', exclude archived conversations
+        messages = messages.filter(m => {
+          const archivedBy = m.archivedBy || [];
           return !archivedBy.includes(userId);
         });
       }
     }
     if (internal === 'true') {
-      threads = threads.filter(t => t.internal === true);
+      messages = messages.filter(m => m.internal === true);
     } else if (internal === 'false') {
-      threads = threads.filter(t => t.internal === false);
+      messages = messages.filter(m => m.internal === false);
     }
     if (privileged === 'true') {
-      threads = threads.filter(t => t.privileged === true);
+      messages = messages.filter(m => m.privileged === true);
     } else if (privileged === 'false') {
-      threads = threads.filter(t => t.privileged === false);
+      messages = messages.filter(m => m.privileged === false);
     }
     // Sort by lastPostAt descending
-    threads.sort((a, b) => b.lastPostAt - a.lastPostAt);
+    messages.sort((a, b) => b.lastPostAt - a.lastPostAt);
     
-    // Get posts for each thread and ensure all properties have defaults
-    const threadsWithPosts = threads.map(thread => ({
-      ...thread,
-      internal: thread.internal !== undefined ? thread.internal : false,
-      external: thread.external !== undefined ? thread.external : false,
-      privileged: thread.privileged !== undefined ? thread.privileged : false,
-      archivedBy: thread.archivedBy || [],
-      deletedBy: thread.deletedBy || [],
-      posts: data.posts.filter(p => p.threadId === thread.threadId).sort((a, b) => a.createdAt - b.createdAt),
-      postCount: data.posts.filter(p => p.threadId === thread.threadId).length
+    // Get posts for each conversation and ensure all properties have defaults
+    const messagesWithPosts = messages.map(message => ({
+      ...message,
+      internal: message.internal !== undefined ? message.internal : false,
+      external: message.external !== undefined ? message.external : false,
+      privileged: message.privileged !== undefined ? message.privileged : false,
+      archivedBy: message.archivedBy || [],
+      deletedBy: message.deletedBy || [],
+      posts: data.posts.filter(p => p.messageId === message.messageId).sort((a, b) => a.createdAt - b.createdAt),
+      postCount: data.posts.filter(p => p.messageId === message.messageId).length
     }));
     
     // Apply search filter after posts are attached (search across title, participants, and all post content)
-    let filteredThreads = threadsWithPosts;
+    let filteredMessages = messagesWithPosts;
     if (search && search.trim()) {
       const searchLower = search.toLowerCase();
-      filteredThreads = threadsWithPosts.filter(t => 
-        t.title.toLowerCase().includes(searchLower) ||
-        t.participants.some(p => p.label.toLowerCase().includes(searchLower)) ||
-        t.participants.some(p => p.email && p.email.toLowerCase().includes(searchLower)) ||
-        t.posts.some(post => post.text && post.text.toLowerCase().includes(searchLower)) ||
-        t.posts.some(post => post.author && post.author.label && post.author.label.toLowerCase().includes(searchLower))
+      filteredMessages = messagesWithPosts.filter(m => 
+        m.title.toLowerCase().includes(searchLower) ||
+        m.participants.some(p => p.label.toLowerCase().includes(searchLower)) ||
+        m.participants.some(p => p.email && p.email.toLowerCase().includes(searchLower)) ||
+        m.posts.some(post => post.text && post.text.toLowerCase().includes(searchLower)) ||
+        m.posts.some(post => post.author && post.author.label && post.author.label.toLowerCase().includes(searchLower))
       );
     }
     
-    return res.json({ threads: filteredThreads });
+    return res.json({ messages: filteredMessages });
   } catch (e) {
-    console.error('Error reading messages v2:', e);
+    console.error('Error reading messages:', e);
     return res.status(500).json({ error: 'Failed to read messages' });
   }
 });
 
-// POST /api/v1/messages/v2 - Create new thread
-app.post('/api/v1/messages/v2', (req, res) => {
+// POST /api/v1/messages - Create new Message
+app.post('/api/v1/messages', (req, res) => {
   try {
     const { title, recipients, internal, external, privileged, text, userId } = req.body;
     
@@ -1515,13 +1437,13 @@ app.post('/api/v1/messages/v2', (req, res) => {
     };
     
     // Auto-generate title from participants if not provided
-    const threadTitle = title && title.trim() 
+    const MessageTitle = title && title.trim() 
       ? title.trim() 
-      : recipients.map(r => r.label).join(', ') || 'Untitled thread';
+      : recipients.map(r => r.label).join(', ') || 'Untitled Message';
     
-    // Create thread
-    const result = createThread({
-      title: threadTitle,
+    // Create Message
+    const result = createMessage({
+      title: MessageTitle,
       createdBy,
       participants: recipients,
       internal: !!internal,
@@ -1536,14 +1458,14 @@ app.post('/api/v1/messages/v2', (req, res) => {
     
     // Broadcast SSE event
     broadcast({
-      type: 'message:thread-created',
-      thread: result.thread
+      type: 'message:created',
+      message: result.message
     });
     
     // Log activity
-    logActivity('message:thread-created', userId, {
-      threadId: result.thread.threadId,
-      title: result.thread.title,
+    logActivity('message:created', userId, {
+      messageId: result.message.messageId,
+      title: result.message.title,
       recipients: recipients.length,
       recipientsList: recipients.map(r => ({ label: r.label, email: r.email, userId: r.userId })),
       internal: !!internal,
@@ -1553,17 +1475,17 @@ app.post('/api/v1/messages/v2', (req, res) => {
       platform: (req.body?.platform || req.query?.platform || 'web')
     });
     
-    return res.json({ ok: true, thread: result.thread });
+    return res.json({ ok: true, message: result.message });
   } catch (e) {
-    console.error('Error creating thread:', e);
-    return res.status(500).json({ error: 'Failed to create thread' });
+    console.error('Error creating message:', e);
+    return res.status(500).json({ error: 'Failed to create message' });
   }
 });
 
-// POST /api/v1/messages/v2/:threadId/post - Add post to thread
-app.post('/api/v1/messages/v2/:threadId/post', (req, res) => {
+// POST /api/v1/messages/:messageId/post - Add post to message
+app.post('/api/v1/messages/:messageId/post', (req, res) => {
   try {
-    const { threadId } = req.params;
+    const { messageId } = req.params;
     const { text, privileged, userId } = req.body;
     
     if (!text || !text.trim()) {
@@ -1578,7 +1500,7 @@ app.post('/api/v1/messages/v2/:threadId/post', (req, res) => {
       label: currentUser?.label || 'User'
     };
     
-    const result = addPostToThread(threadId, author, text, !!privileged);
+    const result = addPostToMessage(messageId, author, text, !!privileged);
     
     if (result.error) {
       return res.status(404).json({ error: result.error });
@@ -1588,20 +1510,20 @@ app.post('/api/v1/messages/v2/:threadId/post', (req, res) => {
     broadcast({
       type: 'message:post-added',
       post: result.post,
-      thread: result.thread
+      message: result.message
     });
     
-    return res.json({ ok: true, post: result.post, thread: result.thread });
+    return res.json({ ok: true, post: result.post, message: result.message });
   } catch (e) {
     console.error('Error adding post:', e);
     return res.status(500).json({ error: 'Failed to add post' });
   }
 });
 
-// POST /api/v1/messages/v2/:threadId/state - Update thread state (user-specific archive)
-app.post('/api/v1/messages/v2/:threadId/state', (req, res) => {
+// POST /api/v1/messages/:messageId/state - Update message state (user-specific archive)
+app.post('/api/v1/messages/:messageId/state', (req, res) => {
   try {
-    const { threadId } = req.params;
+    const { messageId } = req.params;
     const { state, userId } = req.body;
     
     if (!userId) {
@@ -1610,68 +1532,68 @@ app.post('/api/v1/messages/v2/:threadId/state', (req, res) => {
     
     if (state === 'archived') {
       // Archive is user-specific - add user to archivedBy array
-      const result = archiveThreadForUser(threadId, userId);
+      const result = archiveMessageForUser(messageId, userId);
       if (result.error) {
         return res.status(404).json({ error: result.error });
       }
       
       broadcast({
         type: 'message:state-changed',
-        thread: result.thread,
+        message: result.message,
         userId
       });
       
-      const data = readMessagesV2();
-      const postCount = data.posts.filter(p => p.threadId === threadId).length;
+      const data = readMessages();
+      const postCount = data.posts.filter(p => p.messageId === messageId).length;
       
       logActivity('message:archived', userId, { 
-        threadId,
-        title: result.thread.title,
-        participants: result.thread.participants.map(p => p.label).join(', '),
+        messageId,
+        title: result.message.title,
+        participants: result.message.participants.map(p => p.label).join(', '),
         postCount,
         platform: (req.body?.platform || req.query?.platform || 'web')
       });
-      return res.json({ ok: true, thread: result.thread });
+      return res.json({ ok: true, message: result.message });
     } else if (state === 'open') {
       // Unarchive is user-specific - remove user from archivedBy array
-      const result = unarchiveThreadForUser(threadId, userId);
+      const result = unarchiveMessageForUser(messageId, userId);
       if (result.error) {
         return res.status(404).json({ error: result.error });
       }
       
       broadcast({
         type: 'message:state-changed',
-        thread: result.thread,
+        message: result.message,
         userId
       });
       
-      const data = readMessagesV2();
-      const postCount = data.posts.filter(p => p.threadId === threadId).length;
+      const data = readMessages();
+      const postCount = data.posts.filter(p => p.messageId === messageId).length;
       
       logActivity('message:unarchived', userId, { 
-        threadId,
-        title: result.thread.title,
-        participants: result.thread.participants.map(p => p.label).join(', '),
+        messageId,
+        title: result.message.title,
+        participants: result.message.participants.map(p => p.label).join(', '),
         postCount,
         platform: (req.body?.platform || req.query?.platform || 'web')
       });
-      return res.json({ ok: true, thread: result.thread });
+      return res.json({ ok: true, message: result.message });
     }
     
     return res.status(400).json({ error: 'Invalid state. Must be archived or open.' });
   } catch (e) {
-    console.error('Error updating thread state:', e);
-    return res.status(500).json({ error: 'Failed to update thread state' });
+    console.error('Error updating message state:', e);
+    return res.status(500).json({ error: 'Failed to update message state' });
   }
 });
 
-// POST /api/v1/messages/v2/:threadId/flags - Toggle internal/external/privileged flags
-app.post('/api/v1/messages/v2/:threadId/flags', (req, res) => {
+// POST /api/v1/messages/:messageId/flags - Toggle internal/external/privileged flags
+app.post('/api/v1/messages/:messageId/flags', (req, res) => {
   try {
-    const { threadId } = req.params;
+    const { messageId } = req.params;
     const { internal, external, privileged, userId } = req.body;
     
-    const result = updateThreadFlags(threadId, { internal, external, privileged });
+    const result = updateMessageFlags(messageId, { internal, external, privileged });
     
     if (result.error) {
       return res.status(404).json({ error: result.error });
@@ -1680,31 +1602,31 @@ app.post('/api/v1/messages/v2/:threadId/flags', (req, res) => {
     // Broadcast SSE event
     broadcast({
       type: 'message:flags-updated',
-      thread: result.thread
+      message: result.message
     });
     
     // Log activity
     logActivity('message:flags-updated', userId, {
-      threadId,
-      title: result.thread.title,
-      internal: result.thread.internal,
-      external: result.thread.external,
-      privileged: result.thread.privileged,
-      participants: result.thread.participants.map(p => p.label).join(', '),
+      messageId,
+      title: result.message.title,
+      internal: result.message.internal,
+      external: result.message.external,
+      privileged: result.message.privileged,
+      participants: result.message.participants.map(p => p.label).join(', '),
       platform: (req.body?.platform || req.query?.platform || 'web')
     });
     
-    return res.json({ ok: true, thread: result.thread });
+    return res.json({ ok: true, message: result.message });
   } catch (e) {
-    console.error('Error updating thread flags:', e);
-    return res.status(500).json({ error: 'Failed to update thread flags' });
+    console.error('Error updating message flags:', e);
+    return res.status(500).json({ error: 'Failed to update message flags' });
   }
 });
 
-// POST /api/v1/messages/v2/:threadId/read - Mark thread as read
-app.post('/api/v1/messages/v2/:threadId/read', (req, res) => {
+// POST /api/v1/messages/:messageId/read - Mark message as read
+app.post('/api/v1/messages/:messageId/read', (req, res) => {
   try {
-    const { threadId } = req.params;
+    const { messageId } = req.params;
     const { userId, unread } = req.body;
     
     if (!userId) {
@@ -1712,8 +1634,8 @@ app.post('/api/v1/messages/v2/:threadId/read', (req, res) => {
     }
     
     const result = unread 
-      ? markThreadUnread(threadId, userId)
-      : markThreadRead(threadId, userId);
+      ? markMessageUnread(messageId, userId)
+      : markMessageRead(messageId, userId);
     
     if (result.error) {
       return res.status(404).json({ error: result.error });
@@ -1722,28 +1644,28 @@ app.post('/api/v1/messages/v2/:threadId/read', (req, res) => {
     // Broadcast SSE event
     broadcast({
       type: 'message:read',
-      thread: result.thread,
+      message: result.message,
       userId
     });
     
-    return res.json({ ok: true, thread: result.thread });
+    return res.json({ ok: true, message: result.message });
   } catch (e) {
-    console.error('Error marking thread read/unread:', e);
-    return res.status(500).json({ error: 'Failed to mark thread read/unread' });
+    console.error('Error marking message read/unread:', e);
+    return res.status(500).json({ error: 'Failed to mark message read/unread' });
   }
 });
 
-// POST /api/v1/messages/v2/:threadId/delete - Soft delete thread (user-specific)
-app.post('/api/v1/messages/v2/:threadId/delete', (req, res) => {
+// POST /api/v1/messages/:messageId/delete - Soft delete message (user-specific)
+app.post('/api/v1/messages/:messageId/delete', (req, res) => {
   try {
-    const { threadId } = req.params;
+    const { messageId } = req.params;
     const { userId } = req.body;
     
     if (!userId) {
       return res.status(400).json({ error: 'userId is required' });
     }
     
-    const result = deleteThreadForUser(threadId, userId);
+    const result = deleteMessageForUser(messageId, userId);
     
     if (result.error) {
       return res.status(404).json({ error: result.error });
@@ -1752,71 +1674,71 @@ app.post('/api/v1/messages/v2/:threadId/delete', (req, res) => {
     // Broadcast SSE event
     broadcast({
       type: 'message:deleted',
-      thread: result.thread,
+      message: result.message,
       userId
     });
     
-    const data = readMessagesV2();
-    const postCount = data.posts.filter(p => p.threadId === threadId).length;
+    const data = readMessages();
+    const postCount = data.posts.filter(p => p.messageId === messageId).length;
     
     // Log activity
     logActivity('message:deleted', userId, {
-      threadId,
-      title: result.thread.title,
-      participants: result.thread.participants.map(p => p.label).join(', '),
+      messageId,
+      title: result.message.title,
+      participants: result.message.participants.map(p => p.label).join(', '),
       postCount,
-      internal: result.thread.internal,
-      external: result.thread.external,
-      privileged: result.thread.privileged,
+      internal: result.message.internal,
+      external: result.message.external,
+      privileged: result.message.privileged,
       platform: (req.body?.platform || req.query?.platform || 'web')
     });
     
-    return res.json({ ok: true, thread: result.thread });
+    return res.json({ ok: true, message: result.message });
   } catch (e) {
-    console.error('Error deleting thread:', e);
-    return res.status(500).json({ error: 'Failed to delete thread' });
+    console.error('Error deleting message:', e);
+    return res.status(500).json({ error: 'Failed to delete message' });
   }
 });
 
-// GET /api/v1/messages/v2/export.csv - Export threads to CSV
-app.get('/api/v1/messages/v2/export.csv', (req, res) => {
+// GET /api/v1/messages/export.csv - Export messages to CSV
+app.get('/api/v1/messages/export.csv', (req, res) => {
   try {
-    const { scope, threadIds, includeInternal, includePrivileged, includePosts } = req.query;
-    const data = readMessagesV2();
-    let threads = data.threads.filter(t => !t.deletedAt);
+    const { scope, messageIds, includeInternal, includePrivileged, includePosts } = req.query;
+    const data = readMessages();
+    let messages = data.messages.filter(t => !t.deletedAt);
     
     // Filter by scope
-    if (scope === 'single' && threadIds) {
-      const ids = threadIds.split(',');
-      threads = threads.filter(t => ids.includes(t.threadId));
+    if (scope === 'single' && messageIds) {
+      const ids = messageIds.split(',');
+      messages = messages.filter(t => ids.includes(t.messageId));
     }
     
     // Apply policy filters
     if (includeInternal !== 'true') {
-      threads = threads.filter(t => !t.internal);
+      messages = messages.filter(t => !t.internal);
     }
     if (includePrivileged !== 'true') {
-      threads = threads.filter(t => !t.privileged);
+      messages = messages.filter(t => !t.privileged);
     }
     
     // Build CSV
-    let csv = 'threadId,title,state,internal,privileged,createdAt,createdBy,participants,lastPostAt,postCount\n';
+    let csv = 'messageId,title,state,internal,privileged,createdAt,createdBy,participants,lastPostAt,postCount\n';
     
-    threads.forEach(thread => {
-      const participantNames = thread.participants.map(p => p.label).join('; ');
-      const createdAt = new Date(thread.createdAt).toISOString();
-      const lastPostAt = new Date(thread.lastPostAt).toISOString();
-      const postCount = data.posts.filter(p => p.threadId === thread.threadId).length;
+    messages.forEach(message => {
+      const participantNames = message.participants.map(p => p.label).join('; ');
+      const createdAt = new Date(message.createdAt).toISOString();
+      const lastPostAt = new Date(message.lastPostAt).toISOString();
+      const postCount = data.posts.filter(p => p.messageId === message.messageId).length;
       
-      csv += `"${thread.threadId}","${thread.title}","${thread.state}",${thread.internal},${thread.privileged},"${createdAt}","${thread.createdBy.label}","${participantNames}","${lastPostAt}",${postCount}\n`;
+      csv += `"${message.messageId}","${message.title}","${message.state}",${message.internal},${message.privileged},"${createdAt}","${message.createdBy.label}","${participantNames}","${lastPostAt}",${postCount}\n`;
       
       // Include posts if requested
       if (includePosts === 'true') {
-        const posts = data.posts.filter(p => p.threadId === thread.threadId);
+        const posts = data.posts.filter(p => p.messageId === message.messageId);
         posts.forEach(post => {
           const postCreatedAt = new Date(post.createdAt).toISOString();
           const text = post.text.replace(/"/g, '""'); // Escape quotes
-          csv += `"${post.postId}","${post.threadId}","${post.author.label}","${postCreatedAt}",${post.privileged},"${text}"\n`;
+          csv += `"${post.postId}","${post.messageId}","${post.author.label}","${postCreatedAt}",${post.privileged},"${text}"\n`;
         });
       }
     });
@@ -2441,7 +2363,7 @@ app.post('/api/v1/versions/view', (req, res) => {
     const actorUserId = req.body?.userId || 'user1';
     // Log activity: user viewed a specific version
     try { logActivity('version:view', actorUserId, { version: n, platform: originPlatform }); } catch {}
-    broadcast({ type: 'version:view', version: n, payload: { version: n, threadPlatform: originPlatform } });
+    broadcast({ type: 'version:view', version: n, payload: { version: n, MessagePlatform: originPlatform } });
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'version_view_failed' }); }
 });
@@ -2608,10 +2530,8 @@ app.post('/api/v1/factory-reset', (req, res) => {
     bumpApprovalsRevision();
     // Clear activity log
     try { if (fs.existsSync(activityLogFilePath)) fs.rmSync(activityLogFilePath); } catch {}
-    // Clear messages (old)
+    // Clear messages
     try { if (fs.existsSync(messagesFilePath)) fs.rmSync(messagesFilePath); } catch {}
-    // Clear messages v2 (new threaded messaging)
-    try { if (fs.existsSync(messagesV2FilePath)) fs.rmSync(messagesV2FilePath); } catch {}
     // Clear chat history
     try { if (fs.existsSync(chatFilePath)) fs.rmSync(chatFilePath); } catch {}
     // Restore variables to seed data (don't delete them!)
@@ -2948,8 +2868,8 @@ app.post('/api/v1/events/client', async (req, res) => {
     const payload = (function(){
       const p = Object.assign({}, rawPayload);
       if (type === 'chat') {
-        // Ensure platform-scoped threads by tagging payload
-        p.threadPlatform = originPlatform;
+        // Ensure platform-scoped Messages by tagging payload
+        p.MessagePlatform = originPlatform;
       }
       return p;
     })();
@@ -2966,65 +2886,24 @@ app.post('/api/v1/events/client', async (req, res) => {
       } catch {}
     }
 
-    // Log human-sent messages as activities and save to messages file
-    if (type === 'approvals:message') {
-      try {
-        const toRaw = payload?.to;
-        const toList = Array.isArray(toRaw) ? toRaw.map(String) : [String(toRaw || '')];
-        logActivity('message:send', userId, { to: toList, channel: 'approvals', platform: originPlatform });
-        
-        // Save message to file
-        const message = {
-          id: Date.now() + Math.random(),
-          from: userId,
-          to: toList.length === 1 ? toList[0] : toList,
-          text: text,
-          ts: Date.now(),
-          clientId: payload?.clientId || undefined,
-          threadId: payload?.threadId || undefined,
-          readBy: [userId]
-        };
-        saveMessage(message);
-      } catch {}
-    }
-    if ((type === 'chat' || type === 'approvals:message') && text) {
+    if (type === 'chat' && text) {
       try {
         const systemPrompt = await getSystemPrompt();
         const result = await generateReply({ messages: [{ role: 'user', content: text }], systemPrompt });
         if (result && result.ok && result.content) {
           const replyText = String(result.content).trim();
-          if (type === 'chat') {
-            broadcast({
-              type: 'chat',
-              payload: { text: replyText, threadPlatform: originPlatform },
-              userId: 'bot',
-              role: 'assistant',
-              platform: 'server'
-            });
-            // Save bot reply to chat history
-            try {
-              const botMessage = `[bot] ${replyText}`;
-              saveChatMessage(userId, botMessage);
-            } catch {}
-          } else {
-            const toRaw = payload?.to;
-            const toList = Array.isArray(toRaw) ? toRaw.map(String) : [String(toRaw || '')];
-            const threadId = payload && payload.threadId ? String(payload.threadId) : undefined;
-            broadcast({ type: 'approvals:message', payload: { to: toList, text: replyText, threadId }, userId: 'bot', role: 'assistant', platform: 'server' });
-            // Log bot message send
-            logActivity('message:send', 'bot', { to: toList, channel: 'approvals', platform: 'server' });
-            // Save bot message to file
-            const botMessage = {
-              id: Date.now() + Math.random(),
-              from: 'bot',
-              to: toList.length === 1 ? toList[0] : toList,
-              text: replyText,
-              ts: Date.now(),
-              threadId: threadId || undefined,
-              readBy: ['bot']
-            };
-            saveMessage(botMessage);
-          }
+          broadcast({
+            type: 'chat',
+            payload: { text: replyText, MessagePlatform: originPlatform },
+            userId: 'bot',
+            role: 'assistant',
+            platform: 'server'
+          });
+          // Save bot reply to chat history
+          try {
+            const botMessage = `[bot] ${replyText}`;
+            saveChatMessage(userId, botMessage);
+          } catch {}
         } else {
           const msg = `LLM error: ${result && result.error ? result.error : 'Unknown error'}`;
           logActivity('system:error', 'system', { error: msg, source: 'llm' });
@@ -3034,7 +2913,7 @@ app.post('/api/v1/events/client', async (req, res) => {
         logActivity('system:error', 'system', { error: msg, source: 'llm' });
       }
     } else if (type === 'chat:stop') {
-      try { broadcast({ type: 'chat:reset', payload: { reason: 'user_stop', threadPlatform: originPlatform }, userId, role: 'assistant', platform: 'server' }); } catch {}
+      try { broadcast({ type: 'chat:reset', payload: { reason: 'user_stop', MessagePlatform: originPlatform }, userId, role: 'assistant', platform: 'server' }); } catch {}
     }
 
     return res.json({ ok: true });
@@ -3077,7 +2956,7 @@ app.post('/api/v1/chatbot/reset', (req, res) => {
     chatbotStateByUser.delete(key);
     // Delete chat history from server
     resetUserChat(key);
-    try { broadcast({ type: 'chat:reset', payload: { threadPlatform: originPlatform }, userId: key, role: 'assistant', platform: 'server' }); } catch {}
+    try { broadcast({ type: 'chat:reset', payload: { MessagePlatform: originPlatform }, userId: key, role: 'assistant', platform: 'server' }); } catch {}
     return res.json({ ok: true });
   } catch (e) {
     return res.status(500).json({ error: 'reset_failed' });

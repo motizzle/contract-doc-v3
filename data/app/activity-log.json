@@ -1,7 +1,7 @@
 [
   {
-    "id": "act_1760739142513_uhjsg7ixo",
-    "timestamp": 1760739142514,
+    "id": "act_1760863047665_xoh3iinzk",
+    "timestamp": 1760863047665,
     "type": "document:checkout",
     "user": {
       "id": "user1",
@@ -14,8 +14,8 @@
     "message": "Warren Peace checked out document"
   },
   {
-    "id": "act_1760739142762_sd5rb8qq1",
-    "timestamp": 1760739142762,
+    "id": "act_1760863047890_rsqreftta",
+    "timestamp": 1760863047890,
     "type": "document:checkout:cancel",
     "user": {
       "id": "user1",
@@ -28,8 +28,8 @@
     "message": "Warren Peace cancelled document checkout"
   },
   {
-    "id": "act_1760739142979_eqzkvqkz5",
-    "timestamp": 1760739142979,
+    "id": "act_1760863048118_vxbnwfm4f",
+    "timestamp": 1760863048118,
     "type": "document:checkout",
     "user": {
       "id": "user2",
@@ -42,8 +42,8 @@
     "message": "Kent Uckey checked out document"
   },
   {
-    "id": "act_1760739142988_yae5vkubi",
-    "timestamp": 1760739142988,
+    "id": "act_1760863048136_o8ygvyszi",
+    "timestamp": 1760863048136,
     "type": "document:checkin",
     "user": {
       "id": "user2",
@@ -58,8 +58,72 @@
     "message": "Kent Uckey checked in document (v1)"
   },
   {
-    "id": "act_1760739147547_z48jkn5gk",
-    "timestamp": 1760739147547,
+    "id": "act_1760863053201_54syazn0w",
+    "timestamp": 1760863053201,
+    "type": "document:compile",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "compiled document",
+    "target": "document",
+    "details": {
+      "format": "pdf",
+      "includeExhibits": false
+    },
+    "message": "Warren Peace compiled document (pdf)"
+  },
+  {
+    "id": "act_1760863056560_lpvzpqklh",
+    "timestamp": 1760863056560,
+    "type": "document:compile",
+    "user": {
+      "id": "viewer-user",
+      "label": "viewer-user",
+      "platform": "web"
+    },
+    "action": "compiled document",
+    "target": "document",
+    "details": {
+      "format": "pdf",
+      "includeExhibits": true
+    },
+    "message": "viewer-user compiled document (pdf) with exhibits"
+  },
+  {
+    "id": "act_1760863056596_htwpdw1mq",
+    "timestamp": 1760863056596,
+    "type": "message:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760863056593-tnzg4jhua",
+      "title": "User 2",
+      "recipients": 1,
+      "recipientsList": [
+        {
+          "label": "User 2",
+          "email": "user2@test.com",
+          "userId": "user2"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "Test message",
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"User 2\" with 1 person"
+  },
+  {
+    "id": "act_1760863056603_s08fsfbrb",
+    "timestamp": 1760863056603,
     "type": "workflow:request-review",
     "user": {
       "id": "user1",
@@ -72,17 +136,375 @@
     "message": "Warren Peace requested review from approvers"
   },
   {
-    "id": "act_1760739147581_sqzvvaxmc",
-    "timestamp": 1760739147581,
-    "type": "workflow:request-review",
+    "id": "act_1760863349586_m4oulq0qx",
+    "timestamp": 1760863349586,
+    "type": "message:created",
     "user": {
       "id": "user1",
       "label": "Warren Peace",
       "platform": "web"
     },
-    "action": "requested review",
-    "target": "workflow",
-    "details": {},
-    "message": "Warren Peace requested review from approvers"
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760863349584-tssnltd1c",
+      "title": "Yuri Lee Laffed",
+      "recipients": 2,
+      "recipientsList": [
+        {
+          "label": "Warren Peace",
+          "email": "",
+          "userId": "user1"
+        },
+        {
+          "label": "Yuri Lee Laffed",
+          "email": "",
+          "userId": "user3"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": null,
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"Yuri Lee Laffed\" with 2 people"
+  },
+  {
+    "id": "act_1760863354101_u8ulfrz7l",
+    "timestamp": 1760863354101,
+    "type": "message:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760863354100-c2o2cyqix",
+      "title": "Yuri Lee Laffed",
+      "recipients": 2,
+      "recipientsList": [
+        {
+          "label": "Warren Peace",
+          "email": "",
+          "userId": "user1"
+        },
+        {
+          "label": "Yuri Lee Laffed",
+          "email": "",
+          "userId": "user3"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": null,
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"Yuri Lee Laffed\" with 2 people"
+  },
+  {
+    "id": "act_1760863376070_r33kamwaj",
+    "timestamp": 1760863376070,
+    "type": "message:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760863376068-twtkm4m6u",
+      "title": "Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed",
+      "recipients": 5,
+      "recipientsList": [
+        {
+          "label": "Warren Peace",
+          "email": "",
+          "userId": "user1"
+        },
+        {
+          "label": "Kent Uckey",
+          "email": "",
+          "userId": "user2"
+        },
+        {
+          "label": "Gettysburger King",
+          "email": "",
+          "userId": "user5"
+        },
+        {
+          "label": "Hugh R Ewe",
+          "email": "",
+          "userId": "user4"
+        },
+        {
+          "label": "Yuri Lee Laffed",
+          "email": "",
+          "userId": "user3"
+        }
+      ],
+      "internal": true,
+      "external": false,
+      "privileged": true,
+      "initialMessage": null,
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed\" with 5 people"
+  },
+  {
+    "id": "act_1760863431216_0hydn5gp0",
+    "timestamp": 1760863431216,
+    "type": "message:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760863431213-ffbywt9qr",
+      "title": "Gettysburger King",
+      "recipients": 2,
+      "recipientsList": [
+        {
+          "label": "Warren Peace",
+          "email": "",
+          "userId": "user1"
+        },
+        {
+          "label": "Gettysburger King",
+          "email": "",
+          "userId": "user5"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": null,
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"Gettysburger King\" with 2 people"
+  },
+  {
+    "id": "act_1760863573042_mxmtf83qj",
+    "timestamp": 1760863573042,
+    "type": "message:flags-updated",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "updated conversation flags",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760863376068-twtkm4m6u",
+      "title": "Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed",
+      "internal": false,
+      "external": false,
+      "privileged": true,
+      "participants": "Warren Peace, Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed",
+      "platform": "web"
+    },
+    "message": "Warren Peace marked conversation \"Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed\" as attorney-client privilege"
+  },
+  {
+    "id": "act_1760863574276_je1qcn7q8",
+    "timestamp": 1760863574276,
+    "type": "message:flags-updated",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "updated conversation flags",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760863376068-twtkm4m6u",
+      "title": "Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed",
+      "internal": true,
+      "external": false,
+      "privileged": true,
+      "participants": "Warren Peace, Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed",
+      "platform": "web"
+    },
+    "message": "Warren Peace marked conversation \"Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed\" as internal, attorney-client privilege"
+  },
+  {
+    "id": "act_1760863575390_s15qw715f",
+    "timestamp": 1760863575390,
+    "type": "message:flags-updated",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "updated conversation flags",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760863376068-twtkm4m6u",
+      "title": "Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed",
+      "internal": true,
+      "external": true,
+      "privileged": true,
+      "participants": "Warren Peace, Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed",
+      "platform": "web"
+    },
+    "message": "Warren Peace marked conversation \"Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed\" as internal, external, attorney-client privilege"
+  },
+  {
+    "id": "act_1760863576327_mcq7t2c3v",
+    "timestamp": 1760863576327,
+    "type": "message:flags-updated",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "updated conversation flags",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760863376068-twtkm4m6u",
+      "title": "Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed",
+      "internal": true,
+      "external": false,
+      "privileged": true,
+      "participants": "Warren Peace, Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed",
+      "platform": "web"
+    },
+    "message": "Warren Peace marked conversation \"Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed\" as internal, attorney-client privilege"
+  },
+  {
+    "id": "act_1760863577453_xqdj0ge14",
+    "timestamp": 1760863577453,
+    "type": "message:flags-updated",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "updated conversation flags",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760863376068-twtkm4m6u",
+      "title": "Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed",
+      "internal": true,
+      "external": false,
+      "privileged": false,
+      "participants": "Warren Peace, Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed",
+      "platform": "web"
+    },
+    "message": "Warren Peace marked conversation \"Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed\" as internal"
+  },
+  {
+    "id": "act_1760863578423_3adejyttt",
+    "timestamp": 1760863578423,
+    "type": "message:flags-updated",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "updated conversation flags",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760863376068-twtkm4m6u",
+      "title": "Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed",
+      "internal": true,
+      "external": false,
+      "privileged": true,
+      "participants": "Warren Peace, Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed",
+      "platform": "web"
+    },
+    "message": "Warren Peace marked conversation \"Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed\" as internal, attorney-client privilege"
+  },
+  {
+    "id": "act_1760863587616_w4rotdwcb",
+    "timestamp": 1760863587616,
+    "type": "message:archived",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "archived conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760863376068-twtkm4m6u",
+      "title": "Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed",
+      "participants": "Warren Peace, Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed",
+      "postCount": 1,
+      "platform": "web"
+    },
+    "message": "Warren Peace archived a conversation \"Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed\""
+  },
+  {
+    "id": "act_1760863596671_2gsi2wzj0",
+    "timestamp": 1760863596671,
+    "type": "message:unarchived",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "unarchived conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760863376068-twtkm4m6u",
+      "title": "Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed",
+      "participants": "Warren Peace, Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed",
+      "postCount": 1,
+      "platform": "web"
+    },
+    "message": "Warren Peace unarchived a conversation \"Kent Uckey, Gettysburger King, Hugh R Ewe, Yuri Lee Laffed\""
+  },
+  {
+    "id": "act_1760863602678_7qb11af9f",
+    "timestamp": 1760863602678,
+    "type": "message:deleted",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "deleted conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760863056593-tnzg4jhua",
+      "title": "User 2",
+      "participants": "User 2",
+      "postCount": 1,
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "platform": "web"
+    },
+    "message": "Warren Peace deleted a conversation \"User 2\" (1 message)"
+  },
+  {
+    "id": "act_1760863611063_9u2hngmoe",
+    "timestamp": 1760863611063,
+    "type": "message:flags-updated",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "updated conversation flags",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760863431213-ffbywt9qr",
+      "title": "Gettysburger King",
+      "internal": false,
+      "external": true,
+      "privileged": false,
+      "participants": "Warren Peace, Gettysburger King",
+      "platform": "web"
+    },
+    "message": "Warren Peace marked conversation \"Gettysburger King\" as external"
   }
 ]
