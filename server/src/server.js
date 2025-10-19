@@ -1299,9 +1299,12 @@ app.get('/api/v1/messages/v2', (req, res) => {
     // Sort by lastPostAt descending
     threads.sort((a, b) => b.lastPostAt - a.lastPostAt);
     
-    // Get posts for each thread
+    // Get posts for each thread and ensure all properties have defaults
     const threadsWithPosts = threads.map(thread => ({
       ...thread,
+      internal: thread.internal !== undefined ? thread.internal : false,
+      external: thread.external !== undefined ? thread.external : false,
+      privileged: thread.privileged !== undefined ? thread.privileged : false,
       posts: data.posts.filter(p => p.threadId === thread.threadId).sort((a, b) => a.createdAt - b.createdAt),
       postCount: data.posts.filter(p => p.threadId === thread.threadId).length
     }));
