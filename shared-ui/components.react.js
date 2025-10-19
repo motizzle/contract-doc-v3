@@ -2221,6 +2221,20 @@
         };
       }, [loadMessages, loadSummary]);
       
+      // Factory reset handler
+      React.useEffect(() => {
+        const onFactoryReset = () => {
+          setMessages([]);
+          setView('list');
+          setActiveThreadId(null);
+          setSummary({ messages: { open: 0, unreadForMe: 0, privileged: 0, archived: 0 } });
+          loadMessages();
+          loadSummary();
+        };
+        window.addEventListener('factoryReset', onFactoryReset);
+        return () => window.removeEventListener('factoryReset', onFactoryReset);
+      }, [loadMessages, loadSummary]);
+      
       function openConversation(threadId) {
         setActiveThreadId(threadId);
         setView('conversation');
