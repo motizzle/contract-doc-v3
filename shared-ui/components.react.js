@@ -2769,7 +2769,7 @@
                 style: { flex: 1, padding: 8, fontSize: 13, borderRadius: 4, border: '1px solid #e5e7eb' }
               }, [
                 React.createElement('option', { key: 'default', value: '' }, 'Add from directory…'),
-                ...users.filter(u => u.id !== userId).map(u => React.createElement('option', { key: u.id, value: u.id }, u.label))
+                ...users.filter(u => u.id !== userId && !recipients.some(r => r.userId === u.id)).map(u => React.createElement('option', { key: u.id, value: u.id }, u.label))
               ])
             ]),
             React.createElement('div', { key: 'adhoc', style: { display: 'flex', gap: 8 } }, [
