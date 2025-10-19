@@ -2148,6 +2148,15 @@
       const [showNewMessage, setShowNewMessage] = React.useState(false);
       const [summary, setSummary] = React.useState({ messages: { open: 0, unreadForMe: 0, privileged: 0, archived: 0 } });
       
+      // Compute thread title from current user's perspective
+      // Show names of other participants (excluding current user)
+      function getThreadTitle(thread) {
+        if (!thread || !thread.participants) return 'Unknown';
+        const otherParticipants = thread.participants.filter(p => p.userId !== userId);
+        if (otherParticipants.length === 0) return 'Me';
+        return otherParticipants.map(p => p.label).join(', ');
+      }
+      
       // Load messages
       const loadMessages = React.useCallback(async () => {
         try {
@@ -2221,6 +2230,8 @@
       if (view === 'conversation' && activeThreadId) {
         return React.createElement(MessageConversationView, {
           threadId: activeThreadId,
+          userId: userId,
+          getThreadTitle: getThreadTitle,
           onBack: () => { setView('list'); setActiveThreadId(null); },
           onUpdate: () => { loadMessages(); loadSummary(); }
         });
@@ -2266,6 +2277,7 @@
             ? React.createElement('div', { style: { padding: 40, textAlign: 'center', color: '#6b7280' } }, 'No messages')
             : messages.map(msg => {
                 const isUnread = msg.unreadBy && msg.unreadBy.includes(userId);
+                const displayTitle = getThreadTitle(msg);
                 return React.createElement('div', {
                   key: msg.threadId,
                   onClick: () => openConversation(msg.threadId),
@@ -2286,7 +2298,7 @@
                 }, [
                   React.createElement('div', { key: 'left', style: { flex: 1, minWidth: 0 } }, [
                     React.createElement('div', { key: 'title', style: { fontWeight: 600, fontSize: 14, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 } }, [
-                      React.createElement('span', { key: 'text' }, msg.title),
+                      React.createElement('span', { key: 'text' }, displayTitle),
                       isUnread ? React.createElement('span', { key: 'dot', style: { width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', flexShrink: 0 } }) : null
                     ]),
                     React.createElement('div', { key: 'meta', style: { fontSize: 12, color: '#6b7280' } }, `${msg.postCount || 0} message${msg.postCount !== 1 ? 's' : ''} • ${new Date(msg.lastPostAt).toLocaleDateString()}`)
@@ -2310,9 +2322,10 @@
     
     // Message Conversation View (full-page view for a single thread)
     function MessageConversationView(props) {
-      const { threadId, onBack, onUpdate } = props || {};
+      const { threadId, userId: propsUserId, getThreadTitle, onBack, onUpdate } = props || {};
       const API_BASE = getApiBase();
-      const { currentUser: userId, users } = React.useContext(StateContext);
+      const { currentUser: contextUserId } = React.useContext(StateContext);
+      const userId = propsUserId || contextUserId;
       
       const [thread, setThread] = React.useState(null);
       const [composeText, setComposeText] = React.useState('');
@@ -2479,7 +2492,7 @@
               color: '#6b7280'
             }
           }, '←'),
-          React.createElement('div', { key: 'title', style: { flex: 1, fontWeight: 600, fontSize: 15 } }, thread.title)
+          React.createElement('div', { key: 'title', style: { flex: 1, fontWeight: 600, fontSize: 15 } }, getThreadTitle ? getThreadTitle(thread) : thread.title)
         ]),
         React.createElement('div', { key: 'actions', style: { display: 'flex', gap: 6, flexWrap: 'wrap' } }, [
           React.createElement('button', { 
