@@ -2339,8 +2339,10 @@ app.post('/api/v1/factory-reset', (req, res) => {
     bumpApprovalsRevision();
     // Clear activity log
     try { if (fs.existsSync(activityLogFilePath)) fs.rmSync(activityLogFilePath); } catch {}
-    // Clear messages
+    // Clear messages (old)
     try { if (fs.existsSync(messagesFilePath)) fs.rmSync(messagesFilePath); } catch {}
+    // Clear messages v2 (new threaded messaging)
+    try { if (fs.existsSync(messagesV2FilePath)) fs.rmSync(messagesV2FilePath); } catch {}
     // Clear chat history
     try { if (fs.existsSync(chatFilePath)) fs.rmSync(chatFilePath); } catch {}
     // Restore variables to seed data (don't delete them!)
