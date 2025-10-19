@@ -2147,8 +2147,8 @@
       const [activeThreadId, setActiveThreadId] = React.useState(null);
       const [filter, setFilter] = React.useState({ states: ['open'], internal: false, external: false, privileged: false, unread: false, search: '' });
       const [showNewMessage, setShowNewMessage] = React.useState(false);
+      const [showExportModal, setShowExportModal] = React.useState(false);
       const [summary, setSummary] = React.useState({ messages: { open: 0, unreadForMe: 0, privileged: 0, internal: 0, external: 0, archived: 0 } });
-      const [selectedThreadIds, setSelectedThreadIds] = React.useState([]);
       
       // Compute thread title from current user's perspective
       // Show names of other participants (excluding current user)
@@ -2180,34 +2180,10 @@
         setFilter({ ...filter, [flag]: !filter[flag] });
       }
       
-      // Toggle thread selection
-      function toggleThreadSelection(threadId) {
-        if (selectedThreadIds.includes(threadId)) {
-          setSelectedThreadIds(selectedThreadIds.filter(id => id !== threadId));
-        } else {
-          setSelectedThreadIds([...selectedThreadIds, threadId]);
-        }
-      }
-      
-      // Select all visible threads
-      function selectAllThreads() {
-        setSelectedThreadIds(messages.map(m => m.threadId));
-      }
-      
-      // Clear selection
-      function clearSelection() {
-        setSelectedThreadIds([]);
-      }
-      
-      // Export selected threads
-      function exportSelected() {
-        if (selectedThreadIds.length === 0) {
-          alert('Please select at least one message to export');
-          return;
-        }
-        const threadIdsParam = selectedThreadIds.join(',');
-        const url = `${API_BASE}/api/v1/messages/v2/export.csv?scope=multiple&threadIds=${threadIdsParam}&includePosts=true`;
-        window.open(url, '_blank');
+      // Open conversation view
+      function openConversation(threadId) {
+        setActiveThreadId(threadId);
+        setView('conversation');
       }
       
       // Load messages
@@ -2317,11 +2293,6 @@
         return () => window.removeEventListener('factoryReset', onFactoryReset);
       }, [loadMessages, loadSummary]);
       
-      function openConversation(threadId) {
-        setActiveThreadId(threadId);
-        setView('conversation');
-      }
-      
       // If viewing conversation, show conversation page
       if (view === 'conversation' && activeThreadId) {
         return React.createElement(MessageConversationView, {
@@ -2336,7 +2307,7 @@
       // Otherwise show list view
       const currentStates = filter.states || ['open'];
       return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 12, height: '100%', minHeight: 0 } }, [
-        // Search + New Message + Export buttons
+        // Search + New + Export buttons
         React.createElement('div', { key: 'filters', style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' } }, [
           React.createElement('input', { 
             key: 'search', 
@@ -2345,26 +2316,16 @@
             onChange: e => setFilter({ ...filter, search: e.target.value }),
             style: { flex: 1, minWidth: 100, padding: '6px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #e5e7eb' }
           }),
-          selectedThreadIds.length > 0 ? React.createElement('button', {
-            key: 'export',
-            onClick: exportSelected,
-            style: { padding: '6px 12px', fontSize: 13, background: '#10b981', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }
-          }, `Export (${selectedThreadIds.length})`) : null,
-          selectedThreadIds.length > 0 ? React.createElement('button', {
-            key: 'clear',
-            onClick: clearSelection,
-            style: { padding: '6px 12px', fontSize: 13, background: '#f3f4f6', color: '#6b7280', border: 'none', borderRadius: 6, cursor: 'pointer' }
-          }, 'Clear') : null,
-          messages.length > 0 && selectedThreadIds.length === 0 ? React.createElement('button', {
-            key: 'selectall',
-            onClick: selectAllThreads,
-            style: { padding: '6px 12px', fontSize: 13, background: '#f3f4f6', color: '#6b7280', border: 'none', borderRadius: 6, cursor: 'pointer' }
-          }, 'Select All') : null,
           React.createElement('button', {
             key: 'new',
             onClick: () => setShowNewMessage(true),
             style: { padding: '6px 12px', fontSize: 13, background: '#6d5ef1', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }
-          }, '+ New Message')
+          }, 'New'),
+          React.createElement('button', {
+            key: 'export',
+            onClick: () => setShowExportModal(true),
+            style: { padding: '6px 12px', fontSize: 13, background: '#f3f4f6', color: '#6b7280', border: 'none', borderRadius: 6, cursor: 'pointer' }
+          }, 'Export to CSV')
         ]),
         
         // Filter badges (order: Unread, Open, Archived, Attorney-Client Privilege, Internal, External)
@@ -2462,36 +2423,24 @@
             : messages.map(msg => {
                 const isUnread = msg.unreadBy && msg.unreadBy.includes(userId);
                 const displayTitle = getThreadTitle(msg);
-                const isSelected = selectedThreadIds.includes(msg.threadId);
                 return React.createElement('div', {
                   key: msg.threadId,
+                  onClick: () => openConversation(msg.threadId),
                   style: { 
                     border: '1px solid #e5e7eb',
                     borderRadius: 6,
                     marginBottom: 8,
-                    background: isSelected ? '#f0f9ff' : '#fff',
+                    background: '#fff',
                     padding: '12px',
+                    cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 12,
+                    justifyContent: 'space-between',
                     transition: 'background 0.15s ease'
                   },
-                  onMouseEnter: (e) => { if (!isSelected) e.currentTarget.style.background = '#f9fafb'; },
-                  onMouseLeave: (e) => { if (!isSelected) e.currentTarget.style.background = '#fff'; }
+                  onMouseEnter: (e) => { e.currentTarget.style.background = '#f9fafb'; },
+                  onMouseLeave: (e) => { e.currentTarget.style.background = '#fff'; }
                 }, [
-                  React.createElement('input', {
-                    key: 'checkbox',
-                    type: 'checkbox',
-                    checked: isSelected,
-                    onChange: (e) => { e.stopPropagation(); toggleThreadSelection(msg.threadId); },
-                    onClick: (e) => e.stopPropagation(),
-                    style: { cursor: 'pointer', width: 16, height: 16, flexShrink: 0 }
-                  }),
-                  React.createElement('div', { 
-                    key: 'content',
-                    onClick: () => openConversation(msg.threadId),
-                    style: { flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }
-                  }, [
                   React.createElement('div', { key: 'left', style: { flex: 1, minWidth: 0 } }, [
                     React.createElement('div', { key: 'title', style: { fontWeight: 600, fontSize: 14, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 } }, [
                       React.createElement('span', { key: 'text' }, displayTitle),
@@ -2504,7 +2453,6 @@
                     msg.external ? React.createElement('span', { key: 'ext', style: { padding: '3px 8px', fontSize: 11, background: '#fef3c7', borderRadius: 4, whiteSpace: 'nowrap' } }, 'External') : null,
                     msg.privileged ? React.createElement('span', { key: 'priv', style: { padding: '3px 8px', fontSize: 11, background: '#fce7f3', borderRadius: 4, whiteSpace: 'nowrap' } }, 'Attorney-Client Privilege') : null
                   ])
-                  ])
                 ]);
               })
         ),
@@ -2514,7 +2462,167 @@
           key: 'newmsg',
           onClose: () => setShowNewMessage(false),
           onCreate: () => { setShowNewMessage(false); loadMessages(); loadSummary(); }
+        }) : null,
+        
+        // Export Modal
+        showExportModal ? React.createElement(ExportModal, {
+          key: 'exportmodal',
+          messages: messages,
+          getThreadTitle: getThreadTitle,
+          onClose: () => setShowExportModal(false),
+          userId: userId
         }) : null
+      ]);
+    }
+    
+    // Export Modal - select conversations to export
+    function ExportModal(props) {
+      const { messages, getThreadTitle, onClose, userId } = props;
+      const API_BASE = getApiBase();
+      const [selectedIds, setSelectedIds] = React.useState([]);
+      
+      function toggleSelection(threadId) {
+        if (selectedIds.includes(threadId)) {
+          setSelectedIds(selectedIds.filter(id => id !== threadId));
+        } else {
+          setSelectedIds([...selectedIds, threadId]);
+        }
+      }
+      
+      function selectAll() {
+        setSelectedIds(messages.map(m => m.threadId));
+      }
+      
+      function clearAll() {
+        setSelectedIds([]);
+      }
+      
+      function doExport() {
+        if (selectedIds.length === 0) {
+          alert('Please select at least one conversation to export');
+          return;
+        }
+        const threadIdsParam = selectedIds.join(',');
+        const url = `${API_BASE}/api/v1/messages/v2/export.csv?scope=multiple&threadIds=${threadIdsParam}&includePosts=true`;
+        window.open(url, '_blank');
+        onClose();
+      }
+      
+      return React.createElement('div', {
+        style: {
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        },
+        onClick: onClose
+      }, [
+        React.createElement('div', {
+          key: 'modal',
+          onClick: (e) => e.stopPropagation(),
+          style: {
+            background: '#fff',
+            borderRadius: 8,
+            padding: 24,
+            maxWidth: 600,
+            width: '90%',
+            maxHeight: '80vh',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16
+          }
+        }, [
+          // Header
+          React.createElement('div', { key: 'header', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } }, [
+            React.createElement('h3', { key: 'title', style: { margin: 0, fontSize: 16, fontWeight: 600 } }, 'Export Conversations to CSV'),
+            React.createElement('button', {
+              key: 'close',
+              onClick: onClose,
+              style: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', padding: 4, lineHeight: 1 }
+            }, '×')
+          ]),
+          
+          // Actions
+          React.createElement('div', { key: 'actions', style: { display: 'flex', gap: 8, fontSize: 13 } }, [
+            React.createElement('button', {
+              key: 'selectall',
+              onClick: selectAll,
+              style: { padding: '6px 12px', background: '#f3f4f6', border: 'none', borderRadius: 6, cursor: 'pointer' }
+            }, 'Select All'),
+            React.createElement('button', {
+              key: 'clearall',
+              onClick: clearAll,
+              style: { padding: '6px 12px', background: '#f3f4f6', border: 'none', borderRadius: 6, cursor: 'pointer' }
+            }, 'Clear All'),
+            React.createElement('span', { key: 'count', style: { marginLeft: 'auto', color: '#6b7280', alignSelf: 'center' } }, `${selectedIds.length} selected`)
+          ]),
+          
+          // List of conversations
+          React.createElement('div', { key: 'list', style: { flex: 1, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 6, padding: 8 } },
+            messages.length === 0
+              ? React.createElement('div', { style: { padding: 20, textAlign: 'center', color: '#6b7280' } }, 'No conversations available')
+              : messages.map(msg => {
+                  const isChecked = selectedIds.includes(msg.threadId);
+                  const displayTitle = getThreadTitle(msg);
+                  return React.createElement('label', {
+                    key: msg.threadId,
+                    style: {
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '8px',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      background: isChecked ? '#f0f9ff' : 'transparent'
+                    },
+                    onMouseEnter: (e) => { if (!isChecked) e.currentTarget.style.background = '#f9fafb'; },
+                    onMouseLeave: (e) => { if (!isChecked) e.currentTarget.style.background = 'transparent'; }
+                  }, [
+                    React.createElement('input', {
+                      key: 'checkbox',
+                      type: 'checkbox',
+                      checked: isChecked,
+                      onChange: () => toggleSelection(msg.threadId),
+                      style: { cursor: 'pointer', width: 16, height: 16, flexShrink: 0 }
+                    }),
+                    React.createElement('div', { key: 'info', style: { flex: 1, minWidth: 0 } }, [
+                      React.createElement('div', { key: 'title', style: { fontWeight: 600, fontSize: 13, marginBottom: 2 } }, displayTitle),
+                      React.createElement('div', { key: 'meta', style: { fontSize: 11, color: '#6b7280' } }, `${msg.postCount || 0} message${msg.postCount !== 1 ? 's' : ''}`)
+                    ])
+                  ]);
+                })
+          ),
+          
+          // Footer buttons
+          React.createElement('div', { key: 'footer', style: { display: 'flex', gap: 8, justifyContent: 'flex-end' } }, [
+            React.createElement('button', {
+              key: 'cancel',
+              onClick: onClose,
+              style: { padding: '8px 16px', background: '#f3f4f6', color: '#6b7280', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13 }
+            }, 'Cancel'),
+            React.createElement('button', {
+              key: 'export',
+              onClick: doExport,
+              disabled: selectedIds.length === 0,
+              style: {
+                padding: '8px 16px',
+                background: selectedIds.length === 0 ? '#d1d5db' : '#6d5ef1',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                cursor: selectedIds.length === 0 ? 'not-allowed' : 'pointer',
+                fontSize: 13,
+                fontWeight: 500
+              }
+            }, 'Export')
+          ])
+        ])
       ]);
     }
     
