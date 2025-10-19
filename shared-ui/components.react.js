@@ -2367,90 +2367,92 @@
           }, '+ New Message')
         ]),
         
-        // Filter badges
+        // Filter badges (order: Unread, Open, Archived, Attorney-Client Privilege, Internal, External)
         React.createElement('div', { key: 'badges', style: { display: 'flex', gap: 8, fontSize: 13, flexWrap: 'wrap' } }, [
-          React.createElement('button', { 
-            key: 'open',
-            onClick: () => toggleStateFilter('open'),
-            style: { 
-              padding: '4px 10px', 
-              fontSize: 12,
-              background: currentStates.includes('open') ? '#e0f2fe' : '#f3f4f6', 
-              color: '#000',
-              border: 'none',
-              borderRadius: 4, 
-              cursor: 'pointer'
-            } 
-          }, `Open: ${summary.messages.open}`),
-          React.createElement('button', { 
-            key: 'archived',
-            onClick: () => toggleStateFilter('archived'),
-            style: { 
-              padding: '4px 10px', 
-              fontSize: 12,
-              background: currentStates.includes('archived') ? '#d1fae5' : '#f3f4f6',
-              color: '#000',
-              border: 'none',
-              borderRadius: 4, 
-              cursor: 'pointer'
-            } 
-          }, `Archived: ${summary.messages.archived}`),
-          summary.messages.internal > 0 ? React.createElement('button', { 
-            key: 'internal',
-            onClick: () => toggleFlagFilter('internal'),
-            style: { 
-              padding: '4px 10px', 
-              fontSize: 12,
-              background: '#e0f2fe',
-              color: '#000',
-              border: 'none',
-              borderRadius: 4, 
-              cursor: 'pointer',
-              opacity: filter.internal ? 1 : 0.6
-            } 
-          }, `Internal: ${summary.messages.internal}`) : null,
-          summary.messages.external > 0 ? React.createElement('button', { 
-            key: 'external',
-            onClick: () => toggleFlagFilter('external'),
-            style: { 
-              padding: '4px 10px', 
-              fontSize: 12,
-              background: '#fef3c7',
-              color: '#000',
-              border: 'none',
-              borderRadius: 4, 
-              cursor: 'pointer',
-              opacity: filter.external ? 1 : 0.6
-            } 
-          }, `External: ${summary.messages.external}`) : null,
-          summary.messages.privileged > 0 ? React.createElement('button', { 
-            key: 'priv',
-            onClick: () => toggleFlagFilter('privileged'),
-            style: { 
-              padding: '4px 10px', 
-              fontSize: 12,
-              background: '#fce7f3',
-              color: '#000',
-              border: 'none',
-              borderRadius: 4, 
-              cursor: 'pointer',
-              opacity: filter.privileged ? 1 : 0.6
-            } 
-          }, `Attorney-Client Privilege: ${summary.messages.privileged}`) : null,
+          // 1. Unread - Light blue (active: #bfdbfe, inactive: #e0f2fe)
           summary.messages.unreadForMe > 0 ? React.createElement('button', { 
             key: 'unread',
             onClick: () => toggleFlagFilter('unread'),
             style: { 
               padding: '4px 10px', 
               fontSize: 12,
-              background: '#fef3c7',
+              background: filter.unread ? '#bfdbfe' : '#e0f2fe',
               color: '#000',
               border: 'none',
               borderRadius: 4, 
-              cursor: 'pointer',
-              opacity: filter.unread ? 1 : 0.6
+              cursor: 'pointer'
             } 
-          }, `Unread: ${summary.messages.unreadForMe}`) : null
+          }, `Unread: ${summary.messages.unreadForMe}`) : null,
+          // 2. Open - Dark grey (active: #9ca3af, inactive: #d1d5db)
+          React.createElement('button', { 
+            key: 'open',
+            onClick: () => toggleStateFilter('open'),
+            style: { 
+              padding: '4px 10px', 
+              fontSize: 12,
+              background: currentStates.includes('open') ? '#9ca3af' : '#d1d5db', 
+              color: '#000',
+              border: 'none',
+              borderRadius: 4, 
+              cursor: 'pointer'
+            } 
+          }, `Open: ${summary.messages.open}`),
+          // 3. Archived - Light grey (active: #d1d5db, inactive: #e5e7eb)
+          React.createElement('button', { 
+            key: 'archived',
+            onClick: () => toggleStateFilter('archived'),
+            style: { 
+              padding: '4px 10px', 
+              fontSize: 12,
+              background: currentStates.includes('archived') ? '#d1d5db' : '#e5e7eb',
+              color: '#000',
+              border: 'none',
+              borderRadius: 4, 
+              cursor: 'pointer'
+            } 
+          }, `Archived: ${summary.messages.archived}`),
+          // 4. Attorney-Client Privilege - Pink (active: #fce7f3, inactive: #fdf2f8)
+          summary.messages.privileged > 0 ? React.createElement('button', { 
+            key: 'priv',
+            onClick: () => toggleFlagFilter('privileged'),
+            style: { 
+              padding: '4px 10px', 
+              fontSize: 12,
+              background: filter.privileged ? '#fce7f3' : '#fdf2f8',
+              color: '#000',
+              border: 'none',
+              borderRadius: 4, 
+              cursor: 'pointer'
+            } 
+          }, `Attorney-Client Privilege: ${summary.messages.privileged}`) : null,
+          // 5. Internal - Blue (active: #e0f2fe, inactive: #f0f9ff)
+          summary.messages.internal > 0 ? React.createElement('button', { 
+            key: 'internal',
+            onClick: () => toggleFlagFilter('internal'),
+            style: { 
+              padding: '4px 10px', 
+              fontSize: 12,
+              background: filter.internal ? '#e0f2fe' : '#f0f9ff',
+              color: '#000',
+              border: 'none',
+              borderRadius: 4, 
+              cursor: 'pointer'
+            } 
+          }, `Internal: ${summary.messages.internal}`) : null,
+          // 6. External - Yellow (active: #fef3c7, inactive: #fefce8)
+          summary.messages.external > 0 ? React.createElement('button', { 
+            key: 'external',
+            onClick: () => toggleFlagFilter('external'),
+            style: { 
+              padding: '4px 10px', 
+              fontSize: 12,
+              background: filter.external ? '#fef3c7' : '#fefce8',
+              color: '#000',
+              border: 'none',
+              borderRadius: 4, 
+              cursor: 'pointer'
+            } 
+          }, `External: ${summary.messages.external}`) : null
         ]),
         
         // Message list
