@@ -5449,6 +5449,7 @@
       const aiLabelRef = React.useRef(null);
       const wfLabelRef = React.useRef(null);
       const msgLabelRef = React.useRef(null);
+      const msgV2LabelRef = React.useRef(null);
       
       // Factory reset: navigate back to AI tab
       React.useEffect(() => {
@@ -5491,13 +5492,15 @@
               ? wfLabelRef.current
               : (activeTab === 'Messaging'
                 ? msgLabelRef.current
-                : (activeTab === 'Versions'
-                  ? verLabelRef.current
-                  : (activeTab === 'Activity'
-                    ? actLabelRef.current
-                    : (activeTab === 'Comparison'
-                      ? cmpLabelRef.current
-                      : variablesLabelRef.current))))));
+                : (activeTab === 'Messages v2'
+                  ? msgV2LabelRef.current
+                  : (activeTab === 'Versions'
+                    ? verLabelRef.current
+                    : (activeTab === 'Activity'
+                      ? actLabelRef.current
+                      : (activeTab === 'Comparison'
+                        ? cmpLabelRef.current
+                        : variablesLabelRef.current)))))));
           if (!bar || !labelEl) return;
           const barRect = bar.getBoundingClientRect();
           const labRect = labelEl.getBoundingClientRect();
@@ -5556,7 +5559,7 @@
             onClick: () => setActiveTab('Messages v2'),
             style: { background: 'transparent', border: 'none', padding: '8px 6px 8px 6px', cursor: 'pointer', color: activeTab === 'Messages v2' ? '#111827' : '#6B7280', fontWeight: 600, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: '2px' }
           }, [
-            React.createElement('span', { key: 'label', style: { display: 'inline-block' } }, 'Messages v2')
+            React.createElement('span', { key: 'label', ref: msgV2LabelRef, style: { display: 'inline-block' } }, 'Messages v2')
           ]),
           React.createElement('button', {
             key: 'tab-versions',
