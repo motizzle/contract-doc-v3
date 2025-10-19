@@ -2297,38 +2297,36 @@
           }, '+ New Message')
         ]),
         
-        // Clickable filter badges
-        React.createElement('div', { key: 'badges', style: { display: 'flex', gap: 8, fontSize: 12, flexWrap: 'wrap' } }, [
+        // Filter badges
+        React.createElement('div', { key: 'badges', style: { display: 'flex', gap: 8, fontSize: 13, flexWrap: 'wrap' } }, [
           React.createElement('button', { 
             key: 'open',
             onClick: () => toggleStateFilter('open'),
             style: { 
-              padding: '6px 12px', 
+              padding: '4px 10px', 
+              fontSize: 12,
               background: currentStates.includes('open') ? '#e0f2fe' : '#f3f4f6', 
               color: currentStates.includes('open') ? '#0c4a6e' : '#6b7280',
-              fontWeight: currentStates.includes('open') ? 600 : 400,
-              border: currentStates.includes('open') ? '2px solid #0ea5e9' : '2px solid transparent',
-              borderRadius: 16, 
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
+              border: 'none',
+              borderRadius: 4, 
+              cursor: 'pointer'
             } 
           }, `Open: ${summary.messages.open}`),
           React.createElement('button', { 
             key: 'archived',
             onClick: () => toggleStateFilter('archived'),
             style: { 
-              padding: '6px 12px', 
+              padding: '4px 10px', 
+              fontSize: 12,
               background: currentStates.includes('archived') ? '#d1fae5' : '#f3f4f6',
               color: currentStates.includes('archived') ? '#065f46' : '#6b7280',
-              fontWeight: currentStates.includes('archived') ? 600 : 400,
-              border: currentStates.includes('archived') ? '2px solid #10b981' : '2px solid transparent',
-              borderRadius: 16, 
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
+              border: 'none',
+              borderRadius: 4, 
+              cursor: 'pointer'
             } 
           }, `Archived: ${summary.messages.archived}`),
-          React.createElement('span', { key: 'unread', style: { padding: '6px 12px', background: '#fef3c7', color: '#78350f', borderRadius: 16, border: '2px solid transparent' } }, `Unread: ${summary.messages.unreadForMe}`),
-          summary.messages.privileged > 0 ? React.createElement('span', { key: 'priv', style: { padding: '6px 12px', background: '#fce7f3', color: '#831843', borderRadius: 16, border: '2px solid transparent' } }, `Attorney-Client Privilege: ${summary.messages.privileged}`) : null
+          React.createElement('span', { key: 'unread', style: { padding: '4px 10px', fontSize: 12, background: '#f3f4f6', color: '#6b7280', borderRadius: 4 } }, `Unread: ${summary.messages.unreadForMe}`),
+          summary.messages.privileged > 0 ? React.createElement('span', { key: 'priv', style: { padding: '4px 10px', fontSize: 12, background: '#f3f4f6', color: '#6b7280', borderRadius: 4 } }, `Attorney-Client Privilege: ${summary.messages.privileged}`) : null
         ]),
         
         // Message list
