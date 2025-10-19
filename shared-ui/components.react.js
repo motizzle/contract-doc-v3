@@ -5980,7 +5980,7 @@
             onClick: () => setActiveTab('Messages v2'),
             style: { background: 'transparent', border: 'none', padding: '8px 6px 8px 6px', cursor: 'pointer', color: activeTab === 'Messages v2' ? '#111827' : '#6B7280', fontWeight: 600, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: '2px' }
           }, [
-            messagingV2UnreadCount > 0 ? React.createElement('span', { key: 'badge', style: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '18px', height: '18px', padding: '0 5px', borderRadius: '9px', background: '#ef4444', color: '#fff', fontSize: '11px', fontWeight: 600, lineHeight: '1' } }, messagingV2UnreadCount) : null,
+            messagingV2UnreadCount > 0 ? React.createElement('span', { key: 'count', style: { fontSize: '11px', lineHeight: '1' } }, `(${messagingV2UnreadCount})`) : null,
             React.createElement('span', { key: 'label', ref: msgV2LabelRef, style: { display: 'inline-block' } }, 'Messages v2')
           ]),
           React.createElement('button', {
