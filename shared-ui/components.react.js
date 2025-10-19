@@ -2623,6 +2623,7 @@
       
       const [thread, setThread] = React.useState(null);
       const [composeText, setComposeText] = React.useState('');
+      const [showConfirmModal, setShowConfirmModal] = React.useState(null); // 'archive' or 'delete'
       const listRef = React.useRef(null);
       const isAddin = typeof Office !== 'undefined';
       
@@ -2737,7 +2738,11 @@
         }
       }
       
-      async function toggleArchive() {
+      function toggleArchive() {
+        setShowConfirmModal('archive');
+      }
+      
+      async function confirmArchive() {
         try {
           const isArchived = thread.archivedBy && thread.archivedBy.includes(userId);
           const newState = isArchived ? 'open' : 'archived';
@@ -2761,12 +2766,18 @@
             }
           }
           if (onUpdate) onUpdate();
+          setShowConfirmModal(null);
         } catch (e) {
           console.error('Failed to toggle archive:', e);
+          setShowConfirmModal(null);
         }
       }
       
-      async function deleteThread() {
+      function deleteThread() {
+        setShowConfirmModal('delete');
+      }
+      
+      async function confirmDelete() {
         try {
           await fetch(`${API_BASE}/api/v1/messages/v2/${threadId}/delete`, {
             method: 'POST',
@@ -2775,8 +2786,10 @@
           });
           if (onUpdate) onUpdate();
           if (onBack) onBack();
+          setShowConfirmModal(null);
         } catch (e) {
           console.error('Failed to delete:', e);
+          setShowConfirmModal(null);
         }
       }
       
@@ -3030,6 +3043,71 @@
         ])
       ]);
       
+      // Confirmation modal
+      const confirmModal = showConfirmModal ? React.createElement('div', {
+        style: {
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        },
+        onClick: () => setShowConfirmModal(null)
+      }, [
+        React.createElement('div', {
+          key: 'modal',
+          onClick: (e) => e.stopPropagation(),
+          style: {
+            background: '#fff',
+            borderRadius: 8,
+            padding: 24,
+            maxWidth: 400,
+            width: '90%'
+          }
+        }, [
+          React.createElement('h3', { key: 'title', style: { margin: '0 0 12px 0', fontSize: 16, fontWeight: 600 } }, 
+            showConfirmModal === 'archive' 
+              ? (thread.archivedBy && thread.archivedBy.includes(userId) ? 'Unarchive Conversation?' : 'Archive Conversation?')
+              : 'Delete Conversation?'
+          ),
+          React.createElement('p', { key: 'message', style: { margin: '0 0 20px 0', fontSize: 14, color: '#6b7280' } },
+            showConfirmModal === 'archive'
+              ? (thread.archivedBy && thread.archivedBy.includes(userId) 
+                  ? 'Move this conversation back to your open messages?'
+                  : 'This will move the conversation to your archived messages. You can unarchive it later.')
+              : 'This will remove the conversation from your view. Other participants will still see it.'
+          ),
+          React.createElement('div', { key: 'actions', style: { display: 'flex', gap: 8, justifyContent: 'flex-end' } }, [
+            React.createElement('button', {
+              key: 'cancel',
+              onClick: () => setShowConfirmModal(null),
+              style: { padding: '8px 16px', background: '#f3f4f6', color: '#6b7280', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13 }
+            }, 'Cancel'),
+            React.createElement('button', {
+              key: 'confirm',
+              onClick: showConfirmModal === 'archive' ? confirmArchive : confirmDelete,
+              style: { 
+                padding: '8px 16px', 
+                background: showConfirmModal === 'delete' ? '#dc2626' : '#6d5ef1', 
+                color: '#fff', 
+                border: 'none', 
+                borderRadius: 6, 
+                cursor: 'pointer', 
+                fontSize: 13,
+                fontWeight: 500
+              }
+            }, showConfirmModal === 'archive' 
+                ? (thread.archivedBy && thread.archivedBy.includes(userId) ? 'Unarchive' : 'Archive')
+                : 'Delete')
+          ])
+        ])
+      ]) : null;
+      
       return React.createElement('div', { 
         style: { 
           display: 'flex', 
@@ -3037,7 +3115,7 @@
           flex: 1, 
           height: '100%' 
         } 
-      }, [header, history, footer]);
+      }, [header, history, footer, confirmModal]);
     }
     
     // New Message Modal
@@ -6047,5 +6125,6 @@
     };
   } catch (_) {}
 })(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));
+
 
 
