@@ -2328,38 +2328,25 @@
           }, 'Export to CSV')
         ]),
         
-        // Filter badges (order: Unread, Open, Archived, Attorney-Client Privilege, Internal, External)
+        // Filter badges (order: Unread, Archived, Attorney-Client Privilege, Internal, External)
         // All badges always visible - no conditional rendering
+        // Unread and Archived use same grey palette
         React.createElement('div', { key: 'badges', style: { display: 'flex', gap: 8, fontSize: 13, flexWrap: 'wrap' } }, [
-          // 1. Unread - Light blue (active: #bfdbfe, inactive: #e0f2fe)
+          // 1. Unread - Grey (active: #d1d5db, inactive: #e5e7eb)
           React.createElement('button', { 
             key: 'unread',
             onClick: () => toggleFlagFilter('unread'),
             style: { 
               padding: '4px 10px', 
               fontSize: 12,
-              background: filter.unread ? '#bfdbfe' : '#e0f2fe',
+              background: filter.unread ? '#d1d5db' : '#e5e7eb',
               color: '#000',
               border: 'none',
               borderRadius: 4, 
               cursor: 'pointer'
             } 
           }, `Unread: ${summary.messages.unreadForMe || 0}`),
-          // 2. Open - Dark grey (active: #9ca3af, inactive: #d1d5db)
-          React.createElement('button', { 
-            key: 'open',
-            onClick: () => toggleStateFilter('open'),
-            style: { 
-              padding: '4px 10px', 
-              fontSize: 12,
-              background: currentStates.includes('open') ? '#9ca3af' : '#d1d5db', 
-              color: '#000',
-              border: 'none',
-              borderRadius: 4, 
-              cursor: 'pointer'
-            } 
-          }, `Open: ${summary.messages.open || 0}`),
-          // 3. Archived - Light grey (active: #d1d5db, inactive: #e5e7eb)
+          // 2. Archived - Grey (active: #d1d5db, inactive: #e5e7eb)
           React.createElement('button', { 
             key: 'archived',
             onClick: () => toggleStateFilter('archived'),
@@ -2850,6 +2837,37 @@
             thread.participants && thread.participants.length > 0 ? React.createElement('div', { key: 'emails', style: { fontSize: 11, color: '#9ca3af', marginTop: 2 } }, 
               thread.participants.filter(p => p.userId !== userId).map(p => p.email).filter(e => e).join(', ')
             ) : null
+          ]),
+          // Archive and Delete icons on the right
+          React.createElement('div', { key: 'right-icons', style: { display: 'flex', gap: 6, alignItems: 'center' } }, [
+            React.createElement('button', { 
+              key: 'archive-icon', 
+              onClick: toggleArchive,
+              title: (thread.archivedBy && thread.archivedBy.includes(userId)) ? 'Unarchive' : 'Archive',
+              style: { 
+                background: 'transparent',
+                border: 'none',
+                fontSize: 18,
+                cursor: 'pointer',
+                padding: '4px',
+                color: '#6b7280',
+                lineHeight: 1
+              } 
+            }, '🗄️'),
+            React.createElement('button', { 
+              key: 'delete-icon', 
+              onClick: deleteThread,
+              title: 'Delete',
+              style: { 
+                background: 'transparent',
+                border: 'none',
+                fontSize: 18,
+                cursor: 'pointer',
+                padding: '4px',
+                color: '#dc2626',
+                lineHeight: 1
+              } 
+            }, '🗑️')
           ])
         ]),
         React.createElement('div', { key: 'actions', style: { display: 'flex', gap: 6, flexWrap: 'wrap' } }, [
@@ -2899,21 +2917,6 @@
             } 
           }, thread.privileged ? '✓ Attorney-Client Privilege' : 'Attorney-Client Privilege'),
           React.createElement('button', { 
-            key: 'archive', 
-            onClick: toggleArchive, 
-            style: { 
-              padding: '4px 10px', 
-              fontSize: 12, 
-              fontWeight: (thread.archivedBy && thread.archivedBy.includes(userId)) ? 600 : 400,
-              color: (thread.archivedBy && thread.archivedBy.includes(userId)) ? '#065f46' : '#6b7280',
-              background: (thread.archivedBy && thread.archivedBy.includes(userId)) ? '#d1fae5' : '#f3f4f6', 
-              border: 'none', 
-              borderRadius: 4, 
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
-            } 
-          }, (thread.archivedBy && thread.archivedBy.includes(userId)) ? '✓ Archived' : 'Archive'),
-          React.createElement('button', { 
             key: 'read',
             onClick: toggleRead,
             title: (thread.unreadBy && thread.unreadBy.includes(userId)) ? 'Mark as read' : 'Mark as unread',
@@ -2940,20 +2943,7 @@
               borderRadius: 4, 
               cursor: 'pointer' 
             } 
-          }, 'Export'),
-          React.createElement('button', { 
-            key: 'delete', 
-            onClick: deleteThread, 
-            style: { 
-              padding: '4px 10px', 
-              fontSize: 12, 
-              background: '#fee2e2', 
-              color: '#dc2626', 
-              border: 'none', 
-              borderRadius: 4, 
-              cursor: 'pointer' 
-            } 
-          }, 'Delete')
+          }, 'Export')
         ])
       ]);
       
