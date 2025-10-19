@@ -403,7 +403,11 @@ function softDeleteThread(threadId) {
 
 function getDiscussionSummary(userId) {
   const data = readMessagesV2();
-  const threads = data.threads.filter(t => !t.deletedAt);
+  // Only count threads where user is a participant
+  const threads = data.threads.filter(t => 
+    !t.deletedAt && 
+    (t.participants.some(p => p.userId === userId) || t.createdBy.userId === userId)
+  );
   
   const open = threads.filter(t => t.state === 'open').length;
   const archived = threads.filter(t => t.state === 'archived').length;
@@ -1259,6 +1263,14 @@ app.get('/api/v1/messages/v2', (req, res) => {
     const { state, internal, privileged, search, userId } = req.query;
     const data = readMessagesV2();
     let threads = data.threads.filter(t => !t.deletedAt);
+    
+    // Filter by participant - only show threads where userId is a participant
+    if (userId) {
+      threads = threads.filter(t => 
+        t.participants.some(p => p.userId === userId) || 
+        t.createdBy.userId === userId
+      );
+    }
     
     // Apply filters
     if (state && state !== 'all') {
