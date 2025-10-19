@@ -1247,12 +1247,32 @@ body {
   border-radius: 12px;
   padding: 14px 16px;
   margin: 0 0 8px 0;
+  transition: all 0.2s ease;
+}
+.activity-card:hover {
+  border-color: #d1d5db; /* gray-300 */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+.activity-card--expanded {
+  background: #f9fafb; /* gray-50 */
 }
 .activity-card__row { display: flex; align-items: flex-start; gap: 10px; }
 .activity-card__icon { font-size: 18px; line-height: 1; margin-top: 2px; }
 .activity-card__body { flex: 1; min-width: 0; }
 .activity-card__title { font-weight: 600; color: #111827; /* gray-900 */ }
 .activity-card__meta { margin-top: 2px; font-size: 12px; color: #6b7280; /* gray-500 */ }
+.activity-card__details { 
+  margin-top: 12px; 
+  padding-top: 12px; 
+  border-top: 1px solid #e5e7eb;
+}
+.activity-card__detail-item {
+  font-size: 13px;
+  color: #374151; /* gray-700 */
+  line-height: 1.6;
+  margin: 4px 0;
+  padding-left: 8px;
+}
 
 .text-xs { font-size: var(--font-size-xs); }
 .text-sm { font-size: var(--font-size-sm); }

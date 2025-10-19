@@ -236,6 +236,16 @@
         }
       }, [activities]);
 
+      // State for expanded activity cards
+      const [expandedActivities, setExpandedActivities] = React.useState({});
+      
+      const toggleActivity = React.useCallback((activityId) => {
+        setExpandedActivities(prev => ({
+          ...prev,
+          [activityId]: !prev[activityId]
+        }));
+      }, []);
+
       // Render formatted notification
       const renderNotification = React.useCallback((log, index) => {
         // Standardized activity format: "<user> did <action> at <date/time> (vN)" plus context
@@ -286,11 +296,14 @@
             ])
           ]);
         } else if (log && typeof log === 'object' && log.message && log.timestamp) {
-          // New activity format (card style)
+          // New activity format (card style with expandable details)
           const timestamp = new Date(log.timestamp).toLocaleString();
           const userLabel = log.user?.label || 'Unknown User';
           const action = log.action || 'performed action';
           const type = String(log.type || '').split(':')[0];
+          const activityId = log.id || `activity-${index}`;
+          const isExpanded = expandedActivities[activityId];
+          
           const icon = (function(){
             switch (type) {
               case 'document': return '📄';
@@ -298,27 +311,78 @@
               case 'workflow': return '✅';
               case 'version': return '🕘';
               case 'status': return '🏷️';
+              case 'message': return '💬';
+              case 'variable': return '🔤';
               default: return 'ℹ️';
             }
           })();
 
           const message = log.message;
+          
+          // Build details array from log.details object
+          const details = log.details || {};
+          const detailsArray = [];
+          
+          // Add specific details based on activity type
+          if (details.threadId) detailsArray.push(`Thread ID: ${details.threadId}`);
+          if (details.title) detailsArray.push(`Title: ${details.title}`);
+          if (details.recipients !== undefined) detailsArray.push(`Recipients: ${details.recipients}`);
+          if (details.targetUserId) {
+            const targetLabel = (users || []).find(u => u.id === details.targetUserId)?.label || details.targetUserId;
+            detailsArray.push(`Target: ${targetLabel}`);
+          }
+          if (details.notes) detailsArray.push(`Notes: ${details.notes}`);
+          if (details.progress) detailsArray.push(`Progress: ${details.progress.approved}/${details.progress.total} approved`);
+          if (details.internal !== undefined) detailsArray.push(`Internal: ${details.internal ? 'Yes' : 'No'}`);
+          if (details.external !== undefined) detailsArray.push(`External: ${details.external ? 'Yes' : 'No'}`);
+          if (details.privileged !== undefined) detailsArray.push(`Attorney-Client Privilege: ${details.privileged ? 'Yes' : 'No'}`);
+          if (details.varId) detailsArray.push(`Variable ID: ${details.varId}`);
+          if (details.displayLabel) detailsArray.push(`Variable: ${details.displayLabel}`);
+          if (details.value !== undefined) detailsArray.push(`Value: ${details.value}`);
+          if (details.filename) detailsArray.push(`Filename: ${details.filename}`);
+          if (details.size) detailsArray.push(`Size: ${Math.round(details.size / 1024)}KB`);
+          if (details.version) detailsArray.push(`Version: ${details.version}`);
+          if (details.autoSave !== undefined) detailsArray.push(`Auto-save: ${details.autoSave ? 'Yes' : 'No'}`);
+          if (details.to && Array.isArray(details.to)) {
+            const toLabels = details.to.map(id => {
+              const user = (users || []).find(u => u.id === id);
+              return user?.label || id;
+            }).filter(Boolean);
+            if (toLabels.length > 0) detailsArray.push(`To: ${toLabels.join(', ')}`);
+          }
+          if (details.channel) detailsArray.push(`Channel: ${details.channel}`);
+          if (details.changes) {
+            const changesStr = Object.entries(details.changes).map(([k, v]) => `${k}: ${v}`).join(', ');
+            if (changesStr) detailsArray.push(`Changes: ${changesStr}`);
+          }
+          if (details.error) detailsArray.push(`Error: ${details.error}`);
+          if (details.promptLength) detailsArray.push(`Prompt length: ${details.promptLength} characters`);
+          
+          const hasDetails = detailsArray.length > 0;
 
-          return React.createElement('div', { key: log.id || index, className: 'activity-card' }, [
+          return React.createElement('div', { 
+            key: activityId, 
+            className: 'activity-card' + (isExpanded ? ' activity-card--expanded' : ''),
+            onClick: hasDetails ? () => toggleActivity(activityId) : undefined,
+            style: hasDetails ? { cursor: 'pointer' } : {}
+          }, [
             React.createElement('div', { key: 'row', className: 'activity-card__row' }, [
               React.createElement('span', { key: 'icon', className: 'activity-card__icon' }, icon),
               React.createElement('div', { key: 'body', className: 'activity-card__body' }, [
                 React.createElement('div', { key: 'title', className: 'activity-card__title' }, message),
-                React.createElement('div', { key: 'meta', className: 'activity-card__meta' }, `${userLabel} • ${timestamp}`)
+                React.createElement('div', { key: 'meta', className: 'activity-card__meta' }, `${userLabel} • ${timestamp}${hasDetails ? (isExpanded ? ' ▲' : ' ▼') : ''}`)
               ])
-            ])
+            ]),
+            hasDetails && isExpanded ? React.createElement('div', { key: 'details', className: 'activity-card__details' }, 
+              detailsArray.map((detail, idx) => React.createElement('div', { key: idx, className: 'activity-card__detail-item' }, `• ${detail}`))
+            ) : null
           ]);
         } else if (log && typeof log === 'object' && (log.type || log.userId || log.ts)) {
           const std = toStd(log);
           if (std) return React.createElement('div', { key: index, className: 'notification-item notification-legacy' }, std.stdText);
         }
         return null;
-      }, []);
+      }, [expandedActivities, toggleActivity, users]);
 
       // Prefer working default if present, else canonical. Append a revision hint.
       const choosePreferredDocUrl = React.useCallback(async (revHint) => {
