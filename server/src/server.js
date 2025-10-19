@@ -467,6 +467,8 @@ function getDiscussionSummary(userId) {
   const privileged = threads.filter(t => t.privileged).length;
   const internal = threads.filter(t => t.internal).length;
   const external = threads.filter(t => t.external).length;
+  // Count CONVERSATIONS with unread messages, not individual messages
+  // This is the number of threads that have the user in their unreadBy array
   const unreadForMe = threads.filter(t => 
     t.unreadBy && t.unreadBy.includes(userId)
   ).length;
