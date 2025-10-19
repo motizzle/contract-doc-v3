@@ -2516,36 +2516,45 @@
             style: { 
               padding: '4px 10px', 
               fontSize: 12, 
+              fontWeight: thread.internal ? 600 : 400,
+              color: thread.internal ? '#0c4a6e' : '#6b7280',
               background: thread.internal ? '#e0f2fe' : '#f3f4f6', 
               border: 'none', 
               borderRadius: 4, 
-              cursor: 'pointer' 
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
             } 
-          }, thread.internal ? '✓ Internal' : 'Mark Internal'),
+          }, thread.internal ? '✓ Internal' : 'Internal'),
           React.createElement('button', { 
             key: 'external', 
             onClick: () => toggleFlag('external', !thread.external), 
             style: { 
               padding: '4px 10px', 
               fontSize: 12, 
+              fontWeight: thread.external ? 600 : 400,
+              color: thread.external ? '#78350f' : '#6b7280',
               background: thread.external ? '#fef3c7' : '#f3f4f6', 
               border: 'none', 
               borderRadius: 4, 
-              cursor: 'pointer' 
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
             } 
-          }, thread.external ? '✓ External' : 'Mark External'),
+          }, thread.external ? '✓ External' : 'External'),
           React.createElement('button', { 
             key: 'priv', 
             onClick: () => toggleFlag('privileged', !thread.privileged), 
             style: { 
               padding: '4px 10px', 
               fontSize: 12, 
+              fontWeight: thread.privileged ? 600 : 400,
+              color: thread.privileged ? '#831843' : '#6b7280',
               background: thread.privileged ? '#fce7f3' : '#f3f4f6', 
               border: 'none', 
               borderRadius: 4, 
-              cursor: 'pointer' 
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
             } 
-          }, thread.privileged ? '✓ ACP' : 'Mark ACP'),
+          }, thread.privileged ? '✓ ACP' : 'ACP'),
           React.createElement('button', { 
             key: 'archive', 
             onClick: archive, 
