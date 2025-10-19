@@ -568,6 +568,8 @@ body .brand-header-bg .pulse-pill {
 .chat-timestamp.mine { text-align: right; }
 .chat-timestamp.other { text-align: left; }
 
+.chat-author-label { font-size: 11px; color: #6b7280; margin-bottom: 2px; text-align: left; }
+
 .chat-bubble { max-width: min(78%, 100%); padding: 8px 12px; border-radius: 14px; word-break: break-word; box-sizing: border-box; }
 .chat-bubble.mine { background: var(--btn-primary-bg); color: var(--btn-primary-fg); }
 .chat-bubble.other { background: #ffffff; color: #111827; border: none; }

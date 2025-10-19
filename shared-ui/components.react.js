@@ -2953,7 +2953,25 @@
         ])
       ]);
       
-      // Message history (scrollable middle)
+      // Message history (scrollable middle) - styled like AI chat
+      // Helper: determine if this is a group conversation (3+ participants)
+      const allParticipants = thread && thread.participants ? [thread.createdBy, ...thread.participants] : [];
+      const isGroupConversation = allParticipants.length >= 3;
+      
+      // Helper: color class for user (for group conversations)
+      function colorClassForUser(uid) {
+        try {
+          const palette = ['alt-1','alt-2','alt-3','alt-4'];
+          let sum = 0; 
+          const s = String(uid || '');
+          for (let i = 0; i < s.length; i++) sum = (sum + s.charCodeAt(i)) | 0;
+          const idx = Math.abs(sum) % palette.length;
+          return palette[idx];
+        } catch { 
+          return 'alt-1'; 
+        }
+      }
+      
       const history = React.createElement('div', { 
         ref: listRef,
         style: { 
@@ -2961,36 +2979,39 @@
           minHeight: 0, 
           overflowY: 'auto', 
           overflowX: 'hidden', 
-          padding: isAddin ? '8px' : '12px' 
+          padding: isAddin ? '8px' : '12px',
+          border: '1px solid #e5e7eb',
+          borderRadius: 8,
+          background: '#fff'
         } 
       }, 
-        (thread.posts || []).map(p => React.createElement('div', { 
-          key: p.postId, 
-          style: { 
-            marginBottom: 16, 
-            paddingLeft: 12, 
-            borderLeft: '2px solid #e5e7eb' 
-          } 
-        }, [
-          React.createElement('div', { 
-            key: 'meta', 
-            style: { 
-              fontSize: 11, 
-              color: '#6b7280', 
-              marginBottom: 4 
-            } 
-          }, `${p.author.label} • ${new Date(p.createdAt).toLocaleString()}`),
-          React.createElement('div', { 
-            key: 'text', 
-            style: { 
-              fontSize: 13, 
-              lineHeight: 1.5, 
-              color: '#374151',
-              wordBreak: 'break-word',
-              overflowWrap: 'anywhere'
-            } 
-          }, p.text)
-        ]))
+        (thread.posts || []).map(p => {
+          const mine = String(p.author.userId) === String(userId);
+          const rowCls = 'chat-bubble-row ' + (mine ? 'mine' : 'other');
+          let bubbleCls = 'chat-bubble ' + (mine ? 'mine' : 'other');
+          
+          // For other people's messages
+          if (!mine) {
+            if (isGroupConversation) {
+              // Group: use alternating colors per participant
+              bubbleCls += (' ' + colorClassForUser(p.author.userId));
+            } else {
+              // DM (2 people): use grey
+              bubbleCls += ' other-gray';
+            }
+          }
+          
+          const ts = new Date(p.createdAt).toLocaleString();
+          
+          // For group conversations, show author label for other people
+          const showAuthorLabel = !mine && isGroupConversation;
+          
+          return React.createElement('div', { key: p.postId, className: rowCls }, [
+            React.createElement('div', { key: 'ts', className: 'chat-timestamp ' + (mine ? 'mine' : 'other') }, ts),
+            showAuthorLabel ? React.createElement('div', { key: 'author', className: 'chat-author-label' }, p.author.label) : null,
+            React.createElement('div', { key: 'b', className: bubbleCls }, String(p.text || ''))
+          ].filter(Boolean));
+        })
       );
       
       // Fixed footer composer (matching AI tab)
