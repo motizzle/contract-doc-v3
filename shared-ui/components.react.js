@@ -2329,9 +2329,10 @@
         ]),
         
         // Filter badges (order: Unread, Open, Archived, Attorney-Client Privilege, Internal, External)
+        // All badges always visible - no conditional rendering
         React.createElement('div', { key: 'badges', style: { display: 'flex', gap: 8, fontSize: 13, flexWrap: 'wrap' } }, [
           // 1. Unread - Light blue (active: #bfdbfe, inactive: #e0f2fe)
-          summary.messages.unreadForMe > 0 ? React.createElement('button', { 
+          React.createElement('button', { 
             key: 'unread',
             onClick: () => toggleFlagFilter('unread'),
             style: { 
@@ -2343,7 +2344,7 @@
               borderRadius: 4, 
               cursor: 'pointer'
             } 
-          }, `Unread: ${summary.messages.unreadForMe}`) : null,
+          }, `Unread: ${summary.messages.unreadForMe || 0}`),
           // 2. Open - Dark grey (active: #9ca3af, inactive: #d1d5db)
           React.createElement('button', { 
             key: 'open',
@@ -2357,7 +2358,7 @@
               borderRadius: 4, 
               cursor: 'pointer'
             } 
-          }, `Open: ${summary.messages.open}`),
+          }, `Open: ${summary.messages.open || 0}`),
           // 3. Archived - Light grey (active: #d1d5db, inactive: #e5e7eb)
           React.createElement('button', { 
             key: 'archived',
@@ -2371,9 +2372,9 @@
               borderRadius: 4, 
               cursor: 'pointer'
             } 
-          }, `Archived: ${summary.messages.archived}`),
+          }, `Archived: ${summary.messages.archived || 0}`),
           // 4. Attorney-Client Privilege - Pink (active: #fce7f3, inactive: #fdf2f8)
-          summary.messages.privileged > 0 ? React.createElement('button', { 
+          React.createElement('button', { 
             key: 'priv',
             onClick: () => toggleFlagFilter('privileged'),
             style: { 
@@ -2385,9 +2386,9 @@
               borderRadius: 4, 
               cursor: 'pointer'
             } 
-          }, `Attorney-Client Privilege: ${summary.messages.privileged}`) : null,
+          }, `Attorney-Client Privilege: ${summary.messages.privileged || 0}`),
           // 5. Internal - Blue (active: #e0f2fe, inactive: #f0f9ff)
-          summary.messages.internal > 0 ? React.createElement('button', { 
+          React.createElement('button', { 
             key: 'internal',
             onClick: () => toggleFlagFilter('internal'),
             style: { 
@@ -2399,9 +2400,9 @@
               borderRadius: 4, 
               cursor: 'pointer'
             } 
-          }, `Internal: ${summary.messages.internal}`) : null,
+          }, `Internal: ${summary.messages.internal || 0}`),
           // 6. External - Yellow (active: #fef3c7, inactive: #fefce8)
-          summary.messages.external > 0 ? React.createElement('button', { 
+          React.createElement('button', { 
             key: 'external',
             onClick: () => toggleFlagFilter('external'),
             style: { 
@@ -2413,7 +2414,7 @@
               borderRadius: 4, 
               cursor: 'pointer'
             } 
-          }, `External: ${summary.messages.external}`) : null
+          }, `External: ${summary.messages.external || 0}`)
         ]),
         
         // Message list
