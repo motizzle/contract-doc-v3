@@ -771,8 +771,17 @@ function buildActivityMessage(type, details = {}) {
       return {
         action: 'changed variable value',
         target: 'variable',
-        details: { varId: details.varId, displayLabel: details.displayLabel, value: details.value },
-        message: `${userLabel} changed "${details.displayLabel}" to "${details.value}"`
+        details: { 
+          varId: details.varId, 
+          displayLabel: details.displayLabel, 
+          value: details.newValue,
+          oldValue: details.oldValue,
+          newValue: details.newValue,
+          type: details.type,
+          category: details.category,
+          platform: details.platform
+        },
+        message: `${userLabel} changed "${details.displayLabel}"${details.oldValue ? ` from "${details.oldValue}"` : ''} to "${details.newValue || details.value}"`
       };
 
     case 'variable:deleted':
@@ -868,7 +877,17 @@ function buildActivityMessage(type, details = {}) {
       return {
         action: 'started conversation',
         target: 'message',
-        details: { threadId: details.threadId, title: details.title, recipients: details.recipients },
+        details: { 
+          threadId: details.threadId, 
+          title: details.title, 
+          recipients: details.recipients,
+          recipientsList: details.recipientsList,  // Array of recipient objects with names/emails
+          internal: details.internal,
+          external: details.external,
+          privileged: details.privileged,
+          initialMessage: details.initialMessage,
+          platform: details.platform
+        },
         message: `${userLabel} started a conversation${details.title ? ` "${details.title}"` : ''}${details.recipients > 0 ? ` with ${details.recipients} ${details.recipients === 1 ? 'person' : 'people'}` : ''}`
       };
 
@@ -876,30 +895,50 @@ function buildActivityMessage(type, details = {}) {
       return {
         action: 'archived conversation',
         target: 'message',
-        details: { threadId: details.threadId },
-        message: `${userLabel} archived a conversation`
+        details: { 
+          threadId: details.threadId,
+          title: details.title,
+          participants: details.participants,
+          postCount: details.postCount,
+          platform: details.platform
+        },
+        message: `${userLabel} archived a conversation${details.title ? ` "${details.title}"` : ''}`
       };
 
     case 'message:unarchived':
       return {
         action: 'unarchived conversation',
         target: 'message',
-        details: { threadId: details.threadId },
-        message: `${userLabel} unarchived a conversation`
+        details: { 
+          threadId: details.threadId,
+          title: details.title,
+          participants: details.participants,
+          postCount: details.postCount,
+          platform: details.platform
+        },
+        message: `${userLabel} unarchived a conversation${details.title ? ` "${details.title}"` : ''}`
       };
 
     case 'message:flags-updated':
       return {
         action: 'updated conversation flags',
         target: 'message',
-        details: { threadId: details.threadId, internal: details.internal, privileged: details.privileged },
+        details: { 
+          threadId: details.threadId, 
+          title: details.title,
+          internal: details.internal,
+          external: details.external,
+          privileged: details.privileged,
+          participants: details.participants,
+          platform: details.platform
+        },
         message: (function(){
           const flags = [];
           if (details.internal) flags.push('internal');
           if (details.external) flags.push('external');
           if (details.privileged) flags.push('attorney-client privilege');
-          if (flags.length === 0) return `${userLabel} updated conversation flags`;
-          return `${userLabel} marked conversation as ${flags.join(', ')}`;
+          if (flags.length === 0) return `${userLabel} updated conversation flags${details.title ? ` for "${details.title}"` : ''}`;
+          return `${userLabel} marked conversation${details.title ? ` "${details.title}"` : ''} as ${flags.join(', ')}`;
         })()
       };
 
@@ -907,8 +946,17 @@ function buildActivityMessage(type, details = {}) {
       return {
         action: 'deleted conversation',
         target: 'message',
-        details: { threadId: details.threadId, title: details.title },
-        message: `${userLabel} deleted a conversation${details.title ? ` "${details.title}"` : ''}`
+        details: { 
+          threadId: details.threadId, 
+          title: details.title,
+          participants: details.participants,
+          postCount: details.postCount,
+          internal: details.internal,
+          external: details.external,
+          privileged: details.privileged,
+          platform: details.platform
+        },
+        message: `${userLabel} deleted a conversation${details.title ? ` "${details.title}"` : ''}${details.postCount ? ` (${details.postCount} message${details.postCount !== 1 ? 's' : ''})` : ''}`
       };
 
     // Add more activity types as needed
@@ -1496,7 +1544,13 @@ app.post('/api/v1/messages/v2', (req, res) => {
     logActivity('message:thread-created', userId, {
       threadId: result.thread.threadId,
       title: result.thread.title,
-      recipients: recipients.length
+      recipients: recipients.length,
+      recipientsList: recipients.map(r => ({ label: r.label, email: r.email, userId: r.userId })),
+      internal: !!internal,
+      external: !!external,
+      privileged: !!privileged,
+      initialMessage: text || null,
+      platform: (req.body?.platform || req.query?.platform || 'web')
     });
     
     return res.json({ ok: true, thread: result.thread });
@@ -1567,7 +1621,16 @@ app.post('/api/v1/messages/v2/:threadId/state', (req, res) => {
         userId
       });
       
-      logActivity('message:archived', userId, { threadId });
+      const data = readMessagesV2();
+      const postCount = data.posts.filter(p => p.threadId === threadId).length;
+      
+      logActivity('message:archived', userId, { 
+        threadId,
+        title: result.thread.title,
+        participants: result.thread.participants.map(p => p.label).join(', '),
+        postCount,
+        platform: (req.body?.platform || req.query?.platform || 'web')
+      });
       return res.json({ ok: true, thread: result.thread });
     } else if (state === 'open') {
       // Unarchive is user-specific - remove user from archivedBy array
@@ -1582,7 +1645,16 @@ app.post('/api/v1/messages/v2/:threadId/state', (req, res) => {
         userId
       });
       
-      logActivity('message:unarchived', userId, { threadId });
+      const data = readMessagesV2();
+      const postCount = data.posts.filter(p => p.threadId === threadId).length;
+      
+      logActivity('message:unarchived', userId, { 
+        threadId,
+        title: result.thread.title,
+        participants: result.thread.participants.map(p => p.label).join(', '),
+        postCount,
+        platform: (req.body?.platform || req.query?.platform || 'web')
+      });
       return res.json({ ok: true, thread: result.thread });
     }
     
@@ -1614,8 +1686,12 @@ app.post('/api/v1/messages/v2/:threadId/flags', (req, res) => {
     // Log activity
     logActivity('message:flags-updated', userId, {
       threadId,
+      title: result.thread.title,
       internal: result.thread.internal,
-      privileged: result.thread.privileged
+      external: result.thread.external,
+      privileged: result.thread.privileged,
+      participants: result.thread.participants.map(p => p.label).join(', '),
+      platform: (req.body?.platform || req.query?.platform || 'web')
     });
     
     return res.json({ ok: true, thread: result.thread });
@@ -1680,10 +1756,19 @@ app.post('/api/v1/messages/v2/:threadId/delete', (req, res) => {
       userId
     });
     
+    const data = readMessagesV2();
+    const postCount = data.posts.filter(p => p.threadId === threadId).length;
+    
     // Log activity
     logActivity('message:deleted', userId, {
       threadId,
-      title: result.thread.title
+      title: result.thread.title,
+      participants: result.thread.participants.map(p => p.label).join(', '),
+      postCount,
+      internal: result.thread.internal,
+      external: result.thread.external,
+      privileged: result.thread.privileged,
+      platform: (req.body?.platform || req.query?.platform || 'web')
     });
     
     return res.json({ ok: true, thread: result.thread });
@@ -1876,6 +1961,8 @@ app.put('/api/v1/variables/:varId', (req, res) => {
       return res.status(404).json({ error: 'Variable not found' });
     }
     
+    const oldVariable = existingVariables[varId];
+    
     // Build updates object
     const updates = {
       updatedBy: userId || 'system'
@@ -1886,6 +1973,27 @@ app.put('/api/v1/variables/:varId', (req, res) => {
     if (value !== undefined) updates.value = value;
     if (email !== undefined) updates.email = email;
     if (docusignRole !== undefined) updates.docusignRole = docusignRole;
+    
+    // Track what changed with old -> new values
+    const changes = {};
+    if (displayLabel !== undefined && displayLabel !== oldVariable.displayLabel) {
+      changes.displayLabel = { old: oldVariable.displayLabel, new: displayLabel };
+    }
+    if (type !== undefined && type !== oldVariable.type) {
+      changes.type = { old: oldVariable.type, new: type };
+    }
+    if (category !== undefined && category !== oldVariable.category) {
+      changes.category = { old: oldVariable.category, new: category };
+    }
+    if (value !== undefined && value !== oldVariable.value) {
+      changes.value = { old: oldVariable.value, new: value };
+    }
+    if (email !== undefined && email !== oldVariable.email) {
+      changes.email = { old: oldVariable.email, new: email };
+    }
+    if (docusignRole !== undefined && docusignRole !== oldVariable.docusignRole) {
+      changes.docusignRole = { old: oldVariable.docusignRole, new: docusignRole };
+    }
     
     // Update variable
     if (!updateVariable(varId, updates)) {
@@ -1900,7 +2008,10 @@ app.put('/api/v1/variables/:varId', (req, res) => {
     logActivity('variable:updated', userId || 'system', { 
       varId,
       displayLabel: updatedVariable.displayLabel,
-      changes: Object.keys(updates).filter(k => k !== 'updatedBy')
+      changes,
+      type: updatedVariable.type,
+      category: updatedVariable.category,
+      platform: (req.body?.platform || req.query?.platform || 'web')
     });
     
     // Broadcast SSE event
@@ -1990,7 +2101,10 @@ app.put('/api/v1/variables/:varId/value', (req, res) => {
       varId,
       displayLabel: updatedVariable.displayLabel,
       oldValue,
-      newValue: value
+      newValue: value,
+      type: updatedVariable.type,
+      category: updatedVariable.category,
+      platform: (req.body?.platform || req.query?.platform || 'web')
     });
     
     // Broadcast specific SSE event for value changes
