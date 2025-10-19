@@ -2144,7 +2144,7 @@
       const [messages, setMessages] = React.useState([]);
       const [view, setView] = React.useState('list'); // 'list' or 'conversation'
       const [activeThreadId, setActiveThreadId] = React.useState(null);
-      const [filter, setFilter] = React.useState({ states: ['open'], internal: false, external: false, privileged: false, search: '' });
+      const [filter, setFilter] = React.useState({ states: ['open'], internal: false, external: false, privileged: false, unread: false, search: '' });
       const [showNewMessage, setShowNewMessage] = React.useState(false);
       const [summary, setSummary] = React.useState({ messages: { open: 0, unreadForMe: 0, privileged: 0, internal: 0, external: 0, archived: 0 } });
       
@@ -2211,6 +2211,9 @@
           }
           if (filter.privileged) {
             uniqueMessages = uniqueMessages.filter(m => m.privileged === true);
+          }
+          if (filter.unread) {
+            uniqueMessages = uniqueMessages.filter(m => m.unreadBy && m.unreadBy.includes(userId));
           }
           
           // Sort by lastPostAt
@@ -2383,7 +2386,20 @@
               opacity: filter.privileged ? 1 : 0.6
             } 
           }, `Attorney-Client Privilege: ${summary.messages.privileged}`) : null,
-          React.createElement('span', { key: 'unread', style: { padding: '4px 10px', fontSize: 12, background: '#f3f4f6', color: '#6b7280', borderRadius: 4 } }, `Unread: ${summary.messages.unreadForMe}`)
+          summary.messages.unreadForMe > 0 ? React.createElement('button', { 
+            key: 'unread',
+            onClick: () => toggleFlagFilter('unread'),
+            style: { 
+              padding: '4px 10px', 
+              fontSize: 12,
+              background: '#fef3c7',
+              color: '#78350f',
+              border: 'none',
+              borderRadius: 4, 
+              cursor: 'pointer',
+              opacity: filter.unread ? 1 : 0.6
+            } 
+          }, `Unread: ${summary.messages.unreadForMe}`) : null
         ]),
         
         // Message list
@@ -2531,6 +2547,30 @@
           if (onUpdate) onUpdate();
         } catch (e) {
           console.error('Failed to toggle flag:', e);
+        }
+      }
+      
+      async function toggleRead() {
+        try {
+          const isUnread = thread.unreadBy && thread.unreadBy.includes(userId);
+          const newReadState = !isUnread; // If unread, mark as read (true); if read, mark as unread (false)
+          
+          await fetch(`${API_BASE}/api/v1/messages/v2/${threadId}/read`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ read: newReadState, userId })
+          });
+          
+          // Reload thread
+          const r = await fetch(`${API_BASE}/api/v1/messages/v2?userId=${userId}`);
+          if (r.ok) {
+            const data = await r.json();
+            const foundThread = data.threads.find(t => t.threadId === threadId);
+            if (foundThread) setThread(foundThread);
+          }
+          if (onUpdate) onUpdate();
+        } catch (e) {
+          console.error('Failed to toggle read state:', e);
         }
       }
       
@@ -2697,6 +2737,21 @@
               transition: 'all 0.15s ease'
             } 
           }, (thread.archivedBy && thread.archivedBy.includes(userId)) ? '✓ Archived' : 'Archive'),
+          React.createElement('button', { 
+            key: 'read',
+            onClick: toggleRead,
+            style: { 
+              padding: '4px 10px', 
+              fontSize: 12,
+              fontWeight: (thread.unreadBy && thread.unreadBy.includes(userId)) ? 400 : 600,
+              color: (thread.unreadBy && thread.unreadBy.includes(userId)) ? '#6b7280' : '#0c4a6e',
+              background: (thread.unreadBy && thread.unreadBy.includes(userId)) ? '#f3f4f6' : '#e0f2fe',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            } 
+          }, (thread.unreadBy && thread.unreadBy.includes(userId)) ? 'Mark Read' : '✓ Read'),
           React.createElement('button', { 
             key: 'export', 
             onClick: exportCSV, 
