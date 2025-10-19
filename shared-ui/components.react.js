@@ -2437,9 +2437,9 @@
                     React.createElement('div', { key: 'meta', style: { fontSize: 12, color: '#6b7280' } }, `${msg.postCount || 0} message${msg.postCount !== 1 ? 's' : ''} • ${new Date(msg.lastPostAt).toLocaleDateString()}`)
                   ]),
                   React.createElement('div', { key: 'right', style: { display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0, marginLeft: 12 } }, [
+                    msg.privileged ? React.createElement('span', { key: 'priv', style: { padding: '3px 8px', fontSize: 11, background: '#fce7f3', borderRadius: 4, whiteSpace: 'nowrap' } }, 'Attorney-Client Privilege') : null,
                     msg.internal ? React.createElement('span', { key: 'int', style: { padding: '3px 8px', fontSize: 11, background: '#e0f2fe', borderRadius: 4, whiteSpace: 'nowrap' } }, 'Internal') : null,
-                    msg.external ? React.createElement('span', { key: 'ext', style: { padding: '3px 8px', fontSize: 11, background: '#fef3c7', borderRadius: 4, whiteSpace: 'nowrap' } }, 'External') : null,
-                    msg.privileged ? React.createElement('span', { key: 'priv', style: { padding: '3px 8px', fontSize: 11, background: '#fce7f3', borderRadius: 4, whiteSpace: 'nowrap' } }, 'Attorney-Client Privilege') : null
+                    msg.external ? React.createElement('span', { key: 'ext', style: { padding: '3px 8px', fontSize: 11, background: '#fef3c7', borderRadius: 4, whiteSpace: 'nowrap' } }, 'External') : null
                   ])
                 ]);
               })
