@@ -808,7 +808,7 @@ body {
 #layout {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 850px; /* Editor flexes; sidepane fixed 850px */
+  grid-template-columns: minmax(0, 1fr) 530px; /* Editor flexes; sidepane fixed 530px */
   overflow-x: hidden; /* Prevent grid-level scrollbar from overlaying sidepane */
   height: calc(100vh - 48px); /* 48px = navbar height */
   margin-top: 48px; /* Push below fixed navbar */
@@ -856,8 +856,8 @@ body {
 #pane {
   position: relative;
   z-index: 5;
-  width: 850px;
-  max-width: 850px;
+  width: 530px;
+  max-width: 530px;
   flex-shrink: 0; /* Never shrink sidepane */
   border-left: 1px solid #eee;
   display: flex;

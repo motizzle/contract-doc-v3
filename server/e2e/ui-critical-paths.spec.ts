@@ -21,9 +21,13 @@ test.describe('Phase 6: UI Critical Paths', () => {
     const appRoot = page.locator('#app-root');
     await expect(appRoot).toBeVisible({ timeout: 10000 });
     
-    // Check for React component indicators
-    const hasReactContent = await appRoot.evaluate(el => el.children.length > 0);
-    expect(hasReactContent).toBe(true);
+    // Wait for actual React content to render (tabs are a good indicator)
+    const tabs = page.locator('.tab');
+    await expect(tabs.first()).toBeVisible({ timeout: 10000 });
+    
+    // Verify multiple tabs rendered
+    const tabCount = await tabs.count();
+    expect(tabCount).toBeGreaterThan(0);
   });
 
   test('SuperDoc initializes successfully', async ({ page }) => {

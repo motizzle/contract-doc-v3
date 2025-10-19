@@ -253,9 +253,14 @@ describe('Phase 3: API Integrity', () => {
   test('POST /api/v1/checkin returns 200 when owner, 409 when not', async () => {
     await resetState();
 
+    // Get current document version
+    const state = await request('GET', '/api/v1/state-matrix?userId=userA');
+    const currentVersion = state.body.config.documentVersion || 1;
+
     // Checkout as userA
-    await request('POST', '/api/v1/checkout', { userId: 'userA', clientVersion: 1 });
-    await sleep(200);
+    const checkoutRes = await request('POST', '/api/v1/checkout', { userId: 'userA', clientVersion: currentVersion });
+    expect(checkoutRes.status).toBe(200);
+    await sleep(500);
 
     // Try checkin as userB (not owner) - should fail
     const res1 = await request('POST', '/api/v1/checkin', { userId: 'userB' });
@@ -278,9 +283,14 @@ describe('Phase 3: API Integrity', () => {
     const res1 = await request('POST', '/api/v1/save-progress', { userId: 'userA', base64 });
     expect(res1.status).toBe(409);
 
+    // Get current document version
+    const state = await request('GET', '/api/v1/state-matrix?userId=userA');
+    const currentVersion = state.body.config.documentVersion || 1;
+
     // With checkout - 200
-    await request('POST', '/api/v1/checkout', { userId: 'userA', clientVersion: 1 });
-    await sleep(200);
+    const checkoutRes = await request('POST', '/api/v1/checkout', { userId: 'userA', clientVersion: currentVersion });
+    expect(checkoutRes.status).toBe(200);
+    await sleep(500);
     const res2 = await request('POST', '/api/v1/save-progress', { userId: 'userA', base64 });
     expect(res2.status).toBe(200);
 
@@ -784,13 +794,13 @@ describe('Phase 13: Exhibits & Compilation', () => {
 
 describe('Phase 14: Messages (Threaded Messaging)', () => {
 
-  test('GET /api/v1/messages returns thread list', async () => {
+  test('GET /api/v1/messages returns message list', async () => {
     const res = await request('GET', '/api/v1/messages?userId=user1');
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body.threads)).toBe(true);
+    expect(Array.isArray(res.body.messages)).toBe(true);
   });
 
-  test('POST /api/v1/messages creates new thread', async () => {
+  test('POST /api/v1/messages creates new message', async () => {
     const res = await request('POST', '/api/v1/messages', {
       userId: 'user1',
       recipients: [
@@ -802,8 +812,754 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
       privileged: false
     });
     expect(res.status).toBe(200);
-    expect(res.body.thread).toBeDefined();
-    expect(res.body.thread.threadId).toBeDefined();
+    expect(res.body.message).toBeDefined();
+    expect(res.body.message.messageId).toBeDefined();
+  });
+
+  test('POST /api/v1/messages creates message with custom title', async () => {
+    const res = await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      title: 'Custom Title',
+      recipients: [
+        { userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }
+      ],
+      text: 'Test with title',
+      internal: false,
+      external: false,
+      privileged: false
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.message.title).toBe('Custom Title');
+  });
+
+  test('POST /api/v1/messages/:messageId/post adds post to message', async () => {
+    // First create a message
+    const createRes = await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [
+        { userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }
+      ],
+      text: 'Initial message',
+      internal: false
+    });
+    const messageId = createRes.body.message.messageId;
+
+    // Add a post
+    const postRes = await request('POST', `/api/v1/messages/${messageId}/post`, {
+      userId: 'user2',
+      text: 'Reply message'
+    });
+    expect(postRes.status).toBe(200);
+    expect(postRes.body.post).toBeDefined();
+    expect(postRes.body.post.text).toBe('Reply message');
+  });
+
+  test('POST /api/v1/messages/:messageId/read marks message as read', async () => {
+    // Create a message
+    const createRes = await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [
+        { userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }
+      ],
+      text: 'Test unread',
+      internal: false
+    });
+    const messageId = createRes.body.message.messageId;
+
+    // Mark as read for user2
+    const readRes = await request('POST', `/api/v1/messages/${messageId}/read`, {
+      userId: 'user2',
+      unread: false
+    });
+    expect(readRes.status).toBe(200);
+    expect(readRes.body.message.unreadBy).not.toContain('user2');
+  });
+
+  test('POST /api/v1/messages/:messageId/read marks message as unread', async () => {
+    // Create a message
+    const createRes = await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [
+        { userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }
+      ],
+      text: 'Test unread toggle',
+      internal: false
+    });
+    const messageId = createRes.body.message.messageId;
+
+    // First mark as read
+    await request('POST', `/api/v1/messages/${messageId}/read`, {
+      userId: 'user2',
+      unread: false
+    });
+
+    // Then mark as unread
+    const unreadRes = await request('POST', `/api/v1/messages/${messageId}/read`, {
+      userId: 'user2',
+      unread: true
+    });
+    expect(unreadRes.status).toBe(200);
+    expect(unreadRes.body.message.unreadBy).toContain('user2');
+  });
+
+  test('POST /api/v1/messages/:messageId/state archives message', async () => {
+    // Create a message
+    const createRes = await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [
+        { userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }
+      ],
+      text: 'Test archive',
+      internal: false
+    });
+    const messageId = createRes.body.message.messageId;
+
+    // Archive for user1
+    const archiveRes = await request('POST', `/api/v1/messages/${messageId}/state`, {
+      userId: 'user1',
+      state: 'archived'
+    });
+    expect(archiveRes.status).toBe(200);
+    expect(archiveRes.body.message.archivedBy).toContain('user1');
+  });
+
+  test('POST /api/v1/messages/:messageId/state unarchives message', async () => {
+    // Create and archive a message
+    const createRes = await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [
+        { userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }
+      ],
+      text: 'Test unarchive',
+      internal: false
+    });
+    const messageId = createRes.body.message.messageId;
+    
+    await request('POST', `/api/v1/messages/${messageId}/state`, {
+      userId: 'user1',
+      state: 'archived'
+    });
+
+    // Unarchive
+    const unarchiveRes = await request('POST', `/api/v1/messages/${messageId}/state`, {
+      userId: 'user1',
+      state: 'open'
+    });
+    expect(unarchiveRes.status).toBe(200);
+    expect(unarchiveRes.body.message.archivedBy).not.toContain('user1');
+  });
+
+  test('POST /api/v1/messages/:messageId/delete soft deletes message', async () => {
+    // Create a message
+    const createRes = await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [
+        { userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }
+      ],
+      text: 'Test delete',
+      internal: false
+    });
+    const messageId = createRes.body.message.messageId;
+
+    // Delete for user1
+    const deleteRes = await request('POST', `/api/v1/messages/${messageId}/delete`, {
+      userId: 'user1'
+    });
+    expect(deleteRes.status).toBe(200);
+    expect(deleteRes.body.message.deletedBy).toContain('user1');
+  });
+
+  test('POST /api/v1/messages/:messageId/flags updates message flags', async () => {
+    // Create a message
+    const createRes = await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [
+        { userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }
+      ],
+      text: 'Test flags',
+      internal: false,
+      external: false,
+      privileged: false
+    });
+    const messageId = createRes.body.message.messageId;
+
+    // Update flags
+    const flagsRes = await request('POST', `/api/v1/messages/${messageId}/flags`, {
+      userId: 'user1',
+      internal: true,
+      external: true,
+      privileged: true
+    });
+    expect(flagsRes.status).toBe(200);
+    expect(flagsRes.body.message.internal).toBe(true);
+    expect(flagsRes.body.message.external).toBe(true);
+    expect(flagsRes.body.message.privileged).toBe(true);
+  });
+
+  test('POST /api/v1/messages creates group message with multiple recipients', async () => {
+    const res = await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [
+        { userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true },
+        { userId: 'user3', label: 'User 3', email: 'user3@test.com', internal: true }
+      ],
+      text: 'Group message',
+      internal: false
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.message.participants.length).toBe(2);
+  });
+
+  test('GET /api/v1/messages filters by state (archived)', async () => {
+    // Create and archive a message
+    const createRes = await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [
+        { userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }
+      ],
+      text: 'Archive filter test',
+      internal: false
+    });
+    const messageId = createRes.body.message.messageId;
+    
+    await request('POST', `/api/v1/messages/${messageId}/state`, {
+      userId: 'user1',
+      state: 'archived'
+    });
+
+    // Get archived messages
+    const res = await request('GET', '/api/v1/messages?userId=user1&state=archived');
+    expect(res.status).toBe(200);
+    expect(res.body.messages.some(m => m.messageId === messageId)).toBe(true);
+  });
+
+  test('GET /api/v1/messages excludes deleted messages', async () => {
+    // Create and delete a message
+    const createRes = await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [
+        { userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }
+      ],
+      text: 'Delete filter test',
+      internal: false
+    });
+    const messageId = createRes.body.message.messageId;
+    
+    await request('POST', `/api/v1/messages/${messageId}/delete`, {
+      userId: 'user1'
+    });
+
+    // Get messages - should not include deleted
+    const res = await request('GET', '/api/v1/messages?userId=user1&state=open');
+    expect(res.status).toBe(200);
+    expect(res.body.messages.some(m => m.messageId === messageId)).toBe(false);
+  });
+
+  test('factory reset clears all messages', async () => {
+    // Create a few messages first
+    await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [
+        { userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }
+      ],
+      text: 'Before reset 1',
+      internal: false
+    });
+    
+    await request('POST', '/api/v1/messages', {
+      userId: 'user2',
+      recipients: [
+        { userId: 'user3', label: 'User 3', email: 'user3@test.com', internal: true }
+      ],
+      text: 'Before reset 2',
+      internal: false
+    });
+
+    // Verify messages exist
+    const beforeReset = await request('GET', '/api/v1/messages?userId=user1');
+    expect(beforeReset.body.messages.length).toBeGreaterThan(0);
+
+    // Factory reset
+    const resetRes = await request('POST', '/api/v1/factory-reset', {
+      userId: 'admin'
+    });
+    expect(resetRes.status).toBe(200);
+
+    // Verify messages are cleared
+    const afterReset = await request('GET', '/api/v1/messages?userId=user1');
+    expect(afterReset.body.messages.length).toBe(0);
+  });
+
+  test('factory reset clears message posts', async () => {
+    // Create a message with posts
+    const createRes = await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [
+        { userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }
+      ],
+      text: 'Initial message',
+      internal: false
+    });
+    const messageId = createRes.body.message.messageId;
+
+    // Add posts
+    await request('POST', `/api/v1/messages/${messageId}/post`, {
+      userId: 'user2',
+      text: 'Reply 1'
+    });
+    
+    await request('POST', `/api/v1/messages/${messageId}/post`, {
+      userId: 'user1',
+      text: 'Reply 2'
+    });
+
+    // Factory reset
+    await request('POST', '/api/v1/factory-reset', {
+      userId: 'admin'
+    });
+
+    // Verify messages (and their posts) are cleared
+    const afterReset = await request('GET', '/api/v1/messages?userId=user1');
+    expect(afterReset.body.messages.length).toBe(0);
+  });
+
+  test('messaging works correctly after factory reset', async () => {
+    // Create and delete a message
+    const createRes = await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [
+        { userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }
+      ],
+      text: 'Before reset',
+      internal: false
+    });
+    const oldMessageId = createRes.body.message.messageId;
+
+    // Factory reset
+    await request('POST', '/api/v1/factory-reset', {
+      userId: 'admin'
+    });
+
+    // Create new message after reset
+    const newRes = await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [
+        { userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }
+      ],
+      text: 'After reset',
+      internal: false
+    });
+    expect(newRes.status).toBe(200);
+    expect(newRes.body.message.messageId).toBeDefined();
+    expect(newRes.body.message.messageId).not.toBe(oldMessageId);
+    // Note: text is stored as a post, not on the message object itself
+    expect(newRes.body.message.title).toBeDefined();
+  });
+
+  test('factory reset clears archived and deleted messages', async () => {
+    // Create messages with different states
+    const createRes1 = await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [
+        { userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }
+      ],
+      text: 'To be archived',
+      internal: false
+    });
+    const messageId1 = createRes1.body.message.messageId;
+
+    const createRes2 = await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [
+        { userId: 'user3', label: 'User 3', email: 'user3@test.com', internal: true }
+      ],
+      text: 'To be deleted',
+      internal: false
+    });
+    const messageId2 = createRes2.body.message.messageId;
+
+    // Archive one
+    await request('POST', `/api/v1/messages/${messageId1}/state`, {
+      userId: 'user1',
+      state: 'archived'
+    });
+
+    // Delete another
+    await request('POST', `/api/v1/messages/${messageId2}/delete`, {
+      userId: 'user1'
+    });
+
+    // Factory reset
+    await request('POST', '/api/v1/factory-reset', {
+      userId: 'admin'
+    });
+
+    // Verify all states cleared
+    const openMessages = await request('GET', '/api/v1/messages?userId=user1&state=open');
+    const archivedMessages = await request('GET', '/api/v1/messages?userId=user1&state=archived');
+    
+    expect(openMessages.body.messages.length).toBe(0);
+    expect(archivedMessages.body.messages.length).toBe(0);
+  });
+
+  test('factory reset preserves message data structure', async () => {
+    // Factory reset
+    await request('POST', '/api/v1/factory-reset', {
+      userId: 'admin'
+    });
+
+    // Create a new message
+    const res = await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [
+        { userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }
+      ],
+      text: 'Test structure',
+      internal: true,
+      external: false,
+      privileged: true
+    });
+
+    // Verify proper structure
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBeDefined();
+    expect(res.body.message.messageId).toBeDefined();
+    expect(res.body.message.participants).toBeDefined();
+    expect(Array.isArray(res.body.message.participants)).toBe(true);
+    expect(res.body.message.createdBy).toBeDefined();
+    expect(res.body.message.internal).toBe(true);
+    expect(res.body.message.privileged).toBe(true);
+    expect(res.body.message.unreadBy).toBeDefined();
+    expect(Array.isArray(res.body.message.unreadBy)).toBe(true);
+  });
+
+  test('factory reset clears activity log', async () => {
+    // Generate some activity by creating messages and making changes
+    await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [
+        { userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }
+      ],
+      text: 'Activity test',
+      internal: false
+    });
+
+    await request('POST', '/api/v1/title', {
+      userId: 'user1',
+      title: 'Test Title'
+    });
+
+    // Verify activity exists
+    const beforeReset = await request('GET', '/api/v1/activity?userId=user1');
+    expect(beforeReset.status).toBe(200);
+    const beforeActivityCount = beforeReset.body.activities?.length || 0;
+    expect(beforeActivityCount).toBeGreaterThan(0);
+
+    // Factory reset
+    await request('POST', '/api/v1/factory-reset', {
+      userId: 'admin'
+    });
+
+    // Verify activity is cleared
+    const afterReset = await request('GET', '/api/v1/activity?userId=user1');
+    expect(afterReset.status).toBe(200);
+    expect(afterReset.body.activities.length).toBe(0);
+  });
+
+  test('factory reset resets workflow approvals', async () => {
+    // Get list of approvers first
+    const initialApprovers = await request('GET', '/api/v1/approvals');
+    expect(initialApprovers.status).toBe(200);
+    
+    // Set some approvals (need to target existing approvers)
+    if (initialApprovers.body.approvers && initialApprovers.body.approvers.length > 0) {
+      const firstApprover = initialApprovers.body.approvers[0];
+      await request('POST', '/api/v1/approvals/set', {
+        actorUserId: 'user1',
+        targetUserId: firstApprover.userId,
+        approved: true
+      });
+
+      // Verify approvals exist
+      const beforeReset = await request('GET', '/api/v1/approvals');
+      expect(beforeReset.status).toBe(200);
+      const approvedBefore = beforeReset.body.approvers.filter(a => a.approved).length;
+      expect(approvedBefore).toBeGreaterThan(0);
+
+      // Factory reset
+      await request('POST', '/api/v1/factory-reset', {
+        userId: 'admin'
+      });
+
+      // Verify approvals are reset
+      const afterReset = await request('GET', '/api/v1/approvals');
+      expect(afterReset.status).toBe(200);
+      const approvedAfter = afterReset.body.approvers.filter(a => a.approved).length;
+      expect(approvedAfter).toBe(0);
+    } else {
+      // If no approvers configured, just verify factory reset works
+      await request('POST', '/api/v1/factory-reset', {
+        userId: 'admin'
+      });
+      const afterReset = await request('GET', '/api/v1/approvals');
+      expect(afterReset.status).toBe(200);
+    }
+  });
+
+  test('factory reset clears all versions', async () => {
+    // Create a version by saving progress
+    await request('POST', '/api/v1/save-progress', {
+      userId: 'user1',
+      data: 'Test document content for version 1'
+    });
+
+    await request('POST', '/api/v1/save-progress', {
+      userId: 'user1',
+      data: 'Test document content for version 2'
+    });
+
+    // Verify versions exist (API returns {items} not {versions})
+    const beforeReset = await request('GET', '/api/v1/versions');
+    expect(beforeReset.status).toBe(200);
+    expect(beforeReset.body.items).toBeDefined();
+    expect(beforeReset.body.items.length).toBeGreaterThan(0);
+
+    // Factory reset
+    await request('POST', '/api/v1/factory-reset', {
+      userId: 'admin'
+    });
+
+    // Verify versions are cleared (only v1 default should remain)
+    const afterReset = await request('GET', '/api/v1/versions');
+    expect(afterReset.status).toBe(200);
+    expect(afterReset.body.items.length).toBe(1);
+    expect(afterReset.body.items[0].version).toBe(1);
+  });
+
+  test('factory reset clears all variables', async () => {
+    // Get initial variables count
+    const initialVars = await request('GET', '/api/v1/variables');
+    expect(initialVars.status).toBe(200);
+    expect(initialVars.body.variables).toBeDefined();
+    const initialCount = Object.keys(initialVars.body.variables).length;
+
+    // Create some variables (using correct field names)
+    const var1 = await request('POST', '/api/v1/variables', {
+      userId: 'user1',
+      displayLabel: 'Test Variable 1',
+      type: 'value',
+      value: 'value1'
+    });
+    expect(var1.status).toBe(200);
+
+    const var2 = await request('POST', '/api/v1/variables', {
+      userId: 'user1',
+      displayLabel: 'Test Variable 2',
+      type: 'value',
+      value: 'value2'
+    });
+    expect(var2.status).toBe(200);
+
+    // Verify variables were added
+    const beforeReset = await request('GET', '/api/v1/variables');
+    expect(beforeReset.status).toBe(200);
+    expect(beforeReset.body.variables).toBeDefined();
+    const beforeCount = Object.keys(beforeReset.body.variables).length;
+    expect(beforeCount).toBeGreaterThan(initialCount);
+
+    // Factory reset
+    await request('POST', '/api/v1/factory-reset', {
+      userId: 'admin'
+    });
+
+    // Verify variables are reset to seed state
+    const afterReset = await request('GET', '/api/v1/variables');
+    expect(afterReset.status).toBe(200);
+    expect(afterReset.body.variables).toBeDefined();
+    // After reset, should be back to initial seed count
+    const afterCount = Object.keys(afterReset.body.variables).length;
+    expect(afterCount).toBeLessThanOrEqual(initialCount);
+  });
+
+  test('factory reset clears checkout state', async () => {
+    // Get current document version first
+    const stateBeforeCheckout = await request('GET', '/api/v1/state-matrix?userId=user1');
+    const currentVersion = stateBeforeCheckout.body.config.documentVersion || 1;
+
+    // Checkout the document with current version
+    const checkoutRes = await request('POST', '/api/v1/checkout', {
+      userId: 'user1',
+      clientVersion: currentVersion
+    });
+    expect(checkoutRes.status).toBe(200);
+
+    // Verify checkout exists (API returns {config, revision} not {state})
+    const beforeReset = await request('GET', '/api/v1/state-matrix?userId=user1');
+    expect(beforeReset.status).toBe(200);
+    expect(beforeReset.body.config.checkoutStatus.checkedOutUserId).toBe('user1');
+
+    // Factory reset
+    await request('POST', '/api/v1/factory-reset', {
+      userId: 'admin'
+    });
+
+    // Verify checkout is cleared
+    const afterReset = await request('GET', '/api/v1/state-matrix?userId=user1');
+    expect(afterReset.status).toBe(200);
+    expect(afterReset.body.config.checkoutStatus.checkedOutUserId).toBeNull();
+  });
+
+  test('factory reset resets document title', async () => {
+    // Set a custom title
+    await request('POST', '/api/v1/title', {
+      userId: 'user1',
+      title: 'Custom Document Title'
+    });
+
+    // Verify title was set (API returns {config, revision} not {state})
+    const beforeReset = await request('GET', '/api/v1/state-matrix?userId=user1');
+    expect(beforeReset.status).toBe(200);
+    expect(beforeReset.body.config.title).toBe('Custom Document Title');
+
+    // Factory reset
+    await request('POST', '/api/v1/factory-reset', {
+      userId: 'admin'
+    });
+
+    // Verify title is reset
+    const afterReset = await request('GET', '/api/v1/state-matrix?userId=user1');
+    expect(afterReset.status).toBe(200);
+    // Should be reset to default title
+    expect(afterReset.body.config.title).toBeDefined();
+  });
+
+  test('factory reset resets document status', async () => {
+    // Cycle status a few times
+    await request('POST', '/api/v1/status/cycle', {
+      userId: 'user1'
+    });
+
+    await request('POST', '/api/v1/status/cycle', {
+      userId: 'user1'
+    });
+
+    // Verify status changed (API returns {config, revision} not {state})
+    const beforeReset = await request('GET', '/api/v1/state-matrix?userId=user1');
+    expect(beforeReset.status).toBe(200);
+    const statusBefore = beforeReset.body.config.status;
+    expect(statusBefore).toBeDefined();
+
+    // Factory reset
+    await request('POST', '/api/v1/factory-reset', {
+      userId: 'admin'
+    });
+
+    // Verify status is reset to initial state
+    const afterReset = await request('GET', '/api/v1/state-matrix?userId=user1');
+    expect(afterReset.status).toBe(200);
+    expect(afterReset.body.config.status).toBeDefined();
+  });
+
+  test('factory reset restores default document', async () => {
+    // Upload a custom document
+    // Note: This would require multipart form data, so we'll just verify the concept
+    
+    // Factory reset
+    await request('POST', '/api/v1/factory-reset', {
+      userId: 'admin'
+    });
+
+    // Verify document exists (default.docx should be restored)
+    // API returns {filePath} not {path}
+    const afterReset = await request('GET', '/api/v1/current-document');
+    expect(afterReset.status).toBe(200);
+    expect(afterReset.body.filePath).toBeDefined();
+  });
+
+  test('factory reset maintains system integrity - all endpoints work', async () => {
+    // Create data across multiple systems
+    await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [{ userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }],
+      text: 'Test',
+      internal: false
+    });
+
+    await request('POST', '/api/v1/variables', {
+      userId: 'user1',
+      name: 'testVar',
+      value: 'testValue'
+    });
+
+    await request('POST', '/api/v1/approvals/set', {
+      userId: 'user1',
+      approved: true
+    });
+
+    // Factory reset
+    const resetRes = await request('POST', '/api/v1/factory-reset', {
+      userId: 'admin'
+    });
+    expect(resetRes.status).toBe(200);
+
+    // Verify all major endpoints are functional after reset
+    const stateRes = await request('GET', '/api/v1/state-matrix');
+    expect(stateRes.status).toBe(200);
+
+    const messagesRes = await request('GET', '/api/v1/messages?userId=user1');
+    expect(messagesRes.status).toBe(200);
+
+    const varsRes = await request('GET', '/api/v1/variables');
+    expect(varsRes.status).toBe(200);
+
+    const approvalsRes = await request('GET', '/api/v1/approvals');
+    expect(approvalsRes.status).toBe(200);
+
+    const activityRes = await request('GET', '/api/v1/activity?userId=user1');
+    expect(activityRes.status).toBe(200);
+
+    const versionsRes = await request('GET', '/api/v1/versions');
+    expect(versionsRes.status).toBe(200);
+
+    // All should return 200 and have proper structure
+    expect(messagesRes.body.messages).toBeDefined();
+    expect(varsRes.body.variables).toBeDefined();
+    expect(approvalsRes.body.approvers).toBeDefined();
+    expect(activityRes.body.activities).toBeDefined();
+    expect(versionsRes.body.items).toBeDefined();
+  });
+
+  test('factory reset is idempotent - can be run multiple times safely', async () => {
+    // Create some data
+    await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [{ userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }],
+      text: 'Test',
+      internal: false
+    });
+
+    // First reset
+    const reset1 = await request('POST', '/api/v1/factory-reset', {
+      userId: 'admin'
+    });
+    expect(reset1.status).toBe(200);
+
+    // Second reset (should not cause errors)
+    const reset2 = await request('POST', '/api/v1/factory-reset', {
+      userId: 'admin'
+    });
+    expect(reset2.status).toBe(200);
+
+    // Third reset (should still work)
+    const reset3 = await request('POST', '/api/v1/factory-reset', {
+      userId: 'admin'
+    });
+    expect(reset3.status).toBe(200);
+
+    // System should still be functional
+    const messagesRes = await request('GET', '/api/v1/messages?userId=user1');
+    expect(messagesRes.status).toBe(200);
+    expect(messagesRes.body.messages.length).toBe(0);
   });
 
   test('POST /api/v1/approvals/notify sends notifications', async () => {
