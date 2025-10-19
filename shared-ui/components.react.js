@@ -2422,7 +2422,6 @@
       const API_BASE = getApiBase();
       const { userId, users } = React.useContext(StateContext);
       
-      const [title, setTitle] = React.useState('');
       const [recipients, setRecipients] = React.useState([]);
       const [internal, setInternal] = React.useState(false);
       const [privileged, setPrivileged] = React.useState(false);
@@ -2448,7 +2447,7 @@
       }
       
       async function create() {
-        if (!title.trim() || recipients.length === 0) return;
+        if (recipients.length === 0) return;
         try {
           // Include current user in participants
           const currentUser = users.find(u => u.id === userId);
@@ -2457,10 +2456,13 @@
             ...recipients
           ];
           
+          // Auto-generate title from participants (excluding current user)
+          const title = recipients.map(r => r.label).join(', ');
+          
           const response = await fetch(`${API_BASE}/api/v1/messages/v2`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: title.trim(), recipients: allParticipants, internal, privileged, text, userId })
+            body: JSON.stringify({ title, recipients: allParticipants, internal, privileged, text, userId })
           });
           
           if (!response.ok) {
@@ -2484,17 +2486,9 @@
         onClick: e => e.stopPropagation(),
         style: { background: '#fff', borderRadius: 8, padding: 24, width: '90%', maxWidth: 500, maxHeight: '80vh', overflow: 'auto' }
       }, [
-        React.createElement('h3', { key: 'title', style: { margin: '0 0 20px 0' } }, 'New Thread'),
+        React.createElement('h3', { key: 'title', style: { margin: '0 0 20px 0' } }, 'New Message'),
         
         React.createElement('div', { key: 'form', style: { display: 'flex', flexDirection: 'column', gap: 16 } }, [
-          React.createElement('input', { 
-            key: 'title-input',
-            placeholder: 'Thread title', 
-            value: title, 
-            onChange: e => setTitle(e.target.value),
-            style: { padding: 8, fontSize: 13, borderRadius: 4, border: '1px solid #e5e7eb' }
-          }),
-          
           React.createElement('div', { key: 'recipients' }, [
             React.createElement('label', { key: 'label', style: { display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 600 } }, 'Recipients'),
             React.createElement('div', { key: 'list', style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 } }, 
@@ -2574,9 +2568,9 @@
           React.createElement('button', { 
             key: 'create', 
             onClick: create,
-            disabled: !title.trim() || recipients.length === 0,
-            style: { padding: '8px 16px', fontSize: 13, background: title.trim() && recipients.length > 0 ? '#6d5ef1' : '#e5e7eb', color: title.trim() && recipients.length > 0 ? '#fff' : '#9ca3af', border: 'none', borderRadius: 4, cursor: title.trim() && recipients.length > 0 ? 'pointer' : 'not-allowed' }
-          }, 'Create Thread')
+            disabled: recipients.length === 0,
+            style: { padding: '8px 16px', fontSize: 13, background: recipients.length > 0 ? '#6d5ef1' : '#e5e7eb', color: recipients.length > 0 ? '#fff' : '#9ca3af', border: 'none', borderRadius: 4, cursor: recipients.length > 0 ? 'pointer' : 'not-allowed' }
+          }, 'Start Conversation')
         ])
       ]));
     }

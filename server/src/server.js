@@ -1304,9 +1304,6 @@ app.post('/api/v1/messages/v2', (req, res) => {
   try {
     const { title, recipients, internal, privileged, text, userId } = req.body;
     
-    if (!title || !title.trim()) {
-      return res.status(400).json({ error: 'Title is required' });
-    }
     if (!Array.isArray(recipients)) {
       return res.status(400).json({ error: 'Recipients must be an array' });
     }
@@ -1322,9 +1319,14 @@ app.post('/api/v1/messages/v2', (req, res) => {
       label: currentUser?.label || 'User'
     };
     
+    // Auto-generate title from participants if not provided
+    const threadTitle = title && title.trim() 
+      ? title.trim() 
+      : recipients.map(r => r.label).join(', ') || 'Untitled thread';
+    
     // Create thread
     const result = createThread({
-      title: title.trim(),
+      title: threadTitle,
       createdBy,
       participants: recipients,
       internal: !!internal,
