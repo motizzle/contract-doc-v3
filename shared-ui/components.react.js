@@ -2669,10 +2669,11 @@
       
       async function markRead() {
         try {
+          // Mark as read (unread=false)
           await fetch(`${API_BASE}/api/v1/messages/v2/${threadId}/read`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId })
+            body: JSON.stringify({ unread: false, userId })
           });
           if (onUpdate) onUpdate();
         } catch (e) {
@@ -2727,13 +2728,13 @@
       
       async function toggleRead() {
         try {
-          const isUnread = thread.unreadBy && thread.unreadBy.includes(userId);
-          const newReadState = !isUnread; // If unread, mark as read (true); if read, mark as unread (false)
+          // Simple toggle: if currently unread, mark as read (unread=false), and vice versa
+          const isCurrentlyUnread = thread.unreadBy && thread.unreadBy.includes(userId);
           
           await fetch(`${API_BASE}/api/v1/messages/v2/${threadId}/read`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ read: newReadState, userId })
+            body: JSON.stringify({ unread: !isCurrentlyUnread, userId })
           });
           
           // Reload thread
@@ -2915,18 +2916,19 @@
           React.createElement('button', { 
             key: 'read',
             onClick: toggleRead,
+            title: (thread.unreadBy && thread.unreadBy.includes(userId)) ? 'Mark as read' : 'Mark as unread',
             style: { 
               padding: '4px 10px', 
               fontSize: 12,
-              fontWeight: (thread.unreadBy && thread.unreadBy.includes(userId)) ? 400 : 600,
-              color: (thread.unreadBy && thread.unreadBy.includes(userId)) ? '#6b7280' : '#0c4a6e',
-              background: (thread.unreadBy && thread.unreadBy.includes(userId)) ? '#f3f4f6' : '#e0f2fe',
+              fontWeight: 400,
+              color: '#6b7280',
+              background: '#f3f4f6',
               border: 'none',
               borderRadius: 4,
               cursor: 'pointer',
               transition: 'all 0.15s ease'
             } 
-          }, (thread.unreadBy && thread.unreadBy.includes(userId)) ? 'Mark Read' : '✓ Read'),
+          }, (thread.unreadBy && thread.unreadBy.includes(userId)) ? '📧 Unread' : '📬 Read'),
           React.createElement('button', { 
             key: 'export', 
             onClick: exportCSV, 

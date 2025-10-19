@@ -861,6 +861,54 @@ function buildActivityMessage(type, details = {}) {
         message: `${userLabel} performed factory reset - all data cleared`
       };
 
+    // Messages v2 activity types
+    case 'message:thread-created':
+      return {
+        action: 'started conversation',
+        target: 'message',
+        details: { threadId: details.threadId, title: details.title, recipients: details.recipients },
+        message: `${userLabel} started a conversation${details.title ? ` "${details.title}"` : ''}${details.recipients > 0 ? ` with ${details.recipients} ${details.recipients === 1 ? 'person' : 'people'}` : ''}`
+      };
+
+    case 'message:archived':
+      return {
+        action: 'archived conversation',
+        target: 'message',
+        details: { threadId: details.threadId },
+        message: `${userLabel} archived a conversation`
+      };
+
+    case 'message:unarchived':
+      return {
+        action: 'unarchived conversation',
+        target: 'message',
+        details: { threadId: details.threadId },
+        message: `${userLabel} unarchived a conversation`
+      };
+
+    case 'message:flags-updated':
+      return {
+        action: 'updated conversation flags',
+        target: 'message',
+        details: { threadId: details.threadId, internal: details.internal, privileged: details.privileged },
+        message: (function(){
+          const flags = [];
+          if (details.internal) flags.push('internal');
+          if (details.external) flags.push('external');
+          if (details.privileged) flags.push('attorney-client privilege');
+          if (flags.length === 0) return `${userLabel} updated conversation flags`;
+          return `${userLabel} marked conversation as ${flags.join(', ')}`;
+        })()
+      };
+
+    case 'message:deleted':
+      return {
+        action: 'deleted conversation',
+        target: 'message',
+        details: { threadId: details.threadId, title: details.title },
+        message: `${userLabel} deleted a conversation${details.title ? ` "${details.title}"` : ''}`
+      };
+
     // Add more activity types as needed
     default:
       return {
