@@ -1532,6 +1532,39 @@ body {
 .input-border { border: var(--form-input-border); }
 .input-border-radius { border-radius: var(--form-input-border-radius); }
 
+/* Standard select dropdown styling */
+select.standard-select,
+.standard-select {
+  padding: 6px 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-gray-700);
+  background-color: var(--color-white);
+  border: 1px solid var(--color-gray-300);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7280' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 30px;
+}
+
+select.standard-select:hover,
+.standard-select:hover {
+  border-color: var(--color-gray-400);
+}
+
+select.standard-select:focus,
+.standard-select:focus {
+  outline: none;
+  border-color: var(--color-info-500);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
 .badge-padding { padding: var(--badge-padding); }
 .badge-border-radius { border-radius: var(--badge-border-radius); }
 

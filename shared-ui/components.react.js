@@ -2256,10 +2256,10 @@
         // Filters + New Message button
         React.createElement('div', { key: 'filters', style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' } }, [
           React.createElement('select', { 
-            key: 'state', 
+            key: 'state',
+            className: 'standard-select',
             value: filter.state, 
-            onChange: e => setFilter({ ...filter, state: e.target.value }),
-            style: { padding: '4px 8px', fontSize: 13 }
+            onChange: e => setFilter({ ...filter, state: e.target.value })
           }, [
             React.createElement('option', { key: 'open', value: 'open' }, 'Open'),
             React.createElement('option', { key: 'archived', value: 'archived' }, 'Archived')
@@ -2932,18 +2932,10 @@
       const picker = (label, val, setVal) => React.createElement('div', { className: 'd-flex flex-column gap-4', style: { flex: 1 } }, [
         React.createElement('label', { key: 'l', style: { fontSize: '13px', fontWeight: 600, color: '#374151' } }, label),
         React.createElement('select', { 
-          key: 's', 
+          key: 's',
+          className: 'standard-select',
           value: val, 
-          onChange: (e) => setVal(e.target.value), 
-          style: { 
-            padding: '8px 12px',
-            borderRadius: '6px',
-            border: '1px solid #d1d5db',
-            fontSize: '14px',
-            color: '#111827',
-            backgroundColor: '#ffffff',
-            cursor: 'pointer'
-          }
+          onChange: (e) => setVal(e.target.value)
         }, versions.slice().reverse().map((v, i) => {
           const versionNum = versions.length - i;
           return React.createElement('option', { key: i, value: String(versionNum) }, `Version ${versionNum}${v.label ? ` - ${v.label}` : ''}`);
@@ -3556,7 +3548,7 @@
         try { actions.setUser(nextId, u.role || 'editor'); } catch {}
         setSelected(nextId);
       };
-      const select = React.createElement('select', { value: selected || '', onChange }, (users || []).map((u, i) => {
+      const select = React.createElement('select', { className: 'standard-select', value: selected || '', onChange }, (users || []).map((u, i) => {
         const name = u.label || u.id;
         const role = String(u.role || 'editor').toLowerCase();
         const optionLabel = name ? `${name} (${role})` : `(${role})`;
@@ -5088,10 +5080,9 @@
           // Filter dropdown
           React.createElement('select', {
             key: 'filter',
+            className: 'standard-select',
             value: filterType,
-            onChange: (e) => setFilterType(e.target.value),
-            className: 'input-padding input-border input-border-radius text-sm',
-            style: { minWidth: '120px' }
+            onChange: (e) => setFilterType(e.target.value)
           }, [
             React.createElement('option', { key: 'all', value: 'all' }, 'All'),
             React.createElement('option', { key: 'value', value: 'value' }, 'Variables'),
