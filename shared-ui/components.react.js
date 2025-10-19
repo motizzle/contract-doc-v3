@@ -2469,35 +2469,46 @@
       }
       
       async function create() {
-        if (recipients.length === 0) return;
+        console.log('📨 Create message clicked - recipients:', recipients.length);
+        if (recipients.length === 0) {
+          console.warn('⚠️ No recipients selected');
+          return;
+        }
         try {
           // Include current user in participants
           const currentUser = users.find(u => u.id === userId);
+          console.log('👤 Current user:', currentUser);
           const allParticipants = [
             { userId, label: currentUser?.label || 'Me', email: currentUser?.email || '', internal: true },
             ...recipients
           ];
+          console.log('👥 All participants:', allParticipants);
           
           // Auto-generate title from participants (excluding current user)
           const title = recipients.map(r => r.label).join(', ');
+          console.log('📝 Generated title:', title);
           
+          console.log('🚀 Sending POST request to create message...');
           const response = await fetch(`${API_BASE}/api/v1/messages/v2`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ title, recipients: allParticipants, internal, privileged, text, userId })
           });
           
+          console.log('📬 Response status:', response.status);
           if (!response.ok) {
             const error = await response.json();
-            console.error('Failed to create thread:', error);
-            alert('Failed to create thread: ' + (error.error || 'Unknown error'));
+            console.error('❌ Failed to create message:', error);
+            alert('Failed to create message: ' + (error.error || 'Unknown error'));
             return;
           }
           
+          const result = await response.json();
+          console.log('✅ Message created successfully:', result);
           onCreate?.();
         } catch (e) {
-          console.error('Failed to create thread:', e);
-          alert('Failed to create thread: ' + e.message);
+          console.error('💥 Exception creating message:', e);
+          alert('Failed to create message: ' + e.message);
         }
       }
       
