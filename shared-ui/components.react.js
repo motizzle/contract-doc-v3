@@ -3161,6 +3161,30 @@
             ...recipients
           ];
           
+          // Check for existing conversation with same participants
+          const checkResponse = await fetch(`${API_BASE}/api/v1/messages/v2?userId=${userId}`);
+          if (checkResponse.ok) {
+            const existingData = await checkResponse.json();
+            const newParticipantIds = allParticipants.map(p => p.userId).filter(Boolean).sort();
+            
+            // Check if any existing thread has the exact same participants
+            const duplicateThread = existingData.threads.find(thread => {
+              const threadParticipantIds = [
+                thread.createdBy.userId,
+                ...thread.participants.map(p => p.userId)
+              ].filter(Boolean).sort();
+              
+              // Same length and all IDs match
+              return threadParticipantIds.length === newParticipantIds.length &&
+                     threadParticipantIds.every((id, idx) => id === newParticipantIds[idx]);
+            });
+            
+            if (duplicateThread) {
+              alert('You already have a conversation with these participants. Please use the existing conversation.');
+              return;
+            }
+          }
+          
           // Auto-generate title from participants (excluding current user)
           const title = recipients.map(r => r.label).join(', ');
           
