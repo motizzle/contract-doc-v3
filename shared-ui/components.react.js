@@ -2136,14 +2136,14 @@
       }
     } catch {}
 
-    // Messages v2 Panel (accordion-style messaging with ACP/internal flags)
+    // Messages v2 Panel (full-page messaging with ACP/internal flags)
     function MessagingV2Panel() {
       const API_BASE = getApiBase();
-      const { userId, users } = React.useContext(StateContext);
+      const { currentUser: userId, users } = React.useContext(StateContext);
       
       const [messages, setMessages] = React.useState([]);
-      const [expandedId, setExpandedId] = React.useState(null);
-      const [composeText, setComposeText] = React.useState({});
+      const [view, setView] = React.useState('list'); // 'list' or 'conversation'
+      const [activeThreadId, setActiveThreadId] = React.useState(null);
       const [filter, setFilter] = React.useState({ state: 'open', internal: 'both', privileged: 'both', search: '' });
       const [showNewMessage, setShowNewMessage] = React.useState(false);
       const [summary, setSummary] = React.useState({ messages: { open: 0, unreadForMe: 0, privileged: 0, archived: 0 } });
@@ -2212,101 +2212,21 @@
         };
       }, [loadMessages, loadSummary]);
       
-      function toggleExpand(msgId) {
-        setExpandedId(expandedId === msgId ? null : msgId);
-        if (expandedId !== msgId) {
-          markRead(msgId);
-        }
+      function openConversation(threadId) {
+        setActiveThreadId(threadId);
+        setView('conversation');
       }
       
-      function getComposeText(msgId) {
-        return composeText[msgId] || '';
+      // If viewing conversation, show conversation page
+      if (view === 'conversation' && activeThreadId) {
+        return React.createElement(MessageConversationView, {
+          threadId: activeThreadId,
+          onBack: () => { setView('list'); setActiveThreadId(null); },
+          onUpdate: () => { loadMessages(); loadSummary(); }
+        });
       }
       
-      function setMsgComposeText(msgId, text) {
-        setComposeText({ ...composeText, [msgId]: text });
-      }
-      
-      async function sendPost(msgId) {
-        const text = getComposeText(msgId);
-        if (!text.trim()) return;
-        try {
-          await fetch(`${API_BASE}/api/v1/messages/v2/${msgId}/post`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, userId })
-          });
-          setMsgComposeText(msgId, '');
-          loadMessages();
-        } catch (e) {
-          console.error('Failed to send post:', e);
-        }
-      }
-      
-      async function toggleState(msgId, newState) {
-        try {
-          await fetch(`${API_BASE}/api/v1/messages/v2/${msgId}/state`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ state: newState, userId })
-          });
-          loadMessages();
-        } catch (e) {
-          console.error('Failed to update state:', e);
-        }
-      }
-      
-      async function toggleFlag(msgId, flag, value) {
-        try {
-          const body = { userId };
-          body[flag] = value;
-          await fetch(`${API_BASE}/api/v1/messages/v2/${msgId}/flags`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-          });
-          loadMessages();
-        } catch (e) {
-          console.error('Failed to toggle flag:', e);
-        }
-      }
-      
-      async function markRead(msgId) {
-        try {
-          await fetch(`${API_BASE}/api/v1/messages/v2/${msgId}/read`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId })
-          });
-          loadMessages();
-          loadSummary();
-        } catch (e) {
-          console.error('Failed to mark read:', e);
-        }
-      }
-      
-      async function deleteMessage(msgId) {
-        if (!confirm('Delete this message? (Can be undone within 10 minutes)')) return;
-        try {
-          await fetch(`${API_BASE}/api/v1/messages/v2/${msgId}/delete`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId })
-          });
-          setExpandedId(null);
-          loadMessages();
-        } catch (e) {
-          console.error('Failed to delete message:', e);
-        }
-      }
-      
-      function exportCSV(msgId) {
-        const scope = msgId ? 'single' : 'filtered';
-        const threadIds = msgId || '';
-        const url = `${API_BASE}/api/v1/messages/v2/export.csv?scope=${scope}&threadIds=${threadIds}&includePosts=true`;
-        window.open(url, '_blank');
-      }
-      
+      // Otherwise show list view
       return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 12, height: '100%', minHeight: 0 } }, [
         // Filters + New Message button
         React.createElement('div', { key: 'filters', style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' } }, [
@@ -2317,8 +2237,7 @@
             style: { padding: '4px 8px', fontSize: 13 }
           }, [
             React.createElement('option', { key: 'open', value: 'open' }, 'Open'),
-            React.createElement('option', { key: 'archived', value: 'archived' }, 'Archived'),
-            React.createElement('option', { key: 'resolved', value: 'resolved' }, 'Resolved')
+            React.createElement('option', { key: 'archived', value: 'archived' }, 'Archived')
           ]),
           React.createElement('input', { 
             key: 'search', 
@@ -2341,90 +2260,41 @@
           summary.messages.privileged > 0 ? React.createElement('span', { key: 'priv', style: { padding: '2px 8px', background: '#fce7f3', borderRadius: 12 } }, `ACP: ${summary.messages.privileged}`) : null
         ]),
         
-        // Accordion list of messages
+        // Message list
         React.createElement('div', { key: 'list', style: { flex: 1, overflow: 'auto', minHeight: 0 } }, 
           messages.length === 0 
             ? React.createElement('div', { style: { padding: 40, textAlign: 'center', color: '#6b7280' } }, 'No messages')
             : messages.map(msg => {
-                const isExpanded = expandedId === msg.threadId;
                 const isUnread = msg.unreadBy && msg.unreadBy.includes(userId);
                 return React.createElement('div', {
                   key: msg.threadId,
+                  onClick: () => openConversation(msg.threadId),
                   style: { 
                     border: '1px solid #e5e7eb',
                     borderRadius: 6,
                     marginBottom: 8,
                     background: '#fff',
-                    overflow: 'hidden'
-                  }
+                    padding: '12px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    transition: 'background 0.15s ease'
+                  },
+                  onMouseEnter: (e) => { e.currentTarget.style.background = '#f9fafb'; },
+                  onMouseLeave: (e) => { e.currentTarget.style.background = '#fff'; }
                 }, [
-                  // Message header (always visible)
-                  React.createElement('div', {
-                    key: 'header',
-                    onClick: () => toggleExpand(msg.threadId),
-                    style: { 
-                      padding: '12px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      background: isExpanded ? '#f9fafb' : '#fff',
-                      borderBottom: isExpanded ? '1px solid #e5e7eb' : 'none'
-                    }
-                  }, [
-                    React.createElement('div', { key: 'left', style: { flex: 1, minWidth: 0 } }, [
-                      React.createElement('div', { key: 'title', style: { fontWeight: 600, fontSize: 14, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 } }, [
-                        React.createElement('span', { key: 'text' }, msg.title),
-                        isUnread ? React.createElement('span', { key: 'dot', style: { width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', flexShrink: 0 } }) : null
-                      ]),
-                      React.createElement('div', { key: 'meta', style: { fontSize: 12, color: '#6b7280' } }, `${msg.postCount || 0} message${msg.postCount !== 1 ? 's' : ''} • ${new Date(msg.lastPostAt).toLocaleDateString()}`)
+                  React.createElement('div', { key: 'left', style: { flex: 1, minWidth: 0 } }, [
+                    React.createElement('div', { key: 'title', style: { fontWeight: 600, fontSize: 14, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 } }, [
+                      React.createElement('span', { key: 'text' }, msg.title),
+                      isUnread ? React.createElement('span', { key: 'dot', style: { width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', flexShrink: 0 } }) : null
                     ]),
-                    React.createElement('div', { key: 'right', style: { display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0, marginLeft: 12 } }, [
-                      msg.internal ? React.createElement('span', { key: 'int', style: { padding: '3px 8px', fontSize: 11, background: '#e0f2fe', borderRadius: 4, whiteSpace: 'nowrap' } }, 'Internal') : null,
-                      msg.privileged ? React.createElement('span', { key: 'priv', style: { padding: '3px 8px', fontSize: 11, background: '#fce7f3', borderRadius: 4, whiteSpace: 'nowrap' } }, 'ACP') : null,
-                      React.createElement('span', { key: 'arrow', style: { fontSize: 18, color: '#6b7280', transition: 'transform 0.2s', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)' } }, '▼')
-                    ])
+                    React.createElement('div', { key: 'meta', style: { fontSize: 12, color: '#6b7280' } }, `${msg.postCount || 0} message${msg.postCount !== 1 ? 's' : ''} • ${new Date(msg.lastPostAt).toLocaleDateString()}`)
                   ]),
-                  
-                  // Expanded content
-                  isExpanded ? React.createElement('div', { key: 'content', style: { display: 'flex', flexDirection: 'column' } }, [
-                    // Action buttons
-                    React.createElement('div', { key: 'actions', style: { padding: '8px 12px', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: 6, flexWrap: 'wrap' } }, [
-                      React.createElement('button', { key: 'internal', onClick: (e) => { e.stopPropagation(); toggleFlag(msg.threadId, 'internal', !msg.internal); }, style: { padding: '4px 8px', fontSize: 11, background: msg.internal ? '#e0f2fe' : '#f3f4f6', border: 'none', borderRadius: 4, cursor: 'pointer' } }, msg.internal ? '✓ Internal' : 'Mark Internal'),
-                      React.createElement('button', { key: 'priv', onClick: (e) => { e.stopPropagation(); toggleFlag(msg.threadId, 'privileged', !msg.privileged); }, style: { padding: '4px 8px', fontSize: 11, background: msg.privileged ? '#fce7f3' : '#f3f4f6', border: 'none', borderRadius: 4, cursor: 'pointer' } }, msg.privileged ? '✓ ACP' : 'Mark ACP'),
-                      React.createElement('button', { key: 'resolve', onClick: (e) => { e.stopPropagation(); toggleState(msg.threadId, msg.state === 'resolved' ? 'open' : 'resolved'); }, style: { padding: '4px 8px', fontSize: 11, background: '#f3f4f6', border: 'none', borderRadius: 4, cursor: 'pointer' } }, msg.state === 'resolved' ? 'Reopen' : 'Resolve'),
-                      React.createElement('button', { key: 'archive', onClick: (e) => { e.stopPropagation(); toggleState(msg.threadId, 'archived'); }, style: { padding: '4px 8px', fontSize: 11, background: '#f3f4f6', border: 'none', borderRadius: 4, cursor: 'pointer' } }, 'Archive'),
-                      React.createElement('button', { key: 'export', onClick: (e) => { e.stopPropagation(); exportCSV(msg.threadId); }, style: { padding: '4px 8px', fontSize: 11, background: '#f3f4f6', border: 'none', borderRadius: 4, cursor: 'pointer' } }, 'Export'),
-                      React.createElement('button', { key: 'delete', onClick: (e) => { e.stopPropagation(); deleteMessage(msg.threadId); }, style: { padding: '4px 8px', fontSize: 11, background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 4, cursor: 'pointer' } }, 'Delete')
-                    ]),
-                    
-                    // Message history
-                    React.createElement('div', { key: 'history', style: { maxHeight: 300, overflow: 'auto', padding: '12px' } }, 
-                      (msg.posts || []).map(p => React.createElement('div', { key: p.postId, style: { marginBottom: 16, paddingLeft: 12, borderLeft: '2px solid #e5e7eb' } }, [
-                        React.createElement('div', { key: 'meta', style: { fontSize: 11, color: '#6b7280', marginBottom: 4 } }, `${p.author.label} • ${new Date(p.createdAt).toLocaleString()}`),
-                        React.createElement('div', { key: 'text', style: { fontSize: 13, lineHeight: 1.5, color: '#374151' } }, p.text)
-                      ]))
-                    ),
-                    
-                    // Compose area
-                    React.createElement('div', { key: 'compose', style: { padding: '12px', borderTop: '1px solid #e5e7eb', background: '#fff' } }, [
-                      React.createElement('textarea', {
-                        key: 'ta',
-                        rows: 2,
-                        value: getComposeText(msg.threadId),
-                        onChange: e => setMsgComposeText(msg.threadId, e.target.value),
-                        onKeyDown: e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendPost(msg.threadId); } },
-                        placeholder: 'Type your message…',
-                        style: { width: '100%', resize: 'vertical', padding: 8, fontSize: 13, borderRadius: 4, border: '1px solid #e5e7eb', marginBottom: 8 }
-                      }),
-                      React.createElement('button', {
-                        key: 'send',
-                        onClick: () => sendPost(msg.threadId),
-                        disabled: !getComposeText(msg.threadId).trim(),
-                        style: { padding: '6px 16px', fontSize: 13, background: getComposeText(msg.threadId).trim() ? '#6d5ef1' : '#e5e7eb', color: getComposeText(msg.threadId).trim() ? '#fff' : '#9ca3af', border: 'none', borderRadius: 4, cursor: getComposeText(msg.threadId).trim() ? 'pointer' : 'not-allowed' }
-                      }, 'Send')
-                    ])
-                  ]) : null
+                  React.createElement('div', { key: 'right', style: { display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0, marginLeft: 12 } }, [
+                    msg.internal ? React.createElement('span', { key: 'int', style: { padding: '3px 8px', fontSize: 11, background: '#e0f2fe', borderRadius: 4, whiteSpace: 'nowrap' } }, 'Internal') : null,
+                    msg.privileged ? React.createElement('span', { key: 'priv', style: { padding: '3px 8px', fontSize: 11, background: '#fce7f3', borderRadius: 4, whiteSpace: 'nowrap' } }, 'ACP') : null
+                  ])
                 ]);
               })
         ),
@@ -2438,11 +2308,349 @@
       ]);
     }
     
+    // Message Conversation View (full-page view for a single thread)
+    function MessageConversationView(props) {
+      const { threadId, onBack, onUpdate } = props || {};
+      const API_BASE = getApiBase();
+      const { currentUser: userId, users } = React.useContext(StateContext);
+      
+      const [thread, setThread] = React.useState(null);
+      const [composeText, setComposeText] = React.useState('');
+      const listRef = React.useRef(null);
+      const isAddin = typeof Office !== 'undefined';
+      
+      // Load thread details
+      React.useEffect(() => {
+        const loadThread = async () => {
+          try {
+            const r = await fetch(`${API_BASE}/api/v1/messages/v2?userId=${userId}`);
+            if (r.ok) {
+              const data = await r.json();
+              const foundThread = data.threads.find(t => t.threadId === threadId);
+              if (foundThread) {
+                setThread(foundThread);
+                // Mark as read when opened
+                markRead();
+              }
+            }
+          } catch (e) {
+            console.error('Failed to load thread:', e);
+          }
+        };
+        loadThread();
+      }, [API_BASE, userId, threadId]);
+      
+      // Auto-scroll to bottom when messages change
+      React.useEffect(() => {
+        if (listRef.current) {
+          listRef.current.scrollTop = listRef.current.scrollHeight;
+        }
+      }, [thread?.posts]);
+      
+      async function markRead() {
+        try {
+          await fetch(`${API_BASE}/api/v1/messages/v2/${threadId}/read`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+          });
+          if (onUpdate) onUpdate();
+        } catch (e) {
+          console.error('Failed to mark read:', e);
+        }
+      }
+      
+      async function sendPost() {
+        const text = composeText.trim();
+        if (!text) return;
+        try {
+          await fetch(`${API_BASE}/api/v1/messages/v2/${threadId}/post`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, userId })
+          });
+          setComposeText('');
+          // Reload thread
+          const r = await fetch(`${API_BASE}/api/v1/messages/v2?userId=${userId}`);
+          if (r.ok) {
+            const data = await r.json();
+            const foundThread = data.threads.find(t => t.threadId === threadId);
+            if (foundThread) setThread(foundThread);
+          }
+          if (onUpdate) onUpdate();
+        } catch (e) {
+          console.error('Failed to send post:', e);
+        }
+      }
+      
+      async function toggleFlag(flag, value) {
+        try {
+          const body = { userId };
+          body[flag] = value;
+          await fetch(`${API_BASE}/api/v1/messages/v2/${threadId}/flags`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+          // Reload thread
+          const r = await fetch(`${API_BASE}/api/v1/messages/v2?userId=${userId}`);
+          if (r.ok) {
+            const data = await r.json();
+            const foundThread = data.threads.find(t => t.threadId === threadId);
+            if (foundThread) setThread(foundThread);
+          }
+          if (onUpdate) onUpdate();
+        } catch (e) {
+          console.error('Failed to toggle flag:', e);
+        }
+      }
+      
+      async function archive() {
+        try {
+          await fetch(`${API_BASE}/api/v1/messages/v2/${threadId}/state`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ state: 'archived', userId })
+          });
+          if (onUpdate) onUpdate();
+          if (onBack) onBack();
+        } catch (e) {
+          console.error('Failed to archive:', e);
+        }
+      }
+      
+      async function deleteThread() {
+        if (!confirm('Delete this message? (Can be undone within 10 minutes)')) return;
+        try {
+          await fetch(`${API_BASE}/api/v1/messages/v2/${threadId}/delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+          });
+          if (onUpdate) onUpdate();
+          if (onBack) onBack();
+        } catch (e) {
+          console.error('Failed to delete:', e);
+        }
+      }
+      
+      function exportCSV() {
+        const url = `${API_BASE}/api/v1/messages/v2/export.csv?scope=single&threadIds=${threadId}&includePosts=true`;
+        window.open(url, '_blank');
+      }
+      
+      if (!thread) {
+        return React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' } }, 'Loading...');
+      }
+      
+      const onKeyPress = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendPost();
+        }
+      };
+      
+      // Send icon (matching AI tab)
+      const sendIcon = React.createElement('svg', { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', xmlns: 'http://www.w3.org/2000/svg', 'aria-hidden': true },
+        React.createElement('path', { d: 'M12 4l0 12', stroke: 'white', 'stroke-width': 2.5, 'stroke-linecap': 'round' }),
+        React.createElement('path', { d: 'M7.5 9.5L12 4l4.5 5.5', stroke: 'white', 'stroke-width': 2.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' })
+      );
+      
+      // Fixed header with back button and action buttons
+      const header = React.createElement('div', { 
+        style: { 
+          padding: '12px', 
+          borderBottom: '1px solid #e5e7eb', 
+          background: '#fff', 
+          flexShrink: 0 
+        } 
+      }, [
+        React.createElement('div', { key: 'top', style: { display: 'flex', alignItems: 'center', marginBottom: 8 } }, [
+          React.createElement('button', { 
+            key: 'back',
+            onClick: onBack,
+            style: { 
+              background: 'transparent', 
+              border: 'none', 
+              fontSize: 20, 
+              cursor: 'pointer', 
+              padding: '4px 8px', 
+              marginRight: 8,
+              color: '#6b7280'
+            }
+          }, '←'),
+          React.createElement('div', { key: 'title', style: { flex: 1, fontWeight: 600, fontSize: 15 } }, thread.title)
+        ]),
+        React.createElement('div', { key: 'actions', style: { display: 'flex', gap: 6, flexWrap: 'wrap' } }, [
+          React.createElement('button', { 
+            key: 'internal', 
+            onClick: () => toggleFlag('internal', !thread.internal), 
+            style: { 
+              padding: '4px 10px', 
+              fontSize: 12, 
+              background: thread.internal ? '#e0f2fe' : '#f3f4f6', 
+              border: 'none', 
+              borderRadius: 4, 
+              cursor: 'pointer' 
+            } 
+          }, thread.internal ? '✓ Internal' : 'Mark Internal'),
+          React.createElement('button', { 
+            key: 'priv', 
+            onClick: () => toggleFlag('privileged', !thread.privileged), 
+            style: { 
+              padding: '4px 10px', 
+              fontSize: 12, 
+              background: thread.privileged ? '#fce7f3' : '#f3f4f6', 
+              border: 'none', 
+              borderRadius: 4, 
+              cursor: 'pointer' 
+            } 
+          }, thread.privileged ? '✓ ACP' : 'Mark ACP'),
+          React.createElement('button', { 
+            key: 'archive', 
+            onClick: archive, 
+            style: { 
+              padding: '4px 10px', 
+              fontSize: 12, 
+              background: '#f3f4f6', 
+              border: 'none', 
+              borderRadius: 4, 
+              cursor: 'pointer' 
+            } 
+          }, 'Archive'),
+          React.createElement('button', { 
+            key: 'export', 
+            onClick: exportCSV, 
+            style: { 
+              padding: '4px 10px', 
+              fontSize: 12, 
+              background: '#f3f4f6', 
+              border: 'none', 
+              borderRadius: 4, 
+              cursor: 'pointer' 
+            } 
+          }, 'Export'),
+          React.createElement('button', { 
+            key: 'delete', 
+            onClick: deleteThread, 
+            style: { 
+              padding: '4px 10px', 
+              fontSize: 12, 
+              background: '#fee2e2', 
+              color: '#dc2626', 
+              border: 'none', 
+              borderRadius: 4, 
+              cursor: 'pointer' 
+            } 
+          }, 'Delete')
+        ])
+      ]);
+      
+      // Message history (scrollable middle)
+      const history = React.createElement('div', { 
+        ref: listRef,
+        style: { 
+          flex: 1, 
+          minHeight: 0, 
+          overflowY: 'auto', 
+          overflowX: 'hidden', 
+          padding: isAddin ? '8px' : '12px' 
+        } 
+      }, 
+        (thread.posts || []).map(p => React.createElement('div', { 
+          key: p.postId, 
+          style: { 
+            marginBottom: 16, 
+            paddingLeft: 12, 
+            borderLeft: '2px solid #e5e7eb' 
+          } 
+        }, [
+          React.createElement('div', { 
+            key: 'meta', 
+            style: { 
+              fontSize: 11, 
+              color: '#6b7280', 
+              marginBottom: 4 
+            } 
+          }, `${p.author.label} • ${new Date(p.createdAt).toLocaleString()}`),
+          React.createElement('div', { 
+            key: 'text', 
+            style: { 
+              fontSize: 13, 
+              lineHeight: 1.5, 
+              color: '#374151',
+              wordBreak: 'break-word',
+              overflowWrap: 'anywhere'
+            } 
+          }, p.text)
+        ]))
+      );
+      
+      // Fixed footer composer (matching AI tab)
+      const sendBtn = React.createElement('button', { 
+        className: 'btn-circle-primary chat-send', 
+        onClick: sendPost, 
+        title: 'Send',
+        disabled: !composeText.trim()
+      }, sendIcon);
+      
+      const composer = React.createElement('div', { className: 'chat-composer' }, [
+        React.createElement('textarea', {
+          key: 'textarea',
+          value: composeText,
+          onChange: (e) => setComposeText(e.target.value),
+          onKeyPress: onKeyPress,
+          placeholder: 'Type a message...',
+          className: 'chat-input',
+          rows: 2
+        }),
+        sendBtn
+      ]);
+      
+      const footer = React.createElement('div', { 
+        style: { 
+          flexShrink: 0, 
+          background: '#fff', 
+          borderTop: '1px solid #e5e7eb' 
+        } 
+      }, [
+        React.createElement('div', { 
+          key: 'comp',
+          className: 'd-flex flex-column gap-8', 
+          style: { 
+            width: '100%', 
+            boxSizing: 'border-box', 
+            paddingTop: 8, 
+            paddingBottom: isAddin ? 8 : 12, 
+            paddingLeft: isAddin ? 0 : 12, 
+            paddingRight: isAddin ? 0 : 12 
+          } 
+        }, [
+          React.createElement('div', { 
+            key: 'input',
+            className: 'd-flex gap-8 align-items-end', 
+            style: { width: '100%', boxSizing: 'border-box' } 
+          }, [
+            React.createElement('div', { key: 'comp', style: { flex: 1 } }, composer)
+          ])
+        ])
+      ]);
+      
+      return React.createElement('div', { 
+        style: { 
+          display: 'flex', 
+          flexDirection: 'column', 
+          flex: 1, 
+          height: '100%' 
+        } 
+      }, [header, history, footer]);
+    }
+    
     // New Message Modal
     function NewThreadModal(props) {
       const { onClose, onCreate } = props || {};
       const API_BASE = getApiBase();
-      const { userId, users } = React.useContext(StateContext);
+      const { currentUser: userId, users } = React.useContext(StateContext);
       
       const [recipients, setRecipients] = React.useState([]);
       const [internal, setInternal] = React.useState(false);
@@ -2469,45 +2677,35 @@
       }
       
       async function create() {
-        console.log('📨 Create message clicked - recipients:', recipients.length);
         if (recipients.length === 0) {
-          console.warn('⚠️ No recipients selected');
           return;
         }
         try {
           // Include current user in participants
           const currentUser = users.find(u => u.id === userId);
-          console.log('👤 Current user:', currentUser);
           const allParticipants = [
             { userId, label: currentUser?.label || 'Me', email: currentUser?.email || '', internal: true },
             ...recipients
           ];
-          console.log('👥 All participants:', allParticipants);
           
           // Auto-generate title from participants (excluding current user)
           const title = recipients.map(r => r.label).join(', ');
-          console.log('📝 Generated title:', title);
           
-          console.log('🚀 Sending POST request to create message...');
           const response = await fetch(`${API_BASE}/api/v1/messages/v2`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ title, recipients: allParticipants, internal, privileged, text, userId })
           });
           
-          console.log('📬 Response status:', response.status);
           if (!response.ok) {
             const error = await response.json();
-            console.error('❌ Failed to create message:', error);
             alert('Failed to create message: ' + (error.error || 'Unknown error'));
             return;
           }
           
-          const result = await response.json();
-          console.log('✅ Message created successfully:', result);
           onCreate?.();
         } catch (e) {
-          console.error('💥 Exception creating message:', e);
+          console.error('Failed to create message:', e);
           alert('Failed to create message: ' + e.message);
         }
       }
