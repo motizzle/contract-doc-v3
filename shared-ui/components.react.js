@@ -2629,7 +2629,12 @@
               color: '#6b7280'
             }
           }, '←'),
-          React.createElement('div', { key: 'title', style: { flex: 1, fontWeight: 600, fontSize: 15 } }, getThreadTitle ? getThreadTitle(thread) : thread.title)
+          React.createElement('div', { key: 'title', style: { flex: 1 } }, [
+            React.createElement('div', { key: 'name', style: { fontWeight: 600, fontSize: 15 } }, getThreadTitle ? getThreadTitle(thread) : thread.title),
+            thread.participants && thread.participants.length > 0 ? React.createElement('div', { key: 'emails', style: { fontSize: 11, color: '#9ca3af', marginTop: 2 } }, 
+              thread.participants.filter(p => p.userId !== userId).map(p => p.email).filter(e => e).join(', ')
+            ) : null
+          ])
         ]),
         React.createElement('div', { key: 'actions', style: { display: 'flex', gap: 6, flexWrap: 'wrap' } }, [
           React.createElement('button', { 
