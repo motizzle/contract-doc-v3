@@ -2144,9 +2144,9 @@
       const [messages, setMessages] = React.useState([]);
       const [view, setView] = React.useState('list'); // 'list' or 'conversation'
       const [activeThreadId, setActiveThreadId] = React.useState(null);
-      const [filter, setFilter] = React.useState({ states: ['open'], internal: 'both', privileged: 'both', search: '' });
+      const [filter, setFilter] = React.useState({ states: ['open'], internal: false, external: false, privileged: false, search: '' });
       const [showNewMessage, setShowNewMessage] = React.useState(false);
-      const [summary, setSummary] = React.useState({ messages: { open: 0, unreadForMe: 0, privileged: 0, archived: 0 } });
+      const [summary, setSummary] = React.useState({ messages: { open: 0, unreadForMe: 0, privileged: 0, internal: 0, external: 0, archived: 0 } });
       
       // Compute thread title from current user's perspective
       // Show names of other participants (excluding current user)
@@ -2173,6 +2173,11 @@
         setFilter({ ...filter, states: newStates });
       }
       
+      // Toggle flag filters (internal, external, privileged)
+      function toggleFlagFilter(flag) {
+        setFilter({ ...filter, [flag]: !filter[flag] });
+      }
+      
       // Load messages
       const loadMessages = React.useCallback(async () => {
         try {
@@ -2186,8 +2191,6 @@
               state,
               search: filter.search
             });
-            if (filter.internal !== 'both') params.append('internal', filter.internal);
-            if (filter.privileged !== 'both') params.append('privileged', filter.privileged);
             
             const r = await fetch(`${API_BASE}/api/v1/messages/v2?${params}`);
             if (r.ok) {
@@ -2196,8 +2199,21 @@
             }
           }
           
-          // Remove duplicates and sort by lastPostAt
-          const uniqueMessages = Array.from(new Map(allMessages.map(m => [m.threadId, m])).values());
+          // Remove duplicates
+          let uniqueMessages = Array.from(new Map(allMessages.map(m => [m.threadId, m])).values());
+          
+          // Apply client-side flag filters
+          if (filter.internal) {
+            uniqueMessages = uniqueMessages.filter(m => m.internal === true);
+          }
+          if (filter.external) {
+            uniqueMessages = uniqueMessages.filter(m => m.external === true);
+          }
+          if (filter.privileged) {
+            uniqueMessages = uniqueMessages.filter(m => m.privileged === true);
+          }
+          
+          // Sort by lastPostAt
           uniqueMessages.sort((a, b) => b.lastPostAt - a.lastPostAt);
           setMessages(uniqueMessages);
         } catch (e) {
@@ -2254,7 +2270,7 @@
           setMessages([]);
           setView('list');
           setActiveThreadId(null);
-          setSummary({ messages: { open: 0, unreadForMe: 0, privileged: 0, archived: 0 } });
+          setSummary({ messages: { open: 0, unreadForMe: 0, privileged: 0, internal: 0, external: 0, archived: 0 } });
           loadMessages();
           loadSummary();
         };
@@ -2325,8 +2341,46 @@
               cursor: 'pointer'
             } 
           }, `Archived: ${summary.messages.archived}`),
-          React.createElement('span', { key: 'unread', style: { padding: '4px 10px', fontSize: 12, background: '#f3f4f6', color: '#6b7280', borderRadius: 4 } }, `Unread: ${summary.messages.unreadForMe}`),
-          summary.messages.privileged > 0 ? React.createElement('span', { key: 'priv', style: { padding: '4px 10px', fontSize: 12, background: '#f3f4f6', color: '#6b7280', borderRadius: 4 } }, `Attorney-Client Privilege: ${summary.messages.privileged}`) : null
+          summary.messages.internal > 0 ? React.createElement('button', { 
+            key: 'internal',
+            onClick: () => toggleFlagFilter('internal'),
+            style: { 
+              padding: '4px 10px', 
+              fontSize: 12,
+              background: filter.internal ? '#e0f2fe' : '#f3f4f6',
+              color: filter.internal ? '#0c4a6e' : '#6b7280',
+              border: 'none',
+              borderRadius: 4, 
+              cursor: 'pointer'
+            } 
+          }, `Internal: ${summary.messages.internal}`) : null,
+          summary.messages.external > 0 ? React.createElement('button', { 
+            key: 'external',
+            onClick: () => toggleFlagFilter('external'),
+            style: { 
+              padding: '4px 10px', 
+              fontSize: 12,
+              background: filter.external ? '#fef3c7' : '#f3f4f6',
+              color: filter.external ? '#78350f' : '#6b7280',
+              border: 'none',
+              borderRadius: 4, 
+              cursor: 'pointer'
+            } 
+          }, `External: ${summary.messages.external}`) : null,
+          summary.messages.privileged > 0 ? React.createElement('button', { 
+            key: 'priv',
+            onClick: () => toggleFlagFilter('privileged'),
+            style: { 
+              padding: '4px 10px', 
+              fontSize: 12,
+              background: filter.privileged ? '#fce7f3' : '#f3f4f6',
+              color: filter.privileged ? '#831843' : '#6b7280',
+              border: 'none',
+              borderRadius: 4, 
+              cursor: 'pointer'
+            } 
+          }, `Attorney-Client Privilege: ${summary.messages.privileged}`) : null,
+          React.createElement('span', { key: 'unread', style: { padding: '4px 10px', fontSize: 12, background: '#f3f4f6', color: '#6b7280', borderRadius: 4 } }, `Unread: ${summary.messages.unreadForMe}`)
         ]),
         
         // Message list

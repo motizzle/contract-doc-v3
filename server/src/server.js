@@ -465,6 +465,8 @@ function getDiscussionSummary(userId) {
   }).length;
   
   const privileged = threads.filter(t => t.privileged).length;
+  const internal = threads.filter(t => t.internal).length;
+  const external = threads.filter(t => t.external).length;
   const unreadForMe = threads.filter(t => 
     t.unreadBy && t.unreadBy.includes(userId)
   ).length;
@@ -474,6 +476,8 @@ function getDiscussionSummary(userId) {
       open,
       archived,
       privileged,
+      internal,
+      external,
       unreadForMe
     }
   };
