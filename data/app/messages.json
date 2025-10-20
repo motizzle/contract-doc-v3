@@ -1,46 +1,286 @@
 {
   "messages": [
     {
-      "messageId": "msg-1760982521682-mbykhi925",
-      "title": "Warren Peace, Jen",
+      "messageId": "msg-1760991145842-h9xf09r20",
+      "title": "User 2",
       "createdBy": {
-        "userId": "user3",
-        "label": "Yuri Lee Laffed"
+        "userId": "user1",
+        "label": "Warren Peace"
       },
-      "createdAt": 1760982521682,
+      "createdAt": 1760991145842,
+      "participants": [
+        {
+          "userId": "user2",
+          "label": "User 2",
+          "email": "user2@test.com",
+          "internal": true
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "state": "open",
+      "lastPostAt": 1760991145842,
+      "unreadBy": [
+        "user2"
+      ],
+      "archivedBy": [],
+      "deletedBy": [],
+      "deletedAt": null
+    },
+    {
+      "messageId": "msg-1760991145874-59dy6kr61",
+      "title": "User 3",
+      "createdBy": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760991145874,
       "participants": [
         {
           "userId": "user3",
-          "label": "Yuri Lee Laffed",
-          "email": "",
+          "label": "User 3",
+          "email": "user3@test.com",
+          "internal": true
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "state": "open",
+      "lastPostAt": 1760991145874,
+      "unreadBy": [
+        "user3"
+      ],
+      "archivedBy": [],
+      "deletedBy": [],
+      "deletedAt": null
+    },
+    {
+      "messageId": "msg-1760991145915-pyrv4n59l",
+      "title": "User 2",
+      "createdBy": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760991145915,
+      "participants": [
+        {
+          "userId": "user2",
+          "label": "User 2",
+          "email": "user2@test.com",
+          "internal": true
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "state": "open",
+      "lastPostAt": 1760991145915,
+      "unreadBy": [
+        "user2"
+      ],
+      "archivedBy": [],
+      "deletedBy": [],
+      "deletedAt": null
+    },
+    {
+      "messageId": "msg-1760991145945-1oemtz6bv",
+      "title": "User 2",
+      "createdBy": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760991145945,
+      "participants": [
+        {
+          "userId": "user2",
+          "label": "User 2",
+          "email": "user2@test.com",
+          "internal": true
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "state": "open",
+      "lastPostAt": 1760991145945,
+      "unreadBy": [
+        "user2"
+      ],
+      "archivedBy": [],
+      "deletedBy": [],
+      "deletedAt": null
+    },
+    {
+      "messageId": "msg-1760991145963-7ebuh2g8v",
+      "title": "Alice Smith, Bob Jones",
+      "createdBy": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760991145963,
+      "participants": [
+        {
+          "userId": "user2",
+          "label": "Alice Smith",
+          "email": "alice@test.com",
           "internal": true
         },
         {
-          "userId": "user1",
-          "label": "Warren Peace",
-          "email": "",
+          "userId": "user3",
+          "label": "Bob Jones",
+          "email": "bob@test.com",
           "internal": true
-        },
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "state": "open",
+      "lastPostAt": 1760991145963,
+      "unreadBy": [
+        "user2",
+        "user3"
+      ],
+      "archivedBy": [],
+      "deletedBy": [],
+      "deletedAt": null
+    },
+    {
+      "messageId": "msg-1760991145986-pijog92ti",
+      "title": "User 2",
+      "createdBy": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760991145986,
+      "participants": [
         {
-          "userId": null,
-          "label": "Jen",
-          "email": "Ehlers",
-          "internal": false
+          "userId": "user2",
+          "label": "User 2",
+          "email": "user2@test.com",
+          "internal": true
         }
       ],
       "internal": true,
       "external": false,
-      "privileged": true,
+      "privileged": false,
       "state": "open",
-      "lastPostAt": 1760982521682,
+      "lastPostAt": 1760991145986,
       "unreadBy": [
-        "user1",
-        null
+        "user2"
+      ],
+      "archivedBy": [],
+      "deletedBy": [],
+      "deletedAt": null
+    },
+    {
+      "messageId": "msg-1760991146005-0fa2d595u",
+      "title": "User 3",
+      "createdBy": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760991146005,
+      "participants": [
+        {
+          "userId": "user3",
+          "label": "User 3",
+          "email": "user3@test.com",
+          "internal": true
+        }
+      ],
+      "internal": false,
+      "external": true,
+      "privileged": false,
+      "state": "open",
+      "lastPostAt": 1760991146005,
+      "unreadBy": [
+        "user3"
       ],
       "archivedBy": [],
       "deletedBy": [],
       "deletedAt": null
     }
   ],
-  "posts": []
+  "posts": [
+    {
+      "postId": "post-1760991145842-t2tcc9qzq",
+      "messageId": "msg-1760991145842-h9xf09r20",
+      "author": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760991145842,
+      "text": "Contract terms discussion",
+      "privileged": false
+    },
+    {
+      "postId": "post-1760991145874-7zy7288iy",
+      "messageId": "msg-1760991145874-59dy6kr61",
+      "author": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760991145874,
+      "text": "Budget planning meeting",
+      "privileged": false
+    },
+    {
+      "postId": "post-1760991145915-4xdfy8nll",
+      "messageId": "msg-1760991145915-pyrv4n59l",
+      "author": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760991145915,
+      "text": "First message",
+      "privileged": false
+    },
+    {
+      "postId": "post-1760991145945-vgmiznjwk",
+      "messageId": "msg-1760991145945-1oemtz6bv",
+      "author": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760991145945,
+      "text": "Duplicate attempt",
+      "privileged": false
+    },
+    {
+      "postId": "post-1760991145963-o5fvqovw9",
+      "messageId": "msg-1760991145963-7ebuh2g8v",
+      "author": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760991145963,
+      "text": "Group discussion",
+      "privileged": false
+    },
+    {
+      "postId": "post-1760991145986-rnfkc9jo0",
+      "messageId": "msg-1760991145986-pijog92ti",
+      "author": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760991145986,
+      "text": "Internal message",
+      "privileged": false
+    },
+    {
+      "postId": "post-1760991146005-1n13awh3t",
+      "messageId": "msg-1760991146005-0fa2d595u",
+      "author": {
+        "userId": "user1",
+        "label": "Warren Peace"
+      },
+      "createdAt": 1760991146005,
+      "text": "External message",
+      "privileged": false
+    }
+  ]
 }

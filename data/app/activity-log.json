@@ -1,42 +1,231 @@
 [
   {
-    "id": "act_1760982521685_3b2w8e5mi",
-    "timestamp": 1760982521685,
+    "id": "act_1760991145825_4pv7qrmy3",
+    "timestamp": 1760991145825,
+    "type": "workflow:request-review",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "requested review",
+    "target": "workflow",
+    "details": {},
+    "message": "Warren Peace requested review from approvers"
+  },
+  {
+    "id": "act_1760991145848_z5rxhc0kx",
+    "timestamp": 1760991145848,
     "type": "message:created",
     "user": {
-      "id": "user3",
-      "label": "Yuri Lee Laffed",
+      "id": "user1",
+      "label": "Warren Peace",
       "platform": "web"
     },
     "action": "started conversation",
     "target": "message",
     "details": {
-      "messageId": "msg-1760982521682-mbykhi925",
-      "title": "Warren Peace, Jen",
-      "recipients": 3,
+      "messageId": "msg-1760991145842-h9xf09r20",
+      "title": "User 2",
+      "recipients": 1,
       "recipientsList": [
         {
-          "label": "Yuri Lee Laffed",
-          "email": "",
+          "label": "User 2",
+          "email": "user2@test.com",
+          "userId": "user2"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "Contract terms discussion",
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"User 2\" with 1 person"
+  },
+  {
+    "id": "act_1760991145877_jm1i5qg6f",
+    "timestamp": 1760991145877,
+    "type": "message:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760991145874-59dy6kr61",
+      "title": "User 3",
+      "recipients": 1,
+      "recipientsList": [
+        {
+          "label": "User 3",
+          "email": "user3@test.com",
           "userId": "user3"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "Budget planning meeting",
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"User 3\" with 1 person"
+  },
+  {
+    "id": "act_1760991145918_9mgfee84b",
+    "timestamp": 1760991145919,
+    "type": "message:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760991145915-pyrv4n59l",
+      "title": "User 2",
+      "recipients": 1,
+      "recipientsList": [
+        {
+          "label": "User 2",
+          "email": "user2@test.com",
+          "userId": "user2"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "First message",
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"User 2\" with 1 person"
+  },
+  {
+    "id": "act_1760991145948_3hgvczrmc",
+    "timestamp": 1760991145948,
+    "type": "message:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760991145945-1oemtz6bv",
+      "title": "User 2",
+      "recipients": 1,
+      "recipientsList": [
+        {
+          "label": "User 2",
+          "email": "user2@test.com",
+          "userId": "user2"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "Duplicate attempt",
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"User 2\" with 1 person"
+  },
+  {
+    "id": "act_1760991145966_8x332cn49",
+    "timestamp": 1760991145966,
+    "type": "message:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760991145963-7ebuh2g8v",
+      "title": "Alice Smith, Bob Jones",
+      "recipients": 2,
+      "recipientsList": [
+        {
+          "label": "Alice Smith",
+          "email": "alice@test.com",
+          "userId": "user2"
         },
         {
-          "label": "Warren Peace",
-          "email": "",
-          "userId": "user1"
-        },
+          "label": "Bob Jones",
+          "email": "bob@test.com",
+          "userId": "user3"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "Group discussion",
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"Alice Smith, Bob Jones\" with 2 people"
+  },
+  {
+    "id": "act_1760991145990_lrnegti6k",
+    "timestamp": 1760991145990,
+    "type": "message:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760991145986-pijog92ti",
+      "title": "User 2",
+      "recipients": 1,
+      "recipientsList": [
         {
-          "label": "Jen",
-          "email": "Ehlers",
-          "userId": null
+          "label": "User 2",
+          "email": "user2@test.com",
+          "userId": "user2"
         }
       ],
       "internal": true,
       "external": false,
-      "privileged": true,
-      "initialMessage": null,
+      "privileged": false,
+      "initialMessage": "Internal message",
       "platform": "web"
     },
-    "message": "Yuri Lee Laffed started a conversation \"Warren Peace, Jen\" with 3 people"
+    "message": "Warren Peace started a conversation \"User 2\" with 1 person"
+  },
+  {
+    "id": "act_1760991146009_8xqt59spb",
+    "timestamp": 1760991146009,
+    "type": "message:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760991146005-0fa2d595u",
+      "title": "User 3",
+      "recipients": 1,
+      "recipientsList": [
+        {
+          "label": "User 3",
+          "email": "user3@test.com",
+          "userId": "user3"
+        }
+      ],
+      "internal": false,
+      "external": true,
+      "privileged": false,
+      "initialMessage": "External message",
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"User 3\" with 1 person"
   }
 ]

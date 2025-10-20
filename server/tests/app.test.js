@@ -45,6 +45,13 @@ async function resetState() {
   await sleep(500);
 }
 
+// Global setup - enable test mode before all tests
+beforeAll(async () => {
+  await sleep(500); // Wait for server to be ready
+  // Enable test mode to disable SSE broadcasts and activity logging
+  await request('POST', '/api/v1/test-mode', { enabled: true });
+});
+
 describe('Phase 1: Infrastructure', () => {
   
   beforeAll(async () => {

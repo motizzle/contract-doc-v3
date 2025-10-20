@@ -145,14 +145,26 @@ const dataUsersDir = path.join(dataAppDir, 'users');
 
 // Helper to get current document context for activity logging
 function getDocumentContext() {
-  return {
-    title: serverConfig.title || 'Untitled Document',
-    status: serverConfig.status || 'draft',
-    version: serverState.documentVersion || 1
-  };
+  try {
+    return {
+      title: (serverState && serverState.title) || 'Untitled Document',
+      status: (serverState && serverState.status) || 'draft',
+      version: (serverState && serverState.documentVersion) || 1
+    };
+  } catch (e) {
+    // Fallback if serverState isn't initialized
+    return {
+      title: 'Untitled Document',
+      status: 'draft',
+      version: 1
+    };
+  }
 }
 
 function logActivity(type, userId, details = {}) {
+  // Skip activity logging during test mode
+  if (testMode) return null;
+  
   try {
     const resolvedLabel = resolveUserLabel(userId);
     const platform = (details && details.platform) ? String(details.platform) : 'web';
@@ -2478,16 +2490,22 @@ app.post('/api/v1/status/cycle', (req, res) => {
     persistState();
     broadcast({ type: 'status', status: next });
     
-    // Log activity
-    const userId = req.body?.userId || 'user1';
-    const docContext = getDocumentContext();
-    logActivity('document:status-change', userId, { 
-      from: cur, 
-      to: next,
-      documentTitle: docContext.title,
-      version: docContext.version,
-      platform: req.body?.platform || 'web'
-    });
+    // Log activity (skip in test mode)
+    if (!testMode) {
+      try {
+        const userId = req.body?.userId || 'user1';
+        const docContext = getDocumentContext();
+        logActivity('document:status-change', userId, { 
+          from: cur, 
+          to: next,
+          documentTitle: docContext.title,
+          version: docContext.version,
+          platform: req.body?.platform || 'web'
+        });
+      } catch (err) {
+        console.error('Error logging status change activity:', err);
+      }
+    }
     
     res.json({ ok: true, status: next });
   } catch (e) {
@@ -2507,15 +2525,21 @@ app.post('/api/v1/document/upload', upload.single('file'), (req, res) => {
     bumpRevision();
     bumpDocumentVersion(userId, platform);
     
-    // Log activity
-    const docContext = getDocumentContext();
-    logActivity('document:upload', userId, {
-      filename: req.file?.originalname || 'default.docx',
-      size: req.file?.size,
-      documentTitle: docContext.title,
-      version: docContext.version,
-      platform
-    });
+    // Log activity (skip in test mode)
+    if (!testMode) {
+      try {
+        const docContext = getDocumentContext();
+        logActivity('document:upload', userId, {
+          filename: req.file?.originalname || 'default.docx',
+          size: req.file?.size,
+          documentTitle: docContext.title,
+          version: docContext.version,
+          platform
+        });
+      } catch (err) {
+        console.error('Error logging upload activity:', err);
+      }
+    }
     
     broadcast({ type: 'documentUpload', name: 'default.docx' });
     res.json({ ok: true });
@@ -2533,16 +2557,20 @@ app.post('/api/v1/document/revert', (req, res) => {
   const previousVersion = serverState.documentVersion;
   bumpDocumentVersion(actorUserId, platform);
   const versionNow = serverState.documentVersion;
-  // Log activity: document reverted to prior version (new version created)
-  const docContext = getDocumentContext();
-  try { 
-    logActivity('version:restore', actorUserId, { 
-      platform, 
-      version: versionNow,
-      previousVersion,
-      documentTitle: docContext.title
-    }); 
-  } catch {}
+  // Log activity: document reverted to prior version (new version created) (skip in test mode)
+  if (!testMode) {
+    try { 
+      const docContext = getDocumentContext();
+      logActivity('version:restore', actorUserId, { 
+        platform, 
+        version: versionNow,
+        previousVersion,
+        documentTitle: docContext.title
+      }); 
+    } catch (err) {
+      console.error('Error logging version restore activity:', err);
+    }
+  }
   broadcast({ type: 'documentRevert' });
   res.json({ ok: true });
 });
@@ -2579,15 +2607,21 @@ app.post('/api/v1/save-progress', (req, res) => {
       broadcast({ type: 'versions:update' });
     } catch {}
 
-    // Log activity
-    const docContext = getDocumentContext();
-    logActivity('document:save', userId, {
-      autoSave: false,
-      size: bytes.length,
-      documentTitle: docContext.title,
-      version: docContext.version,
-      platform: platform || 'word'
-    });
+    // Log activity (skip in test mode)
+    if (!testMode) {
+      try {
+        const docContext = getDocumentContext();
+        logActivity('document:save', userId, {
+          autoSave: false,
+          size: bytes.length,
+          documentTitle: docContext.title,
+          version: docContext.version,
+          platform: platform || 'word'
+        });
+      } catch (err) {
+        console.error('Error logging save activity:', err);
+      }
+    }
 
     broadcast({ type: 'saveProgress', userId, size: bytes.length });
     // Touch title if empty to encourage naming
@@ -2646,16 +2680,20 @@ app.post('/api/v1/versions/view', (req, res) => {
     if (!Number.isFinite(n) || n < 1) return res.status(400).json({ error: 'invalid_version' });
     const originPlatform = String(req.body?.platform || req.query?.platform || 'web');
     const actorUserId = req.body?.userId || 'user1';
-    // Log activity: user viewed a specific version
-    const docContext = getDocumentContext();
-    try { 
-      logActivity('version:view', actorUserId, { 
-        version: n, 
-        platform: originPlatform,
-        documentTitle: docContext.title,
-        currentVersion: docContext.version
-      }); 
-    } catch {}
+    // Log activity: user viewed a specific version (skip in test mode)
+    if (!testMode) {
+      try { 
+        const docContext = getDocumentContext();
+        logActivity('version:view', actorUserId, { 
+          version: n, 
+          platform: originPlatform,
+          documentTitle: docContext.title,
+          currentVersion: docContext.version
+        }); 
+      } catch (err) {
+        console.error('Error logging version view activity:', err);
+      }
+    }
     broadcast({ type: 'version:view', version: n, payload: { version: n, MessagePlatform: originPlatform } });
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'version_view_failed' }); }
@@ -2759,14 +2797,20 @@ app.post('/api/v1/document/snapshot', (req, res) => {
     
     fs.copyFileSync(src, dest);
     
-    // Log activity
-    const docContext = getDocumentContext();
-    logActivity('document:snapshot', userId, {
-      version: docContext.version,
-      documentTitle: docContext.title,
-      status: docContext.status,
-      platform
-    });
+    // Log activity (skip in test mode)
+    if (!testMode) {
+      try {
+        const docContext = getDocumentContext();
+        logActivity('document:snapshot', userId, {
+          version: docContext.version,
+          documentTitle: docContext.title,
+          status: docContext.status,
+          platform
+        });
+      } catch (err) {
+        console.error('Error logging snapshot activity:', err);
+      }
+    }
     
     broadcast({ type: 'snapshot', name: path.basename(dest) });
     res.json({ ok: true, path: dest });
@@ -2927,14 +2971,21 @@ app.post('/api/v1/checkout', (req, res) => {
   serverState.lastUpdated = new Date().toISOString();
   persistState();
 
-  // Log activity
-  const docContext = getDocumentContext();
-  logActivity('document:checkout', userId, {
-    documentTitle: docContext.title,
-    version: docContext.version,
-    status: docContext.status,
-    platform: req.body?.platform || 'web'
-  });
+  // Log activity (skip in test mode)
+  if (!testMode) {
+    try {
+      const docContext = getDocumentContext();
+      logActivity('document:checkout', userId, {
+        documentTitle: docContext.title,
+        version: docContext.version,
+        status: docContext.status,
+        platform: req.body?.platform || 'web'
+      });
+    } catch (err) {
+      console.error('Error logging checkout activity:', err);
+      // Don't fail the request if logging fails
+    }
+  }
 
   broadcast({ type: 'checkout', userId });
   res.json({ ok: true, checkedOutBy: userId });
@@ -2964,14 +3015,21 @@ app.post('/api/v1/checkin', (req, res) => {
   serverState.lastUpdated = new Date().toISOString();
   persistState();
 
-  // Log activity
-  const docContext = getDocumentContext();
-  logActivity('document:checkin', userId, {
-    documentTitle: docContext.title,
-    version: docContext.version,
-    checkoutDuration: durationText,
-    platform: req.body?.platform || 'web'
-  });
+  // Log activity (skip in test mode)
+  if (!testMode) {
+    try {
+      const docContext = getDocumentContext();
+      logActivity('document:checkin', userId, {
+        documentTitle: docContext.title,
+        version: docContext.version,
+        checkoutDuration: durationText,
+        platform: req.body?.platform || 'web'
+      });
+    } catch (err) {
+      console.error('Error logging checkin activity:', err);
+      // Don't fail the request if logging fails
+    }
+  }
 
   broadcast({ type: 'checkin', userId });
   res.json({ ok: true });
@@ -2992,13 +3050,20 @@ app.post('/api/v1/checkout/cancel', (req, res) => {
   serverState.lastUpdated = new Date().toISOString();
   persistState();
 
-  // Log activity
-  const docContext = getDocumentContext();
-  logActivity('document:checkout:cancel', userId, {
-    documentTitle: docContext.title,
-    version: docContext.version,
-    platform: req.body?.platform || 'web'
-  });
+  // Log activity (skip in test mode)
+  if (!testMode) {
+    try {
+      const docContext = getDocumentContext();
+      logActivity('document:checkout:cancel', userId, {
+        documentTitle: docContext.title,
+        version: docContext.version,
+        platform: req.body?.platform || 'web'
+      });
+    } catch (err) {
+      console.error('Error logging cancel activity:', err);
+      // Don't fail the request if logging fails
+    }
+  }
 
   broadcast({ type: 'checkoutCancel', userId });
   res.json({ ok: true });
@@ -3019,15 +3084,22 @@ app.post('/api/v1/checkout/override', (req, res) => {
     serverState.checkedOutByAt = null;
     serverState.lastUpdated = new Date().toISOString();
     persistState();
-    const docContext = getDocumentContext();
-    try { 
-      logActivity('document:checkout:override', userId, { 
-        previousUserId,
-        documentTitle: docContext.title,
-        version: docContext.version,
-        platform: req.body?.platform || 'web'
-      }); 
-    } catch {}
+    
+    // Log activity (skip in test mode)
+    if (!testMode) {
+      try { 
+        const docContext = getDocumentContext();
+        logActivity('document:checkout:override', userId, { 
+          previousUserId,
+          documentTitle: docContext.title,
+          version: docContext.version,
+          platform: req.body?.platform || 'web'
+        }); 
+      } catch (err) {
+        console.error('Error logging override activity:', err);
+      }
+    }
+    
     broadcast({ type: 'overrideCheckout', userId });
     return res.json({ ok: true, checkedOutBy: null });
   }
@@ -3486,18 +3558,24 @@ app.post('/api/v1/compile', async (req, res) => {
     fs.writeFileSync(outPath, merged);
     try { if (convertedPath && fs.existsSync(convertedPath)) fs.rmSync(convertedPath); } catch {}
     
-    // Log activity
-    const docContext = getDocumentContext();
-    const compiledStats = fs.existsSync(outPath) ? fs.statSync(outPath) : null;
-    logActivity('document:compile', userId, {
-      format: 'pdf',
-      includeExhibits: names.length > 0,
-      exhibitCount: names.length,
-      documentTitle: docContext.title,
-      version: docContext.version,
-      outputSize: compiledStats ? compiledStats.size : null,
-      platform
-    });
+    // Log activity (skip in test mode)
+    if (!testMode) {
+      try {
+        const docContext = getDocumentContext();
+        const compiledStats = fs.existsSync(outPath) ? fs.statSync(outPath) : null;
+        logActivity('document:compile', userId, {
+          format: 'pdf',
+          includeExhibits: names.length > 0,
+          exhibitCount: names.length,
+          documentTitle: docContext.title,
+          version: docContext.version,
+          outputSize: compiledStats ? compiledStats.size : null,
+          platform
+        });
+      } catch (err) {
+        console.error('Error logging compile activity:', err);
+      }
+    }
     
     broadcast({ type: 'compile', name: outName });
     return res.json({ ok: true, url: `/compiled/${encodeURIComponent(outName)}` });
@@ -3577,15 +3655,21 @@ app.post('/api/v1/send-vendor', (req, res) => {
   const { from = 'user', message = '', vendorName = "Moti's Builders", userId = 'user1', vendorEmail = '' } = req.body || {};
   const payload = { from, message: String(message).slice(0, 200), vendorName };
   
-  // Log activity
-  const docContext = getDocumentContext();
-  logActivity('document:send-vendor', userId, {
-    vendor: vendorName,
-    email: vendorEmail,
-    documentTitle: docContext.title,
-    version: docContext.version,
-    platform: req.query?.platform || req.body?.platform || 'web'
-  });
+  // Log activity (skip in test mode)
+  if (!testMode) {
+    try {
+      const docContext = getDocumentContext();
+      logActivity('document:send-vendor', userId, {
+        vendor: vendorName,
+        email: vendorEmail,
+        documentTitle: docContext.title,
+        version: docContext.version,
+        platform: req.query?.platform || req.body?.platform || 'web'
+      });
+    } catch (err) {
+      console.error('Error logging send-vendor activity:', err);
+    }
+  }
   
   broadcast({ type: 'sendVendor', payload, userId });
   res.json({ ok: true });

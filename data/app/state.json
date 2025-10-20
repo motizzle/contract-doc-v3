@@ -1,14 +1,11 @@
 {
-  "checkedOutBy": "user2",
-  "lastUpdated": "2025-10-20T18:05:07.675Z",
-  "revision": 2470,
-  "documentVersion": 4,
+  "checkedOutBy": null,
+  "lastUpdated": "2025-10-20T20:12:25.784Z",
+  "revision": 3336,
+  "documentVersion": 1,
   "title": "Redlined & Signed",
   "status": "draft",
-  "updatedBy": {
-    "userId": "user2",
-    "label": "Kent Uckey"
-  },
-  "updatedPlatform": "word",
-  "approvalsRevision": 2185
+  "updatedBy": null,
+  "updatedPlatform": null,
+  "approvalsRevision": 3131
 }
