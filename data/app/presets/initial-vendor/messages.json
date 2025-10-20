@@ -1,0 +1,48 @@
+{
+  "messages": [
+    {
+      "messageId": "msg-vendor-001",
+      "title": "Initial Terms with Acme Corp",
+      "createdBy": {"id": "user1", "label": "Warren Peace"},
+      "participants": [
+        {"id": "user4", "label": "Hugh R Ewe"},
+        {"id": "user2", "label": "Kent Uckey"}
+      ],
+      "createdAt": "2025-10-17T20:00:00.000Z",
+      "lastPostAt": "2025-10-18T01:00:00.000Z",
+      "state": "active",
+      "internal": false,
+      "external": true,
+      "privileged": false,
+      "unreadBy": ["user2"],
+      "deletedAt": null
+    }
+  ],
+  "posts": [
+    {
+      "postId": "post-vendor-001",
+      "messageId": "msg-vendor-001",
+      "author": {"id": "user1", "label": "Warren Peace"},
+      "text": "Hugh, we received your initial draft. We'll review and get back to you with our proposed changes by end of week.",
+      "createdAt": "2025-10-17T20:00:00.000Z",
+      "privileged": false
+    },
+    {
+      "postId": "post-vendor-002",
+      "messageId": "msg-vendor-001",
+      "author": {"id": "user4", "label": "Hugh R Ewe"},
+      "text": "Sounds good Warren. The key terms we're looking for are outlined in Section 3. Let me know if you have questions about our standard licensing model.",
+      "createdAt": "2025-10-17T22:30:00.000Z",
+      "privileged": false
+    },
+    {
+      "postId": "post-vendor-003",
+      "messageId": "msg-vendor-001",
+      "author": {"id": "user4", "label": "Hugh R Ewe"},
+      "text": "Also, I should mention that our standard implementation timeline is 60 days from contract execution. If you need it faster, we can discuss expedited options.",
+      "createdAt": "2025-10-18T01:00:00.000Z",
+      "privileged": false
+    }
+  ]
+}
+

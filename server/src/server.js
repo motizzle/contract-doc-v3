@@ -1185,6 +1185,7 @@ const activityLogFilePath = path.join(dataAppDir, 'activity-log.json');
 const messagesFilePath = path.join(dataAppDir, 'messages.json');
 const chatFilePath = path.join(dataAppDir, 'chat.json');
 const variablesFilePath = path.join(dataAppDir, 'variables.json');
+const fieldsFilePath = path.join(dataAppDir, 'fields.json');
 
 // Ensure working directories exist
 for (const dir of [dataWorkingDir, workingDocumentsDir, workingExhibitsDir, compiledDir, versionsDir]) {
@@ -2846,14 +2847,28 @@ app.post('/api/v1/test-mode', (req, res) => {
   }
 });
 
-// Factory reset: wipe working overlays and reset server state
+// Factory reset: wipe working overlays and reset server state with preset data
 app.post('/api/v1/factory-reset', (req, res) => {
   try {
     const userId = req.body?.userId || req.query?.userId || 'system';
     const platform = req.query?.platform || req.body?.platform || 'web';
+    const preset = req.body?.preset || req.query?.preset || 'empty';
+    
+    // Validate preset
+    const validPresets = ['empty', 'nearly-done', 'initial-vendor'];
+    if (!validPresets.includes(preset)) {
+      return res.status(400).json({ error: `Invalid preset: ${preset}. Must be one of: ${validPresets.join(', ')}` });
+    }
+    
+    const presetDir = path.join(dataAppDir, 'presets', preset);
+    if (!fs.existsSync(presetDir)) {
+      return res.status(404).json({ error: `Preset directory not found: ${preset}` });
+    }
+    
+    console.log(`🔄 Factory reset with preset: ${preset}`);
     
     // Log activity BEFORE clearing activity log!
-    logActivity('system:factory-reset', userId, { platform });
+    logActivity('system:factory-reset', userId, { platform, preset });
     
     // Remove working document overlay
     const wDoc = path.join(workingDocumentsDir, 'default.docx');
@@ -2868,19 +2883,68 @@ app.post('/api/v1/factory-reset', (req, res) => {
     // Also clear approvals data
     try { if (fs.existsSync(approvalsFilePath)) fs.rmSync(approvalsFilePath); } catch {}
     bumpApprovalsRevision();
-    // Clear activity log
-    try { if (fs.existsSync(activityLogFilePath)) fs.rmSync(activityLogFilePath); } catch {}
-    // Clear messages
-    try { if (fs.existsSync(messagesFilePath)) fs.rmSync(messagesFilePath); } catch {}
+    
+    // Load preset files
+    const presetStateFile = path.join(presetDir, 'state.json');
+    const presetActivityFile = path.join(presetDir, 'activity-log.json');
+    const presetMessagesFile = path.join(presetDir, 'messages.json');
+    const presetFieldsFile = path.join(presetDir, 'fields.json');
+    
+    // Copy preset state
+    if (fs.existsSync(presetStateFile)) {
+      const presetState = JSON.parse(fs.readFileSync(presetStateFile, 'utf8'));
+      serverState.checkedOutBy = presetState.checkedOutBy || null;
+      serverState.documentVersion = presetState.documentVersion || 1;
+      serverState.title = presetState.title || 'Redlined & Signed';
+      serverState.status = presetState.status || 'draft';
+      serverState.updatedBy = presetState.updatedBy || null;
+      serverState.updatedPlatform = presetState.updatedPlatform || null;
+      serverState.lastUpdated = new Date().toISOString();
+      console.log(`✅ Loaded state from preset: ${preset}`);
+    } else {
+      // Fallback to default state
+      serverState.checkedOutBy = null;
+      serverState.documentVersion = 1;
+      serverState.title = 'Redlined & Signed';
+      serverState.status = 'draft';
+      serverState.updatedBy = null;
+      serverState.updatedPlatform = null;
+      serverState.lastUpdated = new Date().toISOString();
+    }
+    
+    // Copy preset activity log
+    if (fs.existsSync(presetActivityFile)) {
+      fs.copyFileSync(presetActivityFile, activityLogFilePath);
+      console.log(`✅ Loaded activity log from preset: ${preset}`);
+    } else {
+      // Clear activity log
+      try { if (fs.existsSync(activityLogFilePath)) fs.rmSync(activityLogFilePath); } catch {}
+    }
+    
+    // Copy preset messages
+    if (fs.existsSync(presetMessagesFile)) {
+      fs.copyFileSync(presetMessagesFile, messagesFilePath);
+      console.log(`✅ Loaded messages from preset: ${preset}`);
+    } else {
+      // Clear messages
+      try { if (fs.existsSync(messagesFilePath)) fs.rmSync(messagesFilePath); } catch {}
+    }
+    
+    // Copy preset fields
+    if (fs.existsSync(presetFieldsFile)) {
+      fs.copyFileSync(presetFieldsFile, fieldsFilePath);
+      console.log(`✅ Loaded fields from preset: ${preset}`);
+    } else {
+      // Clear fields
+      try { if (fs.existsSync(fieldsFilePath)) fs.rmSync(fieldsFilePath); } catch {}
+    }
+    
     // Clear chat history
     try { if (fs.existsSync(chatFilePath)) fs.rmSync(chatFilePath); } catch {}
+    
     // Restore variables to seed data (don't delete them!)
     const variablesSeedPath = path.join(dataAppDir, 'variables.seed.json');
     try {
-      console.log('🔍 Factory reset: Looking for seed file at:', variablesSeedPath);
-      console.log('🔍 Seed file exists?', fs.existsSync(variablesSeedPath));
-      console.log('🔍 Target variables file:', variablesFilePath);
-      
       if (fs.existsSync(variablesSeedPath)) {
         fs.copyFileSync(variablesSeedPath, variablesFilePath);
         console.log('✅ Variables restored from seed data');
@@ -2893,6 +2957,7 @@ app.post('/api/v1/factory-reset', (req, res) => {
     } catch (e) {
       console.error('❌ Failed to restore variables from seed:', e.message);
     }
+    
     // Remove snapshots entirely
     const snapDir = path.join(dataWorkingDir, 'snapshots');
     if (fs.existsSync(snapDir)) {
@@ -2914,17 +2979,10 @@ app.post('/api/v1/factory-reset', (req, res) => {
       }
       if (!fs.existsSync(versionsDir)) fs.mkdirSync(versionsDir, { recursive: true });
     } catch {}
-    // Reset state to baseline and bump revision so clients resync deterministically
-    serverState.checkedOutBy = null;
-    serverState.documentVersion = 1;
-    serverState.title = 'Redlined & Signed';
-    serverState.status = 'draft';
-    serverState.updatedBy = null;
-    serverState.updatedPlatform = null;
-    serverState.lastUpdated = new Date().toISOString();
+    
     bumpRevision();
     persistState();
-    broadcast({ type: 'factoryReset' });
+    broadcast({ type: 'factoryReset', preset });
     broadcast({ type: 'documentRevert' });
     // Notify clients to clear local messaging state
     broadcast({ type: 'messaging:reset' });
@@ -2938,9 +2996,10 @@ app.post('/api/v1/factory-reset', (req, res) => {
     broadcast({ type: 'versions:update' });
     const approvals = loadApprovals();
     broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary: computeApprovalsSummary(approvals.approvers) });
-    return res.json({ ok: true });
+    return res.json({ ok: true, preset });
   } catch (e) {
-    return res.status(500).json({ error: 'Factory reset failed' });
+    console.error('Factory reset error:', e);
+    return res.status(500).json({ error: 'Factory reset failed', details: e.message });
   }
 });
 

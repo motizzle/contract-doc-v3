@@ -1201,7 +1201,7 @@
       const nestedItems = [
         menuItem('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true),
         menuItem('Override Checkout', actions.override, !!btns.overrideBtn),
-        menuItem('Factory Reset', () => ask('Factory reset?', 'This will clear working data.', actions.factoryReset), true, { danger: true }),
+        menuItem('Factory Reset', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'factory-reset' } })); } catch {} }, 130); } catch {} }, true, { danger: true }),
       ].filter(Boolean);
 
       // Compute special case: only checkout is available (plus menu)
@@ -4170,6 +4170,115 @@
       );
     }
 
+    function FactoryResetModal(props) {
+      const { onClose } = props || {};
+      const API_BASE = getApiBase();
+      const [selectedPreset, setSelectedPreset] = React.useState('empty');
+      const [busy, setBusy] = React.useState(false);
+      const [error, setError] = React.useState('');
+
+      const presets = [
+        {
+          id: 'empty',
+          label: 'Empty',
+          description: 'Clean slate - no activities, messages, or fields. Perfect for starting fresh.',
+          icon: '🧹'
+        },
+        {
+          id: 'nearly-done',
+          label: 'Nearly Done',
+          description: '90% complete contract in review. Includes version history, conversations, and field data.',
+          icon: '📝'
+        },
+        {
+          id: 'initial-vendor',
+          label: 'Initial Vendor',
+          description: 'Early-stage vendor negotiation. Basic setup with initial communications.',
+          icon: '🤝'
+        }
+      ];
+
+      const reset = async () => {
+        setBusy(true); setError('');
+        try {
+          const r = await fetch(`${API_BASE}/api/v1/factory-reset`, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ preset: selectedPreset }) 
+          });
+          if (!r.ok) {
+            const j = await r.json().catch(() => ({}));
+            throw new Error(j.error || 'Factory reset failed');
+          }
+          // Wait a moment for server to process
+          await new Promise(resolve => setTimeout(resolve, 300));
+          // Close modal and let SSE events handle the rest
+          onClose?.();
+        } catch (e) { 
+          setError(e.message || 'Failed to reset'); 
+        } finally { 
+          setBusy(false); 
+        }
+      };
+
+      return React.createElement('div', { className: 'modal-overlay', onClick: (e) => { if (e.target === e.currentTarget && !busy) onClose?.(); } },
+        React.createElement('div', { className: 'modal-panel', style: { maxWidth: '500px' } }, [
+          React.createElement('div', { key: 'h', className: 'modal-header' }, [
+            React.createElement('div', { key: 't', className: 'font-bold' }, 'Factory Reset'),
+            React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: onClose, disabled: busy }, '✕')
+          ]),
+          error ? React.createElement('div', { key: 'e', className: 'bg-error-50 text-error-700 p-2 border-t border-b border-error-200' }, error) : null,
+          React.createElement('div', { key: 'b', className: 'modal-body d-flex flex-column gap-12' }, [
+            React.createElement('div', { key: 'warning', className: 'bg-warning-50 text-warning-800 p-3 border border-warning-200 rounded-md text-sm' },
+              '⚠️ This will clear all working data, versions, and compiled files. Choose a preset to restore.'
+            ),
+            React.createElement('div', { key: 'lbl', className: 'font-semibold' }, 'Select Preset State'),
+            React.createElement('div', { key: 'presets', className: 'd-flex flex-column gap-8' },
+              presets.map((preset, i) => 
+                React.createElement('label', { 
+                  key: preset.id, 
+                  className: `border rounded-md p-3 cursor-pointer transition-all ${selectedPreset === preset.id ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:border-gray-300 bg-white'}`,
+                  style: { cursor: busy ? 'not-allowed' : 'pointer' }
+                }, [
+                  React.createElement('div', { key: 'radio', className: 'd-flex items-start gap-3' }, [
+                    React.createElement('input', { 
+                      key: 'input',
+                      type: 'radio', 
+                      name: 'preset', 
+                      value: preset.id, 
+                      checked: selectedPreset === preset.id, 
+                      onChange: () => setSelectedPreset(preset.id),
+                      disabled: busy,
+                      style: { marginTop: '2px' }
+                    }),
+                    React.createElement('div', { key: 'content', className: 'flex-1' }, [
+                      React.createElement('div', { key: 'header', className: 'd-flex items-center gap-2 font-semibold' }, [
+                        React.createElement('span', { key: 'icon' }, preset.icon),
+                        React.createElement('span', { key: 'label' }, preset.label)
+                      ]),
+                      React.createElement('div', { key: 'desc', className: 'text-sm text-gray-600 mt-1' }, preset.description)
+                    ])
+                  ])
+                ])
+              )
+            )
+          ]),
+          React.createElement('div', { key: 'f', className: 'modal-footer' }, [
+            React.createElement(UIButton, { key: 'cancel', label: 'Cancel', onClick: onClose, disabled: busy }),
+            React.createElement(UIButton, { 
+              key: 'go', 
+              label: 'Reset to ' + presets.find(p => p.id === selectedPreset)?.label, 
+              onClick: reset, 
+              variant: 'primary', 
+              isLoading: busy, 
+              loadingLabel: 'Resetting…',
+              danger: true
+            }),
+          ])
+        ])
+      );
+    }
+
     function OpenGovModal(props) {
       const { onClose } = props || {};
       const { tokens } = React.useContext(ThemeContext);
@@ -5662,6 +5771,7 @@
             if (d && d.id === 'message') setModal({ id: 'message', toUserId: d.options?.toUserId, toUserName: d.options?.toUserName }); 
             if (d && (d.id === 'open-gov' || d.id === 'openGov')) setModal({ id: 'open-gov' }); 
             if (d && d.id === 'system-prompt-editor') setModal({ id: 'system-prompt-editor' }); 
+            if (d && d.id === 'factory-reset') setModal({ id: 'factory-reset' }); 
             if (d && d.id === 'version-outdated-checkout') {
               
               setModal({ 
@@ -5712,6 +5822,8 @@
             return React.createElement(VersionOutdatedCheckoutModal, { currentVersion: modal.currentVersion, clientVersion: modal.clientVersion, viewingVersion: modal.viewingVersion, message: modal.message, userId: modal.userId, onClose });
           case 'system-prompt-editor':
             return React.createElement(SystemPromptEditorModal, { onClose });
+          case 'factory-reset':
+            return React.createElement(FactoryResetModal, { onClose });
           default:
             return null;
         }
