@@ -583,6 +583,8 @@
                               setViewingVersion(v); 
                             }
                           } catch {}
+                          // Refresh state to pick up preset's title and other config
+                          try { await refresh(); } catch {}
                         }
                       } catch {}
                     })();
@@ -601,6 +603,8 @@
                           setLoadedVersion(v); 
                           setViewingVersion(v); 
                         }
+                        // Refresh state to pick up preset's title and other config
+                        await refresh();
                       } catch {}
                     })();
                   }

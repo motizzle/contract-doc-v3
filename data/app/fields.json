@@ -1,16 +1,42 @@
 {
-  "field-1729180000001": {
-    "fieldId": "field-1729180000001",
-    "displayLabel": "Vendor Name",
+  "field-1729000000001": {
+    "fieldId": "field-1729000000001",
+    "displayLabel": "Contract Value",
     "fieldType": "TEXTINPUT",
-    "fieldColor": "#6633cc",
-    "type": "text",
-    "category": "Parties",
-    "defaultValue": "Acme Corporation",
+    "fieldColor": "#0066cc",
+    "type": "currency",
+    "category": "Financial",
+    "defaultValue": "$500,000",
     "createdBy": "user1",
-    "createdAt": "2025-10-17T18:30:00.000Z",
+    "createdAt": "2025-10-14T12:00:00.000Z",
+    "updatedBy": "user2",
+    "updatedAt": "2025-10-15T08:00:00.000Z"
+  },
+  "field-1729000000002": {
+    "fieldId": "field-1729000000002",
+    "displayLabel": "Effective Date",
+    "fieldType": "TEXTINPUT",
+    "fieldColor": "#009933",
+    "type": "date",
+    "category": "Dates",
+    "defaultValue": "November 1, 2025",
+    "createdBy": "user1",
+    "createdAt": "2025-10-14T12:05:00.000Z",
     "updatedBy": "user1",
-    "updatedAt": "2025-10-17T18:30:00.000Z"
+    "updatedAt": "2025-10-14T12:05:00.000Z"
+  },
+  "field-1729000000003": {
+    "fieldId": "field-1729000000003",
+    "displayLabel": "Term Length",
+    "fieldType": "TEXTINPUT",
+    "fieldColor": "#ff6600",
+    "type": "text",
+    "category": "Terms",
+    "defaultValue": "24 months",
+    "createdBy": "user2",
+    "createdAt": "2025-10-14T14:20:00.000Z",
+    "updatedBy": "user2",
+    "updatedAt": "2025-10-14T14:20:00.000Z"
   }
 }
 
