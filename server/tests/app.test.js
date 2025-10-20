@@ -51,12 +51,20 @@ describe('Phase 1: Infrastructure', () => {
     await sleep(500); // Wait for server to be ready
   });
 
+  // Test: Server health check
+  // Purpose: Verifies the server is running and responding to requests
+  // Why: Foundation test - all other tests depend on the server being operational
+  // Coverage: Basic server infrastructure and health endpoint
   test('server is running and responds', async () => {
     const res = await request('GET', '/api/v1/health');
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
   });
 
+  // Test: Test mode toggle
+  // Purpose: Verifies test mode can be enabled/disabled to suppress SSE broadcasts during testing
+  // Why: Tests need to run in isolation without triggering real-time updates
+  // Coverage: Test mode infrastructure for disabling side effects
   test('test-mode endpoint works (enable/disable)', async () => {
     // Enable test mode
     const enableRes = await request('POST', '/api/v1/test-mode', { enabled: true });
@@ -71,6 +79,10 @@ describe('Phase 1: Infrastructure', () => {
     expect(disableRes.body.testMode).toBe(false);
   });
 
+  // Test: API route registration
+  // Purpose: Verifies all core API endpoints are registered and accessible
+  // Why: Ensures routing infrastructure is properly configured
+  // Coverage: Validates key API endpoints respond (not 404)
   test('API routes are registered correctly', async () => {
     const endpoints = [
       '/api/v1/health',
@@ -86,6 +98,10 @@ describe('Phase 1: Infrastructure', () => {
     }
   });
 
+  // Test: SSE endpoint availability
+  // Purpose: Confirms the Server-Sent Events endpoint exists
+  // Why: Real-time updates depend on SSE for broadcasting state changes
+  // Coverage: SSE infrastructure (full SSE testing is done manually due to persistent connections)
   test('SSE endpoint is available', async () => {
     // SSE keeps connection open indefinitely, so we just check the endpoint exists
     // by verifying it doesn't return 404 immediately
@@ -96,6 +112,10 @@ describe('Phase 1: Infrastructure', () => {
 
 describe('Phase 2: State Management', () => {
 
+  // Test: Checkout workflow
+  // Purpose: Verifies the complete checkout flow updates state correctly
+  // Why: Users must be able to claim ownership of the document to make edits
+  // Coverage: Checkout API, state persistence, ownership tracking
   test('checkout flow works for draft document', async () => {
     await resetState();
 
@@ -115,6 +135,10 @@ describe('Phase 2: State Management', () => {
     await request('POST', '/api/v1/checkin', { userId: 'test-user' });
   });
 
+  // Test: Ownership enforcement on checkout
+  // Purpose: Prevents multiple users from checking out the document simultaneously
+  // Why: Protects against conflicting edits and ensures single-user ownership
+  // Coverage: Checkout conflict detection (409 response)
   test('ownership enforced - cannot checkout when someone else owns it', async () => {
     await resetState();
 
@@ -129,6 +153,10 @@ describe('Phase 2: State Management', () => {
     await request('POST', '/api/v1/checkin', { userId: 'userA' });
   });
 
+  // Test: Save ownership validation
+  // Purpose: Ensures only the document owner can save changes
+  // Why: Prevents unauthorized modifications and maintains data integrity
+  // Coverage: Save API ownership enforcement (409 when not owner)
   test('save requires checkout - returns 409 when not owner', async () => {
     await resetState();
 
@@ -146,6 +174,10 @@ describe('Phase 2: State Management', () => {
     expect(res.status).toBe(409);
   });
 
+  // Test: Multi-user state consistency
+  // Purpose: Verifies state matrix returns correct UI state for different users
+  // Why: Each user sees appropriate buttons based on ownership (owner: checkin, others: disabled)
+  // Coverage: State matrix personalization per user
   test('user switching updates state correctly', async () => {
     await resetState();
 
@@ -167,6 +199,10 @@ describe('Phase 2: State Management', () => {
     await request('POST', '/api/v1/checkin', { userId: 'userA' });
   });
 
+  // Test: State structure persistence
+  // Purpose: Verifies state structure remains intact after factory reset
+  // Why: Factory reset should clear data but maintain valid state structure
+  // Coverage: State matrix structure after reset
   test('state persists across factory reset', async () => {
     await resetState();
 
@@ -180,6 +216,10 @@ describe('Phase 2: State Management', () => {
     expect(stateAfter.body.config.checkoutStatus.isCheckedOut).toBe(false);
   });
 
+  // Test: Factory reset clears ownership
+  // Purpose: Verifies factory reset releases document ownership
+  // Why: Reset must clear all session state including checkouts
+  // Coverage: Checkout state clearing on factory reset
   test('factory-reset clears checkout state', async () => {
     await resetState();
 
@@ -203,11 +243,19 @@ describe('Phase 2: State Management', () => {
 
 describe('Phase 3: API Integrity', () => {
 
+  // Test: Health endpoint response
+  // Purpose: Verifies the health check endpoint returns proper status
+  // Why: Monitoring and load balancers depend on this endpoint
+  // Coverage: Health check API contract
   test('GET /api/v1/health returns 200', async () => {
     const res = await request('GET', '/api/v1/health');
     expect(res.status).toBe(200);
   });
 
+  // Test: State matrix API contract
+  // Purpose: Verifies state matrix returns all required fields
+  // Why: UI depends on complete config object to render correctly
+  // Coverage: State matrix response structure validation
   test('GET /api/v1/state-matrix returns valid config', async () => {
     const res = await request('GET', '/api/v1/state-matrix?platform=web&userId=user1');
     expect(res.status).toBe(200);
@@ -216,6 +264,10 @@ describe('Phase 3: API Integrity', () => {
     expect(res.body.revision).toBeDefined();
   });
 
+  // Test: Users API response
+  // Purpose: Verifies users endpoint returns user list and roles
+  // Why: UI needs user data for dropdown selections and permissions
+  // Coverage: Users API response structure
   test('GET /api/v1/users returns user list', async () => {
     const res = await request('GET', '/api/v1/users');
     expect(res.status).toBe(200);
@@ -223,18 +275,30 @@ describe('Phase 3: API Integrity', () => {
     expect(res.body.roles).toBeDefined();
   });
 
+  // Test: Variables API response
+  // Purpose: Verifies variables endpoint returns variables object
+  // Why: Document templates depend on variables for content insertion
+  // Coverage: Variables API response structure
   test('GET /api/v1/variables returns variables', async () => {
     const res = await request('GET', '/api/v1/variables');
     expect(res.status).toBe(200);
     expect(res.body.variables).toBeDefined();
   });
 
+  // Test: Activity log API response
+  // Purpose: Verifies activity endpoint returns activity array
+  // Why: Activity panel displays all document-related events
+  // Coverage: Activity log API response structure
   test('GET /api/v1/activity returns activity log', async () => {
     const res = await request('GET', '/api/v1/activity');
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.activities)).toBe(true);
   });
 
+  // Test: Checkout API status codes
+  // Purpose: Verifies checkout returns appropriate status codes
+  // Why: Ensures proper error handling for concurrent checkout attempts
+  // Coverage: Checkout success (200) and conflict (409) responses
   test('POST /api/v1/checkout returns 200 when valid, 409 when conflict', async () => {
     await resetState();
 
@@ -250,6 +314,10 @@ describe('Phase 3: API Integrity', () => {
     await request('POST', '/api/v1/checkin', { userId: 'userA' });
   });
 
+  // Test: Checkin API authorization
+  // Purpose: Verifies only the document owner can check in
+  // Why: Prevents unauthorized users from releasing document locks
+  // Coverage: Checkin ownership validation (200 for owner, 409 for others)
   test('POST /api/v1/checkin returns 200 when owner, 409 when not', async () => {
     await resetState();
 
@@ -271,6 +339,10 @@ describe('Phase 3: API Integrity', () => {
     expect(res2.status).toBe(200);
   });
 
+  // Test: Save progress API authorization
+  // Purpose: Verifies save-progress enforces checkout ownership
+  // Why: Only the document owner should be able to save changes
+  // Coverage: Save API ownership validation across checkout states
   test('POST /api/v1/save-progress validates ownership', async () => {
     await resetState();
 
@@ -298,12 +370,20 @@ describe('Phase 3: API Integrity', () => {
     await request('POST', '/api/v1/checkin', { userId: 'userA' });
   });
 
+  // Test: Factory reset API response
+  // Purpose: Verifies factory reset endpoint returns success
+  // Why: Testing infrastructure depends on reliable reset functionality
+  // Coverage: Factory reset API contract
   test('POST /api/v1/factory-reset returns 200', async () => {
     const res = await request('POST', '/api/v1/factory-reset', { userId: 'test' });
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
   });
 
+  // Test: UI component serving
+  // Purpose: Verifies the React components are served correctly
+  // Why: UI rendering depends on components.react.js being accessible
+  // Coverage: Static file serving for UI components
   test('GET /ui/components.react.js serves JavaScript', async () => {
     const res = await request('GET', '/ui/components.react.js');
     expect(res.status).toBe(200);
@@ -314,6 +394,10 @@ describe('Phase 3: API Integrity', () => {
 
 describe('Phase 4: Data Validation', () => {
 
+  // Test: DOCX file format validation
+  // Purpose: Verifies server rejects files without proper DOCX magic bytes (PK header)
+  // Why: Prevents corruption and ensures only valid Office documents are processed
+  // Coverage: File format validation at save time
   test('rejects invalid DOCX - not PK header', async () => {
     await resetState();
     await request('POST', '/api/v1/checkout', { userId: 'test', clientVersion: 1 });
@@ -329,6 +413,10 @@ describe('Phase 4: Data Validation', () => {
     await request('POST', '/api/v1/checkin', { userId: 'test' });
   });
 
+  // Test: File size validation
+  // Purpose: Verifies server rejects suspiciously small files that can't be valid DOCX
+  // Why: Prevents saving corrupted or incomplete documents
+  // Coverage: Minimum file size enforcement (<1KB rejected)
   test('rejects too-small files (<1KB)', async () => {
     await resetState();
     await request('POST', '/api/v1/checkout', { userId: 'test', clientVersion: 1 });
@@ -345,6 +433,10 @@ describe('Phase 4: Data Validation', () => {
     await request('POST', '/api/v1/checkin', { userId: 'test' });
   });
 
+  // Test: Base64 encoding validation
+  // Purpose: Verifies server rejects malformed base64 data
+  // Why: Prevents server errors from invalid data transmission
+  // Coverage: Base64 decoding error handling
   test('validates base64 encoding', async () => {
     await resetState();
     await request('POST', '/api/v1/checkout', { userId: 'test', clientVersion: 1 });
@@ -359,6 +451,10 @@ describe('Phase 4: Data Validation', () => {
     await request('POST', '/api/v1/checkin', { userId: 'test' });
   });
 
+  // Test: Cross-user save protection
+  // Purpose: Verifies users cannot save over another user's checked-out document
+  // Why: Prevents document corruption from concurrent modifications
+  // Coverage: Ownership enforcement on save operations
   test('enforces ownership on saves', async () => {
     await resetState();
 
@@ -378,6 +474,10 @@ describe('Phase 4: Data Validation', () => {
     await request('POST', '/api/v1/checkin', { userId: 'userA' });
   });
 
+  // Test: Document file availability
+  // Purpose: Verifies working document endpoint is accessible
+  // Why: Add-in and web app need to download the current document
+  // Coverage: Document serving endpoint (HEAD request)
   test('HEAD /documents/working/default.docx returns content-length', async () => {
     const res = await request('HEAD', '/documents/working/default.docx');
     expect([200, 404]).toContain(res.status); // 404 if no working doc
@@ -386,6 +486,10 @@ describe('Phase 4: Data Validation', () => {
 
 describe('Phase 5: Cross-Platform Sync', () => {
 
+  // Test: State consistency
+  // Purpose: Verifies repeated state-matrix calls return identical data
+  // Why: Multiple clients/tabs should see the same state at any given time
+  // Coverage: State matrix idempotency and consistency
   test('state-matrix returns consistent data for same user', async () => {
     await resetState();
 
@@ -395,6 +499,10 @@ describe('Phase 5: Cross-Platform Sync', () => {
     expect(res1.body.config.checkoutStatus).toEqual(res2.body.config.checkoutStatus);
   });
 
+  // Test: Checkout state synchronization
+  // Purpose: Verifies state-matrix reflects checkout changes immediately
+  // Why: Users must see up-to-date ownership status for collaboration
+  // Coverage: Real-time state updates after checkout
   test('checkout updates state immediately', async () => {
     await resetState();
 
@@ -408,6 +516,10 @@ describe('Phase 5: Cross-Platform Sync', () => {
     await request('POST', '/api/v1/checkin', { userId: 'user1' });
   });
 
+  // Test: Checkin state synchronization
+  // Purpose: Verifies state-matrix reflects checkin changes immediately
+  // Why: Users must see when document becomes available for checkout
+  // Coverage: Real-time state updates after checkin
   test('checkin updates state immediately', async () => {
     await resetState();
 
@@ -420,6 +532,10 @@ describe('Phase 5: Cross-Platform Sync', () => {
     expect(state.body.config.checkoutStatus.isCheckedOut).toBe(false);
   });
 
+  // Test: Per-user state personalization
+  // Purpose: Verifies state-matrix returns different button states for different users
+  // Why: Owner sees checkin button, non-owners see disabled state
+  // Coverage: State matrix personalization based on ownership
   test('user switch triggers config recalculation', async () => {
     await resetState();
 
@@ -437,6 +553,10 @@ describe('Phase 5: Cross-Platform Sync', () => {
     await request('POST', '/api/v1/checkin', { userId: 'userA' });
   });
 
+  // Test: State persistence
+  // Purpose: Verifies state changes are persisted and retrievable across requests
+  // Why: State must survive server restarts and be consistent across sessions
+  // Coverage: State persistence layer
   test('state persists across requests', async () => {
     await resetState();
 
@@ -452,12 +572,20 @@ describe('Phase 5: Cross-Platform Sync', () => {
 
 describe('Phase 8: Approvals Flow', () => {
 
+  // Test: Approvals state retrieval
+  // Purpose: Verifies approval state endpoint returns document and user approval data
+  // Why: Workflow panel displays who has approved and who hasn't
+  // Coverage: Approvals state API response structure
   test('GET /api/v1/approvals/state returns all users', async () => {
     const res = await request('GET', '/api/v1/approvals/state');
     expect(res.status).toBe(200);
     expect(res.body.documentId).toBeDefined();
   });
 
+  // Test: Setting approval status
+  // Purpose: Verifies users can approve/reject documents
+  // Why: Core workflow feature - users need to record their approval decisions
+  // Coverage: Approval creation API
   test('POST /api/v1/approvals/set sets approval', async () => {
     await resetState();
 
@@ -468,6 +596,10 @@ describe('Phase 8: Approvals Flow', () => {
     expect(res.status).toBe(200);
   });
 
+  // Test: Resetting approvals
+  // Purpose: Verifies approval reset functionality clears all approvals
+  // Why: Document changes require fresh approval cycle
+  // Coverage: Approval reset API (workflow restart)
   test('POST /api/v1/approvals/reset clears approvals', async () => {
     // Set an approval first
     await request('POST', '/api/v1/approvals/set', {
@@ -481,6 +613,10 @@ describe('Phase 8: Approvals Flow', () => {
     expect(res.status).toBe(200);
   });
 
+  // Test: Approval counts in state
+  // Purpose: Verifies state-matrix includes approval summary (counts)
+  // Why: UI needs to display "3/5 approved" status
+  // Coverage: Approval summary calculation and inclusion in state-matrix
   test('approvals summary counts are correct', async () => {
     await resetState();
     await request('POST', '/api/v1/approvals/reset', { userId: 'admin' });
@@ -498,6 +634,10 @@ describe('Phase 8: Approvals Flow', () => {
     expect(state.body.config.approvals.summary).toBeDefined();
   });
 
+  // Test: Override approval (editor feature)
+  // Purpose: Verifies editors can approve on behalf of other users
+  // Why: Workflow flexibility - editors can override stuck approvals
+  // Coverage: Approval override API (target different user)
   test('override approval works for editors', async () => {
     await resetState();
 
@@ -511,6 +651,10 @@ describe('Phase 8: Approvals Flow', () => {
     expect([200, 400, 403]).toContain(res.status);
   });
 
+  // Test: Approval persistence
+  // Purpose: Verifies approval decisions are saved and retrievable
+  // Why: Approvals must survive server restarts for audit trail
+  // Coverage: Approval data persistence
   test('approvals persist across requests', async () => {
     await resetState();
     await request('POST', '/api/v1/approvals/reset', { userId: 'admin' });
@@ -529,27 +673,47 @@ describe('Phase 8: Approvals Flow', () => {
 
 describe('Phase 9: Document Lifecycle & Versions', () => {
 
+  // Test: Canonical document serving
+  // Purpose: Verifies the canonical (master) document file is accessible
+  // Why: Canonical doc is the source of truth for document state
+  // Coverage: Canonical document file serving endpoint
   test('GET /documents/canonical/default.docx returns document', async () => {
     const res = await request('GET', '/documents/canonical/default.docx');
     expect([200, 404]).toContain(res.status); // 404 if no canonical doc exists
   });
 
+  // Test: Working document serving
+  // Purpose: Verifies the working copy document is accessible
+  // Why: Working copy contains in-progress edits before checkin
+  // Coverage: Working document file serving endpoint
   test('GET /documents/working/default.docx returns working copy', async () => {
     const res = await request('GET', '/documents/working/default.docx');
     expect([200, 404]).toContain(res.status); // 404 if no working copy exists
   });
 
+  // Test: Version list retrieval
+  // Purpose: Verifies version history endpoint returns all saved versions
+  // Why: Users need to see complete version history in Versions tab
+  // Coverage: Version list API response structure
   test('GET /api/v1/versions returns version list', async () => {
     const res = await request('GET', '/api/v1/versions');
     expect(res.status).toBe(200);
     expect(res.body.items || res.body.versions).toBeDefined();
   });
 
+  // Test: Specific version retrieval
+  // Purpose: Verifies individual version files can be downloaded
+  // Why: Users need to view/compare specific historical versions
+  // Coverage: Version download API
   test('GET /api/v1/versions/:n returns specific version', async () => {
     const res = await request('GET', '/api/v1/versions/1?rev=123');
     expect([200, 404]).toContain(res.status); // 404 if version doesn't exist
   });
 
+  // Test: Version viewing
+  // Purpose: Verifies users can switch to viewing a specific version
+  // Why: Version comparison and review requires loading historical versions
+  // Coverage: Version switching API
   test('POST /api/v1/versions/view switches to version', async () => {
     const res = await request('POST', '/api/v1/versions/view', {
       userId: 'user1',
@@ -558,6 +722,10 @@ describe('Phase 9: Document Lifecycle & Versions', () => {
     expect(res.status).toBe(200);
   });
 
+  // Test: Snapshot creation
+  // Purpose: Verifies creating a new version snapshot
+  // Why: Users save progress by creating labeled version snapshots
+  // Coverage: Version snapshot creation API
   test('POST /api/v1/document/snapshot creates version', async () => {
     await resetState();
     
@@ -568,6 +736,10 @@ describe('Phase 9: Document Lifecycle & Versions', () => {
     expect(res.status).toBe(200);
   });
 
+  // Test: Document revert
+  // Purpose: Verifies reverting working copy back to canonical
+  // Why: Users need to discard changes and return to last saved state
+  // Coverage: Document revert API (discard changes)
   test('POST /api/v1/document/revert reverts to canonical', async () => {
     await resetState();
 
@@ -577,6 +749,10 @@ describe('Phase 9: Document Lifecycle & Versions', () => {
     expect(res.status).toBe(200);
   });
 
+  // Test: Document refresh
+  // Purpose: Verifies document reload triggers re-download in client
+  // Why: Needed after version switches or external changes
+  // Coverage: Document refresh broadcast API
   test('POST /api/v1/refresh-document reloads document', async () => {
     const res = await request('POST', '/api/v1/refresh-document', {
       userId: 'user1',
@@ -588,6 +764,10 @@ describe('Phase 9: Document Lifecycle & Versions', () => {
 
 describe('Phase 10: Variables CRUD', () => {
 
+  // Test: Variable creation
+  // Purpose: Verifies creating new document variables
+  // Why: Users define custom variables for document content insertion
+  // Coverage: Variable creation API with validation
   test('POST /api/v1/variables creates new variable', async () => {
     const res = await request('POST', '/api/v1/variables', {
       userId: 'user1',
@@ -600,6 +780,10 @@ describe('Phase 10: Variables CRUD', () => {
     expect([200, 201, 400]).toContain(res.status); // 400 if validation fails
   });
 
+  // Test: Variable definition update
+  // Purpose: Verifies updating variable metadata (label, description)
+  // Why: Users need to update variable definitions without changing values
+  // Coverage: Variable metadata update API
   test('PUT /api/v1/variables/:varId updates variable definition', async () => {
     const res = await request('PUT', '/api/v1/variables/test-var', {
       userId: 'user1',
@@ -609,6 +793,10 @@ describe('Phase 10: Variables CRUD', () => {
     expect([200, 404]).toContain(res.status);
   });
 
+  // Test: Variable value update
+  // Purpose: Verifies updating variable values
+  // Why: Core feature - users change variable values to update document content
+  // Coverage: Variable value update API
   test('PUT /api/v1/variables/:varId/value updates variable value', async () => {
     const res = await request('PUT', '/api/v1/variables/PROJECT_NAME/value', {
       userId: 'user1',
@@ -617,6 +805,10 @@ describe('Phase 10: Variables CRUD', () => {
     expect([200, 404]).toContain(res.status);
   });
 
+  // Test: Variable deletion
+  // Purpose: Verifies deleting variables
+  // Why: Users remove unused variables to clean up variable list
+  // Coverage: Variable deletion API
   test('DELETE /api/v1/variables/:varId deletes variable', async () => {
     const res = await request('DELETE', '/api/v1/variables/test-var', {
       userId: 'user1'
@@ -624,6 +816,10 @@ describe('Phase 10: Variables CRUD', () => {
     expect([200, 404]).toContain(res.status);
   });
 
+  // Test: Variable persistence
+  // Purpose: Verifies variables are persisted and retrievable after creation
+  // Why: Variables must persist across sessions for document consistency
+  // Coverage: Variable data persistence
   test('variables persist after updates', async () => {
     // Create variable
     await request('POST', '/api/v1/variables', {
@@ -645,6 +841,10 @@ describe('Phase 10: Variables CRUD', () => {
 
 describe('Phase 11: Status & Title Management', () => {
 
+  // Test: Status cycle (draft/final toggle)
+  // Purpose: Verifies toggling document status between draft and final
+  // Why: Final documents trigger approvals and lock editing
+  // Coverage: Status cycle API
   test('POST /api/v1/status/cycle toggles draft/final', async () => {
     await resetState();
 
@@ -655,6 +855,10 @@ describe('Phase 11: Status & Title Management', () => {
     expect(res.body.status).toBeDefined();
   });
 
+  // Test: Document title update
+  // Purpose: Verifies updating the document title
+  // Why: Users need to set descriptive document names
+  // Coverage: Document title update API
   test('POST /api/v1/title updates document title', async () => {
     const res = await request('POST', '/api/v1/title', {
       userId: 'user1',
@@ -664,6 +868,10 @@ describe('Phase 11: Status & Title Management', () => {
     expect(res.body.title).toBe('New Document Title');
   });
 
+  // Test: Status affects permissions
+  // Purpose: Verifies final status restricts checkout
+  // Why: Final documents should not allow editing without proper workflow
+  // Coverage: Status-based permission enforcement
   test('status affects checkout permissions', async () => {
     await resetState();
 
@@ -681,6 +889,10 @@ describe('Phase 11: Status & Title Management', () => {
     expect([200, 409]).toContain(checkoutRes.status);
   });
 
+  // Test: Title persistence
+  // Purpose: Verifies title changes are persisted in state
+  // Why: Title must be consistent across requests and sessions
+  // Coverage: Title persistence in state-matrix
   test('title persists across state matrix requests', async () => {
     await request('POST', '/api/v1/title', {
       userId: 'user1',
@@ -695,6 +907,10 @@ describe('Phase 11: Status & Title Management', () => {
 
 describe('Phase 12: Advanced Checkout Operations', () => {
 
+  // Test: Self checkout cancellation
+  // Purpose: Verifies users can cancel their own checkout without checkin
+  // Why: Allows users to release lock if they need to step away
+  // Coverage: Checkout cancel API (self-service)
   test('POST /api/v1/checkout/cancel allows user to cancel own checkout', async () => {
     await resetState();
 
@@ -711,6 +927,10 @@ describe('Phase 12: Advanced Checkout Operations', () => {
     expect(state.body.config.checkoutStatus.isCheckedOut).toBe(false);
   });
 
+  // Test: Admin checkout override
+  // Purpose: Verifies admins can force-release any user's checkout
+  // Why: Emergency feature when user is unavailable and document is locked
+  // Coverage: Checkout override API (admin privilege)
   test('POST /api/v1/checkout/override allows admin to force release', async () => {
     await resetState();
 
@@ -727,6 +947,10 @@ describe('Phase 12: Advanced Checkout Operations', () => {
     expect(state.body.config.checkoutStatus.isCheckedOut).toBe(false);
   });
 
+  // Test: Cancel authorization
+  // Purpose: Verifies non-owners cannot cancel other users' checkouts
+  // Why: Security - prevents unauthorized checkout disruption
+  // Coverage: Cancel authorization enforcement
   test('cannot cancel checkout if not owner', async () => {
     await resetState();
 
@@ -739,6 +963,10 @@ describe('Phase 12: Advanced Checkout Operations', () => {
     expect(res.status).toBe(409);
   });
 
+  // Test: Cancel/recheckout workflow
+  // Purpose: Verifies document can be checked out after cancel
+  // Why: Cancel should fully release lock, allowing new checkouts
+  // Coverage: State consistency after cancel operation
   test('checkout/cancel workflow maintains consistency', async () => {
     await resetState();
 
@@ -761,18 +989,30 @@ describe('Phase 12: Advanced Checkout Operations', () => {
 
 describe('Phase 13: Exhibits & Compilation', () => {
 
+  // Test: Exhibit list retrieval
+  // Purpose: Verifies exhibit list endpoint returns all uploaded exhibits
+  // Why: Users need to see available exhibits for compilation
+  // Coverage: Exhibit list API response structure
   test('GET /api/v1/exhibits returns exhibit list', async () => {
     const res = await request('GET', '/api/v1/exhibits');
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.exhibits || res.body.items)).toBe(true);
   });
 
+  // Test: Exhibit file serving
+  // Purpose: Verifies exhibit files can be downloaded/served
+  // Why: Users need to preview and download uploaded exhibits
+  // Coverage: Exhibit file serving endpoint
   test('GET /exhibits/:name serves exhibit file', async () => {
     // Try to get an exhibit (may 404 if none exist)
     const res = await request('GET', '/exhibits/test.pdf');
     expect([200, 404]).toContain(res.status);
   });
 
+  // Test: Document compilation
+  // Purpose: Verifies compile endpoint accepts valid parameters
+  // Why: Users compile documents with selected exhibits into single PDF
+  // Coverage: Compile API parameter validation (requires LibreOffice)
   test('POST /api/v1/compile requires valid parameters', async () => {
     const res = await request('POST', '/api/v1/compile', {
       userId: 'user1',
@@ -782,6 +1022,10 @@ describe('Phase 13: Exhibits & Compilation', () => {
     expect([200, 400, 500]).toContain(res.status);
   });
 
+  // Test: Compile permissions
+  // Purpose: Verifies compile endpoint validates user permissions
+  // Why: Only authorized users should be able to compile documents
+  // Coverage: Compile permission enforcement
   test('compile endpoint validates user permissions', async () => {
     const res = await request('POST', '/api/v1/compile', {
       userId: 'viewer-user',
@@ -794,12 +1038,20 @@ describe('Phase 13: Exhibits & Compilation', () => {
 
 describe('Phase 14: Messages (Threaded Messaging)', () => {
 
+  // Test: Message list retrieval
+  // Purpose: Verifies messages endpoint returns user's message conversations
+  // Why: Messaging tab displays all conversations for current user
+  // Coverage: Messages list API response structure
   test('GET /api/v1/messages returns message list', async () => {
     const res = await request('GET', '/api/v1/messages?userId=user1');
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.messages)).toBe(true);
   });
 
+  // Test: Message creation
+  // Purpose: Verifies creating new message conversations
+  // Why: Users initiate conversations with recipients
+  // Coverage: Message creation API with recipients, flags
   test('POST /api/v1/messages creates new message', async () => {
     const res = await request('POST', '/api/v1/messages', {
       userId: 'user1',
@@ -816,6 +1068,10 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     expect(res.body.message.messageId).toBeDefined();
   });
 
+  // Test: Message creation with custom title
+  // Purpose: Verifies message titles can be explicitly set
+  // Why: Allows users to create descriptive conversation titles
+  // Coverage: Custom title support in message creation
   test('POST /api/v1/messages creates message with custom title', async () => {
     const res = await request('POST', '/api/v1/messages', {
       userId: 'user1',
@@ -832,6 +1088,10 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     expect(res.body.message.title).toBe('Custom Title');
   });
 
+  // Test: Adding posts to messages
+  // Purpose: Verifies replies can be added to existing conversations
+  // Why: Core threading feature - users reply to messages
+  // Coverage: Post creation API
   test('POST /api/v1/messages/:messageId/post adds post to message', async () => {
     // First create a message
     const createRes = await request('POST', '/api/v1/messages', {
@@ -854,6 +1114,10 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     expect(postRes.body.post.text).toBe('Reply message');
   });
 
+  // Test: Marking messages as read
+  // Purpose: Verifies users can mark conversations as read
+  // Why: Manages unread count and read/unread status tracking
+  // Coverage: Mark read API
   test('POST /api/v1/messages/:messageId/read marks message as read', async () => {
     // Create a message
     const createRes = await request('POST', '/api/v1/messages', {
@@ -875,6 +1139,10 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     expect(readRes.body.message.unreadBy).not.toContain('user2');
   });
 
+  // Test: Marking messages as unread
+  // Purpose: Verifies users can re-mark conversations as unread
+  // Why: Users may want to mark messages for later review
+  // Coverage: Mark unread API
   test('POST /api/v1/messages/:messageId/read marks message as unread', async () => {
     // Create a message
     const createRes = await request('POST', '/api/v1/messages', {
@@ -902,6 +1170,10 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     expect(unreadRes.body.message.unreadBy).toContain('user2');
   });
 
+  // Test: Archiving messages
+  // Purpose: Verifies users can archive conversations
+  // Why: Users organize messages by archiving old conversations
+  // Coverage: Archive message API (per-user state)
   test('POST /api/v1/messages/:messageId/state archives message', async () => {
     // Create a message
     const createRes = await request('POST', '/api/v1/messages', {
@@ -923,6 +1195,10 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     expect(archiveRes.body.message.archivedBy).toContain('user1');
   });
 
+  // Test: Unarchiving messages
+  // Purpose: Verifies users can restore archived conversations to active
+  // Why: Users may need to reopen archived conversations
+  // Coverage: Unarchive message API
   test('POST /api/v1/messages/:messageId/state unarchives message', async () => {
     // Create and archive a message
     const createRes = await request('POST', '/api/v1/messages', {
@@ -949,6 +1225,10 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     expect(unarchiveRes.body.message.archivedBy).not.toContain('user1');
   });
 
+  // Test: Soft deleting messages
+  // Purpose: Verifies users can delete messages (soft delete per user)
+  // Why: Users remove unwanted conversations from their view
+  // Coverage: Soft delete message API (doesn't affect other participants)
   test('POST /api/v1/messages/:messageId/delete soft deletes message', async () => {
     // Create a message
     const createRes = await request('POST', '/api/v1/messages', {
@@ -969,6 +1249,10 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     expect(deleteRes.body.message.deletedBy).toContain('user1');
   });
 
+  // Test: Updating message flags
+  // Purpose: Verifies message flags (internal/external/privileged) can be updated
+  // Why: Compliance - messages need proper classification for records
+  // Coverage: Message flags update API
   test('POST /api/v1/messages/:messageId/flags updates message flags', async () => {
     // Create a message
     const createRes = await request('POST', '/api/v1/messages', {
@@ -996,6 +1280,10 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     expect(flagsRes.body.message.privileged).toBe(true);
   });
 
+  // Test: Group message creation
+  // Purpose: Verifies creating conversations with multiple recipients
+  // Why: Users need group conversations beyond one-on-one
+  // Coverage: Multi-recipient message creation
   test('POST /api/v1/messages creates group message with multiple recipients', async () => {
     const res = await request('POST', '/api/v1/messages', {
       userId: 'user1',
@@ -1010,6 +1298,10 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     expect(res.body.message.participants.length).toBe(2);
   });
 
+  // Test: Filtering messages by archived state
+  // Purpose: Verifies message list can be filtered to show only archived messages
+  // Why: Users need to access archived conversations separately
+  // Coverage: Message list filtering by state parameter
   test('GET /api/v1/messages filters by state (archived)', async () => {
     // Create and archive a message
     const createRes = await request('POST', '/api/v1/messages', {
@@ -1033,6 +1325,10 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     expect(res.body.messages.some(m => m.messageId === messageId)).toBe(true);
   });
 
+  // Test: Deleted messages exclusion
+  // Purpose: Verifies deleted messages are not shown in normal message lists
+  // Why: Deleted messages should be hidden from the user who deleted them
+  // Coverage: Message list filtering excludes user's deleted messages
   test('GET /api/v1/messages excludes deleted messages', async () => {
     // Create and delete a message
     const createRes = await request('POST', '/api/v1/messages', {
@@ -1055,6 +1351,10 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     expect(res.body.messages.some(m => m.messageId === messageId)).toBe(false);
   });
 
+  // Test: Factory reset clears messages
+  // Purpose: Verifies factory reset completely clears all message data
+  // Why: Factory reset must return system to clean state for testing/demos
+  // Coverage: Factory reset message clearing (already documented in factory reset section)
   test('factory reset clears all messages', async () => {
     // Create a few messages first
     await request('POST', '/api/v1/messages', {
@@ -1570,6 +1870,10 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     expect(res.status).toBe(200);
   });
 
+  // Test: Message search functionality
+  // Purpose: Verifies the search API can filter messages by query text
+  // Why: Users need to quickly find relevant conversations by searching content
+  // Coverage: Tests full-text search across message titles and post content (commit ddb9e64)
   test('GET /api/v1/messages supports search functionality', async () => {
     // Create messages with different content
     await request('POST', '/api/v1/messages', {
@@ -1586,11 +1890,12 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
       internal: false
     });
 
-    // Search for "contract"
+    // Search for "contract" - should return messages matching this term
     const searchRes = await request('GET', '/api/v1/messages?userId=user1&search=contract');
     expect(searchRes.status).toBe(200);
     expect(searchRes.body.messages).toBeDefined();
-    // Should find the message with "Contract" in it
+    
+    // Verify search results contain the relevant message
     const hasContractMessage = searchRes.body.messages.some(m => 
       m.title?.toLowerCase().includes('contract') || 
       searchRes.body.posts?.some(p => p.messageId === m.messageId && p.text?.toLowerCase().includes('contract'))
@@ -1598,6 +1903,10 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     expect(hasContractMessage).toBe(true);
   });
 
+  // Test: Duplicate one-on-one conversation handling
+  // Purpose: Verifies system gracefully handles attempts to create duplicate conversations
+  // Why: Client-side validation prevents duplicates, but server should handle edge cases
+  // Coverage: Tests data integrity when duplicate one-on-one messages are created (commit 889a308)
   test('POST /api/v1/messages prevents duplicate one-on-one conversations', async () => {
     // Create first conversation between user1 and user2
     const first = await request('POST', '/api/v1/messages', {
@@ -1617,12 +1926,16 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     });
     
     // Should still succeed (server doesn't enforce this, it's client-side validation)
-    // But we verify the system can handle it gracefully
+    // But we verify the system can handle it gracefully without errors
     expect(second.status).toBe(200);
   });
 
+  // Test: Auto-generated message titles
+  // Purpose: Verifies messages get automatic titles generated from participant names
+  // Why: Users don't need to manually enter titles - they're derived from context
+  // Coverage: Tests title generation logic for conversations (commit abdd032)
   test('POST /api/v1/messages auto-generates titles from participants', async () => {
-    // Create message without explicit title
+    // Create message without explicit title - should auto-generate from participants
     const res = await request('POST', '/api/v1/messages', {
       userId: 'user1',
       recipients: [
@@ -1635,13 +1948,17 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     
     expect(res.status).toBe(200);
     expect(res.body.message.title).toBeDefined();
-    // Title should include participant names or be auto-generated
+    // Title should be auto-generated string (e.g., "Alice Smith, Bob Jones")
     expect(typeof res.body.message.title).toBe('string');
     expect(res.body.message.title.length).toBeGreaterThan(0);
   });
 
+  // Test: CSV export with filtering options
+  // Purpose: Verifies message export generates CSV with proper filtering by scope and flags
+  // Why: Users need to export message data for compliance, auditing, and reporting
+  // Coverage: Tests CSV export API with filters for internal/external/privileged content (commits 556c058, 8115c32)
   test('GET /api/v1/messages/export generates CSV with filters', async () => {
-    // Create test messages
+    // Create test messages with different flag combinations
     await request('POST', '/api/v1/messages', {
       userId: 'user1',
       recipients: [{ userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }],
@@ -1660,7 +1977,7 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
       privileged: false
     });
 
-    // Export all messages
+    // Export all messages with filters applied
     const exportRes = await request('GET', '/api/v1/messages/export?scope=all&includeInternal=true&includePrivileged=true&includePosts=false');
     expect(exportRes.status).toBe(200);
     expect(exportRes.headers['content-type']).toContain('text/csv');

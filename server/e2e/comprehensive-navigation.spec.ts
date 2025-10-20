@@ -191,6 +191,10 @@ test.describe('Comprehensive Navigation & Features', () => {
       expect(hasProgress).toBe(true);
     });
 
+    // E2E Test: Send to Vendor button visibility
+    // Purpose: Verifies the Send to Vendor button was moved from dropdown to Workflow panel
+    // Why: Better UX - frequently used action should be directly accessible
+    // Coverage: Tests UI relocation of Send to Vendor button (commit d2d3b93)
     test('workflow panel has Send to Vendor button', async ({ page }) => {
       await page.goto('/web/view.html');
       await page.waitForSelector('.tab', { timeout: 10000 });
@@ -199,11 +203,15 @@ test.describe('Comprehensive Navigation & Features', () => {
       await workflowTab.click();
       await page.waitForTimeout(1000);
       
-      // Look for Send to Vendor button
+      // Verify Send to Vendor button is visible in Workflow panel (not hidden in dropdown)
       const sendToVendorBtn = page.locator('button', { hasText: 'Send to Vendor' });
       await expect(sendToVendorBtn).toBeVisible({ timeout: 2000 });
     });
 
+    // E2E Test: Request Review button visibility
+    // Purpose: Verifies the Request Review button was moved from dropdown to Workflow panel
+    // Why: Better UX - frequently used action should be directly accessible
+    // Coverage: Tests UI relocation of Request Review button (commit d2d3b93)
     test('workflow panel has Request Review button', async ({ page }) => {
       await page.goto('/web/view.html');
       await page.waitForSelector('.tab', { timeout: 10000 });
@@ -212,11 +220,15 @@ test.describe('Comprehensive Navigation & Features', () => {
       await workflowTab.click();
       await page.waitForTimeout(1000);
       
-      // Look for Request Review button
+      // Verify Request Review button is visible in Workflow panel (not hidden in dropdown)
       const requestReviewBtn = page.locator('button', { hasText: 'Request Review' });
       await expect(requestReviewBtn).toBeVisible({ timeout: 2000 });
     });
 
+    // E2E Test: Request Review modal interaction
+    // Purpose: Verifies clicking Request Review button opens the review notification modal
+    // Why: Ensures the workflow action is properly connected to the modal
+    // Coverage: Tests modal opening from Request Review button (commit d2d3b93)
     test('Request Review button opens modal', async ({ page }) => {
       await page.goto('/web/view.html');
       await page.waitForSelector('.tab', { timeout: 10000 });
@@ -231,7 +243,7 @@ test.describe('Comprehensive Navigation & Features', () => {
         await requestReviewBtn.click();
         await page.waitForTimeout(500);
         
-        // Verify modal opened
+        // Verify modal opened with review/notification content
         const modalContent = await page.evaluate(() => {
           return document.body.textContent?.includes('review') || document.body.textContent?.includes('Notify');
         });
@@ -408,6 +420,10 @@ test.describe('Comprehensive Navigation & Features', () => {
       expect(hasTimestamps).toBe(true);
     });
 
+    // E2E Test: Activity log card expansion
+    // Purpose: Verifies activity cards can be clicked to expand and show additional details
+    // Why: Users need to see full details of activities (e.g., diff changes, metadata)
+    // Coverage: Tests expandable activity card interaction (commit 2ada58b)
     test('activity log cards are expandable', async ({ page }) => {
       await page.goto('/web/view.html');
       await page.waitForSelector('.tab', { timeout: 10000 });

@@ -2,6 +2,10 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Phase 6: UI Critical Paths', () => {
 
+  // E2E Test: Blank screen prevention
+  // Purpose: Verifies the document viewer container loads and isn't blank
+  // Why: Blank screens are critical failures that prevent any user interaction
+  // Coverage: SuperDoc container initialization
   test('document loads without blank screen', async ({ page }) => {
     await page.goto('/web/view.html');
     
@@ -14,6 +18,10 @@ test.describe('Phase 6: UI Critical Paths', () => {
     expect(containerExists).toBeGreaterThan(0);
   });
 
+  // E2E Test: React app initialization
+  // Purpose: Verifies React components mount and render tabs successfully
+  // Why: The entire UI depends on React rendering correctly
+  // Coverage: React mounting, component rendering, tab navigation
   test('React components mount without errors', async ({ page }) => {
     await page.goto('/web/view.html');
     
@@ -30,6 +38,10 @@ test.describe('Phase 6: UI Critical Paths', () => {
     expect(tabCount).toBeGreaterThan(0);
   });
 
+  // E2E Test: SuperDoc initialization
+  // Purpose: Verifies SuperDoc library initializes and exposes API
+  // Why: Document viewer functionality depends on SuperDoc being ready
+  // Coverage: SuperDoc initialization and global instance availability
   test('SuperDoc initializes successfully', async ({ page }) => {
     await page.goto('/web/view.html');
     
@@ -54,6 +66,10 @@ test.describe('Phase 6: UI Critical Paths', () => {
     expect(superdocReady).toBe(true);
   });
 
+  // E2E Test: Clean startup without errors
+  // Purpose: Verifies page loads successfully with meaningful content
+  // Why: Ensures no critical JavaScript errors break the initial render
+  // Coverage: Page load completion and content presence
   test('no JavaScript console errors during startup', async ({ page }) => {
     await page.goto('/web/view.html');
     
@@ -70,6 +86,10 @@ test.describe('Phase 6: UI Critical Paths', () => {
     expect(pageHasContent).toBe(true);
   });
 
+  // E2E Test: User dropdown functionality
+  // Purpose: Verifies user switching dropdown loads and operates correctly
+  // Why: Multi-user testing depends on being able to switch active users
+  // Coverage: User dropdown rendering, option population, selection
   test('user dropdown works', async ({ page }) => {
     await page.goto('/web/view.html');
     
@@ -96,6 +116,10 @@ test.describe('Phase 6: UI Critical Paths', () => {
     }
   });
 
+  // E2E Test: Action buttons rendering
+  // Purpose: Verifies document action buttons (checkout, checkin, etc.) render
+  // Why: Core document operations depend on these action buttons
+  // Coverage: Button rendering and UI state-driven visibility
   test('document actions dropdown renders', async ({ page }) => {
     await page.goto('/web/view.html');
     
@@ -111,6 +135,10 @@ test.describe('Phase 6: UI Critical Paths', () => {
     expect(buttonCount).toBeGreaterThan(0);
   });
 
+  // E2E Test: Variables panel availability
+  // Purpose: Verifies variables-related UI loads
+  // Why: Users need to manage document variables
+  // Coverage: Variables panel presence in DOM
   test('variables panel loads', async ({ page }) => {
     await page.goto('/web/view.html');
     
@@ -125,6 +153,10 @@ test.describe('Phase 6: UI Critical Paths', () => {
     expect(pageContent.length).toBeGreaterThan(1000); // Non-trivial page content
   });
 
+  // E2E Test: No critical API failures
+  // Purpose: Verifies no 500-level server errors occur during page load
+  // Why: 500 errors indicate critical server failures that break functionality
+  // Coverage: Network request monitoring for server errors
   test('page loads without critical network failures', async ({ page }) => {
     const failedRequests: string[] = [];
     
