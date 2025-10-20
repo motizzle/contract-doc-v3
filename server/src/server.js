@@ -143,6 +143,15 @@ const dataUsersDir = path.join(dataAppDir, 'users');
 // const NOTIFICATION_TYPES = { ... };
 // function formatServerNotification(message, type = 'info') { ... };
 
+// Helper to get current document context for activity logging
+function getDocumentContext() {
+  return {
+    title: serverConfig.title || 'Untitled Document',
+    status: serverConfig.status || 'draft',
+    version: serverState.documentVersion || 1
+  };
+}
+
 function logActivity(type, userId, details = {}) {
   try {
     const resolvedLabel = resolveUserLabel(userId);
@@ -642,42 +651,65 @@ function buildActivityMessage(type, details = {}) {
       return {
         action: 'saved progress',
         target: 'document',
-        details: { autoSave: details.autoSave || false, version: details.version },
-        message: `${userLabel} saved a new version of the document${details.version ? ` (v${details.version})` : ''}`
+        details: { 
+          autoSave: details.autoSave || false, 
+          version: details.version,
+          documentTitle: details.documentTitle,
+          fileSize: details.fileSize,
+          wordCount: details.wordCount
+        },
+        message: `${userLabel} saved "${details.documentTitle || 'document'}"${details.version ? ` (v${details.version})` : ''}${details.autoSave ? ' (auto-save)' : ''}`
       };
 
     case 'document:checkin':
       return {
         action: 'checked in',
         target: 'document',
-        details: { version: details.version, size: details.size },
-        message: `${userLabel} checked in document${details.version ? ` (v${details.version})` : ''}`
+        details: { 
+          documentTitle: details.documentTitle,
+          version: details.version, 
+          size: details.size,
+          checkoutDuration: details.checkoutDuration
+        },
+        message: `${userLabel} checked in "${details.documentTitle || 'document'}"${details.version ? ` (v${details.version})` : ''}${details.checkoutDuration ? ` after ${details.checkoutDuration}` : ''}`
       };
 
     case 'document:checkout':
       return {
         action: 'checked out',
         target: 'document',
-        details: {},
-        message: `${userLabel} checked out document`
+        details: { 
+          documentTitle: details.documentTitle,
+          version: details.version,
+          status: details.status
+        },
+        message: `${userLabel} checked out "${details.documentTitle || 'document'}"${details.version ? ` (v${details.version})` : ''}`
       };
 
     case 'document:checkout:cancel':
       return {
         action: 'cancelled checkout',
         target: 'document',
-        details: {},
-        message: `${userLabel} cancelled document checkout`
+        details: { 
+          documentTitle: details.documentTitle,
+          version: details.version
+        },
+        message: `${userLabel} cancelled checkout of "${details.documentTitle || 'document'}"`
       };
 
     case 'document:checkout:override':
       return {
         action: 'overrode checkout',
         target: 'document',
-        details: { previousUserId: details.previousUserId },
+        details: { 
+          previousUserId: details.previousUserId,
+          documentTitle: details.documentTitle,
+          version: details.version
+        },
         message: (function(){
           const prev = details.previousUserId ? resolveUserLabel(details.previousUserId) : '';
-          return prev ? `${userLabel} overrode ${prev}'s checkout` : `${userLabel} overrode an existing checkout`;
+          const doc = details.documentTitle ? ` of "${details.documentTitle}"` : '';
+          return prev ? `${userLabel} overrode ${prev}'s checkout${doc}` : `${userLabel} overrode an existing checkout${doc}`;
         })()
       };
 
@@ -685,24 +717,39 @@ function buildActivityMessage(type, details = {}) {
       return {
         action: 'changed status',
         target: 'document',
-        details: { from: details.from, to: details.to },
-        message: `${userLabel} changed document status from ${details.from} to ${details.to}`
+        details: { 
+          from: details.from, 
+          to: details.to,
+          documentTitle: details.documentTitle,
+          version: details.version
+        },
+        message: `${userLabel} changed "${details.documentTitle || 'document'}" status from ${details.from} to ${details.to}`
       };
 
     case 'version:view':
       return {
         action: 'viewed version',
         target: 'version',
-        details: { version: details.version, platform: details.platform },
-        message: `${userLabel} viewed version v${details.version}`
+        details: { 
+          version: details.version, 
+          platform: details.platform,
+          documentTitle: details.documentTitle,
+          currentVersion: details.currentVersion
+        },
+        message: `${userLabel} viewed ${details.documentTitle ? `"${details.documentTitle}"` : 'document'} v${details.version}${details.currentVersion ? ` (current: v${details.currentVersion})` : ''}`
       };
 
     case 'version:restore':
       return {
         action: 'restored version',
         target: 'version',
-        details: { version: details.version, platform: details.platform },
-        message: `${userLabel} restored document (v${details.version || '—'})`
+        details: { 
+          version: details.version, 
+          platform: details.platform,
+          documentTitle: details.documentTitle,
+          previousVersion: details.previousVersion
+        },
+        message: `${userLabel} restored "${details.documentTitle || 'document'}" to v${details.version || '—'}${details.previousVersion ? ` (from v${details.previousVersion})` : ''}`
       };
 
     case 'system:error':
@@ -774,32 +821,53 @@ function buildActivityMessage(type, details = {}) {
       return {
         action: 'uploaded document',
         target: 'document',
-        details: { filename: details.filename, size: details.size },
-        message: `${userLabel} uploaded document "${details.filename}"`
+        details: { 
+          filename: details.filename, 
+          size: details.size,
+          previousFilename: details.previousFilename,
+          documentTitle: details.documentTitle
+        },
+        message: `${userLabel} uploaded "${details.filename}"${details.previousFilename ? ` (replaced "${details.previousFilename}")` : ''}`
       };
 
     case 'document:snapshot':
       return {
         action: 'created snapshot',
         target: 'document',
-        details: { version: details.version },
-        message: `${userLabel} created document snapshot${details.version ? ` (v${details.version})` : ''}`
+        details: { 
+          version: details.version,
+          documentTitle: details.documentTitle,
+          status: details.status
+        },
+        message: `${userLabel} created snapshot of "${details.documentTitle || 'document'}"${details.version ? ` (v${details.version})` : ''}`
       };
 
     case 'document:compile':
       return {
         action: 'compiled document',
         target: 'document',
-        details: { format: details.format, includeExhibits: details.includeExhibits },
-        message: `${userLabel} compiled document${details.format ? ` (${details.format})` : ''}${details.includeExhibits ? ' with exhibits' : ''}`
+        details: { 
+          format: details.format, 
+          includeExhibits: details.includeExhibits,
+          documentTitle: details.documentTitle,
+          version: details.version,
+          exhibitCount: details.exhibitCount,
+          outputSize: details.outputSize
+        },
+        message: `${userLabel} compiled "${details.documentTitle || 'document'}" to ${details.format || 'PDF'}${details.includeExhibits ? ` with ${details.exhibitCount || ''} exhibits` : ''}${details.version ? ` (v${details.version})` : ''}`
       };
 
     case 'document:send-vendor':
       return {
         action: 'sent to vendor',
         target: 'document',
-        details: { vendor: details.vendor, email: details.email },
-        message: `${userLabel} sent document to ${details.vendor || details.email || 'vendor'}`
+        details: { 
+          vendor: details.vendor, 
+          email: details.email,
+          documentTitle: details.documentTitle,
+          version: details.version
+        },
+        message: `${userLabel} sent "${details.documentTitle || 'document'}" to ${details.vendor || details.email || 'vendor'}${details.version ? ` (v${details.version})` : ''}`
       };
 
     case 'exhibit:upload':
@@ -2217,7 +2285,14 @@ app.post('/api/v1/status/cycle', (req, res) => {
     
     // Log activity
     const userId = req.body?.userId || 'user1';
-    logActivity('document:status-change', userId, { from: cur, to: next });
+    const docContext = getDocumentContext();
+    logActivity('document:status-change', userId, { 
+      from: cur, 
+      to: next,
+      documentTitle: docContext.title,
+      version: docContext.version,
+      platform: req.body?.platform || 'web'
+    });
     
     res.json({ ok: true, status: next });
   } catch (e) {
@@ -2238,9 +2313,12 @@ app.post('/api/v1/document/upload', upload.single('file'), (req, res) => {
     bumpDocumentVersion(userId, platform);
     
     // Log activity
+    const docContext = getDocumentContext();
     logActivity('document:upload', userId, {
       filename: req.file?.originalname || 'default.docx',
       size: req.file?.size,
+      documentTitle: docContext.title,
+      version: docContext.version,
       platform
     });
     
@@ -2257,10 +2335,19 @@ app.post('/api/v1/document/revert', (req, res) => {
   bumpRevision();
   const actorUserId = req.body?.userId || 'system';
   const platform = req.query?.platform || req.body?.platform || null;
+  const previousVersion = serverState.documentVersion;
   bumpDocumentVersion(actorUserId, platform);
   const versionNow = serverState.documentVersion;
   // Log activity: document reverted to prior version (new version created)
-  try { logActivity('version:restore', actorUserId, { platform, version: versionNow }); } catch {}
+  const docContext = getDocumentContext();
+  try { 
+    logActivity('version:restore', actorUserId, { 
+      platform, 
+      version: versionNow,
+      previousVersion,
+      documentTitle: docContext.title
+    }); 
+  } catch {}
   broadcast({ type: 'documentRevert' });
   res.json({ ok: true });
 });
@@ -2298,10 +2385,13 @@ app.post('/api/v1/save-progress', (req, res) => {
     } catch {}
 
     // Log activity
+    const docContext = getDocumentContext();
     logActivity('document:save', userId, {
       autoSave: false,
       size: bytes.length,
-      version: serverState.documentVersion
+      documentTitle: docContext.title,
+      version: docContext.version,
+      platform: platform || 'word'
     });
 
     broadcast({ type: 'saveProgress', userId, size: bytes.length });
@@ -2362,7 +2452,15 @@ app.post('/api/v1/versions/view', (req, res) => {
     const originPlatform = String(req.body?.platform || req.query?.platform || 'web');
     const actorUserId = req.body?.userId || 'user1';
     // Log activity: user viewed a specific version
-    try { logActivity('version:view', actorUserId, { version: n, platform: originPlatform }); } catch {}
+    const docContext = getDocumentContext();
+    try { 
+      logActivity('version:view', actorUserId, { 
+        version: n, 
+        platform: originPlatform,
+        documentTitle: docContext.title,
+        currentVersion: docContext.version
+      }); 
+    } catch {}
     broadcast({ type: 'version:view', version: n, payload: { version: n, MessagePlatform: originPlatform } });
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'version_view_failed' }); }
@@ -2467,8 +2565,11 @@ app.post('/api/v1/document/snapshot', (req, res) => {
     fs.copyFileSync(src, dest);
     
     // Log activity
+    const docContext = getDocumentContext();
     logActivity('document:snapshot', userId, {
-      version: serverState.documentVersion,
+      version: docContext.version,
+      documentTitle: docContext.title,
+      status: docContext.status,
       platform
     });
     
@@ -2627,11 +2728,18 @@ app.post('/api/v1/checkout', (req, res) => {
   }
   
   serverState.checkedOutBy = userId;
+  serverState.checkedOutByAt = Date.now(); // Track checkout time
   serverState.lastUpdated = new Date().toISOString();
   persistState();
 
   // Log activity
-  logActivity('document:checkout', userId, {});
+  const docContext = getDocumentContext();
+  logActivity('document:checkout', userId, {
+    documentTitle: docContext.title,
+    version: docContext.version,
+    status: docContext.status,
+    platform: req.body?.platform || 'web'
+  });
 
   broadcast({ type: 'checkout', userId });
   res.json({ ok: true, checkedOutBy: userId });
@@ -2646,13 +2754,28 @@ app.post('/api/v1/checkin', (req, res) => {
     const by = resolveUserLabel(serverState.checkedOutBy);
     return res.status(409).json({ error: `Checked out by ${by}` });
   }
+  // Calculate checkout duration
+  const checkoutDuration = serverState.checkedOutByAt 
+    ? Math.round((Date.now() - serverState.checkedOutByAt) / 1000 / 60) // minutes
+    : null;
+  const durationText = checkoutDuration 
+    ? checkoutDuration < 60 
+      ? `${checkoutDuration} min${checkoutDuration !== 1 ? 's' : ''}` 
+      : `${Math.round(checkoutDuration / 60)} hr${Math.round(checkoutDuration / 60) !== 1 ? 's' : ''}`
+    : null;
+
   serverState.checkedOutBy = null;
+  serverState.checkedOutByAt = null;
   serverState.lastUpdated = new Date().toISOString();
   persistState();
 
   // Log activity
+  const docContext = getDocumentContext();
   logActivity('document:checkin', userId, {
-    version: serverState.documentVersion
+    documentTitle: docContext.title,
+    version: docContext.version,
+    checkoutDuration: durationText,
+    platform: req.body?.platform || 'web'
   });
 
   broadcast({ type: 'checkin', userId });
@@ -2670,11 +2793,17 @@ app.post('/api/v1/checkout/cancel', (req, res) => {
     return res.status(409).json({ error: `Checked out by ${by}` });
   }
   serverState.checkedOutBy = null;
+  serverState.checkedOutByAt = null;
   serverState.lastUpdated = new Date().toISOString();
   persistState();
 
   // Log activity
-  logActivity('document:checkout:cancel', userId, {});
+  const docContext = getDocumentContext();
+  logActivity('document:checkout:cancel', userId, {
+    documentTitle: docContext.title,
+    version: docContext.version,
+    platform: req.body?.platform || 'web'
+  });
 
   broadcast({ type: 'checkoutCancel', userId });
   res.json({ ok: true });
@@ -2692,9 +2821,18 @@ app.post('/api/v1/checkout/override', (req, res) => {
   if (serverState.checkedOutBy) {
     const previousUserId = serverState.checkedOutBy;
     serverState.checkedOutBy = null;
+    serverState.checkedOutByAt = null;
     serverState.lastUpdated = new Date().toISOString();
     persistState();
-    try { logActivity('document:checkout:override', userId, { previousUserId }); } catch {}
+    const docContext = getDocumentContext();
+    try { 
+      logActivity('document:checkout:override', userId, { 
+        previousUserId,
+        documentTitle: docContext.title,
+        version: docContext.version,
+        platform: req.body?.platform || 'web'
+      }); 
+    } catch {}
     broadcast({ type: 'overrideCheckout', userId });
     return res.json({ ok: true, checkedOutBy: null });
   }
@@ -3100,10 +3238,15 @@ app.post('/api/v1/compile', async (req, res) => {
     try { if (convertedPath && fs.existsSync(convertedPath)) fs.rmSync(convertedPath); } catch {}
     
     // Log activity
+    const docContext = getDocumentContext();
+    const compiledStats = fs.existsSync(compiledPath) ? fs.statSync(compiledPath) : null;
     logActivity('document:compile', userId, {
       format: 'pdf',
       includeExhibits: names.length > 0,
       exhibitCount: names.length,
+      documentTitle: docContext.title,
+      version: docContext.version,
+      outputSize: compiledStats ? compiledStats.size : null,
       platform
     });
     
@@ -3186,9 +3329,12 @@ app.post('/api/v1/send-vendor', (req, res) => {
   const payload = { from, message: String(message).slice(0, 200), vendorName };
   
   // Log activity
+  const docContext = getDocumentContext();
   logActivity('document:send-vendor', userId, {
     vendor: vendorName,
     email: vendorEmail,
+    documentTitle: docContext.title,
+    version: docContext.version,
     platform: req.query?.platform || req.body?.platform || 'web'
   });
   
