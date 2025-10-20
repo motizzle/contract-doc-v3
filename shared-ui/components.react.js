@@ -1408,27 +1408,63 @@
       );
     }
 
-    function BannerDropEffect() {
-      const [showBanner, setShowBanner] = React.useState(false);
-
-      // Listen for status change to 'final'
+    function FinalizeCelebration() {
+      // Listen for status change to 'final' and trigger confetti
       React.useEffect(() => {
         const handleStatusChange = (event) => {
           try {
             const data = event.detail || {};
-            console.log('🎉 Banner: Status change event received:', data);
+            console.log('🎉 Finalize: Status change event received:', data);
             // Check if status changed to 'final'
             if (data.status === 'final') {
-              console.log('🎉 Banner: Triggering banner drop!');
-              setShowBanner(true);
+              console.log('🎉 Finalize: Triggering confetti celebration!');
               
-              // Auto-dismiss after 4 seconds
-              setTimeout(() => {
-                setShowBanner(false);
-              }, 4000);
+              // Trigger confetti.js celebration
+              if (window.confetti) {
+                // Multiple bursts for epic celebration
+                const duration = 5000;
+                const animationEnd = Date.now() + duration;
+                
+                const randomInRange = (min, max) => Math.random() * (max - min) + min;
+                
+                const interval = setInterval(() => {
+                  const timeLeft = animationEnd - Date.now();
+                  
+                  if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    return;
+                  }
+                  
+                  // Random confetti bursts
+                  const particleCount = randomInRange(50, 200);
+                  const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3', '#54a0ff', '#ff4757', '#2ed573', '#ffa502'];
+                  
+                  window.confetti({
+                    particleCount: particleCount,
+                    angle: randomInRange(45, 135),
+                    spread: randomInRange(50, 120),
+                    origin: { x: randomInRange(0.1, 0.9), y: randomInRange(0.1, 0.3) },
+                    colors: colors,
+                    ticks: randomInRange(200, 400),
+                    scalar: randomInRange(0.5, 2)
+                  });
+                  
+                  // Side bursts
+                  if (Math.random() > 0.7) {
+                    window.confetti({
+                      particleCount: randomInRange(30, 100),
+                      angle: randomInRange(60, 120),
+                      spread: randomInRange(30, 80),
+                      origin: { x: Math.random() > 0.5 ? 0 : 1, y: randomInRange(0.3, 0.7) },
+                      colors: colors,
+                      ticks: randomInRange(100, 200)
+                    });
+                  }
+                }, 250);
+              }
             }
           } catch (err) {
-            console.error('❌ Banner error:', err);
+            console.error('❌ Finalize celebration error:', err);
           }
         };
 
@@ -1437,60 +1473,7 @@
         return () => window.removeEventListener('status:change', handleStatusChange);
       }, []);
 
-      if (!showBanner) return null;
-
-      // Check if we're in web (has navbar) or add-in (no navbar)
-      const isWeb = typeof Office === 'undefined';
-      const topOffset = isWeb ? '48px' : 0; // Web has 48px navbar at top
-
-      // Banner styles
-      const bannerContainer = {
-        position: 'fixed',
-        top: topOffset,
-        left: 0,
-        right: 0,
-        zIndex: 10000,
-        display: 'flex',
-        justifyContent: 'center',
-        pointerEvents: 'none'
-      };
-
-      const banner = {
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        color: '#ffffff',
-        padding: '20px 40px',
-        borderRadius: '0 0 12px 12px',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-        fontSize: '24px',
-        fontWeight: 'bold',
-        textAlign: 'center',
-        animation: 'bannerDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
-        pointerEvents: 'auto',
-        minWidth: '400px',
-        maxWidth: '90vw'
-      };
-
-      const icon = {
-        display: 'inline-block',
-        marginRight: '12px',
-        fontSize: '28px'
-      };
-
-      const message = {
-        display: 'block',
-        fontSize: '16px',
-        fontWeight: 'normal',
-        marginTop: '8px',
-        opacity: 0.95
-      };
-
-      return React.createElement('div', { style: bannerContainer }, [
-        React.createElement('div', { key: 'banner', style: banner }, [
-          React.createElement('span', { key: 'icon', style: icon }, '🎉'),
-          React.createElement('span', { key: 'title' }, 'Document Finalized!'),
-          React.createElement('span', { key: 'message', style: message }, 'Great work finalizing this document!')
-        ])
-      ]);
+      return null; // No DOM elements needed - confetti.js handles everything
     }
 
     function ApprovalCelebration() {
@@ -5890,7 +5873,7 @@
 
       const container = React.createElement('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } }, [topPanel, assistantPanel]);
 
-      return React.createElement(ThemeProvider, null, React.createElement(React.Fragment, null, [container, React.createElement(BannerDropEffect, { key: 'banner' }), React.createElement(ApprovalCelebration, { key: 'celebration' })]));
+      return React.createElement(ThemeProvider, null, React.createElement(React.Fragment, null, [container, React.createElement(FinalizeCelebration, { key: 'finalize' }), React.createElement(ApprovalCelebration, { key: 'celebration' })]));
     }
 
     const root = ReactDOM.createRoot(rootEl);
