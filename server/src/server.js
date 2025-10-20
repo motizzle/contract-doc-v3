@@ -3239,7 +3239,7 @@ app.post('/api/v1/compile', async (req, res) => {
     
     // Log activity
     const docContext = getDocumentContext();
-    const compiledStats = fs.existsSync(compiledPath) ? fs.statSync(compiledPath) : null;
+    const compiledStats = fs.existsSync(outPath) ? fs.statSync(outPath) : null;
     logActivity('document:compile', userId, {
       format: 'pdf',
       includeExhibits: names.length > 0,
