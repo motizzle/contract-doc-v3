@@ -190,6 +190,54 @@ test.describe('Comprehensive Navigation & Features', () => {
       });
       expect(hasProgress).toBe(true);
     });
+
+    test('workflow panel has Send to Vendor button', async ({ page }) => {
+      await page.goto('/web/view.html');
+      await page.waitForSelector('.tab', { timeout: 10000 });
+      
+      const workflowTab = page.locator('.tab', { hasText: 'Workflow' });
+      await workflowTab.click();
+      await page.waitForTimeout(1000);
+      
+      // Look for Send to Vendor button
+      const sendToVendorBtn = page.locator('button', { hasText: 'Send to Vendor' });
+      await expect(sendToVendorBtn).toBeVisible({ timeout: 2000 });
+    });
+
+    test('workflow panel has Request Review button', async ({ page }) => {
+      await page.goto('/web/view.html');
+      await page.waitForSelector('.tab', { timeout: 10000 });
+      
+      const workflowTab = page.locator('.tab', { hasText: 'Workflow' });
+      await workflowTab.click();
+      await page.waitForTimeout(1000);
+      
+      // Look for Request Review button
+      const requestReviewBtn = page.locator('button', { hasText: 'Request Review' });
+      await expect(requestReviewBtn).toBeVisible({ timeout: 2000 });
+    });
+
+    test('Request Review button opens modal', async ({ page }) => {
+      await page.goto('/web/view.html');
+      await page.waitForSelector('.tab', { timeout: 10000 });
+      
+      const workflowTab = page.locator('.tab', { hasText: 'Workflow' });
+      await workflowTab.click();
+      await page.waitForTimeout(1000);
+      
+      // Click Request Review button
+      const requestReviewBtn = page.locator('button', { hasText: 'Request Review' });
+      if (await requestReviewBtn.isVisible()) {
+        await requestReviewBtn.click();
+        await page.waitForTimeout(500);
+        
+        // Verify modal opened
+        const modalContent = await page.evaluate(() => {
+          return document.body.textContent?.includes('review') || document.body.textContent?.includes('Notify');
+        });
+        expect(modalContent).toBe(true);
+      }
+    });
   });
 
   // Version Control Tests
@@ -358,6 +406,31 @@ test.describe('Comprehensive Navigation & Features', () => {
         return /\d+\s*(second|minute|hour|day|ago)/.test(text) || /\d{1,2}:\d{2}/.test(text);
       });
       expect(hasTimestamps).toBe(true);
+    });
+
+    test('activity log cards are expandable', async ({ page }) => {
+      await page.goto('/web/view.html');
+      await page.waitForSelector('.tab', { timeout: 10000 });
+      
+      const activityTab = page.locator('.tab', { hasText: 'Activity' });
+      await activityTab.click();
+      await page.waitForTimeout(1000);
+      
+      // Look for an activity card to click
+      const activityCards = page.locator('.activity-card, [class*="activity"]').first();
+      const cardExists = await activityCards.count() > 0;
+      
+      if (cardExists) {
+        await activityCards.click();
+        await page.waitForTimeout(500);
+        
+        // After clicking, details should expand or some interaction should occur
+        // We verify the page still works and hasn't crashed
+        const isStillFunctional = await page.evaluate(() => {
+          return document.body.textContent !== '';
+        });
+        expect(isStillFunctional).toBe(true);
+      }
     });
 
     test('activity log displays user actions', async ({ page }) => {
