@@ -584,7 +584,13 @@
                             }
                           } catch {}
                           // Refresh state to pick up preset's title and other config
-                          try { await refresh(); } catch {}
+                          try { 
+                            console.log('🔄 [Factory Reset] Calling refresh() in Word add-in...');
+                            await refresh(); 
+                            console.log('✅ [Factory Reset] Refresh completed in Word add-in');
+                          } catch (e) { 
+                            console.error('❌ [Factory Reset] Refresh failed in Word add-in:', e);
+                          }
                         }
                       } catch {}
                     })();
@@ -604,8 +610,12 @@
                           setViewingVersion(v); 
                         }
                         // Refresh state to pick up preset's title and other config
+                        console.log('🔄 [Factory Reset] Calling refresh() in web...');
                         await refresh();
-                      } catch {}
+                        console.log('✅ [Factory Reset] Refresh completed in web. New title:', j?.config?.title);
+                      } catch (e) {
+                        console.error('❌ [Factory Reset] Refresh failed in web:', e);
+                      }
                     })();
                   }
                 } catch {}
