@@ -3588,12 +3588,13 @@
     }
 
     function LastUpdatedPrefix() {
-      const { config } = React.useContext(StateContext);
+      const { config, users } = React.useContext(StateContext);
       let dateStr = '';
       let timeStr = '';
       let firstName = '';
       try {
-        const ts = config && config.lastSaved && config.lastSaved.timestamp;
+        // Check both lastSaved.timestamp and lastUpdated
+        const ts = (config && config.lastSaved && config.lastSaved.timestamp) || (config && config.lastUpdated);
         if (ts) {
           const d = new Date(ts);
           // Format: "March 1, 2025"
@@ -3601,11 +3602,19 @@
           // Format: "1:30pm"
           timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase().replace(/\s/g, '');
         }
-        const user = config && config.lastSaved && config.lastSaved.user;
+        
+        // Check both lastSaved.user and updatedBy
+        const user = (config && config.lastSaved && config.lastSaved.user) || (config && config.updatedBy);
         let label = '';
         if (user) {
-          if (typeof user === 'object') label = user.label || user.name || user.id || '';
-          else label = String(user);
+          if (typeof user === 'object') {
+            label = user.label || user.name || user.id || '';
+          } else {
+            // User is a string (like "user1"), look it up in users list
+            const userId = String(user);
+            const match = Array.isArray(users) ? users.find(u => u && u.id === userId) : null;
+            label = (match && match.label) || userId;
+          }
         }
         label = String(label || '').trim();
         // Only show user name if it is a real human label (not 'system' or 'Unknown User')

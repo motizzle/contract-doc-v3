@@ -1,71 +1,47 @@
 {
   "messages": [
     {
-      "messageId": "msg-001",
-      "title": "Payment Terms Discussion",
+      "messageId": "msg-vendor-001",
+      "title": "Initial Terms with Acme Corp",
       "createdBy": {"id": "user1", "label": "Warren Peace"},
       "participants": [
-        {"id": "user2", "label": "Kent Uckey"},
-        {"id": "user3", "label": "Yuri Lee Laffed"}
+        {"id": "user4", "label": "Hugh R Ewe"},
+        {"id": "user2", "label": "Kent Uckey"}
       ],
-      "createdAt": "2025-10-14T18:00:00.000Z",
-      "lastPostAt": "2025-10-15T10:00:00.000Z",
+      "createdAt": "2025-10-17T20:00:00.000Z",
+      "lastPostAt": "2025-10-18T01:00:00.000Z",
       "state": "active",
-      "internal": true,
-      "external": false,
+      "internal": false,
+      "external": true,
       "privileged": false,
-      "unreadBy": [],
-      "deletedAt": null
-    },
-    {
-      "messageId": "msg-002",
-      "title": "Liability Caps Review",
-      "createdBy": {"id": "user3", "label": "Yuri Lee Laffed"},
-      "participants": [
-        {"id": "user1", "label": "Warren Peace"}
-      ],
-      "createdAt": "2025-10-15T09:30:00.000Z",
-      "lastPostAt": "2025-10-15T09:30:00.000Z",
-      "state": "active",
-      "internal": true,
-      "external": false,
-      "privileged": true,
-      "unreadBy": [],
+      "unreadBy": ["user2"],
       "deletedAt": null
     }
   ],
   "posts": [
     {
-      "postId": "post-001",
-      "messageId": "msg-001",
+      "postId": "post-vendor-001",
+      "messageId": "msg-vendor-001",
       "author": {"id": "user1", "label": "Warren Peace"},
-      "text": "We should discuss the payment terms before finalizing. Net-30 vs Net-60?",
-      "createdAt": "2025-10-14T18:00:00.000Z",
+      "text": "Hugh, we received your initial draft. We'll review and get back to you with our proposed changes by end of week.",
+      "createdAt": "2025-10-17T20:00:00.000Z",
       "privileged": false
     },
     {
-      "postId": "post-002",
-      "messageId": "msg-001",
-      "author": {"id": "user2", "label": "Kent Uckey"},
-      "text": "I recommend Net-30 with a 2% early payment discount for Net-15. Standard for these contracts.",
-      "createdAt": "2025-10-14T19:15:00.000Z",
+      "postId": "post-vendor-002",
+      "messageId": "msg-vendor-001",
+      "author": {"id": "user4", "label": "Hugh R Ewe"},
+      "text": "Sounds good Warren. The key terms we're looking for are outlined in Section 3. Let me know if you have questions about our standard licensing model.",
+      "createdAt": "2025-10-17T22:30:00.000Z",
       "privileged": false
     },
     {
-      "postId": "post-003",
-      "messageId": "msg-001",
-      "author": {"id": "user3", "label": "Yuri Lee Laffed"},
-      "text": "Agreed on Net-30. I'll update Section 4.2 with the early payment discount clause.",
-      "createdAt": "2025-10-15T10:00:00.000Z",
+      "postId": "post-vendor-003",
+      "messageId": "msg-vendor-001",
+      "author": {"id": "user4", "label": "Hugh R Ewe"},
+      "text": "Also, I should mention that our standard implementation timeline is 60 days from contract execution. If you need it faster, we can discuss expedited options.",
+      "createdAt": "2025-10-18T01:00:00.000Z",
       "privileged": false
-    },
-    {
-      "postId": "post-004",
-      "messageId": "msg-002",
-      "author": {"id": "user3", "label": "Yuri Lee Laffed"},
-      "text": "The liability cap is set at 2x annual fees. This is within our risk tolerance based on legal review.",
-      "createdAt": "2025-10-15T09:30:00.000Z",
-      "privileged": true
     }
   ]
 }

@@ -1,153 +1,63 @@
 [
   {
-    "id": "act_1728950400000_init",
-    "timestamp": 1728950400000,
+    "id": "act_1729180800000_upload",
+    "timestamp": 1729180800000,
     "type": "document:upload",
-    "user": {"id": "user1", "label": "Warren Peace", "platform": "web"},
+    "user": {"id": "user4", "label": "Hugh R Ewe", "platform": "web"},
     "action": "uploaded",
     "target": "document",
-    "details": {"filename": "PSA_Draft_v1.docx", "documentTitle": "Professional Services Agreement - OpenGov & Acme Corp"},
-    "message": "Warren Peace uploaded \"PSA_Draft_v1.docx\""
+    "details": {"filename": "SLA_Initial_Draft.docx", "documentTitle": "Software License Agreement - Acme Corp"},
+    "message": "Hugh R Ewe uploaded \"SLA_Initial_Draft.docx\""
   },
   {
-    "id": "act_1728954000000_checkout1",
-    "timestamp": 1728954000000,
-    "type": "document:checkout",
-    "user": {"id": "user2", "label": "Kent Uckey", "platform": "word"},
-    "action": "checked out",
-    "target": "document",
-    "details": {"documentTitle": "Professional Services Agreement - OpenGov & Acme Corp", "version": 1},
-    "message": "Kent Uckey checked out \"Professional Services Agreement - OpenGov & Acme Corp\" (v1)"
-  },
-  {
-    "id": "act_1728957600000_checkin1",
-    "timestamp": 1728957600000,
-    "type": "document:checkin",
-    "user": {"id": "user2", "label": "Kent Uckey", "platform": "word"},
-    "action": "checked in",
-    "target": "document",
-    "details": {"documentTitle": "Professional Services Agreement - OpenGov & Acme Corp", "version": 2, "checkoutDuration": "1 hour"},
-    "message": "Kent Uckey checked in \"Professional Services Agreement - OpenGov & Acme Corp\" (v2) after 1 hour"
-  },
-  {
-    "id": "act_1728961200000_msg1",
-    "timestamp": 1728961200000,
+    "id": "act_1729184400000_msg1",
+    "timestamp": 1729184400000,
     "type": "message:created",
     "user": {"id": "user1", "label": "Warren Peace", "platform": "web"},
     "action": "created conversation",
     "target": "message",
-    "details": {"messageId": "msg-001", "conversationTitle": "Payment Terms Discussion"},
-    "message": "Warren Peace created conversation \"Payment Terms Discussion\""
+    "details": {"messageId": "msg-vendor-001", "conversationTitle": "Initial Terms with Acme Corp"},
+    "message": "Warren Peace created conversation \"Initial Terms with Acme Corp\""
   },
   {
-    "id": "act_1728975600000_snapshot",
-    "timestamp": 1728975600000,
-    "type": "document:snapshot",
-    "user": {"id": "user1", "label": "Warren Peace", "platform": "web"},
-    "action": "created snapshot",
-    "target": "version",
-    "details": {"version": 2, "documentTitle": "Professional Services Agreement - OpenGov & Acme Corp"},
-    "message": "Warren Peace created snapshot of \"Professional Services Agreement - OpenGov & Acme Corp\" (v2)"
-  },
-  {
-    "id": "act_1728982800000_status",
-    "timestamp": 1728982800000,
-    "type": "document:status-change",
-    "user": {"id": "user1", "label": "Warren Peace", "platform": "web"},
-    "action": "changed status",
-    "target": "document",
-    "details": {"from": "draft", "to": "negotiating", "documentTitle": "Professional Services Agreement - OpenGov & Acme Corp", "version": 2},
-    "message": "Warren Peace changed \"Professional Services Agreement - OpenGov & Acme Corp\" status from draft to negotiating"
-  },
-  {
-    "id": "act_1729000800000_checkout2",
-    "timestamp": 1729000800000,
+    "id": "act_1729188000000_checkout",
+    "timestamp": 1729188000000,
     "type": "document:checkout",
-    "user": {"id": "user3", "label": "Yuri Lee Laffed", "platform": "word"},
+    "user": {"id": "user1", "label": "Warren Peace", "platform": "word"},
     "action": "checked out",
     "target": "document",
-    "details": {"documentTitle": "Professional Services Agreement - OpenGov & Acme Corp", "version": 2},
-    "message": "Yuri Lee Laffed checked out \"Professional Services Agreement - OpenGov & Acme Corp\" (v2)"
+    "details": {"documentTitle": "Software License Agreement - Acme Corp", "version": 1},
+    "message": "Warren Peace checked out \"Software License Agreement - Acme Corp\" (v1)"
   },
   {
-    "id": "act_1729007200000_checkin2",
-    "timestamp": 1729007200000,
+    "id": "act_1729195200000_checkin",
+    "timestamp": 1729195200000,
     "type": "document:checkin",
-    "user": {"id": "user3", "label": "Yuri Lee Laffed", "platform": "word"},
+    "user": {"id": "user1", "label": "Warren Peace", "platform": "word"},
     "action": "checked in",
     "target": "document",
-    "details": {"documentTitle": "Professional Services Agreement - OpenGov & Acme Corp", "version": 3, "checkoutDuration": "1 hour 47 minutes"},
-    "message": "Yuri Lee Laffed checked in \"Professional Services Agreement - OpenGov & Acme Corp\" (v3) after 1 hour 47 minutes"
+    "details": {"documentTitle": "Software License Agreement - Acme Corp", "version": 2, "checkoutDuration": "2 hours"},
+    "message": "Warren Peace checked in \"Software License Agreement - Acme Corp\" (v2) after 2 hours"
   },
   {
-    "id": "act_1729022400000_status2",
-    "timestamp": 1729022400000,
-    "type": "document:status-change",
-    "user": {"id": "user1", "label": "Warren Peace", "platform": "web"},
-    "action": "changed status",
-    "target": "document",
-    "details": {"from": "negotiating", "to": "review", "documentTitle": "Professional Services Agreement - OpenGov & Acme Corp", "version": 3},
-    "message": "Warren Peace changed \"Professional Services Agreement - OpenGov & Acme Corp\" status from negotiating to review"
-  },
-  {
-    "id": "act_1729029600000_compile",
-    "timestamp": 1729029600000,
-    "type": "document:compile",
-    "user": {"id": "user1", "label": "Warren Peace", "platform": "web"},
-    "action": "compiled",
-    "target": "document",
-    "details": {"format": "pdf", "documentTitle": "Professional Services Agreement - OpenGov & Acme Corp", "version": 3},
-    "message": "Warren Peace compiled \"Professional Services Agreement - OpenGov & Acme Corp\" to PDF (v3)"
-  },
-  {
-    "id": "act_1729036800000_checkout3",
-    "timestamp": 1729036800000,
-    "type": "document:checkout",
-    "user": {"id": "user2", "label": "Kent Uckey", "platform": "word"},
-    "action": "checked out",
-    "target": "document",
-    "details": {"documentTitle": "Professional Services Agreement - OpenGov & Acme Corp", "version": 3},
-    "message": "Kent Uckey checked out \"Professional Services Agreement - OpenGov & Acme Corp\" (v3)"
-  },
-  {
-    "id": "act_1729040400000_checkin3",
-    "timestamp": 1729040400000,
-    "type": "document:checkin",
-    "user": {"id": "user2", "label": "Kent Uckey", "platform": "word"},
-    "action": "checked in",
-    "target": "document",
-    "details": {"documentTitle": "Professional Services Agreement - OpenGov & Acme Corp", "version": 4, "checkoutDuration": "1 hour"},
-    "message": "Kent Uckey checked in \"Professional Services Agreement - OpenGov & Acme Corp\" (v4) after 1 hour"
-  },
-  {
-    "id": "act_1729044000000_msg2",
-    "timestamp": 1729044000000,
+    "id": "act_1729198800000_post",
+    "timestamp": 1729198800000,
     "type": "message:post-created",
-    "user": {"id": "user3", "label": "Yuri Lee Laffed", "platform": "web"},
+    "user": {"id": "user4", "label": "Hugh R Ewe", "platform": "web"},
     "action": "posted in",
     "target": "message",
-    "details": {"messageId": "msg-001", "conversationTitle": "Payment Terms Discussion"},
-    "message": "Yuri Lee Laffed posted in \"Payment Terms Discussion\""
+    "details": {"messageId": "msg-vendor-001", "conversationTitle": "Initial Terms with Acme Corp"},
+    "message": "Hugh R Ewe posted in \"Initial Terms with Acme Corp\""
   },
   {
-    "id": "act_1729054800000_exhibit",
-    "timestamp": 1729054800000,
-    "type": "exhibit:upload",
-    "user": {"id": "user1", "label": "Warren Peace", "platform": "web"},
-    "action": "uploaded exhibit",
-    "target": "exhibit",
-    "details": {"filename": "SOW_Attachment_A.pdf"},
-    "message": "Warren Peace uploaded exhibit \"SOW_Attachment_A.pdf\""
-  },
-  {
-    "id": "act_1729061200000_snapshot2",
-    "timestamp": 1729061200000,
-    "type": "document:snapshot",
-    "user": {"id": "user1", "label": "Warren Peace", "platform": "web"},
-    "action": "created snapshot",
-    "target": "version",
-    "details": {"version": 4, "documentTitle": "Professional Services Agreement - OpenGov & Acme Corp", "status": "review"},
-    "message": "Warren Peace created snapshot of \"Professional Services Agreement - OpenGov & Acme Corp\" (v4)"
+    "id": "act_1729206000000_save",
+    "timestamp": 1729206000000,
+    "type": "document:save",
+    "user": {"id": "user1", "label": "Warren Peace", "platform": "word"},
+    "action": "saved",
+    "target": "document",
+    "details": {"documentTitle": "Software License Agreement - Acme Corp", "version": 2},
+    "message": "Warren Peace saved \"Software License Agreement - Acme Corp\" (v2)"
   }
 ]
 
