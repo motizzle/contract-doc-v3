@@ -21,9 +21,9 @@ function request(method, path, body = null) {
       res.on('data', (chunk) => responseData += chunk);
       res.on('end', () => {
         try {
-          resolve({ status: res.statusCode, body: JSON.parse(responseData) });
+          resolve({ status: res.statusCode, headers: res.headers, body: JSON.parse(responseData) });
         } catch {
-          resolve({ status: res.statusCode, body: responseData });
+          resolve({ status: res.statusCode, headers: res.headers, body: responseData });
         }
       });
     });
@@ -1896,9 +1896,10 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     expect(searchRes.body.messages).toBeDefined();
     
     // Verify search results contain the relevant message
+    // Posts are attached to each message in the 'posts' array
     const hasContractMessage = searchRes.body.messages.some(m => 
       m.title?.toLowerCase().includes('contract') || 
-      searchRes.body.posts?.some(p => p.messageId === m.messageId && p.text?.toLowerCase().includes('contract'))
+      m.posts?.some(p => p.text?.toLowerCase().includes('contract'))
     );
     expect(hasContractMessage).toBe(true);
   });
@@ -1978,7 +1979,7 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     });
 
     // Export all messages with filters applied
-    const exportRes = await request('GET', '/api/v1/messages/export?scope=all&includeInternal=true&includePrivileged=true&includePosts=false');
+    const exportRes = await request('GET', '/api/v1/messages/export.csv?scope=all&includeInternal=true&includePrivileged=true&includePosts=false');
     expect(exportRes.status).toBe(200);
     expect(exportRes.headers['content-type']).toContain('text/csv');
   });
