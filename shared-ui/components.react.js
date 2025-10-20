@@ -1199,8 +1199,6 @@
         return ReactDOM.createPortal(React.createElement('div', { style, ref: (el) => { menuRef.current = el; try { if (menuElRef) menuElRef.current = el; } catch {} } }, children), document.body);
       }
       const nestedItems = [
-        menuItem('Send to Vendor', () => { try { setTimeout(() => { try { actions.sendVendor({}); } catch {} }, 130); } catch {} }, !!btns.sendVendorBtn),
-        menuItem('Request review', () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'request-review' } })); } catch {} }, true),
         menuItem('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true),
         menuItem('Override Checkout', actions.override, !!btns.overrideBtn),
         menuItem('Factory Reset', () => ask('Factory reset?', 'This will clear working data.', actions.factoryReset), true, { danger: true }),
@@ -4632,8 +4630,33 @@
         ]))
       );
 
+      const sendToVendor = async () => {
+        try {
+          window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'send-vendor', options: { userId: currentUser } } }));
+        } catch {}
+      };
+
+      const workflowButtons = React.createElement('div', { key: 'workflow-buttons', style: { display: 'flex', gap: '8px', marginBottom: '16px' } }, [
+        React.createElement(UIButton, {
+          key: 'send-vendor',
+          label: 'Send to Vendor',
+          onClick: sendToVendor,
+          disabled: busy
+        }),
+        React.createElement(UIButton, {
+          key: 'request-review',
+          label: 'Request Review',
+          onClick: () => {
+            try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'request-review' } })); } catch {}
+          },
+          disabled: busy,
+          primary: true
+        })
+      ]);
+
       return React.createElement('div', null, [
         error ? React.createElement('div', { className: 'bg-error-50 text-error-700 p-2 mb-2 border border-error-200 rounded' }, error) : null,
+        workflowButtons,
         header,
         list,
         (prompt ? React.createElement(ConfirmModal, { title: prompt.title, message: prompt.message, onConfirm: async () => { try { await prompt.onConfirm?.(); } finally { setPrompt(null); } }, onClose: () => setPrompt(null) }) : null)
@@ -5853,7 +5876,7 @@
           }, React.createElement('span', { ref: variablesLabelRef, style: { display: 'inline-block' } }, 'Variables')),
         React.createElement('div', { key: 'underline', style: { position: 'absolute', bottom: -1, left: underline.left, width: underline.width, height: 2, background: '#6d5ef1', transition: 'left 150ms ease, width 150ms ease' } })
         ]),
-        React.createElement('div', { key: 'tabbody', className: (activeTab === 'AI' || activeTab === 'Activity' || activeTab === 'Messages') ? '' : 'mt-3', style: { flex: 1, minHeight: 0, overflowY: (activeTab === 'AI' || activeTab === 'Activity' || activeTab === 'Messages') ? 'hidden' : 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', padding: (activeTab === 'AI' || activeTab === 'Activity' || activeTab === 'Messages') ? '0' : '0 8px 112px 8px', marginTop: (activeTab === 'AI' || activeTab === 'Activity' || activeTab === 'Messages') ? 0 : undefined } }, [
+        React.createElement('div', { key: 'tabbody', style: { flex: 1, minHeight: 0, overflowY: (activeTab === 'AI' || activeTab === 'Activity' || activeTab === 'Messages') ? 'hidden' : 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', padding: (activeTab === 'AI' || activeTab === 'Activity' || activeTab === 'Messages') ? '16px 0 0 0' : '16px 8px 112px 8px' } }, [
           React.createElement('div', { key: 'wrap-ai', style: { display: (activeTab === 'AI' ? 'flex' : 'none'), flex: 1, height: '100%', flexDirection: 'column' } }, React.createElement(ChatConsole, { key: 'chat' })),
           React.createElement('div', { key: 'wrap-workflow', style: { display: (activeTab === 'Workflow' ? 'block' : 'none') } }, React.createElement(WorkflowApprovalsPanel, { key: 'workflow' })),
           React.createElement('div', { key: 'wrap-messaging', style: { display: (activeTab === 'Messages' ? 'flex' : 'none'), flexDirection: 'column', height: '100%' } }, React.createElement(MessagingPanel, { key: 'messaging' })),
