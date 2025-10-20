@@ -1,1 +1,42 @@
-[]
+[
+  {
+    "id": "act_1760982521685_3b2w8e5mi",
+    "timestamp": 1760982521685,
+    "type": "message:created",
+    "user": {
+      "id": "user3",
+      "label": "Yuri Lee Laffed",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1760982521682-mbykhi925",
+      "title": "Warren Peace, Jen",
+      "recipients": 3,
+      "recipientsList": [
+        {
+          "label": "Yuri Lee Laffed",
+          "email": "",
+          "userId": "user3"
+        },
+        {
+          "label": "Warren Peace",
+          "email": "",
+          "userId": "user1"
+        },
+        {
+          "label": "Jen",
+          "email": "Ehlers",
+          "userId": null
+        }
+      ],
+      "internal": true,
+      "external": false,
+      "privileged": true,
+      "initialMessage": null,
+      "platform": "web"
+    },
+    "message": "Yuri Lee Laffed started a conversation \"Warren Peace, Jen\" with 3 people"
+  }
+]

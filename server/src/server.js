@@ -874,8 +874,21 @@ function buildActivityMessage(type, details = {}) {
       return {
         action: 'uploaded exhibit',
         target: 'exhibit',
-        details: { filename: details.filename, size: details.size },
+        details: { filename: details.filename, size: details.size, platform: details.platform },
         message: `${userLabel} uploaded exhibit "${details.filename}"`
+      };
+
+    case 'exhibit:deleted':
+      return {
+        action: 'deleted exhibit',
+        target: 'exhibit',
+        details: {
+          filename: details.filename,
+          size: details.size,
+          usedInDocuments: details.usedInDocuments,
+          platform: details.platform
+        },
+        message: `${userLabel} deleted exhibit "${details.filename}"${details.usedInDocuments ? ' (was referenced in document)' : ''}`
       };
 
     case 'document:title-change':
@@ -900,6 +913,85 @@ function buildActivityMessage(type, details = {}) {
         target: 'system',
         details: {},
         message: `${userLabel} performed factory reset - all data cleared`
+      };
+
+    // User authentication events (not yet wired up - full auth not implemented in prototype)
+    // TODO: Call logActivity('user:login', userId, { platform, ipAddress, userAgent }) when auth is implemented
+    case 'user:login':
+      return {
+        action: 'logged in',
+        target: 'user',
+        details: {
+          userId: details.userId,
+          platform: details.platform,
+          ipAddress: details.ipAddress,
+          userAgent: details.userAgent
+        },
+        message: `${userLabel} logged in${details.platform ? ` (${details.platform})` : ''}`
+      };
+
+    case 'user:logout':
+      return {
+        action: 'logged out',
+        target: 'user',
+        details: {
+          userId: details.userId,
+          sessionDuration: details.sessionDuration,
+          platform: details.platform
+        },
+        message: `${userLabel} logged out${details.sessionDuration ? ` (session: ${details.sessionDuration})` : ''}`
+      };
+
+    case 'user:role-changed':
+      return {
+        action: 'changed user role',
+        target: 'user',
+        details: {
+          targetUserId: details.targetUserId,
+          oldRole: details.oldRole,
+          newRole: details.newRole,
+          changedBy: details.changedBy,
+          documentTitle: details.documentTitle
+        },
+        message: (function(){
+          const target = details.targetUserId ? resolveUserLabel(details.targetUserId) : 'user';
+          const doc = details.documentTitle ? ` for "${details.documentTitle}"` : '';
+          return `${userLabel} changed ${target}'s role from ${details.oldRole} to ${details.newRole}${doc}`;
+        })()
+      };
+
+    case 'user:added-to-document':
+      return {
+        action: 'granted access',
+        target: 'user',
+        details: {
+          targetUserId: details.targetUserId,
+          role: details.role,
+          grantedBy: details.grantedBy,
+          documentTitle: details.documentTitle
+        },
+        message: (function(){
+          const target = details.targetUserId ? resolveUserLabel(details.targetUserId) : 'user';
+          const doc = details.documentTitle ? ` to "${details.documentTitle}"` : '';
+          return `${userLabel} granted ${target} ${details.role} access${doc}`;
+        })()
+      };
+
+    case 'user:removed-from-document':
+      return {
+        action: 'revoked access',
+        target: 'user',
+        details: {
+          targetUserId: details.targetUserId,
+          previousRole: details.previousRole,
+          revokedBy: details.revokedBy,
+          documentTitle: details.documentTitle
+        },
+        message: (function(){
+          const target = details.targetUserId ? resolveUserLabel(details.targetUserId) : 'user';
+          const doc = details.documentTitle ? ` from "${details.documentTitle}"` : '';
+          return `${userLabel} revoked ${target}'s ${details.previousRole} access${doc}`;
+        })()
       };
 
     // Messages activity types
@@ -987,6 +1079,75 @@ function buildActivityMessage(type, details = {}) {
           platform: details.platform
         },
         message: `${userLabel} deleted a conversation${details.title ? ` "${details.title}"` : ''}${details.postCount ? ` (${details.postCount} message${details.postCount !== 1 ? 's' : ''})` : ''}`
+      };
+
+    case 'message:post-created':
+      return {
+        action: 'posted message',
+        target: 'message',
+        details: {
+          messageId: details.messageId,
+          postId: details.postId,
+          conversationTitle: details.conversationTitle,
+          text: details.text, // Truncated in logActivity call
+          privileged: details.privileged,
+          participants: details.participants,
+          platform: details.platform
+        },
+        message: `${userLabel} posted in "${details.conversationTitle || 'conversation'}"${details.privileged ? ' (attorney-client privileged)' : ''}`
+      };
+
+    case 'message:post-deleted':
+      return {
+        action: 'deleted post',
+        target: 'message',
+        details: {
+          messageId: details.messageId,
+          postId: details.postId,
+          conversationTitle: details.conversationTitle,
+          deletedText: details.deletedText, // Truncated
+          platform: details.platform
+        },
+        message: `${userLabel} deleted a post from "${details.conversationTitle || 'conversation'}"`
+      };
+
+    case 'message:read':
+      return {
+        action: 'marked as read',
+        target: 'message',
+        details: {
+          messageId: details.messageId,
+          conversationTitle: details.conversationTitle,
+          unreadCount: details.unreadCount,
+          platform: details.platform
+        },
+        message: `${userLabel} marked "${details.conversationTitle || 'conversation'}" as read`
+      };
+
+    case 'message:unread':
+      return {
+        action: 'marked as unread',
+        target: 'message',
+        details: {
+          messageId: details.messageId,
+          conversationTitle: details.conversationTitle,
+          platform: details.platform
+        },
+        message: `${userLabel} marked "${details.conversationTitle || 'conversation'}" as unread`
+      };
+
+    case 'message:exported':
+      return {
+        action: 'exported messages',
+        target: 'message',
+        details: {
+          scope: details.scope,
+          filters: details.filters,
+          messageCount: details.messageCount,
+          includePosts: details.includePosts,
+          platform: details.platform
+        },
+        message: `${userLabel} exported ${details.messageCount || 0} conversation${details.messageCount !== 1 ? 's' : ''} to CSV${details.includePosts ? ' with posts' : ''}`
       };
 
     // Add more activity types as needed
@@ -1574,6 +1735,17 @@ app.post('/api/v1/messages/:messageId/post', (req, res) => {
       return res.status(404).json({ error: result.error });
     }
     
+    // Log activity
+    logActivity('message:post-created', userId, {
+      messageId: messageId,
+      postId: result.post.postId,
+      conversationTitle: result.message.title || 'Untitled',
+      text: String(text).slice(0, 200), // Truncate to 200 chars
+      privileged: !!privileged,
+      participants: result.message.participants?.length || 0,
+      platform: req.body?.platform || req.query?.platform || 'web'
+    });
+    
     // Broadcast SSE event
     broadcast({
       type: 'message:post-added',
@@ -1709,6 +1881,14 @@ app.post('/api/v1/messages/:messageId/read', (req, res) => {
       return res.status(404).json({ error: result.error });
     }
     
+    // Log activity
+    logActivity(unread ? 'message:unread' : 'message:read', userId, {
+      messageId: messageId,
+      conversationTitle: result.message.title || 'Untitled',
+      unreadCount: result.message.unreadBy?.length || 0,
+      platform: req.body?.platform || req.query?.platform || 'web'
+    });
+    
     // Broadcast SSE event
     broadcast({
       type: 'message:read',
@@ -1809,6 +1989,21 @@ app.get('/api/v1/messages/export.csv', (req, res) => {
           csv += `"${post.postId}","${post.messageId}","${post.author.label}","${postCreatedAt}",${post.privileged},"${text}"\n`;
         });
       }
+    });
+    
+    // Log activity
+    const userId = req.query.userId || req.body?.userId || 'system';
+    const filters = [];
+    if (scope) filters.push(`scope:${scope}`);
+    if (includeInternal === 'true') filters.push('internal');
+    if (includePrivileged === 'true') filters.push('privileged');
+    
+    logActivity('message:exported', userId, {
+      scope: scope || 'all',
+      filters: filters.join(', '),
+      messageCount: messages.length,
+      includePosts: includePosts === 'true',
+      platform: req.query.platform || 'web'
     });
     
     res.setHeader('Content-Type', 'text/csv');
@@ -3201,6 +3396,60 @@ app.post('/api/v1/exhibits/upload', upload.single('file'), (req, res) => {
   
   broadcast({ type: 'exhibitUpload', name: path.basename(uploaded) });
   res.json({ ok: true });
+});
+
+// DELETE /api/v1/exhibits/:filename - Delete exhibit file
+app.delete('/api/v1/exhibits/:filename', (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const userId = req.query.userId || req.body?.userId || 'user1';
+    const platform = req.query.platform || req.body?.platform || 'web';
+    
+    if (!filename) {
+      return res.status(400).json({ error: 'Filename is required' });
+    }
+    
+    // Try to delete from both working and canonical directories
+    const workingPath = path.join(workingExhibitsDir, filename);
+    const canonicalPath = path.join(canonicalExhibitsDir, filename);
+    
+    let deleted = false;
+    let fileSize = 0;
+    
+    if (fs.existsSync(workingPath)) {
+      const stats = fs.statSync(workingPath);
+      fileSize = stats.size;
+      fs.unlinkSync(workingPath);
+      deleted = true;
+    }
+    
+    if (fs.existsSync(canonicalPath)) {
+      if (!fileSize) {
+        const stats = fs.statSync(canonicalPath);
+        fileSize = stats.size;
+      }
+      fs.unlinkSync(canonicalPath);
+      deleted = true;
+    }
+    
+    if (!deleted) {
+      return res.status(404).json({ error: 'Exhibit not found' });
+    }
+    
+    // Log activity
+    logActivity('exhibit:deleted', userId, {
+      filename,
+      size: fileSize,
+      usedInDocuments: false, // TODO: Check if referenced in document
+      platform
+    });
+    
+    broadcast({ type: 'exhibitDeleted', name: filename });
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('Error deleting exhibit:', e);
+    return res.status(500).json({ error: 'Failed to delete exhibit' });
+  }
 });
 
 // Compile: convert current DOCX to PDF (LibreOffice), then merge selected exhibits (PDF)

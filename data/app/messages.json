@@ -1,0 +1,46 @@
+{
+  "messages": [
+    {
+      "messageId": "msg-1760982521682-mbykhi925",
+      "title": "Warren Peace, Jen",
+      "createdBy": {
+        "userId": "user3",
+        "label": "Yuri Lee Laffed"
+      },
+      "createdAt": 1760982521682,
+      "participants": [
+        {
+          "userId": "user3",
+          "label": "Yuri Lee Laffed",
+          "email": "",
+          "internal": true
+        },
+        {
+          "userId": "user1",
+          "label": "Warren Peace",
+          "email": "",
+          "internal": true
+        },
+        {
+          "userId": null,
+          "label": "Jen",
+          "email": "Ehlers",
+          "internal": false
+        }
+      ],
+      "internal": true,
+      "external": false,
+      "privileged": true,
+      "state": "open",
+      "lastPostAt": 1760982521682,
+      "unreadBy": [
+        "user1",
+        null
+      ],
+      "archivedBy": [],
+      "deletedBy": [],
+      "deletedAt": null
+    }
+  ],
+  "posts": []
+}
