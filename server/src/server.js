@@ -919,12 +919,32 @@ function buildActivityMessage(type, details = {}) {
         message: `${userLabel} reset AI chat history`
       };
 
-    case 'system:factory-reset':
+    case 'system:scenario-loaded':
+      const scenarioId = details.scenarioId || details.preset || 'unknown';
+      const isUserScenario = details.isUserScenario || false;
+      let scenarioName = scenarioId;
+      
+      // Format preset names nicely
+      if (!isUserScenario) {
+        if (scenarioId === 'empty') scenarioName = 'Factory Reset';
+        else if (scenarioId === 'nearly-done') scenarioName = 'Almost Done';
+      } else {
+        // For user scenarios, try to load metadata to get the proper name
+        try {
+          const scenariosDir = path.join(__dirname, '../../data/app/scenarios');
+          const metadataPath = path.join(scenariosDir, scenarioId, 'metadata.json');
+          if (fs.existsSync(metadataPath)) {
+            const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+            scenarioName = metadata.name || scenarioId;
+          }
+        } catch {}
+      }
+      
       return {
-        action: 'performed factory reset',
+        action: 'loaded scenario',
         target: 'system',
-        details: {},
-        message: `${userLabel} performed factory reset - all data cleared`
+        details: { scenarioId, scenarioName, isUserScenario },
+        message: `${userLabel} loaded scenario: ${scenarioName}`
       };
 
     // User authentication events (not yet wired up - full auth not implemented in prototype)
@@ -2874,27 +2894,28 @@ app.post('/api/v1/factory-reset', (req, res) => {
     const platform = req.query?.platform || req.body?.platform || 'web';
       const preset = req.body?.preset || req.query?.preset || 'empty';
 
-      console.log(`🔄 [Factory Reset] Starting with preset: ${preset}`);
+      console.log(`🔄 [Factory Reset] Starting with scenario: ${preset}`);
       console.log(`📦 [Factory Reset] Request body:`, req.body);
 
-      // Validate preset
-      const validPresets = ['empty', 'nearly-done', 'initial-vendor'];
-      if (!validPresets.includes(preset)) {
-        console.error(`❌ [Factory Reset] Invalid preset: ${preset}`);
-        return res.status(400).json({ error: `Invalid preset: ${preset}. Must be one of: ${validPresets.join(', ')}` });
-      }
-
-      const presetDir = path.join(dataAppDir, 'presets', preset);
-      console.log(`📂 [Factory Reset] Preset directory: ${presetDir}`);
+      // Check if it's a preset (in presets/) or a user scenario (in scenarios/)
+      let presetDir = path.join(dataAppDir, 'presets', preset);
+      let isUserScenario = false;
+      
       if (!fs.existsSync(presetDir)) {
-        console.error(`❌ [Factory Reset] Preset directory not found: ${presetDir}`);
-        return res.status(404).json({ error: `Preset directory not found: ${preset}` });
+        // Try scenarios directory
+        presetDir = path.join(dataAppDir, 'scenarios', preset);
+        isUserScenario = true;
+        
+        if (!fs.existsSync(presetDir)) {
+          console.error(`❌ [Factory Reset] Scenario not found: ${preset}`);
+          return res.status(404).json({ error: `Scenario '${preset}' not found` });
+        }
       }
 
-      console.log(`🔄 Factory reset with preset: ${preset}`);
+      console.log(`📂 [Factory Reset] Loading from: ${presetDir} (${isUserScenario ? 'user scenario' : 'preset'})`);
     
     // Log activity BEFORE clearing activity log!
-    logActivity('system:scenario-loaded', userId, { platform, preset });
+    logActivity('system:scenario-loaded', userId, { platform, scenarioId: preset, isUserScenario });
     
     // Remove working document overlay first
     const wDoc = path.join(workingDocumentsDir, 'default.docx');

@@ -208,5 +208,41 @@
     "createdAt": "2025-01-01T00:00:00.000Z",
     "updatedBy": "system",
     "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-1761006949685-wtxws98rv": {
+    "varId": "var-1761006949685-wtxws98rv",
+    "displayLabel": "Yuri Lee Laffed",
+    "type": "signature",
+    "value": "Yuri Lee Laffed",
+    "createdBy": "user1",
+    "createdAt": "2025-10-21T00:35:49.686Z",
+    "updatedBy": "user1",
+    "updatedAt": "2025-10-21T00:35:49.686Z",
+    "email": "yuri@laffed.com",
+    "docusignRole": null
+  },
+  "var-1761006984343-jb4r6tsl6": {
+    "varId": "var-1761006984343-jb4r6tsl6",
+    "displayLabel": "Hugh R Someone",
+    "type": "signature",
+    "value": "Hugh R Someone",
+    "createdBy": "user1",
+    "createdAt": "2025-10-21T00:36:24.344Z",
+    "updatedBy": "user1",
+    "updatedAt": "2025-10-21T00:36:24.344Z",
+    "email": "hugh@someone",
+    "docusignRole": null
+  },
+  "var-1761007010192-8ywqlu2j5": {
+    "varId": "var-1761007010192-8ywqlu2j5",
+    "displayLabel": "Gettysburger King",
+    "type": "signature",
+    "value": "Gettysburger King",
+    "createdBy": "user1",
+    "createdAt": "2025-10-21T00:36:50.193Z",
+    "updatedBy": "user1",
+    "updatedAt": "2025-10-21T00:36:50.193Z",
+    "email": "briding@buns",
+    "docusignRole": null
   }
 }
