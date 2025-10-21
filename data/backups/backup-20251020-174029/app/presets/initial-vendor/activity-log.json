@@ -1,0 +1,63 @@
+[
+  {
+    "id": "act_1729180800000_upload",
+    "timestamp": 1729180800000,
+    "type": "document:upload",
+    "user": {"id": "user4", "label": "Hugh R Ewe", "platform": "web"},
+    "action": "uploaded",
+    "target": "document",
+    "details": {"filename": "SLA_Initial_Draft.docx", "documentTitle": "Software License Agreement - Acme Corp"},
+    "message": "Hugh R Ewe uploaded \"SLA_Initial_Draft.docx\""
+  },
+  {
+    "id": "act_1729184400000_msg1",
+    "timestamp": 1729184400000,
+    "type": "message:created",
+    "user": {"id": "user1", "label": "Warren Peace", "platform": "web"},
+    "action": "created conversation",
+    "target": "message",
+    "details": {"messageId": "msg-vendor-001", "conversationTitle": "Initial Terms with Acme Corp"},
+    "message": "Warren Peace created conversation \"Initial Terms with Acme Corp\""
+  },
+  {
+    "id": "act_1729188000000_checkout",
+    "timestamp": 1729188000000,
+    "type": "document:checkout",
+    "user": {"id": "user1", "label": "Warren Peace", "platform": "word"},
+    "action": "checked out",
+    "target": "document",
+    "details": {"documentTitle": "Software License Agreement - Acme Corp", "version": 1},
+    "message": "Warren Peace checked out \"Software License Agreement - Acme Corp\" (v1)"
+  },
+  {
+    "id": "act_1729195200000_checkin",
+    "timestamp": 1729195200000,
+    "type": "document:checkin",
+    "user": {"id": "user1", "label": "Warren Peace", "platform": "word"},
+    "action": "checked in",
+    "target": "document",
+    "details": {"documentTitle": "Software License Agreement - Acme Corp", "version": 2, "checkoutDuration": "2 hours"},
+    "message": "Warren Peace checked in \"Software License Agreement - Acme Corp\" (v2) after 2 hours"
+  },
+  {
+    "id": "act_1729198800000_post",
+    "timestamp": 1729198800000,
+    "type": "message:post-created",
+    "user": {"id": "user4", "label": "Hugh R Ewe", "platform": "web"},
+    "action": "posted in",
+    "target": "message",
+    "details": {"messageId": "msg-vendor-001", "conversationTitle": "Initial Terms with Acme Corp"},
+    "message": "Hugh R Ewe posted in \"Initial Terms with Acme Corp\""
+  },
+  {
+    "id": "act_1729206000000_save",
+    "timestamp": 1729206000000,
+    "type": "document:save",
+    "user": {"id": "user1", "label": "Warren Peace", "platform": "word"},
+    "action": "saved",
+    "target": "document",
+    "details": {"documentTitle": "Software License Agreement - Acme Corp", "version": 2},
+    "message": "Warren Peace saved \"Software License Agreement - Acme Corp\" (v2)"
+  }
+]
+

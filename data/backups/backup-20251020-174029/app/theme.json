@@ -1,0 +1,33 @@
+{
+  "banner": {
+    "final": { "bg": "linear-gradient(180deg,#b91c1c,#ef4444)", "fg": "#ffffff", "pillBg": "#7f1d1d", "pillFg": "#ffffff" },
+    "checked_out_self": { "bg": "linear-gradient(180deg,#2563eb,#60a5fa)", "fg": "#ffffff", "pillBg": "#1e3a8a", "pillFg": "#ffffff" },
+    "checked_out_other": { "bg": "linear-gradient(180deg,#b45309,#f59e0b)", "fg": "#111827", "pillBg": "#92400e", "pillFg": "#ffffff" },
+    "available": { "bg": "linear-gradient(180deg,#16a34a,#4ade80)", "fg": "#ffffff", "pillBg": "#166534", "pillFg": "#ffffff" },
+    "update_available": { "bg": "#fecaca", "fg": "#0f172a", "pillBg": "#fecaca", "pillFg": "#0f172a", "border": "#000000" },
+    "view_only": { "bg": "#e5e7eb", "fg": "#111827", "pillBg": "#d1d5db", "pillFg": "#111827" }
+  },
+  "modal": {
+    "background": "#ffffff",
+    "headerBg": "#ffffff",
+    "headerFg": "#111827",
+    "border": "#e5e7eb",
+    "primary": "#111827",
+    "muted": "#6b7280"
+  },
+  "buttons": {
+    "primary": { "bg": "#111827", "fg": "#ffffff", "border": "#111827" },
+    "secondary": { "bg": "#ffffff", "fg": "#111827", "border": "#e5e7eb" }
+  },
+  "pulse": {
+    "palette": [
+      { "bg": "#de3423", "fg": "#ffffff" },
+      { "bg": "#08a847", "fg": "#111827" },
+      { "bg": "#b056ff", "fg": "#ffffff" },
+      { "bg": "#0095da", "fg": "#ffffff" }
+    ],
+    "minSeconds": 3,
+    "maxSeconds": 10,
+    "glowAlpha": 0.35
+  }
+}

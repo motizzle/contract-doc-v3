@@ -1,0 +1,16 @@
+{
+  "field-1729180000001": {
+    "fieldId": "field-1729180000001",
+    "displayLabel": "Vendor Name",
+    "fieldType": "TEXTINPUT",
+    "fieldColor": "#6633cc",
+    "type": "text",
+    "category": "Parties",
+    "defaultValue": "Acme Corporation",
+    "createdBy": "user1",
+    "createdAt": "2025-10-17T18:30:00.000Z",
+    "updatedBy": "user1",
+    "updatedAt": "2025-10-17T18:30:00.000Z"
+  }
+}
+

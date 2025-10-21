@@ -1,0 +1,8 @@
+[
+  { "id": "user1", "label": "Warren Peace", "role": "editor", "title": "Chief of Not Messing Around" },
+  { "id": "user2", "label": "Kent Uckey", "role": "editor", "title": "Junior Money Man" },
+  { "id": "user3", "label": "Yuri Lee Laffed",  "role": "suggester", "title": "Head of Solving Problems" },
+  { "id": "user4", "label": "Hugh R Ewe",  "role": "vendor", "title": "Head of Anonymity" },
+  { "id": "user5", "label": "Gettysburger King",  "role": "viewer", "title": "Executive Vice Intern" }
+]
+

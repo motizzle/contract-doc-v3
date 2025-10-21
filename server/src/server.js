@@ -2666,12 +2666,32 @@ app.get('/api/v1/versions/:n', (req, res) => {
     if (n === 1) p = path.join(canonicalDocumentsDir, 'default.docx');
     else {
       const vDoc = path.join(versionsDir, `v${n}.docx`);
-      if (fs.existsSync(vDoc)) p = vDoc;
+      if (fs.existsSync(vDoc)) {
+        p = vDoc;
+      } else {
+        // If the requested version is the current version and no snapshot exists, serve working document
+        const currentVersion = Number(serverState.documentVersion || 1);
+        if (n === currentVersion) {
+          const workingDoc = path.join(workingDocumentsDir, 'default.docx');
+          if (fs.existsSync(workingDoc)) {
+            p = workingDoc;
+          } else {
+            // Fall back to canonical
+            p = path.join(canonicalDocumentsDir, 'default.docx');
+          }
+        }
+      }
     }
-    if (!p || !fs.existsSync(p)) return res.status(404).json({ error: 'not_found' });
+    if (!p || !fs.existsSync(p)) {
+      console.error(`❌ Version ${n} not found. versionsDir: ${versionsDir}, serverState.documentVersion: ${serverState.documentVersion}`);
+      return res.status(404).json({ error: 'not_found' });
+    }
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     fs.createReadStream(p).pipe(res);
-  } catch { res.status(500).json({ error: 'version_stream_failed' }); }
+  } catch (e) { 
+    console.error('❌ Version stream error:', e.message);
+    res.status(500).json({ error: 'version_stream_failed' }); 
+  }
 });
 
 // Broadcast-only view selection
@@ -2848,31 +2868,52 @@ app.post('/api/v1/test-mode', (req, res) => {
 });
 
 // Factory reset: wipe working overlays and reset server state with preset data
-app.post('/api/v1/factory-reset', (req, res) => {
-  try {
-    const userId = req.body?.userId || req.query?.userId || 'system';
-    const platform = req.query?.platform || req.body?.platform || 'web';
-    const preset = req.body?.preset || req.query?.preset || 'empty';
-    
-    // Validate preset
-    const validPresets = ['empty', 'nearly-done', 'initial-vendor'];
-    if (!validPresets.includes(preset)) {
-      return res.status(400).json({ error: `Invalid preset: ${preset}. Must be one of: ${validPresets.join(', ')}` });
-    }
-    
-    const presetDir = path.join(dataAppDir, 'presets', preset);
-    if (!fs.existsSync(presetDir)) {
-      return res.status(404).json({ error: `Preset directory not found: ${preset}` });
-    }
-    
-    console.log(`🔄 Factory reset with preset: ${preset}`);
+  app.post('/api/v1/factory-reset', (req, res) => {
+    try {
+      const userId = req.body?.userId || req.query?.userId || 'system';
+      const platform = req.query?.platform || req.body?.platform || 'web';
+      const preset = req.body?.preset || req.query?.preset || 'empty';
+
+      console.log(`🔄 [Factory Reset] Starting with preset: ${preset}`);
+      console.log(`📦 [Factory Reset] Request body:`, req.body);
+
+      // Validate preset
+      const validPresets = ['empty', 'nearly-done', 'initial-vendor'];
+      if (!validPresets.includes(preset)) {
+        console.error(`❌ [Factory Reset] Invalid preset: ${preset}`);
+        return res.status(400).json({ error: `Invalid preset: ${preset}. Must be one of: ${validPresets.join(', ')}` });
+      }
+
+      const presetDir = path.join(dataAppDir, 'presets', preset);
+      console.log(`📂 [Factory Reset] Preset directory: ${presetDir}`);
+      if (!fs.existsSync(presetDir)) {
+        console.error(`❌ [Factory Reset] Preset directory not found: ${presetDir}`);
+        return res.status(404).json({ error: `Preset directory not found: ${preset}` });
+      }
+
+      console.log(`🔄 Factory reset with preset: ${preset}`);
     
     // Log activity BEFORE clearing activity log!
     logActivity('system:factory-reset', userId, { platform, preset });
     
-    // Remove working document overlay
+    // Remove working document overlay first
     const wDoc = path.join(workingDocumentsDir, 'default.docx');
     if (fs.existsSync(wDoc)) fs.rmSync(wDoc);
+    
+    // Check if preset has a custom document and copy it
+    const presetDocFile = path.join(presetDir, 'default.docx');
+    if (fs.existsSync(presetDocFile)) {
+      try {
+        if (!fs.existsSync(workingDocumentsDir)) fs.mkdirSync(workingDocumentsDir, { recursive: true });
+        fs.copyFileSync(presetDocFile, wDoc);
+        console.log(`✅ Loaded preset document: ${preset}`);
+      } catch (e) {
+        console.error(`❌ Failed to copy preset document:`, e.message);
+      }
+    } else {
+      console.log(`ℹ️  No preset document found - will use canonical default.docx`);
+    }
+    
     // Remove exhibits overlays
     if (fs.existsSync(workingExhibitsDir)) {
       for (const f of fs.readdirSync(workingExhibitsDir)) {
@@ -2901,7 +2942,9 @@ app.post('/api/v1/factory-reset', (req, res) => {
       serverState.updatedPlatform = presetState.updatedPlatform || null;
       serverState.lastUpdated = new Date().toISOString();
       console.log(`✅ Loaded state from preset: ${preset}`);
+      console.log(`📊 [Factory Reset] New serverState:`, { title: serverState.title, status: serverState.status, documentVersion: serverState.documentVersion });
     } else {
+      console.error(`❌ [Factory Reset] State file not found: ${presetStateFile}`);
       // Fallback to default state
       serverState.checkedOutBy = null;
       serverState.documentVersion = 1;
@@ -2915,8 +2958,10 @@ app.post('/api/v1/factory-reset', (req, res) => {
     // Copy preset activity log
     if (fs.existsSync(presetActivityFile)) {
       fs.copyFileSync(presetActivityFile, activityLogFilePath);
-      console.log(`✅ Loaded activity log from preset: ${preset}`);
+      const activityCount = JSON.parse(fs.readFileSync(activityLogFilePath, 'utf8')).length;
+      console.log(`✅ Loaded activity log from preset: ${preset} (${activityCount} items)`);
     } else {
+      console.error(`❌ [Factory Reset] Activity log file not found: ${presetActivityFile}`);
       // Clear activity log
       try { if (fs.existsSync(activityLogFilePath)) fs.rmSync(activityLogFilePath); } catch {}
     }
@@ -2924,8 +2969,10 @@ app.post('/api/v1/factory-reset', (req, res) => {
     // Copy preset messages
     if (fs.existsSync(presetMessagesFile)) {
       fs.copyFileSync(presetMessagesFile, messagesFilePath);
-      console.log(`✅ Loaded messages from preset: ${preset}`);
+      const msgs = JSON.parse(fs.readFileSync(messagesFilePath, 'utf8'));
+      console.log(`✅ Loaded messages from preset: ${preset} (${msgs.messages?.length || 0} messages, ${msgs.posts?.length || 0} posts)`);
     } else {
+      console.error(`❌ [Factory Reset] Messages file not found: ${presetMessagesFile}`);
       // Clear messages
       try { if (fs.existsSync(messagesFilePath)) fs.rmSync(messagesFilePath); } catch {}
     }
@@ -2933,8 +2980,10 @@ app.post('/api/v1/factory-reset', (req, res) => {
     // Copy preset fields
     if (fs.existsSync(presetFieldsFile)) {
       fs.copyFileSync(presetFieldsFile, fieldsFilePath);
-      console.log(`✅ Loaded fields from preset: ${preset}`);
+      const fields = JSON.parse(fs.readFileSync(fieldsFilePath, 'utf8'));
+      console.log(`✅ Loaded fields from preset: ${preset} (${Object.keys(fields).length} fields)`);
     } else {
+      console.error(`❌ [Factory Reset] Fields file not found: ${presetFieldsFile}`);
       // Clear fields
       try { if (fs.existsSync(fieldsFilePath)) fs.rmSync(fieldsFilePath); } catch {}
     }
@@ -2942,20 +2991,25 @@ app.post('/api/v1/factory-reset', (req, res) => {
     // Clear chat history
     try { if (fs.existsSync(chatFilePath)) fs.rmSync(chatFilePath); } catch {}
     
-    // Restore variables to seed data (don't delete them!)
+    // Restore variables: check for preset-specific variables first, fall back to seed
+    const presetVariablesFile = path.join(presetDir, 'variables.json');
     const variablesSeedPath = path.join(dataAppDir, 'variables.seed.json');
     try {
-      if (fs.existsSync(variablesSeedPath)) {
+      if (fs.existsSync(presetVariablesFile)) {
+        fs.copyFileSync(presetVariablesFile, variablesFilePath);
+        const vars = JSON.parse(fs.readFileSync(variablesFilePath, 'utf8'));
+        console.log(`✅ Variables loaded from preset: ${preset} (${Object.keys(vars).length} variables)`);
+      } else if (fs.existsSync(variablesSeedPath)) {
         fs.copyFileSync(variablesSeedPath, variablesFilePath);
-        console.log('✅ Variables restored from seed data');
+        console.log('✅ Variables restored from seed data (no preset-specific variables)');
       } else {
-        console.error('❌ Seed file not found! Variables will be empty.');
+        console.error('❌ No variables file found! Variables will be empty.');
         if (fs.existsSync(variablesFilePath)) {
           fs.rmSync(variablesFilePath);
         }
       }
     } catch (e) {
-      console.error('❌ Failed to restore variables from seed:', e.message);
+      console.error('❌ Failed to restore variables:', e.message);
     }
     
     // Remove snapshots entirely
@@ -2972,13 +3026,40 @@ app.post('/api/v1/factory-reset', (req, res) => {
         }
       } catch {}
     }
-    // Remove all saved versions (history)
+    // Handle version history: check for preset versions, otherwise clear all
     try {
+      // First, clear existing versions
       if (fs.existsSync(versionsDir)) {
         try { fs.rmSync(versionsDir, { recursive: true, force: true }); } catch {}
       }
       if (!fs.existsSync(versionsDir)) fs.mkdirSync(versionsDir, { recursive: true });
-    } catch {}
+      
+      // Check if preset has version snapshots and copy them
+      const presetVersionsDir = path.join(presetDir, 'versions');
+      if (fs.existsSync(presetVersionsDir)) {
+        const versionFiles = fs.readdirSync(presetVersionsDir);
+        let copiedCount = 0;
+        for (const vFile of versionFiles) {
+          if (vFile.endsWith('.docx') || vFile.endsWith('.json')) {
+            const srcPath = path.join(presetVersionsDir, vFile);
+            const destPath = path.join(versionsDir, vFile);
+            try {
+              fs.copyFileSync(srcPath, destPath);
+              if (vFile.endsWith('.docx')) copiedCount++;
+            } catch (e) {
+              console.error(`❌ Failed to copy version ${vFile}:`, e.message);
+            }
+          }
+        }
+        if (copiedCount > 0) {
+          console.log(`✅ Loaded ${copiedCount} version snapshot(s) from preset: ${preset}`);
+        }
+      } else {
+        console.log(`ℹ️  No preset version snapshots found - version history will be empty`);
+      }
+    } catch (e) {
+      console.error('❌ Failed to handle version history:', e.message);
+    }
     
     bumpRevision();
     persistState();

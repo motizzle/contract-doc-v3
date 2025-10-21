@@ -212,9 +212,11 @@
       // Load activities from server
       const loadActivities = React.useCallback(async () => {
         try {
+          console.log('🔄 [StateContext] loadActivities called');
           const response = await fetch(`${API_BASE}/api/v1/activity`);
           if (response.ok) {
             const data = await response.json();
+            console.log(`📥 [StateContext] Fetched ${data.activities?.length || 0} activities`);
             setActivities(data.activities || []);
           }
         } catch (e) {
@@ -439,6 +441,7 @@
           const r = await fetch(`${API_BASE}/api/v1/state-matrix?${qs}`);
             if (r.ok) {
               const j = await r.json();
+              console.log('🔄 [refresh] Received config from API:', { title: j?.config?.title, status: j?.config?.status, revision: j?.revision });
               setConfig(j.config || null);
               if (typeof j.revision === 'number') setRevision(j.revision);
               try { const sum = j?.config?.approvals?.summary || null; setApprovalsSummary(sum); } catch {}
@@ -648,11 +651,14 @@
               }
               // Handle activity reset
               if (p && p.type === 'activity:reset') {
+                console.log('🔄 [StateContext] Activity reset event received - reloading activities');
                 setActivities([]);
                 setLastSeenActivityId(null);
                 if (typeof localStorage !== 'undefined') {
                   localStorage.removeItem('lastSeenActivityId');
                 }
+                // Reload activities from server after reset
+                loadActivities();
               }
               // Do not auto-refresh document on save/revert; show banner via state-matrix
               refresh();
@@ -1895,6 +1901,7 @@
       // Load messages
       const loadMessages = React.useCallback(async () => {
         try {
+          console.log('🔄 [MessagingPanel] loadMessages called');
           // Fetch messages for each selected state and combine
           const states = filter.states || ['open'];
           const allMessages = [];
@@ -1909,6 +1916,7 @@
             const r = await fetch(`${API_BASE}/api/v1/messages?${params}`);
             if (r.ok) {
               const data = await r.json();
+              console.log(`📥 [MessagingPanel] Fetched ${data.messages?.length || 0} messages for state "${state}"`);
               allMessages.push(...(data.messages || []));
             }
           }
@@ -1932,6 +1940,7 @@
           
           // Sort by lastPostAt
           uniqueMessages.sort((a, b) => b.lastPostAt - a.lastPostAt);
+          console.log(`✅ [MessagingPanel] Set ${uniqueMessages.length} messages after filtering`);
           setMessages(uniqueMessages);
         } catch (e) {
           console.error('Failed to load messages:', e);
@@ -1988,6 +1997,16 @@
       // Factory reset handler
       React.useEffect(() => {
         const onFactoryReset = () => {
+          console.log('🔄 [MessagingPanel] Factory reset event received - reloading messages');
+          setMessages([]);
+          setView('list');
+          setActiveMessageId(null);
+          setSummary({ messages: { open: 0, unreadForMe: 0, privileged: 0, internal: 0, external: 0, archived: 0 } });
+          loadMessages();
+          loadSummary();
+        };
+        const onMessagingReset = () => {
+          console.log('🔄 [MessagingPanel] Messaging reset event received - reloading messages');
           setMessages([]);
           setView('list');
           setActiveMessageId(null);
@@ -1996,7 +2015,11 @@
           loadSummary();
         };
         window.addEventListener('factoryReset', onFactoryReset);
-        return () => window.removeEventListener('factoryReset', onFactoryReset);
+        window.addEventListener('messaging:reset', onMessagingReset);
+        return () => {
+          window.removeEventListener('factoryReset', onFactoryReset);
+          window.removeEventListener('messaging:reset', onMessagingReset);
+        };
       }, [loadMessages, loadSummary]);
       
       // If viewing conversation, show conversation page
@@ -3647,7 +3670,10 @@
       const { config, addLog, currentUser } = React.useContext(StateContext);
       const API_BASE = getApiBase();
       const [title, setTitle] = React.useState(config?.title || 'Untitled Document');
-      React.useEffect(() => { setTitle(config?.title || 'Untitled Document'); }, [config?.title]);
+      React.useEffect(() => {
+        console.log('🔄 [InlineTitleEditor] useEffect triggered - New title from config:', config?.title);
+        setTitle(config?.title || 'Untitled Document');
+      }, [config?.title]);
       const onBlur = async () => {
         const next = (title || '').trim();
         if (!next) return;
@@ -3675,7 +3701,10 @@
       const { config, addLog } = React.useContext(StateContext);
       const API_BASE = getApiBase();
       const [status, setStatus] = React.useState((config?.status || 'draft').toLowerCase());
-      React.useEffect(() => { setStatus((config?.status || 'draft').toLowerCase()); }, [config?.status]);
+      React.useEffect(() => {
+        console.log('🔄 [StatusBadge] useEffect triggered - New status from config:', config?.status);
+        setStatus((config?.status || 'draft').toLowerCase());
+      }, [config?.status]);
       const cycle = async () => {
         try { const r = await fetch(`${API_BASE}/api/v1/status/cycle`, { method: 'POST' }); if (r.ok) { const j = await r.json(); setStatus((j.status || 'draft').toLowerCase()); addLog && addLog(`Status: ${j.status}`, 'system'); } } catch {}
       };
@@ -3695,19 +3724,30 @@
       const [confirm, setConfirm] = React.useState(null);
       const refresh = React.useCallback(async () => {
         try {
+          console.log('🔄 [VersionsPanel] refresh called');
           const url = `${API_BASE}/api/v1/versions?rev=${Date.now()}`;
           const r = await fetch(url, { cache: 'no-store' });
           if (r.ok) {
             const j = await r.json();
             const arr = Array.isArray(j.items) ? j.items : [];
+            console.log(`📥 [VersionsPanel] Fetched ${arr.length} versions`);
             setItems(arr);
           }
         } catch {}
       }, [API_BASE]);
       React.useEffect(() => { refresh(); }, [refresh]);
       React.useEffect(() => {
-        const onVersionsUpdate = () => { try { refresh(); } catch {} };
-        const onFactory = () => { try { setViewingVersion(1); refresh(); } catch {} };
+        const onVersionsUpdate = () => { 
+          console.log('🔄 [VersionsPanel] versions:update event received');
+          try { setTimeout(() => refresh(), 100); } catch {} 
+        };
+        const onFactory = () => { 
+          console.log('🔄 [VersionsPanel] factoryReset event received');
+          try { 
+            setViewingVersion(1); 
+            setTimeout(() => refresh(), 100); 
+          } catch {} 
+        };
         const onVersionView = async (ev) => {
           try {
             const d = ev && ev.detail;
@@ -4203,21 +4243,13 @@
       const presets = [
         {
           id: 'empty',
-          label: 'Empty',
-          description: 'Clean slate - no activities, messages, or fields. Perfect for starting fresh.',
-          icon: '🧹'
+          label: 'Original Factory Reset',
+          description: 'Reset to the original blank document with no messages, variables, or history.'
         },
         {
           id: 'nearly-done',
-          label: 'Nearly Done',
-          description: '90% complete contract in review. Includes version history, conversations, and field data.',
-          icon: '📝'
-        },
-        {
-          id: 'initial-vendor',
-          label: 'Initial Vendor',
-          description: 'Early-stage vendor negotiation. Basic setup with initial communications.',
-          icon: '🤝'
+          label: 'Almost Done with Negotiations',
+          description: 'Contract near completion with version history, messages, and approvals.'
         }
       ];
 
@@ -4251,37 +4283,26 @@
             React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: onClose, disabled: busy }, '✕')
           ]),
           error ? React.createElement('div', { key: 'e', className: 'bg-error-50 text-error-700 p-2 border-t border-b border-error-200' }, error) : null,
-          React.createElement('div', { key: 'b', className: 'modal-body d-flex flex-column gap-12' }, [
-            React.createElement('div', { key: 'warning', className: 'bg-warning-50 text-warning-800 p-3 border border-warning-200 rounded-md text-sm' },
-              '⚠️ This will clear all working data, versions, and compiled files. Choose a preset to restore.'
+          React.createElement('div', { key: 'b', className: 'modal-body', style: { display: 'flex', flexDirection: 'column', gap: '20px' } }, [
+            React.createElement('div', { key: 'warning', style: { fontSize: '14px', color: '#6B7280' } },
+              'This will clear all working data and versions.'
             ),
-            React.createElement('div', { key: 'lbl', className: 'font-semibold' }, 'Select Preset State'),
-            React.createElement('div', { key: 'presets', className: 'd-flex flex-column gap-8' },
+            React.createElement('div', { key: 'presets', style: { display: 'flex', flexDirection: 'column', gap: '12px' } },
               presets.map((preset, i) => 
-                React.createElement('label', { 
+                React.createElement('div', { 
                   key: preset.id, 
-                  className: `border rounded-md p-3 cursor-pointer transition-all ${selectedPreset === preset.id ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:border-gray-300 bg-white'}`,
-                  style: { cursor: busy ? 'not-allowed' : 'pointer' }
+                  style: {
+                    border: selectedPreset === preset.id ? '2px solid #6366F1' : '2px solid #D1D5DB',
+                    borderRadius: '8px',
+                    padding: '16px',
+                    cursor: busy ? 'not-allowed' : 'pointer',
+                    backgroundColor: selectedPreset === preset.id ? '#EEF2FF' : '#FFFFFF',
+                    transition: 'all 0.2s'
+                  },
+                  onClick: () => !busy && setSelectedPreset(preset.id)
                 }, [
-                  React.createElement('div', { key: 'radio', className: 'd-flex items-start gap-3' }, [
-                    React.createElement('input', { 
-                      key: 'input',
-                      type: 'radio', 
-                      name: 'preset', 
-                      value: preset.id, 
-                      checked: selectedPreset === preset.id, 
-                      onChange: () => setSelectedPreset(preset.id),
-                      disabled: busy,
-                      style: { marginTop: '2px' }
-                    }),
-                    React.createElement('div', { key: 'content', className: 'flex-1' }, [
-                      React.createElement('div', { key: 'header', className: 'd-flex items-center gap-2 font-semibold' }, [
-                        React.createElement('span', { key: 'icon' }, preset.icon),
-                        React.createElement('span', { key: 'label' }, preset.label)
-                      ]),
-                      React.createElement('div', { key: 'desc', className: 'text-sm text-gray-600 mt-1' }, preset.description)
-                    ])
-                  ])
+                  React.createElement('div', { key: 'label', style: { fontWeight: 600, fontSize: '16px', marginBottom: '4px' } }, preset.label),
+                  React.createElement('div', { key: 'desc', style: { fontSize: '14px', color: '#6B7280' } }, preset.description)
                 ])
               )
             )
@@ -4290,7 +4311,7 @@
             React.createElement(UIButton, { key: 'cancel', label: 'Cancel', onClick: onClose, disabled: busy }),
             React.createElement(UIButton, { 
               key: 'go', 
-              label: 'Reset to ' + presets.find(p => p.id === selectedPreset)?.label, 
+              label: 'Reset', 
               onClick: reset, 
               variant: 'primary', 
               isLoading: busy, 

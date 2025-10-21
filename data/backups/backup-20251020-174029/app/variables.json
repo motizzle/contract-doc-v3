@@ -1,0 +1,248 @@
+{
+  "var-seed-sig-001": {
+    "varId": "var-seed-sig-001",
+    "displayLabel": "Chief Executive Officer",
+    "type": "signature",
+    "value": "Chief Executive Officer",
+    "email": "ceo@opengov.com",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-seed-sig-002": {
+    "varId": "var-seed-sig-002",
+    "displayLabel": "Chief Financial Officer",
+    "type": "signature",
+    "value": "Chief Financial Officer",
+    "email": "cfo@opengov.com",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-seed-sig-003": {
+    "varId": "var-seed-sig-003",
+    "displayLabel": "General Counsel",
+    "type": "signature",
+    "value": "General Counsel",
+    "email": "legal@opengov.com",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-seed-sig-004": {
+    "varId": "var-seed-sig-004",
+    "displayLabel": "Director of Procurement",
+    "type": "signature",
+    "value": "Director of Procurement",
+    "email": "procurement@opengov.com",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-seed-sig-005": {
+    "varId": "var-seed-sig-005",
+    "displayLabel": "VP of Operations",
+    "type": "signature",
+    "value": "VP of Operations",
+    "email": "operations@opengov.com",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-seed-sig-006": {
+    "varId": "var-seed-sig-006",
+    "displayLabel": "Contracting Officer",
+    "type": "signature",
+    "value": "Contracting Officer",
+    "email": "contracting@opengov.com",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-seed-sig-007": {
+    "varId": "var-seed-sig-007",
+    "displayLabel": "Project Manager",
+    "type": "signature",
+    "value": "Project Manager",
+    "email": "pm@opengov.com",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-seed-sig-008": {
+    "varId": "var-seed-sig-008",
+    "displayLabel": "Technical Lead",
+    "type": "signature",
+    "value": "Technical Lead",
+    "email": "tech@opengov.com",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-seed-sig-009": {
+    "varId": "var-seed-sig-009",
+    "displayLabel": "Vendor Representative",
+    "type": "signature",
+    "value": "Vendor Representative",
+    "email": "vendor@supplier.com",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-seed-sig-010": {
+    "varId": "var-seed-sig-010",
+    "displayLabel": "Witness",
+    "type": "signature",
+    "value": "Witness",
+    "email": "witness@opengov.com",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-seed-val-001": {
+    "varId": "var-seed-val-001",
+    "displayLabel": "Contract Number",
+    "type": "value",
+    "value": "CTR-2025-0001",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-seed-val-002": {
+    "varId": "var-seed-val-002",
+    "displayLabel": "Contract Date",
+    "type": "value",
+    "value": "January 1, 2025",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-seed-val-003": {
+    "varId": "var-seed-val-003",
+    "displayLabel": "Contract Amount",
+    "type": "value",
+    "value": "$250,000.00",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-seed-val-004": {
+    "varId": "var-seed-val-004",
+    "displayLabel": "Vendor Name",
+    "type": "value",
+    "value": "ACME Corporation",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-seed-val-005": {
+    "varId": "var-seed-val-005",
+    "displayLabel": "Start Date",
+    "type": "value",
+    "value": "January 15, 2025",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-seed-val-006": {
+    "varId": "var-seed-val-006",
+    "displayLabel": "End Date",
+    "type": "value",
+    "value": "December 31, 2025",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-seed-val-007": {
+    "varId": "var-seed-val-007",
+    "displayLabel": "Department",
+    "type": "value",
+    "value": "Procurement Department",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-seed-val-008": {
+    "varId": "var-seed-val-008",
+    "displayLabel": "Project Name",
+    "type": "value",
+    "value": "Enterprise Software Implementation",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-seed-val-009": {
+    "varId": "var-seed-val-009",
+    "displayLabel": "Delivery Location",
+    "type": "value",
+    "value": "1234 Main Street, Suite 100",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-seed-val-010": {
+    "varId": "var-seed-val-010",
+    "displayLabel": "Payment Terms",
+    "type": "value",
+    "value": "Net 30 days",
+    "createdBy": "system",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedBy": "system",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "var-1761006949685-wtxws98rv": {
+    "varId": "var-1761006949685-wtxws98rv",
+    "displayLabel": "Yuri Lee Laffed",
+    "type": "signature",
+    "value": "Yuri Lee Laffed",
+    "createdBy": "user1",
+    "createdAt": "2025-10-21T00:35:49.686Z",
+    "updatedBy": "user1",
+    "updatedAt": "2025-10-21T00:35:49.686Z",
+    "email": "yuri@laffed.com",
+    "docusignRole": null
+  },
+  "var-1761006984343-jb4r6tsl6": {
+    "varId": "var-1761006984343-jb4r6tsl6",
+    "displayLabel": "Hugh R Someone",
+    "type": "signature",
+    "value": "Hugh R Someone",
+    "createdBy": "user1",
+    "createdAt": "2025-10-21T00:36:24.344Z",
+    "updatedBy": "user1",
+    "updatedAt": "2025-10-21T00:36:24.344Z",
+    "email": "hugh@someone",
+    "docusignRole": null
+  },
+  "var-1761007010192-8ywqlu2j5": {
+    "varId": "var-1761007010192-8ywqlu2j5",
+    "displayLabel": "Gettysburger King",
+    "type": "signature",
+    "value": "Gettysburger King",
+    "createdBy": "user1",
+    "createdAt": "2025-10-21T00:36:50.193Z",
+    "updatedBy": "user1",
+    "updatedAt": "2025-10-21T00:36:50.193Z",
+    "email": "briding@buns",
+    "docusignRole": null
+  }
+}
