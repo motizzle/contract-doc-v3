@@ -61,7 +61,9 @@
       "privileged": false,
       "state": "open",
       "lastPostAt": 1761006753263,
-      "unreadBy": [],
+      "unreadBy": [
+        "user2"
+      ],
       "archivedBy": [],
       "deletedBy": [],
       "deletedAt": null
