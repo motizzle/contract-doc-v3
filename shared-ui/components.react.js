@@ -4344,9 +4344,6 @@
             ]),
             error ? React.createElement('div', { key: 'e', className: 'bg-error-50 text-error-700 p-2 border-t border-b border-error-200' }, error) : null,
             React.createElement('div', { key: 'b', className: 'modal-body', style: { display: 'flex', flexDirection: 'column', gap: '24px', overflowY: 'auto' } }, [
-              React.createElement('div', { key: 'desc', style: { fontSize: '14px', color: '#6B7280' } },
-                'Load a preset scenario or save your current state for reuse.'
-              ),
               // Presets section
               React.createElement('div', { key: 'presets-section' }, [
                 React.createElement('h3', { key: 'title', style: { fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#374151' } }, 'Preset Scenarios'),
