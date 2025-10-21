@@ -4,7 +4,7 @@
       "userId": "user1",
       "name": "Warren Peace",
       "order": 1,
-      "approved": false,
+      "approved": true,
       "notes": ""
     },
     {
@@ -18,7 +18,7 @@
       "userId": "user3",
       "name": "Yuri Lee Laffed",
       "order": 3,
-      "approved": false,
+      "approved": true,
       "notes": ""
     },
     {
@@ -36,5 +36,5 @@
       "notes": ""
     }
   ],
-  "revision": 3334
+  "revision": 3235
 }

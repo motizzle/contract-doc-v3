@@ -3187,18 +3187,25 @@
       // Fetch versions list
       const loadVersions = React.useCallback(async () => {
         try {
-          const r = await fetch(`${API_BASE}/api/v1/versions?rev=${Date.now()}`, { cache: 'no-store' });
+          const url = `${API_BASE}/api/v1/versions?rev=${Date.now()}`;
+          console.log(`📡 [ComparisonTab] Fetching versions from: ${url}`);
+          const r = await fetch(url, { cache: 'no-store' });
           if (r.ok) {
             const j = await r.json();
             const arr = Array.isArray(j.items) ? j.items : [];
+            console.log(`✅ [ComparisonTab] Received ${arr.length} versions from server`);
             setVersions(arr);
             // Default to version 1 and latest (only on initial load when nothing is selected)
             if (arr.length > 0 && !versionB) {
               setVersionA('1');
               setVersionB(String(arr.length));
             }
+          } else {
+            console.error(`❌ [ComparisonTab] Failed to fetch versions: ${r.status}`);
           }
-        } catch {}
+        } catch (e) {
+          console.error(`❌ [ComparisonTab] Error fetching versions:`, e);
+        }
       }, [API_BASE, versionB]);
       
       React.useEffect(() => {
@@ -3208,6 +3215,7 @@
       // Listen for versions:update event to refresh list
       React.useEffect(() => {
         const onVersionsUpdate = () => {
+          console.log(`🔄 [ComparisonTab] Received versions:update event - reloading versions`);
           loadVersions();
         };
         window.addEventListener('versions:update', onVersionsUpdate);
@@ -3477,6 +3485,7 @@
             const messagePlatform = d && d.payload && d.payload.messagePlatform;
             const currentPlatform = typeof Office !== 'undefined' ? 'word' : 'web';
             
+            console.log(`🔄 [ChatConsole] onChatReset - isGlobal: ${isGlobal}, currentUser: ${currentUser}, platform: ${currentPlatform}`);
 
             if (isGlobal) {
               // Factory reset: reload from server (should be empty after server reset)
@@ -3485,16 +3494,23 @@
               // Reload from server
               (async () => {
                 try {
-                  const r = await fetch(`${API_BASE}/api/v1/chat?userId=${encodeURIComponent(currentUser)}`);
+                  const url = `${API_BASE}/api/v1/chat?userId=${encodeURIComponent(currentUser)}`;
+                  console.log(`📡 [ChatConsole] Fetching chat from: ${url}`);
+                  const r = await fetch(url, { cache: 'no-store' });
                   if (r.ok) {
                     const j = await r.json();
+                    console.log(`✅ [ChatConsole] Received ${j.messages?.length || 0} messages from server`);
                     if (Array.isArray(j.messages) && j.messages.length > 0) {
                       setMessages(j.messages);
                     } else {
                       setMessages(['[bot] ' + DEFAULT_AI_GREETING]);
                     }
+                  } else {
+                    console.error(`❌ [ChatConsole] Failed to fetch chat: ${r.status}`);
                   }
-                } catch {}
+                } catch (e) {
+                  console.error(`❌ [ChatConsole] Error fetching chat:`, e);
+                }
               })();
               return;
             }
@@ -5217,7 +5233,7 @@
           
           // Reload variables from backend (they should be restored from seed)
           try {
-            const response = await fetch(`${API_BASE}/api/v1/variables`);
+            const response = await fetch(`${API_BASE}/api/v1/variables?rev=${Date.now()}`, { cache: 'no-store' });
             if (response.ok) {
               const data = await response.json();
               setVariables(data.variables || {});
@@ -5230,6 +5246,30 @@
           }
         };
 
+        const handleFactoryReset = async () => {
+          console.log('🔄 [VariablesPanel] Factory reset event received - reloading variables from preset');
+          setVariables({});
+          setEditingValues({});
+          setEditingNames({});
+          
+          // Reload variables from backend (they should now contain preset variables)
+          try {
+            const url = `${API_BASE}/api/v1/variables?rev=${Date.now()}`;
+            console.log(`📡 [VariablesPanel] Fetching variables from: ${url}`);
+            const response = await fetch(url, { cache: 'no-store' });
+            if (response.ok) {
+              const data = await response.json();
+              const varCount = Object.keys(data.variables || {}).length;
+              console.log(`✅ [VariablesPanel] Received ${varCount} variables from server after factory reset`);
+              setVariables(data.variables || {});
+            } else {
+              console.error(`❌ [VariablesPanel] Failed to reload variables after factory reset: ${response.status}`);
+            }
+          } catch (error) {
+            console.error('❌ [VariablesPanel] Error reloading variables after factory reset:', error);
+          }
+        };
+
         // Listen to window custom events dispatched by main SSE handler
         console.log('✅ Attaching variable window event listeners');
         window.addEventListener('variable:created', handleVariableCreated);
@@ -5237,6 +5277,7 @@
         window.addEventListener('variable:valueChanged', handleVariableValueChanged);
         window.addEventListener('variable:deleted', handleVariableDeleted);
         window.addEventListener('variables:reset', handleVariablesReset);
+        window.addEventListener('factoryReset', handleFactoryReset);
 
         return () => {
           window.removeEventListener('variable:created', handleVariableCreated);
@@ -5244,8 +5285,9 @@
           window.removeEventListener('variable:valueChanged', handleVariableValueChanged);
           window.removeEventListener('variable:deleted', handleVariableDeleted);
           window.removeEventListener('variables:reset', handleVariablesReset);
+          window.removeEventListener('factoryReset', handleFactoryReset);
         };
-      }, []);
+      }, [API_BASE]);
 
       // Helper: Update variable value in document when it changes
       const updateVariableInDocument = async (variable) => {
