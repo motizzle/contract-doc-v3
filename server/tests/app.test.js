@@ -377,14 +377,58 @@ describe('Phase 3: API Integrity', () => {
     await request('POST', '/api/v1/checkin', { userId: 'userA' });
   });
 
-  // Test: Factory reset API response
-  // Purpose: Verifies factory reset endpoint returns success
-  // Why: Testing infrastructure depends on reliable reset functionality
-  // Coverage: Factory reset API contract
+  // Test: Scenario Loader API response
+  // Purpose: Verifies scenario loader endpoint returns success
+  // Why: Testing infrastructure depends on reliable reset/load functionality
+  // Coverage: Scenario loader API contract (renamed from factory reset)
   test('POST /api/v1/factory-reset returns 200', async () => {
     const res = await request('POST', '/api/v1/factory-reset', { userId: 'test' });
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
+  });
+
+  // Test: Scenario Loader - Load 'empty' preset
+  // Purpose: Verifies loading the empty/factory reset preset works
+  // Why: Empty preset is the baseline clean state
+  // Coverage: Preset loading with explicit preset parameter
+  test('scenario loader loads empty preset', async () => {
+    const res = await request('POST', '/api/v1/factory-reset', { userId: 'test', preset: 'empty' });
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    
+    // Verify state is clean
+    const state = await request('GET', '/api/v1/state-matrix?userId=test');
+    expect(state.body.config.checkoutStatus.isCheckedOut).toBe(false);
+    
+    // Verify messages are empty
+    const messages = await request('GET', '/api/v1/messages?userId=test');
+    expect(messages.body.messages.length).toBe(0);
+    
+    // Verify activity log is empty
+    const activity = await request('GET', '/api/v1/activity?userId=test');
+    expect(activity.body.activities.length).toBe(0);
+  });
+
+  // Test: Scenario Loader - Load 'nearly-done' preset
+  // Purpose: Verifies loading the nearly-done preset with populated data
+  // Why: Nearly-done preset should restore a 90% complete state
+  // Coverage: Preset loading with pre-populated data
+  test('scenario loader loads nearly-done preset', async () => {
+    const res = await request('POST', '/api/v1/factory-reset', { userId: 'test', preset: 'nearly-done' });
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    
+    // Verify activity log has data (should have 28 activities)
+    const activity = await request('GET', '/api/v1/activity?userId=test');
+    expect(activity.body.activities.length).toBeGreaterThan(0);
+    
+    // Verify messages exist (should have 4 messages)
+    const messages = await request('GET', '/api/v1/messages?userId=test');
+    expect(messages.body.messages.length).toBeGreaterThan(0);
+    
+    // Verify versions exist (should have v2-v7)
+    const versions = await request('GET', '/api/v1/versions');
+    expect(versions.body.items.length).toBeGreaterThan(1);
   });
 
   // Test: UI component serving
@@ -1867,6 +1911,218 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     const messagesRes = await request('GET', '/api/v1/messages?userId=user1');
     expect(messagesRes.status).toBe(200);
     expect(messagesRes.body.messages.length).toBe(0);
+  });
+
+  // Test: Scenario Loader - List scenarios
+  // Purpose: Verifies GET /api/v1/scenarios returns presets and user scenarios
+  // Why: Users need to see available presets and their saved scenarios
+  // Coverage: Scenario listing API
+  test('GET /api/v1/scenarios returns presets and user scenarios', async () => {
+    const res = await request('GET', '/api/v1/scenarios');
+    expect(res.status).toBe(200);
+    expect(res.body.presets).toBeDefined();
+    expect(Array.isArray(res.body.presets)).toBe(true);
+    expect(res.body.presets.length).toBe(2); // empty and nearly-done
+    expect(res.body.scenarios).toBeDefined();
+    expect(Array.isArray(res.body.scenarios)).toBe(true);
+    
+    // Verify preset structure
+    const emptyPreset = res.body.presets.find(p => p.id === 'empty');
+    expect(emptyPreset).toBeDefined();
+    expect(emptyPreset.label).toBe('Factory Reset');
+    expect(emptyPreset.type).toBe('preset');
+    
+    const nearlyDonePreset = res.body.presets.find(p => p.id === 'nearly-done');
+    expect(nearlyDonePreset).toBeDefined();
+    expect(nearlyDonePreset.label).toBe('Almost Done');
+    expect(nearlyDonePreset.type).toBe('preset');
+  });
+
+  // Test: Scenario Loader - Save current state as scenario
+  // Purpose: Verifies users can save current application state as a named scenario
+  // Why: Users need to save custom demo/test states for reuse
+  // Coverage: Scenario save API
+  test('POST /api/v1/scenarios/save creates a new user scenario', async () => {
+    // Reset to clean state first
+    await request('POST', '/api/v1/factory-reset', { userId: 'test' });
+    await sleep(500);
+    
+    // Create some data
+    await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [{ userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }],
+      text: 'Test scenario message',
+      internal: false
+    });
+    
+    await request('POST', '/api/v1/title', {
+      userId: 'user1',
+      title: 'Test Scenario Document'
+    });
+    
+    // Save as scenario
+    const saveRes = await request('POST', '/api/v1/scenarios/save', {
+      name: 'Test Demo Scenario',
+      description: 'A test scenario for demos',
+      userId: 'user1'
+    });
+    expect(saveRes.status).toBe(200);
+    expect(saveRes.body.ok).toBe(true);
+    expect(saveRes.body.scenario).toBeDefined();
+    expect(saveRes.body.scenario.id).toBeDefined();
+    expect(saveRes.body.scenario.label).toBe('Test Demo Scenario');
+    
+    // Verify scenario appears in list
+    const listRes = await request('GET', '/api/v1/scenarios');
+    expect(listRes.status).toBe(200);
+    const savedScenario = listRes.body.scenarios.find(s => s.label === 'Test Demo Scenario');
+    expect(savedScenario).toBeDefined();
+    expect(savedScenario.type).toBe('user');
+    expect(savedScenario.description).toBe('A test scenario for demos');
+  });
+
+  // Test: Scenario Loader - Prevent duplicate scenario names
+  // Purpose: Verifies validation prevents saving scenarios with duplicate names
+  // Why: Scenario names must be unique to avoid confusion
+  // Coverage: Scenario name uniqueness validation
+  test('POST /api/v1/scenarios/save rejects duplicate names', async () => {
+    // Save first scenario
+    const save1 = await request('POST', '/api/v1/scenarios/save', {
+      name: 'Duplicate Test',
+      description: 'First save',
+      userId: 'user1'
+    });
+    expect(save1.status).toBe(200);
+    
+    // Try to save with same name
+    const save2 = await request('POST', '/api/v1/scenarios/save', {
+      name: 'Duplicate Test',
+      description: 'Second save',
+      userId: 'user1'
+    });
+    expect(save2.status).toBe(409); // Conflict
+    expect(save2.body.error).toContain('already exists');
+  });
+
+  // Test: Scenario Loader - Prevent saving with reserved names
+  // Purpose: Verifies validation prevents using preset names for user scenarios
+  // Why: Preset names ('empty', 'nearly-done') are reserved
+  // Coverage: Reserved name validation
+  test('POST /api/v1/scenarios/save rejects reserved names', async () => {
+    const saveEmpty = await request('POST', '/api/v1/scenarios/save', {
+      name: 'empty',
+      description: 'Should fail',
+      userId: 'user1'
+    });
+    expect(saveEmpty.status).toBe(400);
+    expect(saveEmpty.body.error).toContain('reserved');
+    
+    const saveNearlyDone = await request('POST', '/api/v1/scenarios/save', {
+      name: 'nearly-done',
+      description: 'Should fail',
+      userId: 'user1'
+    });
+    expect(saveNearlyDone.status).toBe(400);
+    expect(saveNearlyDone.body.error).toContain('reserved');
+  });
+
+  // Test: Scenario Loader - Load user-saved scenario
+  // Purpose: Verifies users can load their saved scenarios
+  // Why: Saved scenarios must be loadable to be useful
+  // Coverage: Loading user scenarios via factory-reset endpoint
+  test('user-saved scenarios can be loaded', async () => {
+    // Create and save a scenario
+    await request('POST', '/api/v1/factory-reset', { userId: 'test' });
+    await sleep(500);
+    
+    await request('POST', '/api/v1/messages', {
+      userId: 'user1',
+      recipients: [{ userId: 'user2', label: 'User 2', email: 'user2@test.com', internal: true }],
+      text: 'Saved scenario message',
+      internal: false
+    });
+    
+    const saveRes = await request('POST', '/api/v1/scenarios/save', {
+      name: 'Load Test Scenario',
+      description: 'For testing load',
+      userId: 'user1'
+    });
+    expect(saveRes.status).toBe(200);
+    const scenarioId = saveRes.body.scenario.id;
+    
+    // Reset to clean state
+    await request('POST', '/api/v1/factory-reset', { userId: 'test' });
+    await sleep(500);
+    
+    // Verify clean
+    const beforeLoad = await request('GET', '/api/v1/messages?userId=user1');
+    expect(beforeLoad.body.messages.length).toBe(0);
+    
+    // Load the saved scenario
+    const loadRes = await request('POST', '/api/v1/factory-reset', {
+      userId: 'test',
+      preset: scenarioId
+    });
+    expect(loadRes.status).toBe(200);
+    await sleep(500);
+    
+    // Verify data was restored
+    const afterLoad = await request('GET', '/api/v1/messages?userId=user1');
+    expect(afterLoad.body.messages.length).toBeGreaterThan(0);
+  });
+
+  // Test: Scenario Loader - Delete user scenario
+  // Purpose: Verifies users can delete their saved scenarios
+  // Why: Users need to clean up old/unwanted scenarios
+  // Coverage: Scenario deletion API
+  test('DELETE /api/v1/scenarios/:id deletes user scenario', async () => {
+    // Create a scenario
+    const saveRes = await request('POST', '/api/v1/scenarios/save', {
+      name: 'To Delete',
+      description: 'Will be deleted',
+      userId: 'user1'
+    });
+    expect(saveRes.status).toBe(200);
+    const scenarioId = saveRes.body.scenario.id;
+    
+    // Verify it exists
+    const listBefore = await request('GET', '/api/v1/scenarios');
+    const scenarioBefore = listBefore.body.scenarios.find(s => s.id === scenarioId);
+    expect(scenarioBefore).toBeDefined();
+    
+    // Delete it
+    const deleteRes = await request('DELETE', `/api/v1/scenarios/${scenarioId}?userId=user1`);
+    expect(deleteRes.status).toBe(200);
+    expect(deleteRes.body.ok).toBe(true);
+    
+    // Verify it's gone
+    const listAfter = await request('GET', '/api/v1/scenarios');
+    const scenarioAfter = listAfter.body.scenarios.find(s => s.id === scenarioId);
+    expect(scenarioAfter).toBeUndefined();
+  });
+
+  // Test: Scenario Loader - Prevent deleting presets
+  // Purpose: Verifies system prevents deletion of preset scenarios
+  // Why: Preset scenarios must be protected from deletion
+  // Coverage: Preset deletion protection
+  test('DELETE /api/v1/scenarios/:id rejects preset deletion', async () => {
+    const deleteEmpty = await request('DELETE', '/api/v1/scenarios/empty?userId=user1');
+    expect(deleteEmpty.status).toBe(403);
+    expect(deleteEmpty.body.error).toContain('Cannot delete preset');
+    
+    const deleteNearlyDone = await request('DELETE', '/api/v1/scenarios/nearly-done?userId=user1');
+    expect(deleteNearlyDone.status).toBe(403);
+    expect(deleteNearlyDone.body.error).toContain('Cannot delete preset');
+  });
+
+  // Test: Scenario Loader - Delete non-existent scenario
+  // Purpose: Verifies graceful handling of deleting non-existent scenarios
+  // Why: API should return proper 404 for missing scenarios
+  // Coverage: 404 handling for scenario deletion
+  test('DELETE /api/v1/scenarios/:id returns 404 for non-existent scenario', async () => {
+    const deleteRes = await request('DELETE', '/api/v1/scenarios/non-existent-scenario?userId=user1');
+    expect(deleteRes.status).toBe(404);
+    expect(deleteRes.body.error).toContain('not found');
   });
 
   test('POST /api/v1/approvals/notify sends notifications', async () => {

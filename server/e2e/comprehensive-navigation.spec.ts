@@ -134,7 +134,7 @@ test.describe('Comprehensive Navigation & Features', () => {
       if (consoleErrors.length > 0) {
         console.log('Console errors found:', consoleErrors);
       }
-      expect(consoleErrors.length).toBe(0);
+       expect(consoleErrors.length).toBe(0);
     });
   });
 
@@ -661,6 +661,216 @@ test.describe('Comprehensive Navigation & Features', () => {
       const appRoot = page.locator('#app-root');
       const isVisible = await appRoot.isVisible();
       expect(isVisible).toBe(true);
+    });
+  });
+
+  // Scenario Loader Tests
+  test.describe('Scenario Loader', () => {
+    
+    // E2E Test: Scenario Loader modal opens
+    // Purpose: Verifies the Scenario Loader modal can be opened from the 3-dot menu
+    // Why: Users need access to scenario management
+    // Coverage: Modal opening, UI visibility
+    test('Scenario Loader modal opens from 3-dot menu', async ({ page }) => {
+      await page.goto('/web/view.html');
+      await page.waitForSelector('.tab', { timeout: 10000 });
+      
+      // Find and click the 3-dot menu button (⋮)
+      const menuButton = page.locator('button', { hasText: '⋮' });
+      await menuButton.click();
+      await page.waitForTimeout(500);
+      
+      // Click "Scenario Loader" menu item
+      const scenarioLoaderItem = page.locator('.ui-menu-item', { hasText: 'Scenario Loader' });
+      if (await scenarioLoaderItem.isVisible()) {
+        await scenarioLoaderItem.click();
+        await page.waitForTimeout(1000);
+        
+        // Verify modal opened
+        const modalTitle = page.locator('.modal-header', { hasText: 'Scenario Loader' });
+        const isVisible = await modalTitle.isVisible();
+        expect(isVisible).toBe(true);
+      }
+    });
+
+    // E2E Test: Scenario Loader displays presets
+    // Purpose: Verifies the two preset scenarios (Factory Reset, Almost Done) are visible
+    // Why: Users need to see available presets
+    // Coverage: Preset rendering in modal
+    test('Scenario Loader displays preset scenarios', async ({ page }) => {
+      await page.goto('/web/view.html');
+      await page.waitForSelector('.tab', { timeout: 10000 });
+      
+      // Open Scenario Loader modal
+      const menuButton = page.locator('button', { hasText: '⋮' });
+      await menuButton.click();
+      await page.waitForTimeout(500);
+      
+      const scenarioLoaderItem = page.locator('.ui-menu-item', { hasText: 'Scenario Loader' });
+      if (await scenarioLoaderItem.isVisible()) {
+        await scenarioLoaderItem.click();
+        await page.waitForTimeout(1000);
+        
+        // Verify preset scenarios are displayed
+        const modalContent = await page.locator('.modal-panel').textContent();
+        expect(modalContent).toContain('Factory Reset');
+        expect(modalContent).toContain('Almost Done');
+        expect(modalContent).toContain('Save Current Scenario');
+      }
+    });
+
+    // E2E Test: Load empty preset
+    // Purpose: Verifies loading the empty/factory reset preset clears all data
+    // Why: Empty preset must restore clean baseline state
+    // Coverage: Preset loading, data clearing
+    test('loading empty preset clears all data', async ({ page }) => {
+      await page.goto('/web/view.html');
+      await page.waitForSelector('.tab', { timeout: 10000 });
+      
+      // Navigate to Messages tab to verify messages exist or create some
+      const messagesTab = page.locator('.tab', { hasText: 'Messages' });
+      await messagesTab.click();
+      await page.waitForTimeout(500);
+      
+      // Open Scenario Loader modal
+      const menuButton = page.locator('button', { hasText: '⋮' });
+      await menuButton.click();
+      await page.waitForTimeout(500);
+      
+      const scenarioLoaderItem = page.locator('.ui-menu-item', { hasText: 'Scenario Loader' });
+      if (await scenarioLoaderItem.isVisible()) {
+        await scenarioLoaderItem.click();
+        await page.waitForTimeout(1000);
+        
+        // Click "Factory Reset" card
+        const factoryResetCard = page.locator('text=Factory Reset').first();
+        await factoryResetCard.click();
+        await page.waitForTimeout(2000);
+        
+        // Verify Messages tab is now empty
+        await messagesTab.click();
+        await page.waitForTimeout(500);
+        
+        const hasEmptyState = await page.evaluate(() => {
+          const text = document.body.textContent || '';
+          return text.includes('No messages') || text.includes('New Message');
+        });
+        expect(hasEmptyState).toBe(true);
+      }
+    });
+
+    // E2E Test: Load nearly-done preset
+    // Purpose: Verifies loading the nearly-done preset restores populated state
+    // Why: Nearly-done preset must restore 90% complete negotiation state
+    // Coverage: Preset loading with pre-populated data
+    test('loading nearly-done preset restores populated state', async ({ page }) => {
+      await page.goto('/web/view.html');
+      await page.waitForSelector('.tab', { timeout: 10000 });
+      
+      // First reset to empty
+      await page.evaluate(async () => {
+        await fetch('https://localhost:4001/api/v1/factory-reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: 'test', preset: 'empty' })
+        });
+      });
+      await page.waitForTimeout(2000);
+      
+      // Open Scenario Loader modal
+      const menuButton = page.locator('button', { hasText: '⋮' });
+      await menuButton.click();
+      await page.waitForTimeout(500);
+      
+      const scenarioLoaderItem = page.locator('.ui-menu-item', { hasText: 'Scenario Loader' });
+      if (await scenarioLoaderItem.isVisible()) {
+        await scenarioLoaderItem.click();
+        await page.waitForTimeout(1000);
+        
+        // Click "Almost Done" card
+        const almostDoneCard = page.locator('text=Almost Done').first();
+        await almostDoneCard.click();
+        await page.waitForTimeout(2000);
+        
+        // Verify Activity tab has entries
+        const activityTab = page.locator('.tab', { hasText: 'Activity' });
+        await activityTab.click();
+        await page.waitForTimeout(500);
+        
+        const hasActivity = await page.evaluate(() => {
+          const activityCards = document.querySelectorAll('.activity-card');
+          return activityCards.length > 0;
+        });
+        expect(hasActivity).toBe(true);
+        
+        // Verify Messages tab has entries
+        const messagesTab = page.locator('.tab', { hasText: 'Messages' });
+        await messagesTab.click();
+        await page.waitForTimeout(500);
+        
+        const hasMessages = await page.evaluate(() => {
+          const text = document.body.textContent || '';
+          return !text.includes('No messages');
+        });
+        expect(hasMessages).toBe(true);
+      }
+    });
+
+    // E2E Test: Save Current Scenario button is visible
+    // Purpose: Verifies the "Save Current Scenario" option is present
+    // Why: Users need to see the save option to create custom scenarios
+    // Coverage: Save scenario UI visibility
+    test('Save Current Scenario button is visible in modal', async ({ page }) => {
+      await page.goto('/web/view.html');
+      await page.waitForSelector('.tab', { timeout: 10000 });
+      
+      // Open Scenario Loader modal
+      const menuButton = page.locator('button', { hasText: '⋮' });
+      await menuButton.click();
+      await page.waitForTimeout(500);
+      
+      const scenarioLoaderItem = page.locator('.ui-menu-item', { hasText: 'Scenario Loader' });
+      if (await scenarioLoaderItem.isVisible()) {
+        await scenarioLoaderItem.click();
+        await page.waitForTimeout(1000);
+        
+        // Verify "Save Current Scenario" card is visible
+        const saveCard = page.locator('text=Save Current Scenario');
+        const isVisible = await saveCard.isVisible();
+        expect(isVisible).toBe(true);
+      }
+    });
+
+    // E2E Test: Scenario Loader modal closes
+    // Purpose: Verifies the modal can be closed via X button
+    // Why: Users need to dismiss the modal
+    // Coverage: Modal closing functionality
+    test('Scenario Loader modal closes when X is clicked', async ({ page }) => {
+      await page.goto('/web/view.html');
+      await page.waitForSelector('.tab', { timeout: 10000 });
+      
+      // Open Scenario Loader modal
+      const menuButton = page.locator('button', { hasText: '⋮' });
+      await menuButton.click();
+      await page.waitForTimeout(500);
+      
+      const scenarioLoaderItem = page.locator('.ui-menu-item', { hasText: 'Scenario Loader' });
+      if (await scenarioLoaderItem.isVisible()) {
+        await scenarioLoaderItem.click();
+        await page.waitForTimeout(1000);
+        
+        // Click X button
+        const closeButton = page.locator('.ui-modal__close');
+        if (await closeButton.isVisible()) {
+          await closeButton.click();
+          await page.waitForTimeout(500);
+          
+          // Verify modal is no longer visible
+          const modalTitle = page.locator('.modal-header', { hasText: 'Scenario Loader' });
+          const isVisible = await modalTitle.isVisible();
+          expect(isVisible).toBe(false);
+        }
+      }
     });
   });
 });

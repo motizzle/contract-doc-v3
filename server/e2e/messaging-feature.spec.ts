@@ -239,11 +239,11 @@ test.describe('Phase 14: Messaging Feature', () => {
     }
   });
 
-  // E2E Test: Factory reset messaging recovery
-  // Purpose: Verifies messaging panel recovers correctly after factory reset
-  // Why: Factory reset must not break messaging functionality
-  // Coverage: Post-reset messaging state, modal functionality after reset
-  test('messaging panel refreshes after factory reset', async ({ page }) => {
+  // E2E Test: Scenario Loader messaging recovery
+  // Purpose: Verifies messaging panel recovers correctly after loading empty scenario
+  // Why: Scenario loader must not break messaging functionality
+  // Coverage: Post-scenario-load messaging state, modal functionality after scenario load
+  test('messaging panel refreshes after scenario loader reset', async ({ page }) => {
     await page.goto('/web/view.html');
     
     // Navigate to messaging tab
@@ -252,16 +252,16 @@ test.describe('Phase 14: Messaging Feature', () => {
     await messagesTab.click();
     await page.waitForTimeout(1000);
     
-    // Trigger factory reset via API
+    // Trigger scenario loader (empty preset) via API
     await page.evaluate(async () => {
       try {
         await fetch('https://localhost:4001/api/v1/factory-reset', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: 'admin' })
+          body: JSON.stringify({ userId: 'admin', preset: 'empty' })
         });
       } catch (e) {
-        console.error('Factory reset failed:', e);
+        console.error('Scenario loader reset failed:', e);
       }
     });
     
