@@ -1,0 +1,18 @@
+{
+  "id": "taras-doc-is-3",
+  "name": "Tara's doc is #3",
+  "description": "",
+  "slug": "taras-doc-is-3",
+  "created": "2025-10-21T06:34:01.175Z",
+  "createdBy": {
+    "userId": "user1",
+    "label": "Warren Peace"
+  },
+  "lastUsed": null,
+  "stats": {
+    "activities": 6,
+    "messages": 0,
+    "variables": 20,
+    "versions": 1
+  }
+}

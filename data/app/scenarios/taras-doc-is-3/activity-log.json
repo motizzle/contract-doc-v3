@@ -1,0 +1,113 @@
+[
+  {
+    "id": "act_1761027699034_fn2wt6v75",
+    "timestamp": 1761027699034,
+    "type": "document:upload",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "uploaded document",
+    "target": "document",
+    "details": {
+      "filename": "airport_consultant_services-2025-10-21-06-20-08--PUBLIC.docx",
+      "size": 43499,
+      "documentTitle": "Redlined & Signed"
+    },
+    "message": "Warren Peace uploaded \"airport_consultant_services-2025-10-21-06-20-08--PUBLIC.docx\""
+  },
+  {
+    "id": "act_1761028396639_iajmls3pf",
+    "timestamp": 1761028396639,
+    "type": "document:checkout",
+    "user": {
+      "id": "user2",
+      "label": "Kent Uckey",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 2,
+      "status": "draft"
+    },
+    "message": "Kent Uckey checked out \"Redlined & Signed\" (v2)"
+  },
+  {
+    "id": "act_1761028407943_bwdes85d6",
+    "timestamp": 1761028407943,
+    "type": "document:save",
+    "user": {
+      "id": "user2",
+      "label": "Kent Uckey",
+      "platform": "word"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 3,
+      "documentTitle": "Redlined & Signed"
+    },
+    "message": "Kent Uckey saved \"Redlined & Signed\" (v3)"
+  },
+  {
+    "id": "act_1761028420111_hcyn5j6sz",
+    "timestamp": 1761028420111,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "word"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 3,
+      "platform": "word",
+      "documentTitle": "Redlined & Signed",
+      "currentVersion": 3
+    },
+    "message": "Warren Peace viewed \"Redlined & Signed\" v3 (current: v3)"
+  },
+  {
+    "id": "act_1761028422994_4ba2g4fbd",
+    "timestamp": 1761028422994,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "word"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 1,
+      "platform": "word",
+      "documentTitle": "Redlined & Signed",
+      "currentVersion": 3
+    },
+    "message": "Warren Peace viewed \"Redlined & Signed\" v1 (current: v3)"
+  },
+  {
+    "id": "act_1761028425188_jf08u8fe4",
+    "timestamp": 1761028425188,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "word"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 3,
+      "platform": "word",
+      "documentTitle": "Redlined & Signed",
+      "currentVersion": 3
+    },
+    "message": "Warren Peace viewed \"Redlined & Signed\" v3 (current: v3)"
+  }
+]
