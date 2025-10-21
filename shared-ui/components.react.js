@@ -1221,7 +1221,7 @@
       const nestedItems = [
         menuItem('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true),
         menuItem('Override Checkout', actions.override, !!btns.overrideBtn),
-        menuItem('Factory Reset', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'factory-reset' } })); } catch {} }, 130); } catch {} }, true, { danger: true }),
+        menuItem('Scenario Loader', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'factory-reset' } })); } catch {} }, 130); } catch {} }, true, { danger: true }),
       ].filter(Boolean);
 
       // Compute special case: only checkout is available (plus menu)
@@ -4236,91 +4236,307 @@
     function FactoryResetModal(props) {
       const { onClose } = props || {};
       const API_BASE = getApiBase();
-      const [selectedPreset, setSelectedPreset] = React.useState('empty');
+      const { currentUser } = React.useContext(StateContext);
+      const [view, setView] = React.useState('main'); // 'main', 'save', 'confirm-delete', 'confirm-load'
+      const [selectedScenario, setSelectedScenario] = React.useState(null);
+      const [scenarios, setScenarios] = React.useState({ presets: [], scenarios: [] });
       const [busy, setBusy] = React.useState(false);
       const [error, setError] = React.useState('');
+      const [saveName, setSaveName] = React.useState('');
+      const [saveDescription, setSaveDescription] = React.useState('');
+      const [scenarioToDelete, setScenarioToDelete] = React.useState(null);
 
-      const presets = [
-        {
-          id: 'empty',
-          label: 'Original Factory Reset',
-          description: 'Reset to the original blank document with no messages, variables, or history.'
-        },
-        {
-          id: 'nearly-done',
-          label: 'Almost Done with Negotiations',
-          description: 'Contract near completion with version history, messages, and approvals.'
+      // Load scenarios on mount
+      React.useEffect(() => {
+        loadScenarios();
+      }, []);
+
+      const loadScenarios = async () => {
+        try {
+          const r = await fetch(`${API_BASE}/api/v1/scenarios`);
+          if (r.ok) {
+            const data = await r.json();
+            setScenarios(data);
+          }
+        } catch (e) {
+          console.error('Failed to load scenarios:', e);
         }
-      ];
+      };
 
-      const reset = async () => {
+      const loadScenario = async (id, isPreset) => {
         setBusy(true); setError('');
         try {
           const r = await fetch(`${API_BASE}/api/v1/factory-reset`, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ preset: selectedPreset }) 
+            body: JSON.stringify({ preset: id, userId: currentUser?.id || 'user1' }) 
           });
           if (!r.ok) {
             const j = await r.json().catch(() => ({}));
-            throw new Error(j.error || 'Factory reset failed');
+            throw new Error(j.error || 'Failed to load scenario');
           }
-          // Wait a moment for server to process
           await new Promise(resolve => setTimeout(resolve, 300));
-          // Close modal and let SSE events handle the rest
           onClose?.();
         } catch (e) { 
-          setError(e.message || 'Failed to reset'); 
+          setError(e.message || 'Failed to load scenario'); 
         } finally { 
           setBusy(false); 
         }
       };
 
-      return React.createElement('div', { className: 'modal-overlay', onClick: (e) => { if (e.target === e.currentTarget && !busy) onClose?.(); } },
-        React.createElement('div', { className: 'modal-panel', style: { maxWidth: '500px' } }, [
-          React.createElement('div', { key: 'h', className: 'modal-header' }, [
-            React.createElement('div', { key: 't', className: 'font-bold' }, 'Factory Reset'),
-            React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: onClose, disabled: busy }, '✕')
-          ]),
-          error ? React.createElement('div', { key: 'e', className: 'bg-error-50 text-error-700 p-2 border-t border-b border-error-200' }, error) : null,
-          React.createElement('div', { key: 'b', className: 'modal-body', style: { display: 'flex', flexDirection: 'column', gap: '20px' } }, [
-            React.createElement('div', { key: 'warning', style: { fontSize: '14px', color: '#6B7280' } },
-              'This will clear all working data and versions.'
-            ),
-            React.createElement('div', { key: 'presets', style: { display: 'flex', flexDirection: 'column', gap: '12px' } },
-              presets.map((preset, i) => 
+      const saveScenario = async () => {
+        if (!saveName.trim() || saveName.trim().length < 3) {
+          setError('Scenario name required (min 3 characters)');
+          return;
+        }
+        setBusy(true); setError('');
+        try {
+          const r = await fetch(`${API_BASE}/api/v1/scenarios/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: saveName.trim(),
+              description: saveDescription.trim(),
+              userId: currentUser?.id || 'user1'
+            })
+          });
+          if (!r.ok) {
+            const j = await r.json().catch(() => ({}));
+            throw new Error(j.error || 'Failed to save scenario');
+          }
+          setSaveName('');
+          setSaveDescription('');
+          setView('main');
+          await loadScenarios();
+        } catch (e) {
+          setError(e.message || 'Failed to save scenario');
+        } finally {
+          setBusy(false);
+        }
+      };
+
+      const deleteScenario = async (id) => {
+        setBusy(true); setError('');
+        try {
+          const r = await fetch(`${API_BASE}/api/v1/scenarios/${id}?userId=${currentUser?.id || 'user1'}`, {
+            method: 'DELETE'
+          });
+          if (!r.ok) {
+            const j = await r.json().catch(() => ({}));
+            throw new Error(j.error || 'Failed to delete scenario');
+          }
+          setScenarioToDelete(null);
+          setView('main');
+          await loadScenarios();
+        } catch (e) {
+          setError(e.message || 'Failed to delete scenario');
+        } finally {
+          setBusy(false);
+        }
+      };
+
+      // Main view
+      if (view === 'main') {
+        return React.createElement('div', { className: 'modal-overlay', onClick: (e) => { if (e.target === e.currentTarget && !busy) onClose?.(); } },
+          React.createElement('div', { className: 'modal-panel', style: { maxWidth: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' } }, [
+            React.createElement('div', { key: 'h', className: 'modal-header' }, [
+              React.createElement('div', { key: 't', className: 'font-bold' }, 'Scenario Loader'),
+              React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: onClose, disabled: busy }, '✕')
+            ]),
+            error ? React.createElement('div', { key: 'e', className: 'bg-error-50 text-error-700 p-2 border-t border-b border-error-200' }, error) : null,
+            React.createElement('div', { key: 'b', className: 'modal-body', style: { display: 'flex', flexDirection: 'column', gap: '24px', overflowY: 'auto' } }, [
+              React.createElement('div', { key: 'desc', style: { fontSize: '14px', color: '#6B7280' } },
+                'Load a preset scenario or save your current state for reuse.'
+              ),
+              // Presets section
+              React.createElement('div', { key: 'presets-section' }, [
+                React.createElement('h3', { key: 'title', style: { fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#374151' } }, 'Preset Scenarios'),
+                React.createElement('div', { key: 'cards', style: { display: 'flex', flexDirection: 'column', gap: '12px' } },
+                  scenarios.presets.map(preset => 
+                    React.createElement('div', { 
+                      key: preset.id, 
+                      style: {
+                        border: '2px solid #D1D5DB',
+                        borderRadius: '8px',
+                        padding: '16px',
+                        cursor: busy ? 'not-allowed' : 'pointer',
+                        backgroundColor: '#FFFFFF',
+                        transition: 'all 0.2s'
+                      },
+                      onMouseEnter: (e) => { e.currentTarget.style.borderColor = '#6366F1'; },
+                      onMouseLeave: (e) => { e.currentTarget.style.borderColor = '#D1D5DB'; },
+                      onClick: () => !busy && loadScenario(preset.id, true)
+                    }, [
+                      React.createElement('div', { key: 'label', style: { fontWeight: 600, fontSize: '16px', marginBottom: '4px' } }, preset.label),
+                      React.createElement('div', { key: 'desc', style: { fontSize: '14px', color: '#6B7280' } }, preset.description)
+                    ])
+                  )
+                ),
+                // Save Current Scenario card
                 React.createElement('div', { 
-                  key: preset.id, 
+                  key: 'save-card',
                   style: {
-                    border: selectedPreset === preset.id ? '2px solid #6366F1' : '2px solid #D1D5DB',
+                    border: '2px dashed #9CA3AF',
                     borderRadius: '8px',
                     padding: '16px',
                     cursor: busy ? 'not-allowed' : 'pointer',
-                    backgroundColor: selectedPreset === preset.id ? '#EEF2FF' : '#FFFFFF',
-                    transition: 'all 0.2s'
+                    backgroundColor: '#F9FAFB',
+                    transition: 'all 0.2s',
+                    marginTop: '4px'
                   },
-                  onClick: () => !busy && setSelectedPreset(preset.id)
+                  onMouseEnter: (e) => { e.currentTarget.style.borderColor = '#6366F1'; e.currentTarget.style.backgroundColor = '#EEF2FF'; },
+                  onMouseLeave: (e) => { e.currentTarget.style.borderColor = '#9CA3AF'; e.currentTarget.style.backgroundColor = '#F9FAFB'; },
+                  onClick: () => !busy && setView('save')
                 }, [
-                  React.createElement('div', { key: 'label', style: { fontWeight: 600, fontSize: '16px', marginBottom: '4px' } }, preset.label),
-                  React.createElement('div', { key: 'desc', style: { fontSize: '14px', color: '#6B7280' } }, preset.description)
+                  React.createElement('div', { key: 'label', style: { fontWeight: 600, fontSize: '16px', marginBottom: '4px', color: '#6366F1' } }, '+ Save Current Scenario'),
+                  React.createElement('div', { key: 'desc', style: { fontSize: '14px', color: '#6B7280' } }, 'Capture current state as a reusable scenario.')
                 ])
-              )
-            )
-          ]),
-          React.createElement('div', { key: 'f', className: 'modal-footer' }, [
-            React.createElement(UIButton, { key: 'cancel', label: 'Cancel', onClick: onClose, disabled: busy }),
-            React.createElement(UIButton, { 
-              key: 'go', 
-              label: 'Reset', 
-              onClick: reset, 
-              variant: 'primary', 
-              isLoading: busy, 
-              loadingLabel: 'Resetting…',
-              danger: true
-            }),
+              ]),
+              // User scenarios section
+              scenarios.scenarios.length > 0 ? React.createElement('div', { key: 'user-scenarios' }, [
+                React.createElement('h3', { key: 'title', style: { fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#374151' } }, 'Your Saved Scenarios'),
+                React.createElement('div', { key: 'cards', style: { display: 'flex', flexDirection: 'column', gap: '12px' } },
+                  scenarios.scenarios.map(scenario => 
+                    React.createElement('div', { 
+                      key: scenario.id, 
+                      style: {
+                        border: '2px solid #D1D5DB',
+                        borderRadius: '8px',
+                        padding: '16px',
+                        backgroundColor: '#FFFFFF',
+                        transition: 'all 0.2s',
+                        position: 'relative'
+                      },
+                      onMouseEnter: (e) => { e.currentTarget.style.borderColor = '#6366F1'; },
+                      onMouseLeave: (e) => { e.currentTarget.style.borderColor = '#D1D5DB'; }
+                    }, [
+                      React.createElement('div', { 
+                        key: 'content',
+                        style: { cursor: busy ? 'not-allowed' : 'pointer', paddingRight: '40px' },
+                        onClick: () => !busy && loadScenario(scenario.id, false)
+                      }, [
+                        React.createElement('div', { key: 'label', style: { fontWeight: 600, fontSize: '16px', marginBottom: '4px' } }, scenario.label),
+                        scenario.description ? React.createElement('div', { key: 'desc', style: { fontSize: '14px', color: '#6B7280', marginBottom: '8px' } }, scenario.description) : null,
+                        scenario.stats ? React.createElement('div', { key: 'stats', style: { fontSize: '12px', color: '#9CA3AF' } }, 
+                          `${scenario.stats.messages || 0} messages • ${scenario.stats.variables || 0} variables • ${scenario.stats.versions || 0} versions • ${scenario.stats.activities || 0} activities`
+                        ) : null
+                      ]),
+                      React.createElement('button', {
+                        key: 'delete',
+                        style: {
+                          position: 'absolute',
+                          top: '16px',
+                          right: '16px',
+                          background: 'none',
+                          border: 'none',
+                          cursor: busy ? 'not-allowed' : 'pointer',
+                          fontSize: '18px',
+                          color: '#EF4444',
+                          padding: '4px 8px'
+                        },
+                        onClick: (e) => {
+                          e.stopPropagation();
+                          if (!busy) {
+                            setScenarioToDelete(scenario);
+                            setView('confirm-delete');
+                          }
+                        },
+                        title: 'Delete scenario'
+                      }, '🗑️')
+                    ])
+                  )
+                )
+              ]) : null
+            ]),
+            React.createElement('div', { key: 'f', className: 'modal-footer' }, [
+              React.createElement(UIButton, { key: 'close', label: 'Close', onClick: onClose, disabled: busy })
+            ])
           ])
-        ])
-      );
+        );
+      }
+
+      // Save dialog
+      if (view === 'save') {
+        return React.createElement('div', { className: 'modal-overlay', onClick: (e) => { if (e.target === e.currentTarget && !busy) setView('main'); } },
+          React.createElement('div', { className: 'modal-panel', style: { maxWidth: '500px' } }, [
+            React.createElement('div', { key: 'h', className: 'modal-header' }, [
+              React.createElement('div', { key: 't', className: 'font-bold' }, 'Save Current Scenario'),
+              React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: () => setView('main'), disabled: busy }, '✕')
+            ]),
+            error ? React.createElement('div', { key: 'e', className: 'bg-error-50 text-error-700 p-2 border-t border-b border-error-200' }, error) : null,
+            React.createElement('div', { key: 'b', className: 'modal-body', style: { display: 'flex', flexDirection: 'column', gap: '16px' } }, [
+              React.createElement('div', { key: 'name' }, [
+                React.createElement('label', { key: 'label', style: { display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 500 } }, 'Scenario Name *'),
+                React.createElement('input', {
+                  key: 'input',
+                  type: 'text',
+                  value: saveName,
+                  onChange: (e) => setSaveName(e.target.value),
+                  placeholder: 'e.g., Q1 Demo, Vendor Negotiation',
+                  maxLength: 50,
+                  disabled: busy,
+                  style: { width: '100%', padding: '8px', border: '1px solid #D1D5DB', borderRadius: '4px', fontSize: '14px' }
+                })
+              ]),
+              React.createElement('div', { key: 'desc' }, [
+                React.createElement('label', { key: 'label', style: { display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 500 } }, 'Description (optional)'),
+                React.createElement('textarea', {
+                  key: 'input',
+                  value: saveDescription,
+                  onChange: (e) => setSaveDescription(e.target.value),
+                  placeholder: 'Brief description of this scenario',
+                  maxLength: 200,
+                  rows: 2,
+                  disabled: busy,
+                  style: { width: '100%', padding: '8px', border: '1px solid #D1D5DB', borderRadius: '4px', fontSize: '14px', resize: 'vertical' }
+                })
+              ])
+            ]),
+            React.createElement('div', { key: 'f', className: 'modal-footer' }, [
+              React.createElement(UIButton, { key: 'cancel', label: 'Cancel', onClick: () => setView('main'), disabled: busy }),
+              React.createElement(UIButton, { 
+                key: 'save', 
+                label: 'Save Scenario', 
+                onClick: saveScenario, 
+                variant: 'primary', 
+                isLoading: busy,
+                loadingLabel: 'Saving…',
+                disabled: !saveName.trim() || saveName.trim().length < 3
+              })
+            ])
+          ])
+        );
+      }
+
+      // Delete confirmation
+      if (view === 'confirm-delete' && scenarioToDelete) {
+        return React.createElement('div', { className: 'modal-overlay', onClick: (e) => { if (e.target === e.currentTarget && !busy) setView('main'); } },
+          React.createElement('div', { className: 'modal-panel', style: { maxWidth: '400px' } }, [
+            React.createElement('div', { key: 'h', className: 'modal-header' }, [
+              React.createElement('div', { key: 't', className: 'font-bold' }, 'Delete Scenario?'),
+              React.createElement('button', { key: 'x', className: 'ui-modal__close', onClick: () => setView('main'), disabled: busy }, '✕')
+            ]),
+            React.createElement('div', { key: 'b', className: 'modal-body' }, [
+              React.createElement('p', { key: 'msg', style: { fontSize: '14px', color: '#374151' } }, 
+                `Are you sure you want to delete "${scenarioToDelete.label}"? This cannot be undone.`
+              )
+            ]),
+            React.createElement('div', { key: 'f', className: 'modal-footer' }, [
+              React.createElement(UIButton, { key: 'cancel', label: 'Cancel', onClick: () => setView('main'), disabled: busy }),
+              React.createElement(UIButton, { 
+                key: 'delete', 
+                label: 'Delete', 
+                onClick: () => deleteScenario(scenarioToDelete.id), 
+                danger: true,
+                isLoading: busy,
+                loadingLabel: 'Deleting…'
+              })
+            ])
+          ])
+        );
+      }
+
+      return null;
     }
 
     function OpenGovModal(props) {

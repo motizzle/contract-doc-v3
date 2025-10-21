@@ -2894,7 +2894,7 @@ app.post('/api/v1/factory-reset', (req, res) => {
       console.log(`🔄 Factory reset with preset: ${preset}`);
     
     // Log activity BEFORE clearing activity log!
-    logActivity('system:factory-reset', userId, { platform, preset });
+    logActivity('system:scenario-loaded', userId, { platform, preset });
     
     // Remove working document overlay first
     const wDoc = path.join(workingDocumentsDir, 'default.docx');
@@ -3108,6 +3108,283 @@ app.post('/api/v1/factory-reset', (req, res) => {
   } catch (e) {
     console.error('Factory reset error:', e);
     return res.status(500).json({ error: 'Factory reset failed', details: e.message });
+  }
+});
+
+// ============================================================================
+// Scenarios API - User-created scenario management
+// ============================================================================
+
+// Helper: Generate URL-safe slug from scenario name
+function generateSlug(name) {
+  return name
+    .toLowerCase()
+    .replace(/\s+/g, '-')           // Replace spaces with hyphens
+    .replace(/[^a-z0-9-]/g, '')     // Remove non-alphanumeric except hyphens
+    .replace(/-+/g, '-')            // Collapse multiple hyphens
+    .replace(/^-|-$/g, '')          // Trim leading/trailing hyphens
+    .substring(0, 50);              // Truncate to 50 chars
+}
+
+// POST /api/v1/scenarios/save - Save current state as a named scenario
+app.post('/api/v1/scenarios/save', (req, res) => {
+  try {
+    const { name, description = '', userId = 'user1' } = req.body || {};
+    
+    // Validation
+    if (!name || typeof name !== 'string' || name.trim().length < 3) {
+      return res.status(400).json({ error: 'Scenario name required (min 3 characters)' });
+    }
+    if (name.length > 50) {
+      return res.status(400).json({ error: 'Scenario name too long (max 50 characters)' });
+    }
+    if (description && description.length > 200) {
+      return res.status(400).json({ error: 'Description too long (max 200 characters)' });
+    }
+    
+    // Generate slug
+    const slug = generateSlug(name);
+    if (!slug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+      return res.status(400).json({ error: 'Invalid scenario name - must contain alphanumeric characters' });
+    }
+    
+    // Check reserved slugs
+    const reservedSlugs = ['empty', 'nearly-done'];
+    if (reservedSlugs.includes(slug)) {
+      return res.status(400).json({ error: `Scenario name '${name}' is reserved` });
+    }
+    
+    // Check if scenario already exists
+    const scenariosDir = path.join(dataAppDir, 'scenarios');
+    const scenarioDir = path.join(scenariosDir, slug);
+    if (fs.existsSync(scenarioDir)) {
+      return res.status(409).json({ error: `Scenario '${name}' already exists` });
+    }
+    
+    // Create scenarios directory if it doesn't exist
+    if (!fs.existsSync(scenariosDir)) {
+      fs.mkdirSync(scenariosDir, { recursive: true });
+    }
+    
+    // Create scenario directory
+    fs.mkdirSync(scenarioDir, { recursive: true });
+    
+    // Copy all state files from data/app
+    const filesToCopy = [
+      'state.json',
+      'activity-log.json',
+      'messages.json',
+      'chat.json',
+      'fields.json',
+      'variables.json',
+      'approvals.json'
+    ];
+    
+    for (const file of filesToCopy) {
+      const srcPath = path.join(dataAppDir, file);
+      const destPath = path.join(scenarioDir, file);
+      if (fs.existsSync(srcPath)) {
+        fs.copyFileSync(srcPath, destPath);
+      }
+    }
+    
+    // Copy working document
+    const workingDoc = path.join(workingDocumentsDir, 'default.docx');
+    const destDoc = path.join(scenarioDir, 'default.docx');
+    if (fs.existsSync(workingDoc)) {
+      fs.copyFileSync(workingDoc, destDoc);
+    } else {
+      // Fallback to canonical
+      const canonicalDoc = path.join(dataAppDir, 'documents', 'default.docx');
+      if (fs.existsSync(canonicalDoc)) {
+        fs.copyFileSync(canonicalDoc, destDoc);
+      }
+    }
+    
+    // Copy versions directory
+    const versionsDestDir = path.join(scenarioDir, 'versions');
+    if (!fs.existsSync(versionsDestDir)) {
+      fs.mkdirSync(versionsDestDir, { recursive: true });
+    }
+    if (fs.existsSync(versionsDir)) {
+      const versionFiles = fs.readdirSync(versionsDir);
+      for (const vFile of versionFiles) {
+        if (vFile.endsWith('.docx') || vFile.endsWith('.json')) {
+          const srcPath = path.join(versionsDir, vFile);
+          const destPath = path.join(versionsDestDir, vFile);
+          fs.copyFileSync(srcPath, destPath);
+        }
+      }
+    }
+    
+    // Get user info
+    const users = loadUsers();
+    const user = users.find(u => u.id === userId) || { id: userId, label: 'Unknown User' };
+    
+    // Calculate stats
+    const stats = {};
+    try {
+      const activityLog = JSON.parse(fs.readFileSync(path.join(scenarioDir, 'activity-log.json'), 'utf8'));
+      stats.activities = activityLog.length;
+    } catch {}
+    try {
+      const messages = JSON.parse(fs.readFileSync(path.join(scenarioDir, 'messages.json'), 'utf8'));
+      stats.messages = messages.messages?.length || 0;
+    } catch {}
+    try {
+      const variables = JSON.parse(fs.readFileSync(path.join(scenarioDir, 'variables.json'), 'utf8'));
+      stats.variables = Object.keys(variables).length;
+    } catch {}
+    try {
+      const approvals = JSON.parse(fs.readFileSync(path.join(scenarioDir, 'approvals.json'), 'utf8'));
+      stats.approvals = approvals.approvers?.filter(a => a.approved).length || 0;
+    } catch {}
+    try {
+      if (fs.existsSync(versionsDestDir)) {
+        const vFiles = fs.readdirSync(versionsDestDir).filter(f => f.endsWith('.docx'));
+        stats.versions = vFiles.length;
+      }
+    } catch {}
+    
+    // Create metadata.json
+    const metadata = {
+      id: slug,
+      name: name.trim(),
+      description: description.trim(),
+      slug,
+      created: new Date().toISOString(),
+      createdBy: {
+        userId: user.id,
+        label: user.label
+      },
+      lastUsed: null,
+      stats
+    };
+    
+    fs.writeFileSync(
+      path.join(scenarioDir, 'metadata.json'),
+      JSON.stringify(metadata, null, 2),
+      'utf8'
+    );
+    
+    // Log activity
+    logActivity('system:scenario-saved', userId, { scenarioName: name, slug });
+    
+    console.log(`✅ Saved scenario: ${name} (${slug})`);
+    
+    return res.json({
+      ok: true,
+      scenario: {
+        id: slug,
+        label: name,
+        description,
+        created: metadata.created
+      }
+    });
+    
+  } catch (e) {
+    console.error('Error saving scenario:', e);
+    return res.status(500).json({ error: 'Failed to save scenario', details: e.message });
+  }
+});
+
+// GET /api/v1/scenarios - List all scenarios (presets + user-saved)
+app.get('/api/v1/scenarios', (req, res) => {
+  try {
+    // Load presets
+    const presets = [
+      {
+        id: 'empty',
+        label: 'Factory Reset',
+        description: 'Reset to blank slate with 20 pre-populated signature/value variables.',
+        type: 'preset'
+      },
+      {
+        id: 'nearly-done',
+        label: 'Almost Done',
+        description: '90% complete negotiation with messages, variables, versions, and approvals.',
+        type: 'preset'
+      }
+    ];
+    
+    // Load user scenarios
+    const scenarios = [];
+    const scenariosDir = path.join(dataAppDir, 'scenarios');
+    
+    if (fs.existsSync(scenariosDir)) {
+      const dirs = fs.readdirSync(scenariosDir);
+      for (const dir of dirs) {
+        const metadataPath = path.join(scenariosDir, dir, 'metadata.json');
+        if (fs.existsSync(metadataPath)) {
+          try {
+            const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+            scenarios.push({
+              id: metadata.id || dir,
+              label: metadata.name,
+              description: metadata.description || '',
+              created: metadata.created,
+              lastUsed: metadata.lastUsed,
+              type: 'user',
+              stats: metadata.stats || {}
+            });
+          } catch (e) {
+            console.error(`Error reading scenario metadata: ${dir}`, e);
+          }
+        }
+      }
+    }
+    
+    // Sort user scenarios by created date (newest first)
+    scenarios.sort((a, b) => new Date(b.created) - new Date(a.created));
+    
+    return res.json({ presets, scenarios });
+    
+  } catch (e) {
+    console.error('Error listing scenarios:', e);
+    return res.status(500).json({ error: 'Failed to list scenarios', details: e.message });
+  }
+});
+
+// DELETE /api/v1/scenarios/:id - Delete a user-saved scenario
+app.delete('/api/v1/scenarios/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId = 'user1' } = req.query;
+    
+    // Prevent deleting presets
+    const reservedIds = ['empty', 'nearly-done'];
+    if (reservedIds.includes(id)) {
+      return res.status(403).json({ error: 'Cannot delete preset scenarios' });
+    }
+    
+    // Check if scenario exists
+    const scenariosDir = path.join(dataAppDir, 'scenarios');
+    const scenarioDir = path.join(scenariosDir, id);
+    
+    if (!fs.existsSync(scenarioDir)) {
+      return res.status(404).json({ error: 'Scenario not found' });
+    }
+    
+    // Read metadata for logging
+    let scenarioName = id;
+    try {
+      const metadata = JSON.parse(fs.readFileSync(path.join(scenarioDir, 'metadata.json'), 'utf8'));
+      scenarioName = metadata.name || id;
+    } catch {}
+    
+    // Delete the directory
+    fs.rmSync(scenarioDir, { recursive: true, force: true });
+    
+    // Log activity
+    logActivity('system:scenario-deleted', userId, { scenarioName, slug: id });
+    
+    console.log(`✅ Deleted scenario: ${scenarioName} (${id})`);
+    
+    return res.json({ ok: true });
+    
+  } catch (e) {
+    console.error('Error deleting scenario:', e);
+    return res.status(500).json({ error: 'Failed to delete scenario', details: e.message });
   }
 });
 
