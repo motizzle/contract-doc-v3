@@ -1786,3 +1786,60 @@ select.standard-select:focus,
     opacity: 1;
   }
 }
+
+/* ===========================================
+   CUSTOM CHECKBOX STYLING
+   Consistent blue checkbox across web & add-in
+   =========================================== */
+
+/* Hide the default checkbox */
+input[type="checkbox"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #D1D5DB; /* gray-300 */
+  border-radius: 4px;
+  background-color: #FFFFFF;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+/* Hover state */
+input[type="checkbox"]:hover {
+  border-color: #6366F1; /* indigo-500 */
+}
+
+/* Checked state - blue background */
+input[type="checkbox]:checked {
+  background-color: #6366F1; /* indigo-500 */
+  border-color: #6366F1; /* indigo-500 */
+}
+
+/* White checkmark */
+input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* Disabled state */
+input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Focus state */
+input[type="checkbox]:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
