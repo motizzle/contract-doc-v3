@@ -1980,6 +1980,9 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     expect(savedScenario).toBeDefined();
     expect(savedScenario.type).toBe('user');
     expect(savedScenario.description).toBe('A test scenario for demos');
+    
+    // Cleanup: Delete the test scenario
+    await request('DELETE', `/api/v1/scenarios/${saveRes.body.scenario.id}?userId=user1`);
   });
 
   // Test: Scenario Loader - Prevent duplicate scenario names
@@ -2003,6 +2006,9 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     });
     expect(save2.status).toBe(409); // Conflict
     expect(save2.body.error).toContain('already exists');
+    
+    // Cleanup: Delete the test scenario
+    await request('DELETE', `/api/v1/scenarios/${save1.body.scenario.id}?userId=user1`);
   });
 
   // Test: Scenario Loader - Prevent saving with reserved names
@@ -2070,6 +2076,9 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     // Verify data was restored
     const afterLoad = await request('GET', '/api/v1/messages?userId=user1');
     expect(afterLoad.body.messages.length).toBeGreaterThan(0);
+    
+    // Cleanup: Delete the test scenario
+    await request('DELETE', `/api/v1/scenarios/${scenarioId}?userId=user1`);
   });
 
   // Test: Scenario Loader - Delete user scenario
