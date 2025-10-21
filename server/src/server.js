@@ -3124,9 +3124,8 @@ app.post('/api/v1/factory-reset', (req, res) => {
     broadcast({ type: 'activity:reset' });
     // Notify all clients to clear AI chat state
     broadcast({ type: 'chat:reset', payload: { all: true } });
-    // Notify clients to clear variables
-    broadcast({ type: 'variables:reset' });
-    // Notify clients that versions list changed (emptied)
+    // Note: Don't broadcast variables:reset - let the document reload naturally apply variables from preset
+    // Notify clients that versions list changed
     broadcast({ type: 'versions:update' });
     const approvals = loadApprovals();
     broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary: computeApprovalsSummary(approvals.approvers) });
