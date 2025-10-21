@@ -1278,7 +1278,7 @@
       };
 
       const nestedItems = [
-        menuItem('Open New Document', handleOpenNewDocument, true),
+        menuItem('Open New Document', handleOpenNewDocument, !isWord), // Hide in add-in (already has button)
         menuItem('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true),
         menuItem('Override Checkout', actions.override, !!btns.overrideBtn),
         menuItem('Scenario Loader', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'factory-reset' } })); } catch {} }, 130); } catch {} }, true, { danger: true }),
