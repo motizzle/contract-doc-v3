@@ -4474,7 +4474,7 @@
                   placeholder: 'e.g., Q1 Demo, Vendor Negotiation',
                   maxLength: 50,
                   disabled: busy,
-                  style: { width: '100%', padding: '8px', border: '1px solid #D1D5DB', borderRadius: '4px', fontSize: '14px' }
+                  style: { width: '100%', padding: '8px', border: '1px solid #D1D5DB', borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box' }
                 })
               ]),
               React.createElement('div', { key: 'desc' }, [
@@ -4487,7 +4487,7 @@
                   maxLength: 200,
                   rows: 2,
                   disabled: busy,
-                  style: { width: '100%', padding: '8px', border: '1px solid #D1D5DB', borderRadius: '4px', fontSize: '14px', resize: 'vertical' }
+                  style: { width: '100%', padding: '8px', border: '1px solid #D1D5DB', borderRadius: '4px', fontSize: '14px', resize: 'vertical', boxSizing: 'border-box' }
                 })
               ])
             ]),

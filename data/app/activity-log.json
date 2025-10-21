@@ -548,5 +548,114 @@
       }
     },
     "message": "Warren Peace approved (4/5)"
+  },
+  {
+    "id": "act_1761025882890_7fgjmcecn",
+    "timestamp": 1761025882890,
+    "type": "workflow:remove-approval",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "removed approval",
+    "target": "workflow",
+    "details": {
+      "targetUserId": "user1",
+      "progress": {
+        "approved": 3,
+        "total": 5
+      }
+    },
+    "message": "Warren Peace removed approval (3/5)"
+  },
+  {
+    "id": "act_1761025884822_25uirkdsa",
+    "timestamp": 1761025884822,
+    "type": "workflow:remove-approval",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "removed approval",
+    "target": "workflow",
+    "details": {
+      "targetUserId": "user3",
+      "progress": {
+        "approved": 2,
+        "total": 5
+      }
+    },
+    "message": "Warren Peace removed approval on behalf of Yuri Lee Laffed (2/5)"
+  },
+  {
+    "id": "act_1761025896062_ek2hvyz15",
+    "timestamp": 1761025896062,
+    "type": "system:scenario-saved",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "performed action",
+    "target": "document",
+    "details": {
+      "scenarioName": "asdfafda",
+      "slug": "asdfafda",
+      "userId": "user1",
+      "user": {
+        "id": "user1",
+        "label": "Warren Peace",
+        "platform": "web"
+      }
+    },
+    "message": "Warren Peace performed system scenario-saved"
+  },
+  {
+    "id": "act_1761025979213_1gm2c39hx",
+    "timestamp": 1761025979214,
+    "type": "system:scenario-deleted",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "performed action",
+    "target": "document",
+    "details": {
+      "scenarioName": "test 1",
+      "slug": "test-1",
+      "userId": "user1",
+      "user": {
+        "id": "user1",
+        "label": "Warren Peace",
+        "platform": "web"
+      }
+    },
+    "message": "Warren Peace performed system scenario-deleted"
+  },
+  {
+    "id": "act_1761025995439_zs3k5044y",
+    "timestamp": 1761025995439,
+    "type": "system:scenario-deleted",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "performed action",
+    "target": "document",
+    "details": {
+      "scenarioName": "asdfafda",
+      "slug": "asdfafda",
+      "userId": "user1",
+      "user": {
+        "id": "user1",
+        "label": "Warren Peace",
+        "platform": "web"
+      }
+    },
+    "message": "Warren Peace performed system scenario-deleted"
   }
 ]
