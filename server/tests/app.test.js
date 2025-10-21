@@ -419,11 +419,12 @@ describe('Phase 3: API Integrity', () => {
     expect(res.body.ok).toBe(true);
     
     // Verify activity log has data (should have 28 activities)
-    const activity = await request('GET', '/api/v1/activity?userId=test');
+    const activity = await request('GET', '/api/v1/activity?userId=user1');
     expect(activity.body.activities.length).toBeGreaterThan(0);
     
     // Verify messages exist (should have 4 messages)
-    const messages = await request('GET', '/api/v1/messages?userId=test');
+    // Use user1 since they're a participant in the preset messages
+    const messages = await request('GET', '/api/v1/messages?userId=user1');
     expect(messages.body.messages.length).toBeGreaterThan(0);
     
     // Verify versions exist (should have v2-v7)
