@@ -2959,6 +2959,11 @@ app.post('/api/v1/factory-reset', (req, res) => {
     }
     bumpApprovalsRevision();
     
+    // Broadcast updated approvals to all clients so UI reflects new state
+    const loadedApprovals = loadApprovals();
+    const approvalsSummary = computeApprovalsSummary(loadedApprovals.approvers);
+    broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary: approvalsSummary });
+    
     // Load preset files
     const presetStateFile = path.join(presetDir, 'state.json');
     const presetActivityFile = path.join(presetDir, 'activity-log.json');
