@@ -3116,7 +3116,7 @@ app.post('/api/v1/factory-reset', (req, res) => {
     
     bumpRevision();
     persistState();
-    broadcast({ type: 'factoryReset', preset });
+    broadcast({ type: 'factoryReset', preset, revision: serverState.revision });
     broadcast({ type: 'documentRevert' });
     // Notify clients to clear local messaging state
     broadcast({ type: 'messaging:reset' });

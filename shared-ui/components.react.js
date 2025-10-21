@@ -586,14 +586,8 @@
                               setViewingVersion(v); 
                             }
                           } catch {}
-                          // Refresh state to pick up preset's title and other config
-                          try { 
-                            console.log('🔄 [Factory Reset] Calling refresh() in Word add-in...');
-                            await refresh(); 
-                            console.log('✅ [Factory Reset] Refresh completed in Word add-in');
-                          } catch (e) { 
-                            console.error('❌ [Factory Reset] Refresh failed in Word add-in:', e);
-                          }
+                          // Note: refresh() will be called automatically by useEffect when revision updates from SSE
+                          console.log('✅ [Factory Reset] Document reloaded in Word add-in');
                         }
                       } catch {}
                     })();
@@ -612,12 +606,10 @@
                           setLoadedVersion(v); 
                           setViewingVersion(v); 
                         }
-                        // Refresh state to pick up preset's title and other config
-                        console.log('🔄 [Factory Reset] Calling refresh() in web...');
-                        await refresh();
-                        console.log('✅ [Factory Reset] Refresh completed in web. New title:', j?.config?.title);
+                        // Note: refresh() will be called automatically by useEffect when revision updates from SSE
+                        console.log('✅ [Factory Reset] Version updated in web:', v);
                       } catch (e) {
-                        console.error('❌ [Factory Reset] Refresh failed in web:', e);
+                        console.error('❌ [Factory Reset] Failed to update version in web:', e);
                       }
                     })();
                   }
