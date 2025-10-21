@@ -1,0 +1,19 @@
+{
+  "id": "test-1",
+  "name": "test 1",
+  "description": "extra versions",
+  "slug": "test-1",
+  "created": "2025-10-21T05:33:21.246Z",
+  "createdBy": {
+    "userId": "user1",
+    "label": "Warren Peace"
+  },
+  "lastUsed": null,
+  "stats": {
+    "activities": 42,
+    "messages": 4,
+    "variables": 23,
+    "approvals": 4,
+    "versions": 13
+  }
+}

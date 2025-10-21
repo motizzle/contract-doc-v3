@@ -2709,8 +2709,6 @@
           overflowY: 'auto', 
           overflowX: 'hidden', 
           padding: isAddin ? '8px' : '12px',
-          border: '1px solid #e5e7eb',
-          borderRadius: 8,
           background: '#fff'
         } 
       }, 
