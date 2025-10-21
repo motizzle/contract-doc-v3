@@ -1218,7 +1218,67 @@
         };
         return ReactDOM.createPortal(React.createElement('div', { style, ref: (el) => { menuRef.current = el; try { if (menuElRef) menuElRef.current = el; } catch {} } }, children), document.body);
       }
+      // Handler for opening a new document
+      const handleOpenNewDocument = async () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        input.onchange = async (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          
+          try {
+            // Upload to server (will log activity automatically)
+            const API_BASE = getApiBase();
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('userId', currentUser || 'user1');
+            formData.append('platform', isWord ? 'word' : 'web');
+            
+            const uploadResponse = await fetch(`${API_BASE}/api/v1/document/upload`, {
+              method: 'POST',
+              body: formData
+            });
+            
+            if (!uploadResponse.ok) {
+              console.error('Upload failed:', uploadResponse.status);
+              return;
+            }
+            
+            // Platform-specific document loading
+            if (isWord) {
+              // Insert document into Word
+              const buf = await file.arrayBuffer();
+              const b64 = (function(buf) {
+                let bin = '';
+                const bytes = new Uint8Array(buf);
+                for (let i = 0; i < bytes.byteLength; i++) {
+                  bin += String.fromCharCode(bytes[i]);
+                }
+                return btoa(bin);
+              })(buf);
+              
+              try {
+                await Word.run(async (context) => {
+                  context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace);
+                  await context.sync();
+                });
+              } catch (err) {
+                console.error('Error inserting document into Word:', err);
+              }
+            } else {
+              // Load document in SuperDoc
+              setDocumentSource(file);
+            }
+          } catch (err) {
+            console.error('Error opening new document:', err);
+          }
+        };
+        input.click();
+      };
+
       const nestedItems = [
+        menuItem('Open New Document', handleOpenNewDocument, true),
         menuItem('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true),
         menuItem('Override Checkout', actions.override, !!btns.overrideBtn),
         menuItem('Scenario Loader', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'factory-reset' } })); } catch {} }, 130); } catch {} }, true, { danger: true }),
