@@ -50,15 +50,18 @@ Scenario Loader allows users to quickly switch between predefined application st
 
 **Card Layout:**
 - **Label:** "Factory Reset"
-- **Description:** "Reset to blank slate - no messages, variables, or history."
+- **Description:** "Reset to blank slate with 20 pre-populated signature/value variables."
 - **ID:** `empty`
 - **Action:** Loads `data/app/presets/empty/`
 
 **Behavior:**
-- Clears all working data
-- Restores canonical document
-- Resets to version 1
-- Clears all messages, variables, activity
+- Clears all messages, activity log, approvals
+- Restores 20 seed variables from variables.seed.json:
+  - 10 signature variables (CEO, CFO, General Counsel, Director of Procurement, etc.)
+  - 10 value variables (Contract Number, Date, Amount, Vendor Name, etc.)
+- Resets chat history to default greeting ("Shall we...contract?")
+- Restores canonical default.docx (REDLINED & SIGNED MOU)
+- Sets status to "draft", version to 1
 
 ---
 
@@ -73,12 +76,13 @@ Scenario Loader allows users to quickly switch between predefined application st
 **Behavior:**
 - Restores 28 activity entries
 - Loads 4 messages (4 posts)
-- Restores 20 variables
+- Restores chat history with contextual conversations about the MOU for all 5 users
+- Restores 20 variables (10 signatures + 10 values)
 - Loads 6 version snapshots (v2-v7)
 - Sets document to version 7
-- Saves the 6 versions previously specified
 - Restores 4/5 approvals (Kent Uckey not approved)
-- Sets the document status to final
+- Sets document status to "final"
+- Sets updatedBy to "Kent Ucky" (user2)
 
 ---
 
@@ -162,16 +166,50 @@ data/app/scenarios/{slug}/
 ├── state.json
 ├── activity-log.json
 ├── messages.json
+├── chat.json              # AI chat history for all users
 ├── fields.json
 ├── variables.json
 ├── approvals.json
-├── metadata.json          # NEW: name, description, created date
+├── metadata.json          # Scenario metadata (see schema below)
 ├── default.docx
 └── versions/
     ├── v2.docx
     ├── v2.json
     └── ...
 ```
+
+**metadata.json Schema:**
+```json
+{
+  "id": "demo-2025",
+  "name": "Demo 2025",
+  "description": "Q1 demo with full workflow",
+  "slug": "demo-2025",
+  "created": "2025-10-21T12:34:56.789Z",
+  "createdBy": {
+    "userId": "user1",
+    "label": "Warren Peace"
+  },
+  "lastUsed": null,
+  "stats": {
+    "activities": 28,
+    "messages": 4,
+    "variables": 20,
+    "versions": 6,
+    "approvals": 4
+  }
+}
+```
+
+**Fields:**
+- `id` (string, required): Unique identifier (same as slug)
+- `name` (string, required): User-provided display name
+- `description` (string, optional): User-provided description (max 200 chars)
+- `slug` (string, required): URL-safe identifier derived from name
+- `created` (ISO 8601 string, required): Creation timestamp
+- `createdBy` (object, required): User who created the scenario
+- `lastUsed` (ISO 8601 string, nullable): Last time scenario was loaded
+- `stats` (object, optional): Counts of major data types for preview
 
 ---
 
@@ -217,10 +255,19 @@ data/app/scenarios/{slug}/
 
 **Behavior:**
 1. Validate name (required, unique, not reserved)
-2. Generate slug from name (`demo-2025`)
+2. Generate slug from name using these rules:
+   - Convert to lowercase
+   - Replace spaces with hyphens
+   - Remove all non-alphanumeric characters except hyphens
+   - Collapse multiple hyphens to single hyphen
+   - Trim leading/trailing hyphens
+   - Truncate to 50 characters
+   - Examples: "Demo 2025" → "demo-2025", "Q1 Demo: Vendor!" → "q1-demo-vendor"
+   - Validation: Must match regex `^[a-z0-9]+(?:-[a-z0-9]+)*$`
+   - Reserved slugs: `empty`, `nearly-done`
 3. Create `data/app/scenarios/{slug}/` directory
 4. Copy all current state files (same as capture script)
-5. Create `metadata.json` with name, description, created date
+5. Create `metadata.json` with name, description, created date, stats
 6. Log activity: `system:scenario-saved`
 
 **Response:**
@@ -299,6 +346,26 @@ data/app/scenarios/{slug}/
 
 ---
 
+## Backward Compatibility
+
+### API Endpoint Strategy
+
+**Current Endpoint:**
+- `/api/v1/factory-reset` - Accepts `{ preset: "empty" | "nearly-done" }`
+
+**Proposed Approach:**
+- Keep `/api/v1/factory-reset` as primary endpoint (no breaking changes)
+- Activity log type changes from `system:factory-reset` to `system:scenario-loaded`
+- UI renames "Factory Reset" to "Scenario Loader" (cosmetic change only)
+
+**Rationale:**
+- Minimizes risk - no backend API changes required
+- Frontend changes are purely presentational
+- Maintains full backward compatibility with existing code
+- Can add `/api/v1/scenarios/load` in future if needed for consistency
+
+---
+
 ## Implementation Plan
 
 ### Phase 1: Rename Factory Reset → Scenario Loader (1 hour)
@@ -368,8 +435,8 @@ data/app/scenarios/{slug}/
 - [ ] Verify metadata.json created
 
 ### Load Scenario
-- [ ] Load preset (`empty`) → resets correctly
-- [ ] Load preset (`nearly-done`) → loads 26 activities, 4 messages, etc.
+- [ ] Load preset (`empty`) → resets correctly with 20 seed variables
+- [ ] Load preset (`nearly-done`) → loads 28 activities, 4 messages, chat history, 6 versions, etc.
 - [ ] Load user scenario → restores exact state
 - [ ] Load non-existent scenario → 404 error
 
@@ -377,6 +444,13 @@ data/app/scenarios/{slug}/
 - [ ] Delete user scenario → files removed
 - [ ] Delete preset → 403 error
 - [ ] Delete non-existent scenario → 404 error
+
+### Chat History
+- [ ] Empty preset loads default greeting for all users
+- [ ] Nearly-done preset loads contextual conversations about MOU
+- [ ] Chat history persists after scenario load
+- [ ] Chat reset works correctly (clears to greeting)
+- [ ] User scenarios save and restore chat.json correctly
 
 ### UI
 - [ ] Modal shows 3 options (Factory Reset, Almost Done, Save)
@@ -390,14 +464,17 @@ data/app/scenarios/{slug}/
 
 ## Migration from Factory Reset
 
-### Backward Compatibility
+### Data Migration
 
 **Existing presets:** Keep as-is
 - `data/app/presets/empty/` → "Factory Reset" option
 - `data/app/presets/nearly-done/` → "Almost Done" option
-- `data/app/presets/initial-vendor/` → Hidden (not shown in UI for now)
 
-**No data migration needed** - presets continue to work, just accessed through new UI
+**No data migration needed** - presets continue to work, just accessed through renamed UI
+
+**New functionality:**
+- User-created scenarios will be stored in `data/app/scenarios/` (new directory)
+- Presets remain in `data/app/presets/` (system-managed, read-only)
 
 ---
 
@@ -429,7 +506,19 @@ data/app/scenarios/{slug}/
 - `data/app/scenarios/` - New directory for user scenarios
 
 **Tools:**
-- `tools/scripts/capture-preset.ps1` - Reusable for scenario capture
+- `tools/scripts/capture-preset.ps1` - Script to capture current state as a preset
+  - **Usage:** `.\capture-preset.ps1 -Preset "preset-name"`
+  - Copies all state files from `data/app/` to `data/app/presets/{preset-name}/`
+  - Copies working document from `data/working/documents/`
+  - Copies all version snapshots from `data/working/versions/`
+  - Files captured: state.json, activity-log.json, messages.json, chat.json, fields.json, variables.json, approvals.json, default.docx, versions/*
+  - Used for creating/updating presets manually or building user scenarios
+  
+- `tools/scripts/test-reset-simple.ps1` - Script to test preset loading
+  - **Usage:** `.\test-reset-simple.ps1 -Preset "preset-name"`
+  - Calls `/api/v1/factory-reset` API with specified preset
+  - Verifies all data files are loaded correctly
+  - Reports file sizes and counts for validation
 
 ---
 
@@ -465,8 +554,9 @@ data/app/scenarios/{slug}/
 - [ ] Saved scenarios load correctly
 - [ ] Saved scenarios can be deleted
 - [ ] Presets cannot be deleted
-- [ ] All data restored correctly (messages, variables, versions, approvals, activity)
+- [ ] All data restored correctly (messages, chat, variables, versions, approvals, activity, fields)
 - [ ] Activity log tracks scenario saves/loads/deletes
+- [ ] Chat history persists correctly across scenario loads
 
 ---
 
