@@ -3534,7 +3534,8 @@
       React.useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
       const box = React.createElement('div', { className: 'chat-container' }, messages.map((m, i) => {
         const who = (typeof m === 'string' && /^\[/.test(m)) ? (m.match(/^\[([^\]]+)\]/)?.[1] || '') : '';
-        const isMine = who && who === currentUser;
+        // Treat [user] prefix as "mine" for the current user, or match exact user ID
+        const isMine = who && (who === 'user' || who === currentUser);
         const ts = new Date().toLocaleTimeString();
         const text = typeof m === 'string' ? m.replace(/^\[[^\]]+\]\s*/, '') : String(m);
         const rowCls = 'chat-bubble-row ' + (isMine ? 'mine' : 'other');
