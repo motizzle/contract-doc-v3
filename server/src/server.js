@@ -2494,7 +2494,7 @@ app.post('/api/v1/status/cycle', (req, res) => {
     // Log activity (skip in test mode)
     if (!testMode) {
       try {
-        const userId = req.body?.userId || 'user1';
+    const userId = req.body?.userId || 'user1';
         const docContext = getDocumentContext();
         logActivity('document:status-change', userId, { 
           from: cur, 
@@ -2530,13 +2530,13 @@ app.post('/api/v1/document/upload', upload.single('file'), (req, res) => {
     if (!testMode) {
       try {
         const docContext = getDocumentContext();
-        logActivity('document:upload', userId, {
-          filename: req.file?.originalname || 'default.docx',
-          size: req.file?.size,
+    logActivity('document:upload', userId, {
+      filename: req.file?.originalname || 'default.docx',
+      size: req.file?.size,
           documentTitle: docContext.title,
           version: docContext.version,
-          platform
-        });
+      platform
+    });
       } catch (err) {
         console.error('Error logging upload activity:', err);
       }
@@ -2612,13 +2612,13 @@ app.post('/api/v1/save-progress', (req, res) => {
     if (!testMode) {
       try {
         const docContext = getDocumentContext();
-        logActivity('document:save', userId, {
-          autoSave: false,
-          size: bytes.length,
+    logActivity('document:save', userId, {
+      autoSave: false,
+      size: bytes.length,
           documentTitle: docContext.title,
           version: docContext.version,
           platform: platform || 'word'
-        });
+    });
       } catch (err) {
         console.error('Error logging save activity:', err);
       }
@@ -2822,12 +2822,12 @@ app.post('/api/v1/document/snapshot', (req, res) => {
     if (!testMode) {
       try {
         const docContext = getDocumentContext();
-        logActivity('document:snapshot', userId, {
+    logActivity('document:snapshot', userId, {
           version: docContext.version,
           documentTitle: docContext.title,
           status: docContext.status,
-          platform
-        });
+      platform
+    });
       } catch (err) {
         console.error('Error logging snapshot activity:', err);
       }
@@ -2868,10 +2868,10 @@ app.post('/api/v1/test-mode', (req, res) => {
 });
 
 // Factory reset: wipe working overlays and reset server state with preset data
-  app.post('/api/v1/factory-reset', (req, res) => {
-    try {
-      const userId = req.body?.userId || req.query?.userId || 'system';
-      const platform = req.query?.platform || req.body?.platform || 'web';
+app.post('/api/v1/factory-reset', (req, res) => {
+  try {
+    const userId = req.body?.userId || req.query?.userId || 'system';
+    const platform = req.query?.platform || req.body?.platform || 'web';
       const preset = req.body?.preset || req.query?.preset || 'empty';
 
       console.log(`🔄 [Factory Reset] Starting with preset: ${preset}`);
@@ -2921,8 +2921,21 @@ app.post('/api/v1/test-mode', (req, res) => {
         try { if (fs.statSync(p).isFile()) fs.rmSync(p); } catch {}
       }
     }
-    // Also clear approvals data
-    try { if (fs.existsSync(approvalsFilePath)) fs.rmSync(approvalsFilePath); } catch {}
+    // Handle approvals: copy from preset or clear
+    const presetApprovalsFile = path.join(presetDir, 'approvals.json');
+    if (fs.existsSync(presetApprovalsFile)) {
+      try {
+        fs.copyFileSync(presetApprovalsFile, approvalsFilePath);
+        const approvals = JSON.parse(fs.readFileSync(approvalsFilePath, 'utf8'));
+        console.log(`✅ Loaded approvals from preset: ${preset} (${approvals.approvers?.length || 0} approvers)`);
+      } catch (e) {
+        console.error(`❌ Failed to copy preset approvals:`, e.message);
+      }
+    } else {
+      // Clear approvals data if no preset
+      try { if (fs.existsSync(approvalsFilePath)) fs.rmSync(approvalsFilePath); } catch {}
+      console.log(`ℹ️  No preset approvals found - cleared approvals`);
+    }
     bumpApprovalsRevision();
     
     // Load preset files
@@ -2955,6 +2968,10 @@ app.post('/api/v1/test-mode', (req, res) => {
       serverState.lastUpdated = new Date().toISOString();
     }
     
+    // Persist state to disk
+    persistState();
+    console.log(`💾 [Factory Reset] State persisted to disk`);
+    
     // Copy preset activity log
     if (fs.existsSync(presetActivityFile)) {
       fs.copyFileSync(presetActivityFile, activityLogFilePath);
@@ -2962,8 +2979,8 @@ app.post('/api/v1/test-mode', (req, res) => {
       console.log(`✅ Loaded activity log from preset: ${preset} (${activityCount} items)`);
     } else {
       console.error(`❌ [Factory Reset] Activity log file not found: ${presetActivityFile}`);
-      // Clear activity log
-      try { if (fs.existsSync(activityLogFilePath)) fs.rmSync(activityLogFilePath); } catch {}
+    // Clear activity log
+    try { if (fs.existsSync(activityLogFilePath)) fs.rmSync(activityLogFilePath); } catch {}
     }
     
     // Copy preset messages
@@ -2974,7 +2991,7 @@ app.post('/api/v1/test-mode', (req, res) => {
     } else {
       console.error(`❌ [Factory Reset] Messages file not found: ${presetMessagesFile}`);
       // Clear messages
-      try { if (fs.existsSync(messagesFilePath)) fs.rmSync(messagesFilePath); } catch {}
+    try { if (fs.existsSync(messagesFilePath)) fs.rmSync(messagesFilePath); } catch {}
     }
     
     // Copy preset fields
@@ -2988,8 +3005,18 @@ app.post('/api/v1/test-mode', (req, res) => {
       try { if (fs.existsSync(fieldsFilePath)) fs.rmSync(fieldsFilePath); } catch {}
     }
     
-    // Clear chat history
-    try { if (fs.existsSync(chatFilePath)) fs.rmSync(chatFilePath); } catch {}
+    // Copy preset chat history
+    const presetChatFile = path.join(presetDir, 'chat.json');
+    if (fs.existsSync(presetChatFile)) {
+      fs.copyFileSync(presetChatFile, chatFilePath);
+      const chat = JSON.parse(fs.readFileSync(chatFilePath, 'utf8'));
+      const userCount = Object.keys(chat).length;
+      console.log(`✅ Loaded chat history from preset: ${preset} (${userCount} users)`);
+    } else {
+      console.error(`❌ [Factory Reset] Chat file not found: ${presetChatFile}`);
+      // Clear chat history
+      try { if (fs.existsSync(chatFilePath)) fs.rmSync(chatFilePath); } catch {}
+    }
     
     // Restore variables: check for preset-specific variables first, fall back to seed
     const presetVariablesFile = path.join(presetDir, 'variables.json');
@@ -3159,12 +3186,12 @@ app.post('/api/v1/checkin', (req, res) => {
   if (!testMode) {
     try {
       const docContext = getDocumentContext();
-      logActivity('document:checkin', userId, {
+  logActivity('document:checkin', userId, {
         documentTitle: docContext.title,
         version: docContext.version,
         checkoutDuration: durationText,
         platform: req.body?.platform || 'web'
-      });
+  });
     } catch (err) {
       console.error('Error logging checkin activity:', err);
       // Don't fail the request if logging fails
@@ -3437,18 +3464,18 @@ app.post('/api/v1/events/client', async (req, res) => {
         const result = await generateReply({ messages: [{ role: 'user', content: text }], systemPrompt });
         if (result && result.ok && result.content) {
           const replyText = String(result.content).trim();
-          broadcast({
-            type: 'chat',
+            broadcast({
+              type: 'chat',
             payload: { text: replyText, MessagePlatform: originPlatform },
-            userId: 'bot',
-            role: 'assistant',
-            platform: 'server'
-          });
-          // Save bot reply to chat history
-          try {
-            const botMessage = `[bot] ${replyText}`;
-            saveChatMessage(userId, botMessage);
-          } catch {}
+              userId: 'bot',
+              role: 'assistant',
+              platform: 'server'
+            });
+            // Save bot reply to chat history
+            try {
+              const botMessage = `[bot] ${replyText}`;
+              saveChatMessage(userId, botMessage);
+            } catch {}
         } else {
           const msg = `LLM error: ${result && result.error ? result.error : 'Unknown error'}`;
           logActivity('system:error', 'system', { error: msg, source: 'llm' });
@@ -3703,15 +3730,15 @@ app.post('/api/v1/compile', async (req, res) => {
       try {
         const docContext = getDocumentContext();
         const compiledStats = fs.existsSync(outPath) ? fs.statSync(outPath) : null;
-        logActivity('document:compile', userId, {
-          format: 'pdf',
-          includeExhibits: names.length > 0,
-          exhibitCount: names.length,
+    logActivity('document:compile', userId, {
+      format: 'pdf',
+      includeExhibits: names.length > 0,
+      exhibitCount: names.length,
           documentTitle: docContext.title,
           version: docContext.version,
           outputSize: compiledStats ? compiledStats.size : null,
-          platform
-        });
+      platform
+    });
       } catch (err) {
         console.error('Error logging compile activity:', err);
       }
@@ -3799,13 +3826,13 @@ app.post('/api/v1/send-vendor', (req, res) => {
   if (!testMode) {
     try {
       const docContext = getDocumentContext();
-      logActivity('document:send-vendor', userId, {
-        vendor: vendorName,
-        email: vendorEmail,
+  logActivity('document:send-vendor', userId, {
+    vendor: vendorName,
+    email: vendorEmail,
         documentTitle: docContext.title,
         version: docContext.version,
-        platform: req.query?.platform || req.body?.platform || 'web'
-      });
+    platform: req.query?.platform || req.body?.platform || 'web'
+  });
     } catch (err) {
       console.error('Error logging send-vendor activity:', err);
     }
