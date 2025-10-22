@@ -81,7 +81,26 @@
   </script>
 </head>
 <body>
-  <div id="og-navbar"><a class="nav-image" href="https://procurement.opengov.com" target="_blank" rel="noopener noreferrer" aria-label="OpenGov Procurement"></a></div>
+  <div id="og-navbar">
+    <a class="nav-image" href="https://procurement.opengov.com" target="_blank" rel="noopener noreferrer" aria-label="OpenGov Procurement"></a>
+    <a href="/install-addin.bat" download style="
+      position: absolute;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #4B3FFF;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: background 0.2s;
+    " onmouseover="this.style.background='#3a2ecc'" onmouseout="this.style.background='#4B3FFF'">
+      📥 Install Word Add-in
+    </a>
+  </div>
   <div id="layout">
     <div id="editor-col">
       <div id="superdoc-toolbar"></div>
