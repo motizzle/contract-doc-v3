@@ -83,7 +83,7 @@
 <body>
   <div id="og-navbar">
     <a class="nav-image" href="https://procurement.opengov.com" target="_blank" rel="noopener noreferrer" aria-label="OpenGov Procurement"></a>
-    <a href="/install-addin.bat" download style="
+    <a id="install-addin-btn" href="/install-addin.bat" download style="
       position: absolute;
       right: 20px;
       top: 50%;
@@ -101,6 +101,31 @@
       📥 Install Word Add-in
     </a>
   </div>
+  <script>
+    // Detect OS and update installer button
+    (function() {
+      const btn = document.getElementById('install-addin-btn');
+      const userAgent = navigator.userAgent.toLowerCase();
+      const isMac = /mac|darwin/.test(userAgent);
+      const isWindows = /win/.test(userAgent);
+      
+      if (isMac) {
+        btn.href = '/install-addin.command';
+        btn.download = 'install-addin.command';
+        btn.title = 'Download installer for Mac';
+      } else if (isWindows) {
+        btn.href = '/install-addin.bat';
+        btn.download = 'install-addin.bat';
+        btn.title = 'Download installer for Windows';
+      } else {
+        // Linux or other - show manual instructions link
+        btn.href = '/manifest.xml';
+        btn.download = 'manifest.xml';
+        btn.textContent = '📥 Download Manifest';
+        btn.title = 'Download manifest.xml for manual installation';
+      }
+    })();
+  </script>
   <div id="layout">
     <div id="editor-col">
       <div id="superdoc-toolbar"></div>

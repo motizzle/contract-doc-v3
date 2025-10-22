@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Install Word Add-in - Redlined & Signed</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      line-height: 1.6;
+      color: #333;
+    }
+    h1 { color: #4B3FFF; }
+    h2 { color: #666; margin-top: 30px; }
+    .platform { 
+      background: #f5f5f5; 
+      padding: 20px; 
+      border-radius: 8px; 
+      margin: 20px 0;
+    }
+    .step { margin: 10px 0; padding-left: 20px; }
+    .note { 
+      background: #fff3cd; 
+      border-left: 4px solid #ffc107; 
+      padding: 12px; 
+      margin: 15px 0;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.9em;
+    }
+    .btn {
+      display: inline-block;
+      background: #4B3FFF;
+      color: white;
+      padding: 12px 24px;
+      text-decoration: none;
+      border-radius: 6px;
+      margin: 10px 10px 10px 0;
+      font-weight: 600;
+    }
+    .btn:hover { background: #3a2ecc; }
+  </style>
+</head>
+<body>
+  <h1>📥 Install Word Add-in</h1>
+  <p>Choose your platform below to install the Redlined & Signed Word add-in.</p>
+
+  <div class="platform">
+    <h2>🪟 Windows</h2>
+    <a href="/install-addin.bat" download class="btn">Download Windows Installer</a>
+    <div class="step">
+      <strong>1.</strong> Click the button above to download <code>install-addin.bat</code>
+    </div>
+    <div class="step">
+      <strong>2.</strong> Double-click the downloaded file to run the installer
+    </div>
+    <div class="step">
+      <strong>3.</strong> Open Microsoft Word
+    </div>
+    <div class="step">
+      <strong>4.</strong> Go to <strong>Insert → My Add-ins → Shared Folder</strong>
+    </div>
+    <div class="step">
+      <strong>5.</strong> Click <strong>"Redlined & Signed"</strong>
+    </div>
+  </div>
+
+  <div class="platform">
+    <h2>🍎 Mac</h2>
+    <a href="/install-addin.command" download class="btn">Download Mac Installer</a>
+    <div class="step">
+      <strong>1.</strong> Click the button above to download <code>install-addin.command</code>
+    </div>
+    <div class="step">
+      <strong>2.</strong> Right-click the downloaded file and select <strong>"Open"</strong>
+    </div>
+    <div class="note">
+      <strong>Mac Security Note:</strong> If you get a security warning, go to <strong>System Settings → Privacy & Security</strong> and click <strong>"Open Anyway"</strong>
+    </div>
+    <div class="step">
+      <strong>3.</strong> Follow the prompts in the Terminal window
+    </div>
+    <div class="step">
+      <strong>4.</strong> Open Microsoft Word
+    </div>
+    <div class="step">
+      <strong>5.</strong> Go to <strong>Insert → My Add-ins → Shared Folder</strong>
+    </div>
+    <div class="step">
+      <strong>6.</strong> Click <strong>"Redlined & Signed"</strong>
+    </div>
+  </div>
+
+  <div class="platform">
+    <h2>🌐 Web-Only (No Desktop Word)</h2>
+    <p>If you don't have Microsoft Word installed, you can still use the web version:</p>
+    <a href="/" class="btn">Open Web App</a>
+    <div class="note">
+      <strong>Note:</strong> The web version has full document editing capabilities, but some advanced features may require the desktop Word add-in.
+    </div>
+  </div>
+
+  <hr style="margin: 40px 0; border: none; border-top: 1px solid #ddd;">
+
+  <h2>Need Help?</h2>
+  <p>Having trouble installing? <a href="/manifest.xml" download>Download the manifest.xml</a> for manual installation or contact support.</p>
+</body>
+</html>
+
