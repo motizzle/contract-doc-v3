@@ -1419,6 +1419,8 @@ app.use((req, res, next) => {
 });
 
 // Static assets
+// Serve public directory for manifest.xml and other root assets
+app.use(express.static(publicDir, { fallthrough: true }));
 // Serve vendor bundles (SuperDoc) under /vendor
 app.use('/vendor', express.static(path.join(publicDir, 'vendor'), { fallthrough: true }));
 // Serve shared UI under /ui
