@@ -8,6 +8,7 @@
   },
   "scripts": {
     "start": "node src/server.js",
+    "start:production": "NODE_ENV=production node src/server.js",
     "test": "jest --config jest.config.js",
     "e2e:install": "npx playwright install --with-deps",
     "e2e": "playwright test --config=e2e/playwright.config.ts",
