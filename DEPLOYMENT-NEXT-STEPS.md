@@ -27,16 +27,12 @@ All code is ready! Here's what happens next.
 ### Step 2: Push This Code to GitHub (If Not Already)
 
 ```bash
-# Commit everything
-git add .
-git commit -m "Add Render deployment configuration with auto-generated manifests"
+# Push deployment branch to GitHub
+# (Render will deploy FROM this branch - no need to merge to main yet)
 git push origin deployment
-
-# Or push to main if that's your deployment branch
-git checkout main
-git merge deployment
-git push origin main
 ```
+
+**Note**: Don't merge to `main` until deployment succeeds! Test first, then merge.
 
 ---
 
@@ -48,7 +44,7 @@ git push origin main
 2. **Select "Blueprint"** (this uses your `render.yaml` automatically)
 3. **Connect Repository**:
    - Select: `wordFTW` repository
-   - Branch: `deployment` (or `main` if you merged)
+   - Branch: **`deployment`** (deploy from here first, don't use main yet!)
 4. **Review & Apply**:
    - Render reads your `render.yaml`
    - Shows: Web service with 1GB disk
@@ -155,6 +151,20 @@ https://YOUR-APP.onrender.com/manifest.xml
    - Check messaging
    - Try variables
    - Everything should work!
+
+---
+
+### Step 8: Merge to Main (After Success!) ✅
+
+**Only do this AFTER everything works:**
+
+```bash
+git checkout main
+git merge deployment
+git push origin main
+```
+
+Now your production code is in `main` and you can continue developing on feature branches.
 
 ---
 
