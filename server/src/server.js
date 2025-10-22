@@ -4274,16 +4274,18 @@ initializeVariables();
 
 const httpsServer = tryCreateHttpsServer();
 let serverInstance;
+const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+
 if (httpsServer) {
   serverInstance = httpsServer;
-  httpsServer.listen(APP_PORT, () => {
-    console.log(`HTTPS server running on https://localhost:${APP_PORT}`);
+  httpsServer.listen(APP_PORT, HOST, () => {
+    console.log(`HTTPS server running on https://${HOST}:${APP_PORT}`);
     console.log(`SuperDoc backend: ${SUPERDOC_BASE_URL}`);
   });
 } else {
   serverInstance = http.createServer(app);
-  serverInstance.listen(APP_PORT, () => {
-    console.warn(`ALLOW_HTTP=true enabled. HTTP server running on http://localhost:${APP_PORT}`);
+  serverInstance.listen(APP_PORT, HOST, () => {
+    console.warn(`ALLOW_HTTP=true enabled. HTTP server running on http://${HOST}:${APP_PORT}`);
     console.warn('Install Office dev certs (preferred) or place dev-cert.pfx under server/config to enable HTTPS.');
   });
 }
