@@ -4,7 +4,7 @@
       "userId": "user1",
       "name": "Warren Peace",
       "order": 1,
-      "approved": true,
+      "approved": false,
       "notes": ""
     },
     {
@@ -18,23 +18,24 @@
       "userId": "user3",
       "name": "Yuri Lee Laffed",
       "order": 3,
-      "approved": true,
+      "approved": false,
       "notes": ""
     },
     {
       "userId": "user4",
       "name": "Hugh R Ewe",
       "order": 4,
-      "approved": true,
+      "approved": false,
       "notes": ""
     },
     {
       "userId": "user5",
       "name": "Gettysburger King",
       "order": 5,
-      "approved": true,
+      "approved": false,
       "notes": ""
     }
   ],
-  "revision": 3235
+  "revision": 0
 }
+
