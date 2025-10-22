@@ -4286,6 +4286,56 @@ function initializeVariables() {
 // Initialize on startup
 initializeVariables();
 
+// Initialize working directories and copy canonical document
+// This is critical for Render's free tier which has no persistent storage
+function initializeWorkingData() {
+  try {
+    console.log('🔄 Initializing working directories...');
+    
+    // Ensure working directories exist
+    if (!fs.existsSync(workingDocumentsDir)) {
+      fs.mkdirSync(workingDocumentsDir, { recursive: true });
+      console.log('✅ Created working documents directory');
+    }
+    if (!fs.existsSync(workingExhibitsDir)) {
+      fs.mkdirSync(workingExhibitsDir, { recursive: true });
+      console.log('✅ Created working exhibits directory');
+    }
+    if (!fs.existsSync(versionsDir)) {
+      fs.mkdirSync(versionsDir, { recursive: true });
+      console.log('✅ Created versions directory');
+    }
+    
+    // Copy canonical document to working if it doesn't exist
+    const canonicalDoc = path.join(canonicalDocumentsDir, 'default.docx');
+    const workingDoc = path.join(workingDocumentsDir, 'default.docx');
+    
+    if (fs.existsSync(canonicalDoc) && !fs.existsSync(workingDoc)) {
+      fs.copyFileSync(canonicalDoc, workingDoc);
+      console.log('✅ Copied canonical document to working directory');
+    }
+    
+    // Copy canonical exhibits to working if they don't exist
+    if (fs.existsSync(canonicalExhibitsDir)) {
+      const exhibits = fs.readdirSync(canonicalExhibitsDir);
+      for (const exhibit of exhibits) {
+        const canonicalPath = path.join(canonicalExhibitsDir, exhibit);
+        const workingPath = path.join(workingExhibitsDir, exhibit);
+        if (fs.statSync(canonicalPath).isFile() && !fs.existsSync(workingPath)) {
+          fs.copyFileSync(canonicalPath, workingPath);
+          console.log(`✅ Copied exhibit: ${exhibit}`);
+        }
+      }
+    }
+    
+    console.log('✅ Working data initialized successfully');
+  } catch (e) {
+    console.error('❌ Failed to initialize working data:', e.message);
+  }
+}
+
+initializeWorkingData();
+
 // In production, always use HTTP (Render provides HTTPS at the edge)
 // In dev, try to use HTTPS with dev certificates
 const isProduction = process.env.NODE_ENV === 'production';
