@@ -1,14 +1,14 @@
 {
   "checkedOutBy": null,
-  "lastUpdated": "2025-10-22T00:00:22.428Z",
-  "revision": 3995,
+  "lastUpdated": "2025-10-22T00:06:12.085Z",
+  "revision": 3999,
   "documentVersion": 7,
   "title": "Redlined & Signed",
   "status": "final",
   "updatedBy": {
-    "userId": "user1",
-    "label": "Warren Peace"
+    "userId": "user2",
+    "label": "Kent Uckey"
   },
   "updatedPlatform": "word",
-  "approvalsRevision": 3798
+  "approvalsRevision": 3801
 }

@@ -3181,6 +3181,7 @@
     // Comparison Tab
     function ComparisonTab() {
       const API_BASE = getApiBase();
+      const { revision } = React.useContext(StateContext);
       const [versions, setVersions] = React.useState([]);
       const [versionA, setVersionA] = React.useState('1');
       const [versionB, setVersionB] = React.useState('');
@@ -3188,18 +3189,20 @@
       const [busy, setBusy] = React.useState(false);
       const [error, setError] = React.useState('');
       const [hasCompared, setHasCompared] = React.useState(false);
+      const lastLoadedRevision = React.useRef(0);
       
       // Fetch versions list
       const loadVersions = React.useCallback(async () => {
         try {
           const url = `${API_BASE}/api/v1/versions?rev=${Date.now()}`;
-          console.log(`📡 [ComparisonTab] Fetching versions from: ${url}`);
+          console.log(`📡 [ComparisonTab] Fetching versions from: ${url} (revision: ${revision})`);
           const r = await fetch(url, { cache: 'no-store' });
           if (r.ok) {
             const j = await r.json();
             const arr = Array.isArray(j.items) ? j.items : [];
             console.log(`✅ [ComparisonTab] Received ${arr.length} versions from server`);
             setVersions(arr);
+            lastLoadedRevision.current = revision;
             // Default to version 1 and latest (only on initial load when nothing is selected)
             if (arr.length > 0 && !versionB) {
               setVersionA('1');
@@ -3211,13 +3214,17 @@
         } catch (e) {
           console.error(`❌ [ComparisonTab] Error fetching versions:`, e);
         }
-      }, [API_BASE, versionB]);
+      }, [API_BASE, revision, versionB]);
       
+      // Load versions on mount and when revision changes
       React.useEffect(() => {
-        loadVersions();
-      }, [loadVersions]);
+        console.log(`🔄 [ComparisonTab] useEffect triggered - revision: ${revision}, lastLoaded: ${lastLoadedRevision.current}`);
+        if (revision !== lastLoadedRevision.current) {
+          loadVersions();
+        }
+      }, [revision, loadVersions]);
       
-      // Listen for versions:update event to refresh list
+      // Listen for versions:update event to refresh list (still useful for non-revision-changing updates)
       React.useEffect(() => {
         const onVersionsUpdate = () => {
           console.log(`🔄 [ComparisonTab] Received versions:update event - reloading versions`);
