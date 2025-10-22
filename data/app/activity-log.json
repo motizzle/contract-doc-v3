@@ -1,2 +1,552 @@
-[]
-
+[
+  {
+    "id": "act_1761006569484_vu6xa42y2",
+    "timestamp": 1761006569484,
+    "type": "document:checkout",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 1,
+      "status": "draft"
+    },
+    "message": "Warren Peace checked out \"Redlined & Signed\" (v1)"
+  },
+  {
+    "id": "act_1761006587757_gzfbatlnf",
+    "timestamp": 1761006587757,
+    "type": "document:save",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 2,
+      "documentTitle": "Redlined & Signed"
+    },
+    "message": "Warren Peace saved \"Redlined & Signed\" (v2)"
+  },
+  {
+    "id": "act_1761006589678_8l2odqn02",
+    "timestamp": 1761006589678,
+    "type": "document:checkout:cancel",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "cancelled checkout",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 2
+    },
+    "message": "Warren Peace cancelled checkout of \"Redlined & Signed\""
+  },
+  {
+    "id": "act_1761006596010_jb8kmoqix",
+    "timestamp": 1761006596011,
+    "type": "document:checkout",
+    "user": {
+      "id": "user3",
+      "label": "Yuri Lee Laffed",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 2,
+      "status": "draft"
+    },
+    "message": "Yuri Lee Laffed checked out \"Redlined & Signed\" (v2)"
+  },
+  {
+    "id": "act_1761006608071_de1q1h55d",
+    "timestamp": 1761006608071,
+    "type": "document:save",
+    "user": {
+      "id": "user3",
+      "label": "Yuri Lee Laffed",
+      "platform": "web"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 3,
+      "documentTitle": "Redlined & Signed"
+    },
+    "message": "Yuri Lee Laffed saved \"Redlined & Signed\" (v3)"
+  },
+  {
+    "id": "act_1761006608200_h319p4bji",
+    "timestamp": 1761006608200,
+    "type": "document:checkin",
+    "user": {
+      "id": "user3",
+      "label": "Yuri Lee Laffed",
+      "platform": "web"
+    },
+    "action": "checked in",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 3,
+      "checkoutDuration": null
+    },
+    "message": "Yuri Lee Laffed checked in \"Redlined & Signed\" (v3)"
+  },
+  {
+    "id": "act_1761006622863_dcgdn54x8",
+    "timestamp": 1761006622863,
+    "type": "message:created",
+    "user": {
+      "id": "user3",
+      "label": "Yuri Lee Laffed",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1761006622861-uujyv0efl",
+      "title": "Kent Uckey",
+      "recipients": 2,
+      "recipientsList": [
+        {
+          "label": "Yuri Lee Laffed",
+          "email": "",
+          "userId": "user3"
+        },
+        {
+          "label": "Kent Uckey",
+          "email": "",
+          "userId": "user2"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "Changed the timeline, can you please review?",
+      "platform": "web"
+    },
+    "message": "Yuri Lee Laffed started a conversation \"Kent Uckey\" with 2 people"
+  },
+  {
+    "id": "act_1761006632627_jzow0lwbn",
+    "timestamp": 1761006632627,
+    "type": "document:checkout",
+    "user": {
+      "id": "user4",
+      "label": "Hugh R Ewe",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 3,
+      "status": "draft"
+    },
+    "message": "Hugh R Ewe checked out \"Redlined & Signed\" (v3)"
+  },
+  {
+    "id": "act_1761006661095_bqb1fi3iy",
+    "timestamp": 1761006661095,
+    "type": "document:save",
+    "user": {
+      "id": "user4",
+      "label": "Hugh R Ewe",
+      "platform": "web"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 4,
+      "documentTitle": "Redlined & Signed"
+    },
+    "message": "Hugh R Ewe saved \"Redlined & Signed\" (v4)"
+  },
+  {
+    "id": "act_1761006665778_ljjige8a6",
+    "timestamp": 1761006665779,
+    "type": "document:checkout:cancel",
+    "user": {
+      "id": "user4",
+      "label": "Hugh R Ewe",
+      "platform": "web"
+    },
+    "action": "cancelled checkout",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 4
+    },
+    "message": "Hugh R Ewe cancelled checkout of \"Redlined & Signed\""
+  },
+  {
+    "id": "act_1761006753266_4f045u7uk",
+    "timestamp": 1761006753266,
+    "type": "message:created",
+    "user": {
+      "id": "user5",
+      "label": "Gettysburger King",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1761006753263-r96rhp7oy",
+      "title": "Kent Uckey",
+      "recipients": 2,
+      "recipientsList": [
+        {
+          "label": "Gettysburger King",
+          "email": "",
+          "userId": "user5"
+        },
+        {
+          "label": "Kent Uckey",
+          "email": "",
+          "userId": "user2"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "I will approve soon",
+      "platform": "web"
+    },
+    "message": "Gettysburger King started a conversation \"Kent Uckey\" with 2 people"
+  },
+  {
+    "id": "act_1761006760110_4hmjos6fj",
+    "timestamp": 1761006760110,
+    "type": "workflow:approve",
+    "user": {
+      "id": "user5",
+      "label": "Gettysburger King",
+      "platform": "web"
+    },
+    "action": "approved",
+    "target": "workflow",
+    "details": {
+      "targetUserId": "user5",
+      "progress": {
+        "approved": 1,
+        "total": 5
+      }
+    },
+    "message": "Gettysburger King approved (1/5)"
+  },
+  {
+    "id": "act_1761006776160_98m1upb9v",
+    "timestamp": 1761006776160,
+    "type": "document:send-vendor",
+    "user": {
+      "id": "user2",
+      "label": "Kent Uckey",
+      "platform": "web"
+    },
+    "action": "sent to vendor",
+    "target": "document",
+    "details": {
+      "vendor": "Hugh R Ewe",
+      "email": "",
+      "documentTitle": "Redlined & Signed",
+      "version": 4
+    },
+    "message": "Kent Uckey sent \"Redlined & Signed\" to Hugh R Ewe (v4)"
+  },
+  {
+    "id": "act_1761006787567_a15x13hxc",
+    "timestamp": 1761006787567,
+    "type": "workflow:approve",
+    "user": {
+      "id": "user4",
+      "label": "Hugh R Ewe",
+      "platform": "web"
+    },
+    "action": "approved",
+    "target": "workflow",
+    "details": {
+      "targetUserId": "user4",
+      "progress": {
+        "approved": 2,
+        "total": 5
+      }
+    },
+    "message": "Hugh R Ewe approved (2/5)"
+  },
+  {
+    "id": "act_1761006833982_ff473gwr8",
+    "timestamp": 1761006833982,
+    "type": "message:created",
+    "user": {
+      "id": "user2",
+      "label": "Kent Uckey",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1761006833979-vni3l5ew6",
+      "title": "Warren Peace, Yuri Lee Laffed",
+      "recipients": 3,
+      "recipientsList": [
+        {
+          "label": "Kent Uckey",
+          "email": "",
+          "userId": "user2"
+        },
+        {
+          "label": "Warren Peace",
+          "email": "",
+          "userId": "user1"
+        },
+        {
+          "label": "Yuri Lee Laffed",
+          "email": "",
+          "userId": "user3"
+        }
+      ],
+      "internal": true,
+      "external": false,
+      "privileged": true,
+      "initialMessage": "Hugh has agreed, should we cancel change order 2.3A?",
+      "platform": "web"
+    },
+    "message": "Kent Uckey started a conversation \"Warren Peace, Yuri Lee Laffed\" with 3 people"
+  },
+  {
+    "id": "act_1761006870411_6e3njqckq",
+    "timestamp": 1761006870411,
+    "type": "message:created",
+    "user": {
+      "id": "user2",
+      "label": "Kent Uckey",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1761006870409-n37qpybcz",
+      "title": "Hugh R Ewe, Hugh Am Eye",
+      "recipients": 3,
+      "recipientsList": [
+        {
+          "label": "Kent Uckey",
+          "email": "",
+          "userId": "user2"
+        },
+        {
+          "label": "Hugh R Ewe",
+          "email": "",
+          "userId": "user4"
+        },
+        {
+          "label": "Hugh Am Eye",
+          "email": "hugh@m.eye",
+          "userId": null
+        }
+      ],
+      "internal": false,
+      "external": true,
+      "privileged": false,
+      "initialMessage": "We're reviewing internally and will get back to you.",
+      "platform": "web"
+    },
+    "message": "Kent Uckey started a conversation \"Hugh R Ewe, Hugh Am Eye\" with 3 people"
+  },
+  {
+    "id": "act_1761006880475_qzb8okp3l",
+    "timestamp": 1761006880475,
+    "type": "workflow:approve",
+    "user": {
+      "id": "user2",
+      "label": "Kent Uckey",
+      "platform": "web"
+    },
+    "action": "approved",
+    "target": "workflow",
+    "details": {
+      "targetUserId": "user3",
+      "progress": {
+        "approved": 3,
+        "total": 5
+      }
+    },
+    "message": "Kent Uckey approved on behalf of Yuri Lee Laffed (3/5)"
+  },
+  {
+    "id": "act_1761006923310_12lm104cf",
+    "timestamp": 1761006923310,
+    "type": "document:checkout",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 4,
+      "status": "draft"
+    },
+    "message": "Warren Peace checked out \"Redlined & Signed\" (v4)"
+  },
+  {
+    "id": "act_1761006949693_t8htvd4wy",
+    "timestamp": 1761006949693,
+    "type": "variable:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "created variable",
+    "target": "variable",
+    "details": {
+      "varId": "var-1761006949685-wtxws98rv",
+      "displayLabel": "Yuri Lee Laffed"
+    },
+    "message": "Warren Peace created variable \"Yuri Lee Laffed\""
+  },
+  {
+    "id": "act_1761006965144_a3r5pz6rd",
+    "timestamp": 1761006965144,
+    "type": "document:save",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "word"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 5,
+      "documentTitle": "Redlined & Signed"
+    },
+    "message": "Warren Peace saved \"Redlined & Signed\" (v5)"
+  },
+  {
+    "id": "act_1761006984348_f5bkjz61u",
+    "timestamp": 1761006984348,
+    "type": "variable:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "created variable",
+    "target": "variable",
+    "details": {
+      "varId": "var-1761006984343-jb4r6tsl6",
+      "displayLabel": "Hugh R Someone"
+    },
+    "message": "Warren Peace created variable \"Hugh R Someone\""
+  },
+  {
+    "id": "act_1761007010196_427k5q5pj",
+    "timestamp": 1761007010196,
+    "type": "variable:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "created variable",
+    "target": "variable",
+    "details": {
+      "varId": "var-1761007010192-8ywqlu2j5",
+      "displayLabel": "Gettysburger King"
+    },
+    "message": "Warren Peace created variable \"Gettysburger King\""
+  },
+  {
+    "id": "act_1761007018566_oumiab3tv",
+    "timestamp": 1761007018566,
+    "type": "document:save",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "word"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 6,
+      "documentTitle": "Redlined & Signed"
+    },
+    "message": "Warren Peace saved \"Redlined & Signed\" (v6)"
+  },
+  {
+    "id": "act_1761007023251_iyky8b1xp",
+    "timestamp": 1761007023251,
+    "type": "document:save",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "word"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 7,
+      "documentTitle": "Redlined & Signed"
+    },
+    "message": "Warren Peace saved \"Redlined & Signed\" (v7)"
+  },
+  {
+    "id": "act_1761007023395_7b9ule2c9",
+    "timestamp": 1761007023395,
+    "type": "document:checkin",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "checked in",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 7,
+      "checkoutDuration": "2 mins"
+    },
+    "message": "Warren Peace checked in \"Redlined & Signed\" (v7) after 2 mins"
+  },
+  {
+    "id": "act_1761007026328_vq2dgfuir",
+    "timestamp": 1761007026328,
+    "type": "workflow:approve",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "approved",
+    "target": "workflow",
+    "details": {
+      "targetUserId": "user1",
+      "progress": {
+        "approved": 4,
+        "total": 5
+      }
+    },
+    "message": "Warren Peace approved (4/5)"
+  }
+]
