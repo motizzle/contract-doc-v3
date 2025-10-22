@@ -4272,9 +4272,12 @@ function initializeVariables() {
 // Initialize on startup
 initializeVariables();
 
-const httpsServer = tryCreateHttpsServer();
+// In production, always use HTTP (Render provides HTTPS at the edge)
+// In dev, try to use HTTPS with dev certificates
+const isProduction = process.env.NODE_ENV === 'production';
+const httpsServer = isProduction ? null : tryCreateHttpsServer();
 let serverInstance;
-const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+const HOST = isProduction ? '0.0.0.0' : 'localhost';
 
 if (httpsServer) {
   serverInstance = httpsServer;
@@ -4285,8 +4288,14 @@ if (httpsServer) {
 } else {
   serverInstance = http.createServer(app);
   serverInstance.listen(APP_PORT, HOST, () => {
-    console.warn(`ALLOW_HTTP=true enabled. HTTP server running on http://${HOST}:${APP_PORT}`);
-    console.warn('Install Office dev certs (preferred) or place dev-cert.pfx under server/config to enable HTTPS.');
+    if (isProduction) {
+      console.log(`Production HTTP server running on http://${HOST}:${APP_PORT}`);
+      console.log(`(HTTPS provided by Render at the edge)`);
+    } else {
+      console.warn(`ALLOW_HTTP=true enabled. HTTP server running on http://${HOST}:${APP_PORT}`);
+      console.warn('Install Office dev certs (preferred) or place dev-cert.pfx under server/config to enable HTTPS.');
+    }
+    console.log(`SuperDoc backend: ${SUPERDOC_BASE_URL}`);
   });
 }
 
