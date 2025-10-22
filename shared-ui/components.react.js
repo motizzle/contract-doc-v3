@@ -564,52 +564,57 @@
               // Exception: after a Factory Reset, reload the canonical default document so the UI returns to baseline.
               if (p && p.type === 'factoryReset') {
                 try {
-                  const canonical = `${API_BASE}/documents/canonical/default.docx?rev=${Date.now()}`;
                   if (typeof Office !== 'undefined') {
+                    // Word add-in: Get version first, then load that version
                     (async () => {
                       try {
-                        const res = await fetch(canonical, { cache: 'no-store' });
+                        const plat = 'word';
+                        const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent(String(userId||'user1'))}`;
+                        const r = await fetch(u);
+                        const j = await r.json();
+                        const v = Number(j?.config?.documentVersion || 1);
+                        console.log(`🔄 [Factory Reset] Loading version ${v} in Word add-in`);
+                        
+                        // Load the specific version, not the canonical document
+                        const versionUrl = `${API_BASE}/api/v1/versions/${v}?rev=${Date.now()}`;
+                        const res = await fetch(versionUrl, { cache: 'no-store' });
                         if (res && res.ok) {
                           const buf = await res.arrayBuffer();
                           const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
                           await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
-                          // Update loadedVersion after factory reset so banner logic works
-                          try {
-                            const plat = 'word';
-                            const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent(String(userId||'user1'))}`;
-                            const r = await fetch(u);
-                            const j = await r.json();
-                            const v = Number(j?.config?.documentVersion || 0);
-                            if (v > 0) { 
-                              console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: factoryReset (add-in)`);
-                              setLoadedVersion(v); 
-                              setViewingVersion(v); 
-                            }
-                          } catch {}
+                          
+                          console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: factoryReset (add-in)`);
+                          setLoadedVersion(v); 
+                          setViewingVersion(v);
                           // Note: refresh() will be called automatically by useEffect when revision updates from SSE
-                          console.log('✅ [Factory Reset] Document reloaded in Word add-in');
+                          console.log(`✅ [Factory Reset] Loaded version ${v} in Word add-in`);
                         }
-                      } catch {}
+                      } catch (e) {
+                        console.error('❌ [Factory Reset] Failed to load version in add-in:', e);
+                      }
                     })();
                   } else {
-                    setDocumentSource(canonical);
-                    // Update loadedVersion after factory reset so banner logic works
+                    // Web: Get version first, then load that version
                     (async () => {
                       try {
                         const plat = 'web';
                         const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent(String(userId||'user1'))}`;
                         const r = await fetch(u);
                         const j = await r.json();
-                        const v = Number(j?.config?.documentVersion || 0);
-                        if (v > 0) { 
-                          console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: factoryReset (web)`);
-                          setLoadedVersion(v); 
-                          setViewingVersion(v); 
-                        }
+                        const v = Number(j?.config?.documentVersion || 1);
+                        console.log(`🔄 [Factory Reset] Loading version ${v} on web`);
+                        
+                        // Load the specific version, not the canonical document
+                        const versionUrl = `${API_BASE}/api/v1/versions/${v}?rev=${Date.now()}`;
+                        setDocumentSource(versionUrl);
+                        
+                        console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: factoryReset (web)`);
+                        setLoadedVersion(v); 
+                        setViewingVersion(v);
                         // Note: refresh() will be called automatically by useEffect when revision updates from SSE
-                        console.log('✅ [Factory Reset] Version updated in web:', v);
+                        console.log(`✅ [Factory Reset] Loaded version ${v} on web`);
                       } catch (e) {
-                        console.error('❌ [Factory Reset] Failed to update version in web:', e);
+                        console.error('❌ [Factory Reset] Failed to load version on web:', e);
                       }
                     })();
                   }
