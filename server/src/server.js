@@ -1418,6 +1418,18 @@ app.use((req, res, next) => {
   next();
 });
 
+// Manifest download endpoint (force download with proper headers)
+// MUST be BEFORE static middleware to override default behavior
+app.get('/manifest.xml', (req, res) => {
+  const manifestPath = path.join(publicDir, 'manifest.xml');
+  if (!fs.existsSync(manifestPath)) {
+    return res.status(404).send('manifest.xml not found');
+  }
+  res.setHeader('Content-Type', 'application/xml');
+  res.setHeader('Content-Disposition', 'attachment; filename="manifest.xml"');
+  res.sendFile(manifestPath);
+});
+
 // Static assets
 // Serve public directory for manifest.xml and other root assets
 app.use(express.static(publicDir, { fallthrough: true }));
@@ -1446,17 +1458,6 @@ const collabProxy = createProxyMiddleware({
   logLevel: 'warn',
 });
 app.use('/collab', collabProxy);
-
-// Manifest download endpoint (force download with proper headers)
-app.get('/manifest.xml', (req, res) => {
-  const manifestPath = path.join(publicDir, 'manifest.xml');
-  if (!fs.existsSync(manifestPath)) {
-    return res.status(404).send('manifest.xml not found');
-  }
-  res.setHeader('Content-Type', 'application/xml');
-  res.setHeader('Content-Disposition', 'attachment; filename="manifest.xml"');
-  res.sendFile(manifestPath);
-});
 
 // Quiet favicon 404s
 app.get('/favicon.ico', (_req, res) => res.status(204).end());
