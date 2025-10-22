@@ -1447,6 +1447,17 @@ const collabProxy = createProxyMiddleware({
 });
 app.use('/collab', collabProxy);
 
+// Manifest download endpoint (force download with proper headers)
+app.get('/manifest.xml', (req, res) => {
+  const manifestPath = path.join(publicDir, 'manifest.xml');
+  if (!fs.existsSync(manifestPath)) {
+    return res.status(404).send('manifest.xml not found');
+  }
+  res.setHeader('Content-Type', 'application/xml');
+  res.setHeader('Content-Disposition', 'attachment; filename="manifest.xml"');
+  res.sendFile(manifestPath);
+});
+
 // Quiet favicon 404s
 app.get('/favicon.ico', (_req, res) => res.status(204).end());
 
