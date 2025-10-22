@@ -4215,15 +4215,18 @@ app.get('/api/v1/events', (req, res) => {
 // HTTPS preferred; try Office dev certs, then PFX, else fail (unless ALLOW_HTTP=true)
 function tryCreateHttpsServer() {
   try {
-    // 1) Office dev certs (shared with add-in 4000)
-    try {
-      // Lazy require to keep runtime optional
-      const devCerts = require('office-addin-dev-certs');
-      const httpsOptions = devCerts && devCerts.getHttpsServerOptions ? devCerts.getHttpsServerOptions() : null;
-      if (httpsOptions && httpsOptions.key && httpsOptions.cert) {
-        return https.createServer({ key: httpsOptions.key, cert: httpsOptions.cert, ca: httpsOptions.ca }, app);
-      }
-    } catch { /* ignore; may not be installed */ }
+    // 1) Office dev certs (shared with add-in 4000) - SKIP in production
+    const isProduction = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+    if (!isProduction) {
+      try {
+        // Lazy require to keep runtime optional
+        const devCerts = require('office-addin-dev-certs');
+        const httpsOptions = devCerts && devCerts.getHttpsServerOptions ? devCerts.getHttpsServerOptions() : null;
+        if (httpsOptions && httpsOptions.key && httpsOptions.cert) {
+          return https.createServer({ key: httpsOptions.key, cert: httpsOptions.cert, ca: httpsOptions.ca }, app);
+        }
+      } catch { /* ignore; may not be installed */ }
+    }
     // 2) PFX if available
     const pfxPath = process.env.SSL_PFX_PATH || path.join(rootDir, 'server', 'config', 'dev-cert.pfx');
     const pfxPass = process.env.SSL_PFX_PASS || 'password';
