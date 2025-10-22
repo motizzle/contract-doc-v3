@@ -5099,7 +5099,7 @@
     // Variables Panel - Phase 3: Full implementation with inline value editing
     function VariablesPanel() {
       const API_BASE = getApiBase();
-      const { currentUser } = React.useContext(StateContext);
+      const { currentUser, revision } = React.useContext(StateContext);
       const [showModal, setShowModal] = React.useState(false);
       const [variableName, setVariableName] = React.useState('');
       const [variableType, setVariableType] = React.useState('value');
@@ -5111,6 +5111,7 @@
       const [editingNames, setEditingNames] = React.useState({});
       const [filterType, setFilterType] = React.useState('all'); // 'all', 'value', 'signature'
       const saveTimeouts = React.useRef({});
+      const lastLoadedRevision = React.useRef(0);
 
       // Helper: Get variable colors from CSS variables
       const getVariableColors = () => {
@@ -5130,22 +5131,34 @@
       };
 
       // Load variables from backend
-      React.useEffect(() => {
-        const loadVariables = async () => {
-          try {
-            const response = await fetch(`${API_BASE}/api/v1/variables`);
-            if (response.ok) {
-              const data = await response.json();
-              setVariables(data.variables || {});
-            }
-          } catch (error) {
-            console.error('Failed to load variables:', error);
-          } finally {
-            setIsLoading(false);
+      const loadVariables = React.useCallback(async () => {
+        try {
+          console.log(`📡 [VariablesPanel] Loading variables (revision: ${revision})`);
+          const response = await fetch(`${API_BASE}/api/v1/variables?rev=${Date.now()}`, { cache: 'no-store' });
+          if (response.ok) {
+            const data = await response.json();
+            const varCount = Object.keys(data.variables || {}).length;
+            console.log(`✅ [VariablesPanel] Loaded ${varCount} variables from server`);
+            setVariables(data.variables || {});
+            lastLoadedRevision.current = revision;
+          } else {
+            console.error(`❌ [VariablesPanel] Failed to load variables: ${response.status}`);
           }
-        };
-        loadVariables();
-      }, [API_BASE]);
+        } catch (error) {
+          console.error('❌ [VariablesPanel] Error loading variables:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      }, [API_BASE, revision]);
+
+      // Load variables on mount and when revision changes
+      React.useEffect(() => {
+        console.log(`🔄 [VariablesPanel] useEffect triggered - revision: ${revision}, lastLoaded: ${lastLoadedRevision.current}`);
+        // Load on initial mount (revision 0) or when revision changes
+        if (revision !== lastLoadedRevision.current) {
+          loadVariables();
+        }
+      }, [revision, loadVariables]);
 
       // Listen for SSE variable events
       React.useEffect(() => {
