@@ -32,14 +32,15 @@ services:
       # - key: OPENAI_MODEL
       #   value: gpt-4o-mini
     healthCheckPath: /api/v1/health
-    disk:
-      name: wordftw-data
-      mountPath: /opt/render/project/src/data
-      sizeGB: 1
+
+# Note: Persistent disk removed for free tier compatibility
+# WARNING: Data will NOT persist across restarts on free tier!
+# For persistent data, upgrade to Starter plan ($7/month)
 
 # Note: Render free tier includes:
 # - 750 hours/month of runtime (enough for always-on with 1 instance)
-# - 1GB persistent disk
+# - 100GB bandwidth/month
 # - Automatic HTTPS
 # - Services sleep after 15 minutes of inactivity (wake up on request)
+# - NO persistent disk (data resets on restart/redeploy)
 
