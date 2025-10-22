@@ -1,0 +1,200 @@
+{
+  "messages": [
+    {
+      "messageId": "msg-1761006622861-uujyv0efl",
+      "title": "Kent Uckey",
+      "createdBy": {
+        "userId": "user3",
+        "label": "Yuri Lee Laffed"
+      },
+      "createdAt": 1761006622861,
+      "participants": [
+        {
+          "userId": "user3",
+          "label": "Yuri Lee Laffed",
+          "email": "",
+          "internal": true
+        },
+        {
+          "userId": "user2",
+          "label": "Kent Uckey",
+          "email": "",
+          "internal": true
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "state": "open",
+      "lastPostAt": 1761006622861,
+      "unreadBy": [
+        "user2"
+      ],
+      "archivedBy": [],
+      "deletedBy": [],
+      "deletedAt": null
+    },
+    {
+      "messageId": "msg-1761006753263-r96rhp7oy",
+      "title": "Kent Uckey",
+      "createdBy": {
+        "userId": "user5",
+        "label": "Gettysburger King"
+      },
+      "createdAt": 1761006753263,
+      "participants": [
+        {
+          "userId": "user5",
+          "label": "Gettysburger King",
+          "email": "",
+          "internal": true
+        },
+        {
+          "userId": "user2",
+          "label": "Kent Uckey",
+          "email": "",
+          "internal": true
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "state": "open",
+      "lastPostAt": 1761006753263,
+      "unreadBy": [
+        "user2"
+      ],
+      "archivedBy": [],
+      "deletedBy": [],
+      "deletedAt": null
+    },
+    {
+      "messageId": "msg-1761006833979-vni3l5ew6",
+      "title": "Warren Peace, Yuri Lee Laffed",
+      "createdBy": {
+        "userId": "user2",
+        "label": "Kent Uckey"
+      },
+      "createdAt": 1761006833979,
+      "participants": [
+        {
+          "userId": "user2",
+          "label": "Kent Uckey",
+          "email": "",
+          "internal": true
+        },
+        {
+          "userId": "user1",
+          "label": "Warren Peace",
+          "email": "",
+          "internal": true
+        },
+        {
+          "userId": "user3",
+          "label": "Yuri Lee Laffed",
+          "email": "",
+          "internal": true
+        }
+      ],
+      "internal": true,
+      "external": false,
+      "privileged": true,
+      "state": "open",
+      "lastPostAt": 1761006833979,
+      "unreadBy": [
+        "user1",
+        "user3"
+      ],
+      "archivedBy": [],
+      "deletedBy": [],
+      "deletedAt": null
+    },
+    {
+      "messageId": "msg-1761006870409-n37qpybcz",
+      "title": "Hugh R Ewe, Hugh Am Eye",
+      "createdBy": {
+        "userId": "user2",
+        "label": "Kent Uckey"
+      },
+      "createdAt": 1761006870409,
+      "participants": [
+        {
+          "userId": "user2",
+          "label": "Kent Uckey",
+          "email": "",
+          "internal": true
+        },
+        {
+          "userId": "user4",
+          "label": "Hugh R Ewe",
+          "email": "",
+          "internal": true
+        },
+        {
+          "userId": null,
+          "label": "Hugh Am Eye",
+          "email": "hugh@m.eye",
+          "internal": false
+        }
+      ],
+      "internal": false,
+      "external": true,
+      "privileged": false,
+      "state": "open",
+      "lastPostAt": 1761006870409,
+      "unreadBy": [
+        "user4",
+        null
+      ],
+      "archivedBy": [],
+      "deletedBy": [],
+      "deletedAt": null
+    }
+  ],
+  "posts": [
+    {
+      "postId": "post-1761006622861-7vv7f0p32",
+      "messageId": "msg-1761006622861-uujyv0efl",
+      "author": {
+        "userId": "user3",
+        "label": "Yuri Lee Laffed"
+      },
+      "createdAt": 1761006622861,
+      "text": "Changed the timeline, can you please review?",
+      "privileged": false
+    },
+    {
+      "postId": "post-1761006753263-en3gc9srd",
+      "messageId": "msg-1761006753263-r96rhp7oy",
+      "author": {
+        "userId": "user5",
+        "label": "Gettysburger King"
+      },
+      "createdAt": 1761006753263,
+      "text": "I will approve soon",
+      "privileged": false
+    },
+    {
+      "postId": "post-1761006833979-erhbsp6b0",
+      "messageId": "msg-1761006833979-vni3l5ew6",
+      "author": {
+        "userId": "user2",
+        "label": "Kent Uckey"
+      },
+      "createdAt": 1761006833979,
+      "text": "Hugh has agreed, should we cancel change order 2.3A?",
+      "privileged": true
+    },
+    {
+      "postId": "post-1761006870409-jmjojs7mo",
+      "messageId": "msg-1761006870409-n37qpybcz",
+      "author": {
+        "userId": "user2",
+        "label": "Kent Uckey"
+      },
+      "createdAt": 1761006870409,
+      "text": "We're reviewing internally and will get back to you.",
+      "privileged": false
+    }
+  ]
+}
