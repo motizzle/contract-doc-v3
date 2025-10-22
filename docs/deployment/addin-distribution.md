@@ -1,48 +1,49 @@
 # Word Add-in Distribution Guide
 
-This guide explains how to distribute the OG CLM Word add-in to users after deploying to Railway.
+This guide explains how to distribute the OG CLM Word add-in to users after deploying to Render.com.
 
 ---
 
 ## Prerequisites
 
-1. ✅ Railway deployment is complete and accessible
-2. ✅ You have your Railway URL (e.g., `https://your-app.up.railway.app`)
+1. ✅ Render.com deployment is complete and accessible
+2. ✅ You have your Render URL (e.g., `https://your-app.onrender.com`)
 
 ---
 
-## Step 1: Update Manifest for Production
+## Step 1: Generate Production Manifest
 
-1. **Copy the production manifest template**:
+The production manifest is **auto-generated** from your development manifest. You only maintain one file!
+
+1. **Generate the production manifest**:
    ```bash
-   cp addin/manifest.production.xml addin/manifest-deploy.xml
+   cd addin
+   BASE_URL=https://your-actual-app.onrender.com npm run build:manifest
    ```
 
-2. **Replace all instances of `YOUR-RAILWAY-URL` with your actual Railway domain**:
-   
-   In `addin/manifest-deploy.xml`, find and replace:
-   ```
-   YOUR-RAILWAY-URL.up.railway.app
-   ```
-   
-   With your actual domain:
-   ```
-   your-actual-app.up.railway.app
+   This creates `manifest.production.xml` with all localhost URLs replaced by your Render URL.
+
+2. **Verify the generated manifest**:
+   ```bash
+   # Check that URLs were replaced correctly
+   cat addin/manifest.production.xml | grep "onrender.com"
    ```
 
 3. **Host the manifest on your server**:
    
-   Copy the updated manifest to your server's public directory:
+   Copy the generated manifest to your server's public directory:
    ```bash
-   cp addin/manifest-deploy.xml server/public/manifest.xml
+   cp addin/manifest.production.xml server/public/manifest.xml
    ```
 
 4. **Commit and push**:
    ```bash
-   git add addin/manifest-deploy.xml server/public/manifest.xml
+   git add server/public/manifest.xml
    git commit -m "Add production Word add-in manifest"
    git push origin deployment
    ```
+   
+   **Note**: `manifest.production.xml` is auto-generated and ignored by git. Only commit the copy in `server/public/`.
 
 ---
 
@@ -114,7 +115,7 @@ word-addin-distribution/
 **"Unable to load add-in":**
 - Verify you have internet connection
 - The server URL in manifest.xml must be accessible
-- Try accessing https://your-app.up.railway.app/view.html in a browser first
+- Try accessing https://your-app.onrender.com/view.html in a browser first
 ````
 
 ### Mac Installation Instructions (`INSTALL-MAC.md`)
@@ -178,7 +179,7 @@ If the add-in doesn't appear automatically:
 
 **"Unable to load add-in":**
 - Verify internet connection
-- Try accessing https://your-app.up.railway.app/view.html in Safari first
+- Try accessing https://your-app.onrender.com/view.html in Safari first
 - Check Console.app for any error messages from Word
 ````
 
@@ -186,7 +187,7 @@ If the add-in doesn't appear automatically:
 
 ## Step 3: Host Distribution Files
 
-### Option A: Direct Download from Railway
+### Option A: Direct Download from Render
 
 1. **Create a landing page** (`server/public/download.html`):
 
@@ -232,7 +233,7 @@ If the add-in doesn't appear automatically:
 
 2. **Share the URL** with users:
    ```
-   https://your-app.up.railway.app/download.html
+   https://your-app.onrender.com/download.html
    ```
 
 ### Option B: Email Distribution
@@ -240,7 +241,7 @@ If the add-in doesn't appear automatically:
 Create a distribution email with:
 - Attached `manifest.xml` (renamed to `og-clm-manifest.xml` for clarity)
 - PDF installation guide
-- Link to web version for testing: `https://your-app.up.railway.app/view.html`
+- Link to web version for testing: `https://your-app.onrender.com/view.html`
 
 ---
 
@@ -260,7 +261,7 @@ Before distributing to users:
    - Test variable insertion
 
 3. **Check network requirements**:
-   - Ensure Railway URL is accessible from corporate network
+   - Ensure Render URL is accessible from corporate network
    - Verify no firewall blocks
    - Test on corporate VPN if applicable
 
@@ -276,13 +277,13 @@ Before distributing to users:
 - Full documentation: https://docs.microsoft.com/en-us/office/dev/add-ins/publish/publish
 
 **Network Requirements:**
-- Allow HTTPS traffic to: `your-app.up.railway.app`
+- Allow HTTPS traffic to: `your-app.onrender.com`
 - Ports: 443 (HTTPS)
 - No special firewall rules needed
 
 **Data Privacy:**
-- All document processing happens server-side at your Railway deployment
-- No third-party services except Railway hosting
+- All document processing happens server-side at your Render deployment
+- No third-party services except Render hosting
 - LLM processing can use local Ollama (no external API calls)
 
 ---
@@ -296,10 +297,11 @@ When you update the add-in:
    <Version>1.0.2.0</Version>
    ```
 
-2. **Push to Railway**:
+2. **Push to Render**:
    ```bash
    git commit -am "Update add-in to v1.0.2"
    git push origin deployment
+   # Render auto-deploys on push
    ```
 
 3. **Users will automatically get updates** (as long as manifest URL stays the same)
@@ -308,7 +310,7 @@ When you update the add-in:
 
 ## What You Need to Do (Summary)
 
-1. ✅ **Update `manifest.production.xml`** with your Railway URL
+1. ✅ **Update `manifest.production.xml`** with your Render URL
 2. ✅ **Copy to `server/public/manifest.xml`**
 3. ✅ **Create installation guides** (INSTALL-WINDOWS.md, INSTALL-MAC.md)
 4. ✅ **Create download landing page** (optional)
@@ -319,9 +321,9 @@ When you update the add-in:
 
 ## Quick Distribution Checklist
 
-- [ ] Railway deployment is live and accessible
-- [ ] Manifest URLs updated with Railway domain
-- [ ] Manifest hosted at `your-app.up.railway.app/manifest.xml`
+- [ ] Render deployment is live and accessible
+- [ ] Manifest URLs updated with Render domain
+- [ ] Manifest hosted at `your-app.onrender.com/manifest.xml`
 - [ ] Installation instructions written
 - [ ] Tested on Windows
 - [ ] Tested on Mac

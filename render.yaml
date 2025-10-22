@@ -1,0 +1,45 @@
+# Render.com deployment configuration
+# Documentation: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: wordftw
+    runtime: node
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: npm run start:production
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: ALLOW_HTTP
+        value: true
+      # Optional: LLM Configuration (defaults to Ollama)
+      - key: LLM_PROVIDER
+        value: ollama
+      - key: LLM_USE_OPENAI
+        value: false
+      - key: OLLAMA_MODEL
+        value: llama3.2:3b
+      # Uncomment below if using OpenAI instead:
+      # - key: LLM_PROVIDER
+      #   value: openai
+      # - key: LLM_USE_OPENAI
+      #   value: true
+      # - key: OPENAI_API_KEY
+      #   sync: false  # Set this in Render dashboard
+      # - key: OPENAI_MODEL
+      #   value: gpt-4o-mini
+    healthCheckPath: /api/v1/health
+    disk:
+      name: wordftw-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
+
+# Note: Render free tier includes:
+# - 750 hours/month of runtime (enough for always-on with 1 instance)
+# - 1GB persistent disk
+# - Automatic HTTPS
+# - Services sleep after 15 minutes of inactivity (wake up on request)
+

@@ -5,10 +5,19 @@
   const win = typeof global !== 'undefined' ? global : (typeof window !== 'undefined' ? window : this);
 
   function getApiBase() {
-    // Always use the API server port (4001), not the dev server port (4000)
-    // The dev server (4000) is for serving the add-in HTML/JS
-    // The API server (4001) is for all backend API calls
-    return 'https://localhost:4001';
+    // In production (deployed): use current domain (no port)
+    // In development: use localhost:4001 (API server)
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
+    if (isLocalhost) {
+      // Always use the API server port (4001), not the dev server port (4000)
+      // The dev server (4000) is for serving the add-in HTML/JS
+      // The API server (4001) is for all backend API calls
+      return 'https://localhost:4001';
+    } else {
+      // Production: API is served from same domain
+      return window.location.origin;
+    }
   }
 
   function mountReactApp(opts) {

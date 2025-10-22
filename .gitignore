@@ -31,3 +31,6 @@ server/test-results/
 # Local setup scripts not needed in repo root
 /setup-env.ps1
 
+# Generated manifest files (auto-created by build script)
+addin/manifest.production.xml
+addin/manifest-deploy.xml
