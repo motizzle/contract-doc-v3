@@ -567,11 +567,11 @@
                   if (typeof Office !== 'undefined') {
                     // Word add-in: Get version first, then load that version
                     (async () => {
-                      try {
-                        const plat = 'word';
-                        const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent(String(userId||'user1'))}`;
-                        const r = await fetch(u);
-                        const j = await r.json();
+                          try {
+                            const plat = 'word';
+                            const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent(String(userId||'user1'))}`;
+                            const r = await fetch(u);
+                            const j = await r.json();
                         const v = Number(j?.config?.documentVersion || 1);
                         console.log(`🔄 [Factory Reset] Loading version ${v} in Word add-in`);
                         
@@ -583,15 +583,15 @@
                           const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
                           await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
                           
-                          console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: factoryReset (add-in)`);
-                          setLoadedVersion(v); 
-                          setViewingVersion(v);
+                              console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: factoryReset (add-in)`);
+                              setLoadedVersion(v); 
+                              setViewingVersion(v); 
                           // Note: refresh() will be called automatically by useEffect when revision updates from SSE
                           console.log(`✅ [Factory Reset] Loaded version ${v} in Word add-in`);
-                        }
+                            }
                       } catch (e) {
                         console.error('❌ [Factory Reset] Failed to load version in add-in:', e);
-                      }
+                        }
                     })();
                   } else {
                     // Web: Get version first, then load that version
@@ -608,14 +608,14 @@
                         const versionUrl = `${API_BASE}/api/v1/versions/${v}?rev=${Date.now()}`;
                         setDocumentSource(versionUrl);
                         
-                        console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: factoryReset (web)`);
-                        setLoadedVersion(v); 
-                        setViewingVersion(v);
+                          console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: factoryReset (web)`);
+                          setLoadedVersion(v); 
+                          setViewingVersion(v); 
                         // Note: refresh() will be called automatically by useEffect when revision updates from SSE
                         console.log(`✅ [Factory Reset] Loaded version ${v} on web`);
                       } catch (e) {
                         console.error('❌ [Factory Reset] Failed to load version on web:', e);
-                      }
+                        }
                     })();
                   }
                 } catch {}
@@ -3181,6 +3181,7 @@
     // Comparison Tab
     function ComparisonTab() {
       const API_BASE = getApiBase();
+      const { revision } = React.useContext(StateContext);
       const [versions, setVersions] = React.useState([]);
       const [versionA, setVersionA] = React.useState('1');
       const [versionB, setVersionB] = React.useState('');
@@ -3188,18 +3189,20 @@
       const [busy, setBusy] = React.useState(false);
       const [error, setError] = React.useState('');
       const [hasCompared, setHasCompared] = React.useState(false);
+      const lastLoadedRevision = React.useRef(0);
       
       // Fetch versions list
       const loadVersions = React.useCallback(async () => {
         try {
           const url = `${API_BASE}/api/v1/versions?rev=${Date.now()}`;
-          console.log(`📡 [ComparisonTab] Fetching versions from: ${url}`);
+          console.log(`📡 [ComparisonTab] Fetching versions from: ${url} (revision: ${revision})`);
           const r = await fetch(url, { cache: 'no-store' });
           if (r.ok) {
             const j = await r.json();
             const arr = Array.isArray(j.items) ? j.items : [];
             console.log(`✅ [ComparisonTab] Received ${arr.length} versions from server`);
             setVersions(arr);
+            lastLoadedRevision.current = revision;
             // Default to version 1 and latest (only on initial load when nothing is selected)
             if (arr.length > 0 && !versionB) {
               setVersionA('1');
@@ -3211,13 +3214,17 @@
         } catch (e) {
           console.error(`❌ [ComparisonTab] Error fetching versions:`, e);
         }
-      }, [API_BASE, versionB]);
+      }, [API_BASE, revision, versionB]);
       
+      // Load versions on mount and when revision changes
       React.useEffect(() => {
+        console.log(`🔄 [ComparisonTab] useEffect triggered - revision: ${revision}, lastLoaded: ${lastLoadedRevision.current}`);
+        if (revision !== lastLoadedRevision.current) {
         loadVersions();
-      }, [loadVersions]);
+        }
+      }, [revision, loadVersions]);
       
-      // Listen for versions:update event to refresh list
+      // Listen for versions:update event to refresh list (still useful for non-revision-changing updates)
       React.useEffect(() => {
         const onVersionsUpdate = () => {
           console.log(`🔄 [ComparisonTab] Received versions:update event - reloading versions`);
@@ -5137,23 +5144,23 @@
 
       // Load variables from backend
       const loadVariables = React.useCallback(async () => {
-        try {
+          try {
           console.log(`📡 [VariablesPanel] Loading variables (revision: ${revision})`);
           const response = await fetch(`${API_BASE}/api/v1/variables?rev=${Date.now()}`, { cache: 'no-store' });
-          if (response.ok) {
-            const data = await response.json();
+            if (response.ok) {
+              const data = await response.json();
             const varCount = Object.keys(data.variables || {}).length;
             console.log(`✅ [VariablesPanel] Loaded ${varCount} variables from server`);
-            setVariables(data.variables || {});
+              setVariables(data.variables || {});
             lastLoadedRevision.current = revision;
           } else {
             console.error(`❌ [VariablesPanel] Failed to load variables: ${response.status}`);
-          }
-        } catch (error) {
+            }
+          } catch (error) {
           console.error('❌ [VariablesPanel] Error loading variables:', error);
-        } finally {
-          setIsLoading(false);
-        }
+          } finally {
+            setIsLoading(false);
+          }
       }, [API_BASE, revision]);
 
       // Load variables on mount and when revision changes
@@ -5161,7 +5168,7 @@
         console.log(`🔄 [VariablesPanel] useEffect triggered - revision: ${revision}, lastLoaded: ${lastLoadedRevision.current}`);
         // Load on initial mount (revision 0) or when revision changes
         if (revision !== lastLoadedRevision.current) {
-          loadVariables();
+        loadVariables();
         }
       }, [revision, loadVariables]);
 
