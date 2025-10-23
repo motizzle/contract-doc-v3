@@ -145,15 +145,16 @@ const dataUsersDir = path.join(dataAppDir, 'users');
 // function formatServerNotification(message, type = 'info') { ... };
 
 // Helper to get current document context for activity logging
-function getDocumentContext() {
+function getDocumentContext(sessionId) {
   try {
+    const state = loadSessionState(sessionId);
     return {
-      title: (serverState && serverState.title) || 'Untitled Document',
-      status: (serverState && serverState.status) || 'draft',
-      version: (serverState && serverState.documentVersion) || 1
+      title: (state && state.title) || 'Untitled Document',
+      status: (state && state.status) || 'draft',
+      version: (state && state.documentVersion) || 1
     };
   } catch (e) {
-    // Fallback if serverState isn't initialized
+    // Fallback if session state can't be loaded
     return {
       title: 'Untitled Document',
       status: 'draft',
@@ -2805,7 +2806,7 @@ app.post('/api/v1/status/cycle', (req, res) => {
     if (!testMode) {
       try {
     const userId = req.body?.userId || 'user1';
-        const docContext = getDocumentContext();
+        const docContext = getDocumentContext(req.sessionId);
         logActivity(req.sessionId, 'document:status-change', userId, { 
           from: cur, 
           to: next,
@@ -2840,7 +2841,7 @@ app.post('/api/v1/document/upload', upload.single('file'), (req, res) => {
     // Log activity (skip in test mode)
     if (!testMode) {
       try {
-        const docContext = getDocumentContext();
+        const docContext = getDocumentContext(req.sessionId);
     logActivity(req.sessionId, 'document:upload', userId, {
       filename: req.file?.originalname || 'default.docx',
       size: req.file?.size,
@@ -2873,7 +2874,7 @@ app.post('/api/v1/document/revert', (req, res) => {
   // Log activity: document reverted to prior version (new version created) (skip in test mode)
   if (!testMode) {
     try { 
-      const docContext = getDocumentContext();
+      const docContext = getDocumentContext(req.sessionId);
       logActivity(req.sessionId, 'version:restore', actorUserId, { 
         platform, 
         version: versionNow,
@@ -2934,7 +2935,7 @@ app.post('/api/v1/save-progress', (req, res) => {
     // Log activity (skip in test mode)
     if (!testMode) {
       try {
-        const docContext = getDocumentContext();
+        const docContext = getDocumentContext(req.sessionId);
     logActivity(req.sessionId, 'document:save', userId, {
       autoSave: false,
       size: bytes.length,
@@ -3029,7 +3030,7 @@ app.post('/api/v1/versions/view', (req, res) => {
     // Log activity: user viewed a specific version (skip in test mode)
     if (!testMode) {
       try { 
-        const docContext = getDocumentContext();
+        const docContext = getDocumentContext(req.sessionId);
         logActivity(req.sessionId, 'version:view', actorUserId, { 
           version: n, 
           platform: originPlatform,
@@ -3146,7 +3147,7 @@ app.post('/api/v1/document/snapshot', (req, res) => {
     // Log activity (skip in test mode)
     if (!testMode) {
       try {
-        const docContext = getDocumentContext();
+        const docContext = getDocumentContext(req.sessionId);
     logActivity(req.sessionId, 'document:snapshot', userId, {
           version: docContext.version,
           documentTitle: docContext.title,
@@ -3754,7 +3755,7 @@ app.post('/api/v1/checkout', (req, res) => {
   // Log activity (skip in test mode)
   if (!testMode) {
     try {
-      const docContext = getDocumentContext();
+      const docContext = getDocumentContext(req.sessionId);
       logActivity(req.sessionId, 'document:checkout', userId, {
         documentTitle: docContext.title,
         version: docContext.version,
@@ -3803,8 +3804,8 @@ app.post('/api/v1/checkin', (req, res) => {
   // Log activity (skip in test mode)
   if (!testMode) {
     try {
-      const docContext = getDocumentContext();
-  logActivity(req.sessionId, 'document:checkin', userId, {
+        const docContext = getDocumentContext(req.sessionId);
+    logActivity(req.sessionId, 'document:checkin', userId, {
         documentTitle: docContext.title,
         version: docContext.version,
         checkoutDuration: durationText,
@@ -3844,7 +3845,7 @@ app.post('/api/v1/checkout/cancel', (req, res) => {
   // Log activity (skip in test mode)
   if (!testMode) {
     try {
-      const docContext = getDocumentContext();
+      const docContext = getDocumentContext(req.sessionId);
       logActivity(req.sessionId, 'document:checkout:cancel', userId, {
         documentTitle: docContext.title,
         version: docContext.version,
@@ -3885,7 +3886,7 @@ app.post('/api/v1/checkout/override', (req, res) => {
     // Log activity (skip in test mode)
     if (!testMode) {
       try { 
-        const docContext = getDocumentContext();
+        const docContext = getDocumentContext(req.sessionId);
         logActivity(req.sessionId, 'document:checkout:override', userId, { 
           previousUserId,
           documentTitle: docContext.title,
@@ -4360,7 +4361,7 @@ app.post('/api/v1/compile', async (req, res) => {
     // Log activity (skip in test mode)
     if (!testMode) {
       try {
-        const docContext = getDocumentContext();
+        const docContext = getDocumentContext(req.sessionId);
         const compiledStats = fs.existsSync(outPath) ? fs.statSync(outPath) : null;
     logActivity(req.sessionId, 'document:compile', userId, {
       format: 'pdf',
@@ -4484,7 +4485,7 @@ app.post('/api/v1/send-vendor', (req, res) => {
   // Log activity (skip in test mode)
   if (!testMode) {
     try {
-      const docContext = getDocumentContext();
+      const docContext = getDocumentContext(req.sessionId);
   logActivity(req.sessionId, 'document:send-vendor', userId, {
     vendor: vendorName,
     email: vendorEmail,
