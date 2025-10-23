@@ -8,7 +8,7 @@ services:
     plan: free
     buildCommand: |
       cd server && npm install
-      cd ../addin && npm install
+      cd ../addin && npm install --include=dev
       cd ../addin && npx webpack --mode production
       cd ../addin && cp -r dist/* ../server/public/
     startCommand: cd server && npm run start:production
