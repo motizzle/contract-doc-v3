@@ -207,8 +207,8 @@ function logActivity(sessionId, type, userId, details = {}) {
     activities.push(activity);
     fs.writeFileSync(paths.activityLogFilePath, JSON.stringify(activities, null, 2));
 
-    // Broadcast to all connected clients
-    broadcast({ type: 'activity:new', activity });
+    // Broadcast to THIS session's clients only
+    broadcast({ type: 'activity:new', activity, sessionId });
 
     return activity;
   } catch (e) {
