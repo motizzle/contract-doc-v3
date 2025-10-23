@@ -1614,7 +1614,10 @@ function bumpSessionRevision(sessionId) {
 // Session creation endpoint (no auth required)
 app.post('/api/v1/session/start', (req, res) => {
   try {
-    const sessionId = `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Use crypto.randomUUID() for truly unique session IDs (no collisions)
+    // Format: sess_uuid (shorter and guaranteed unique)
+    const uuid = require('crypto').randomUUID();
+    const sessionId = `sess_${uuid}`;
     
     // Create JWT token
     const token = jwt.sign(
