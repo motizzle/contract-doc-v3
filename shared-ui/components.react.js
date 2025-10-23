@@ -43,6 +43,31 @@
       // Try to retrieve existing token
       authToken = localStorage.getItem('wordftw_auth_token');
       
+      // Word add-in: Try to get shared session from browser
+      if (!authToken && window.Office && window.Office.context) {
+        console.log('📎 Word add-in detected - checking for shared session...');
+        const fingerprint = generateFingerprint();
+        const API_BASE = getApiBase();
+        
+        try {
+          const response = await window._originalFetch(
+            `${API_BASE}/api/v1/session/by-fingerprint?fingerprint=${encodeURIComponent(fingerprint)}`
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.token) {
+              authToken = data.token;
+              localStorage.setItem('wordftw_auth_token', authToken);
+              console.log(`✅ Using shared session from browser: ${data.sessionId}`);
+              return authToken;
+            }
+          }
+        } catch (e) {
+          console.log('ℹ️ No shared session found');
+        }
+      }
+      
       if (!authToken) {
         // Request new token from server
         console.log('🔐 No token found, requesting new session...');
@@ -57,13 +82,54 @@
     }
   }
 
+  // Generate machine fingerprint for session sharing between browser and Word
+  function generateFingerprint() {
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.textBaseline = 'top';
+      ctx.font = '14px Arial';
+      ctx.fillText('wordftw', 2, 2);
+      const canvasData = canvas.toDataURL();
+      
+      const fingerprint = [
+        navigator.userAgent,
+        navigator.language,
+        screen.width + 'x' + screen.height,
+        screen.colorDepth,
+        new Date().getTimezoneOffset(),
+        canvasData.substring(0, 50)
+      ].join('|');
+      
+      // Simple hash function
+      let hash = 0;
+      for (let i = 0; i < fingerprint.length; i++) {
+        const char = fingerprint.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      return 'fp_' + Math.abs(hash).toString(36);
+    } catch (e) {
+      console.warn('Fingerprint generation failed, using fallback');
+      return 'fp_' + Math.random().toString(36).substr(2, 9);
+    }
+  }
+
   // Request new token from server
   async function requestNewToken() {
     try {
       const API_BASE = getApiBase();
+      const fingerprint = generateFingerprint();
+      
+      // Store fingerprint for installer
+      localStorage.setItem('wordftw_fingerprint', fingerprint);
+      console.log(`🔑 Machine fingerprint: ${fingerprint}`);
+      
       // Use original fetch to avoid infinite recursion
       const response = await window._originalFetch(`${API_BASE}/api/v1/session/start`, {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fingerprint })
       });
       
       if (!response.ok) {

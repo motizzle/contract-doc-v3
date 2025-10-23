@@ -22,6 +22,10 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2:3b'; // Better reason
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production-min-32-chars';
 const JWT_EXPIRATION = '7d'; // 7 days
 
+// Machine fingerprint → sessionId mapping for browser/Word sync
+// Maps fingerprint to { sessionId, token, createdAt }
+const fingerprintSessions = new Map();
+
 // Default System Prompt - Single source of truth
 const DEFAULT_SYSTEM_PROMPT = `You are a helpful AI assistant. Answer questions based on the provided document context.
 
@@ -1632,6 +1636,20 @@ function bumpDocumentVersion(sessionId, updatedByUserId, platform) {
 // Session creation endpoint (no auth required)
 app.post('/api/v1/session/start', (req, res) => {
   try {
+    const { fingerprint } = req.body || {};
+    
+    // Check if we already have a session for this fingerprint
+    if (fingerprint && fingerprintSessions.has(fingerprint)) {
+      const existing = fingerprintSessions.get(fingerprint);
+      console.log(`🔑 Returning existing session for fingerprint: ${fingerprint.substring(0, 12)}...`);
+      return res.json({
+        token: existing.token,
+        sessionId: existing.sessionId,
+        expiresIn: JWT_EXPIRATION,
+        shared: true
+      });
+    }
+    
     // Use crypto.randomUUID() for truly unique session IDs (no collisions)
     // Format: sess_uuid (shorter and guaranteed unique)
     const uuid = require('crypto').randomUUID();
@@ -1643,6 +1661,16 @@ app.post('/api/v1/session/start', (req, res) => {
       JWT_SECRET,
       { expiresIn: JWT_EXPIRATION }
     );
+    
+    // Store fingerprint → session mapping
+    if (fingerprint) {
+      fingerprintSessions.set(fingerprint, {
+        sessionId,
+        token,
+        createdAt: Date.now()
+      });
+      console.log(`🔑 Stored fingerprint mapping: ${fingerprint.substring(0, 12)}... → ${sessionId}`);
+    }
     
     // Initialize session directory with seed data
     initializeSession(sessionId);
@@ -1657,6 +1685,34 @@ app.post('/api/v1/session/start', (req, res) => {
   } catch (err) {
     console.error('❌ Failed to create session:', err);
     res.status(500).json({ error: 'Failed to create session' });
+  }
+});
+
+// Get session by fingerprint (for Word add-in to share browser session)
+app.get('/api/v1/session/by-fingerprint', (req, res) => {
+  try {
+    const { fingerprint } = req.query;
+    
+    if (!fingerprint) {
+      return res.status(400).json({ error: 'Fingerprint required' });
+    }
+    
+    const session = fingerprintSessions.get(fingerprint);
+    
+    if (!session) {
+      return res.status(404).json({ error: 'No session found for this fingerprint' });
+    }
+    
+    console.log(`🔍 Found shared session for fingerprint: ${fingerprint.substring(0, 12)}... → ${session.sessionId}`);
+    
+    res.json({
+      token: session.token,
+      sessionId: session.sessionId,
+      expiresIn: JWT_EXPIRATION
+    });
+  } catch (err) {
+    console.error('❌ Failed to get session by fingerprint:', err);
+    res.status(500).json({ error: 'Failed to get session' });
   }
 });
 
