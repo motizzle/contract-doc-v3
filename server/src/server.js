@@ -1441,8 +1441,8 @@ app.use('/vendor', express.static(path.join(publicDir, 'vendor'), { fallthrough:
 app.use('/ui', express.static(sharedUiDir, { fallthrough: true }));
 // Serve web static assets (helper scripts) under /web
 app.use('/web', express.static(webDir, { fallthrough: true }));
-// Serve compiled outputs (PDFs)
-app.use('/compiled', express.static(compiledDir, { fallthrough: true }));
+// Note: /compiled is now session-specific and served via API endpoints
+// (removed static middleware - will be replaced with session-aware endpoint)
 
 // Prevent caches on JSON APIs to avoid stale state
 app.use('/api', (req, res, next) => {
@@ -4277,6 +4277,33 @@ app.post('/api/v1/compile', async (req, res) => {
     return res.json({ ok: true, url: `/compiled/${encodeURIComponent(outName)}` });
   } catch (e) {
     return res.status(500).json({ error: 'compile_failed' });
+  }
+});
+
+// Serve compiled PDFs (session-aware, with JWT auth)
+app.get('/compiled/:filename', authenticateToken, (req, res) => {
+  try {
+    const paths = getSessionPaths(req.sessionId);
+    const filename = req.params.filename;
+    
+    // Security: prevent path traversal
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      return res.status(400).json({ error: 'invalid_filename' });
+    }
+    
+    const filePath = path.join(paths.compiledDir, filename);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'file_not_found' });
+    }
+    
+    // Serve the file
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    res.sendFile(filePath);
+  } catch (e) {
+    console.error('Error serving compiled file:', e);
+    return res.status(500).json({ error: 'server_error' });
   }
 });
 
