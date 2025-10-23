@@ -7,6 +7,7 @@ const express = require('express');
 const compression = require('compression');
 const multer = require('multer');
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const jwt = require('jsonwebtoken');
 
 // Import LLM module
 const { generateReply } = require('./lib/llm');
@@ -16,6 +17,10 @@ const LLM_PROVIDER = process.env.LLM_PROVIDER || 'ollama'; // 'ollama' or 'opena
 const LLM_USE_OPENAI = String(process.env.LLM_USE_OPENAI || '').toLowerCase() === 'true';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2:3b'; // Better reasoning, still fast
+
+// JWT Configuration - Session authentication
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production-min-32-chars';
+const JWT_EXPIRATION = '7d'; // 7 days
 
 // Default System Prompt - Single source of truth
 const DEFAULT_SYSTEM_PROMPT = `You are a helpful AI assistant. Answer questions based on the provided document context.
@@ -34,16 +39,18 @@ Document context:
 let DOCUMENT_CONTEXT = '';
 let DOCUMENT_LAST_MODIFIED = null;
 
-// Function to load document context from file
-async function loadDocumentContext() {
+// Function to load document context from file (SESSION-AWARE)
+async function loadDocumentContext(sessionId) {
   try {
     const fs = require('fs');
     const path = require('path');
     const mammoth = require('mammoth');
 
+    const paths = getSessionPaths(sessionId);
+    
     // Try working directory first (more recent), then app directory
-    const workingDocPath = path.join(__dirname, '..', '..', 'data', 'working', 'documents', 'default.docx');
-    const appDocPath = path.join(__dirname, '..', '..', 'data', 'app', 'documents', 'default.docx');
+    const workingDocPath = path.join(paths.workingDocumentsDir, 'default.docx');
+    const appDocPath = path.join(dataAppDir, 'documents', 'default.docx');
 
     let docPath = workingDocPath;
     if (!fs.existsSync(workingDocPath) && fs.existsSync(appDocPath)) {
@@ -56,14 +63,14 @@ async function loadDocumentContext() {
 
       // Only reload if file has been modified
       if (DOCUMENT_LAST_MODIFIED !== currentModified) {
-        console.log(`📄 Loading document from: ${docPath}`);
+        console.log(`📄 [Session: ${sessionId}] Loading document from: ${docPath}`);
 
         // Extract full text from DOCX using mammoth
         const result = await mammoth.extractRawText({ path: docPath });
         let fullText = result.value.trim();
 
         if (!fullText || fullText.length === 0) {
-          console.warn('⚠️ Document appears to be empty');
+          console.warn(`⚠️ [Session: ${sessionId}] Document appears to be empty`);
           DOCUMENT_CONTEXT = 'Document is empty or could not be read.';
         } else {
           // Truncate very large documents to prevent overwhelming the LLM
@@ -72,35 +79,29 @@ async function loadDocumentContext() {
           if (fullText.length > MAX_CONTEXT_LENGTH) {
             const truncated = fullText.substring(0, MAX_CONTEXT_LENGTH);
             DOCUMENT_CONTEXT = truncated + '\n\n[... document truncated for context window ...]';
-            console.warn(`⚠️ Document truncated from ${fullText.length} to ${MAX_CONTEXT_LENGTH} characters`);
+            console.warn(`⚠️ [Session: ${sessionId}] Document truncated from ${fullText.length} to ${MAX_CONTEXT_LENGTH} characters`);
           } else {
             DOCUMENT_CONTEXT = fullText;
           }
         }
 
         DOCUMENT_LAST_MODIFIED = currentModified;
-        console.log(`📄 Document context loaded (${DOCUMENT_CONTEXT.length} characters, ${Math.round(DOCUMENT_CONTEXT.length/4)} tokens approx)`);
+        console.log(`📄 [Session: ${sessionId}] Document context loaded (${DOCUMENT_CONTEXT.length} characters, ${Math.round(DOCUMENT_CONTEXT.length/4)} tokens approx)`);
       }
     } else {
-      console.warn('⚠️ No document found at:', workingDocPath, 'or', appDocPath);
+      console.warn(`⚠️ [Session: ${sessionId}] No document found at:`, workingDocPath, 'or', appDocPath);
       DOCUMENT_CONTEXT = 'No document found. Please upload or create a document to analyze.';
     }
   } catch (error) {
-    console.error('❌ Error loading document context:', error.message);
+    console.error(`❌ [Session: ${sessionId}] Error loading document context:`, error.message);
     DOCUMENT_CONTEXT = 'Document loading error. Please check the document file.';
   }
 }
 
-// Load document context on startup (preloaded)
-(async () => {
-  await loadDocumentContext();
-  console.log('✅ Document context ready for LLM');
-})();
-
-// Function to get current system prompt (document preloaded on startup)
-async function getSystemPrompt() {
+// Function to get current system prompt (SESSION-AWARE)
+async function getSystemPrompt(sessionId) {
   // Check for document updates (handles refresh button and file changes)
-  await loadDocumentContext();
+  await loadDocumentContext(sessionId);
 
   const customPromptPath = path.join(dataAppDir, 'config', 'system-prompt.txt');
   let basePrompt = '';
@@ -161,11 +162,12 @@ function getDocumentContext() {
   }
 }
 
-function logActivity(type, userId, details = {}) {
+function logActivity(sessionId, type, userId, details = {}) {
   // Skip activity logging during test mode
   if (testMode) return null;
   
   try {
+    const paths = getSessionPaths(sessionId);
     const resolvedLabel = resolveUserLabel(userId);
     const platform = (details && details.platform) ? String(details.platform) : 'web';
     // Enrich details with user context so message formatting has access
@@ -185,40 +187,41 @@ function logActivity(type, userId, details = {}) {
 
     // Load existing activities
     let activities = [];
-    if (fs.existsSync(activityLogFilePath)) {
+    if (fs.existsSync(paths.activityLogFilePath)) {
       try {
-        const content = fs.readFileSync(activityLogFilePath, 'utf8');
+        const content = fs.readFileSync(paths.activityLogFilePath, 'utf8');
         // Handle potential BOM
         const cleanContent = content.replace(/^\uFEFF/, '');
         activities = JSON.parse(cleanContent);
         if (!Array.isArray(activities)) activities = [];
       } catch (e) {
-        console.error('Error reading activity log for append, reinitializing:', e);
+        console.error(`Error reading activity log for session ${sessionId}, reinitializing:`, e);
         // Reinitialize corrupted file
-        fs.writeFileSync(activityLogFilePath, '[]', 'utf8');
+        fs.writeFileSync(paths.activityLogFilePath, '[]', 'utf8');
         activities = [];
       }
     }
 
     // Add new activity and save
     activities.push(activity);
-    fs.writeFileSync(activityLogFilePath, JSON.stringify(activities, null, 2));
+    fs.writeFileSync(paths.activityLogFilePath, JSON.stringify(activities, null, 2));
 
     // Broadcast to all connected clients
     broadcast({ type: 'activity:new', activity });
 
     return activity;
   } catch (e) {
-    console.error('Error logging activity:', e);
+    console.error(`Error logging activity for session ${sessionId}:`, e);
     return null;
   }
 }
 
-// Messages storage functions (conversation messaging with ACP/internal flags)
-function readMessages() {
+// Messages storage functions (conversation messaging with ACP/internal flags) - SESSION-AWARE
+function readMessages(sessionId) {
   try {
-    if (fs.existsSync(messagesFilePath)) {
-      const content = fs.readFileSync(messagesFilePath, 'utf8');
+    const paths = getSessionPaths(sessionId);
+    if (fs.existsSync(paths.messagesFilePath)) {
+      const content = fs.readFileSync(paths.messagesFilePath, 'utf8');
       const cleanContent = content.replace(/^\uFEFF/, '');
       const data = JSON.parse(cleanContent);
       return {
@@ -228,23 +231,24 @@ function readMessages() {
     }
     return { messages: [], posts: [] };
   } catch (e) {
-    console.error('Error reading messages:', e);
+    console.error(`Error reading messages for session ${sessionId}:`, e);
     return { messages: [], posts: [] };
   }
 }
 
-function writeMessages(data) {
+function writeMessages(sessionId, data) {
   try {
-    fs.writeFileSync(messagesFilePath, JSON.stringify(data, null, 2), 'utf8');
+    const paths = getSessionPaths(sessionId);
+    fs.writeFileSync(paths.messagesFilePath, JSON.stringify(data, null, 2), 'utf8');
     return true;
   } catch (e) {
-    console.error('Error writing messages:', e);
+    console.error(`Error writing messages for session ${sessionId}:`, e);
     return false;
   }
 }
 
 function createMessage({ title, createdBy, participants, internal, external, privileged, text }) {
-  const data = readMessages();
+  const data = readMessages(req.sessionId);
   const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   const now = Date.now();
   
@@ -280,12 +284,12 @@ function createMessage({ title, createdBy, participants, internal, external, pri
     data.posts.push(post);
   }
   
-  writeMessages(data);
+  writeMessages(req.sessionId, data);
   return { message, data };
 }
 
 function addPostToMessage(messageId, author, text, privileged = false) {
-  const data = readMessages();
+  const data = readMessages(req.sessionId);
   const message = data.messages.find(m => m.messageId === messageId);
   
   if (!message) {
@@ -310,12 +314,12 @@ function addPostToMessage(messageId, author, text, privileged = false) {
     .map(p => p.userId)
     .filter(id => id !== author.userId);
   
-  writeMessages(data);
+  writeMessages(req.sessionId, data);
   return { post, message, data };
 }
 
 function archiveMessageForUser(messageId, userId) {
-  const data = readMessages();
+  const data = readMessages(req.sessionId);
   const message = data.messages.find(m => m.messageId === messageId);
   
   if (!message) {
@@ -332,12 +336,12 @@ function archiveMessageForUser(messageId, userId) {
     message.archivedBy.push(userId);
   }
   
-  writeMessages(data);
+  writeMessages(req.sessionId, data);
   return { message, data };
 }
 
 function unarchiveMessageForUser(messageId, userId) {
-  const data = readMessages();
+  const data = readMessages(req.sessionId);
   const message = data.messages.find(m => m.messageId === messageId);
   
   if (!message) {
@@ -352,12 +356,12 @@ function unarchiveMessageForUser(messageId, userId) {
   // Remove userId from archivedBy
   message.archivedBy = message.archivedBy.filter(id => id !== userId);
   
-  writeMessages(data);
+  writeMessages(req.sessionId, data);
   return { message, data };
 }
 
 function updateMessageFlags(messageId, { internal, external, privileged }) {
-  const data = readMessages();
+  const data = readMessages(req.sessionId);
   const message = data.messages.find(m => m.messageId === messageId);
   
   if (!message) {
@@ -368,12 +372,12 @@ function updateMessageFlags(messageId, { internal, external, privileged }) {
   if (typeof external === 'boolean') message.external = external;
   if (typeof privileged === 'boolean') message.privileged = privileged;
   
-  writeMessages(data);
+  writeMessages(req.sessionId, data);
   return { message, data };
 }
 
 function markMessageRead(messageId, userId) {
-  const data = readMessages();
+  const data = readMessages(req.sessionId);
   const message = data.messages.find(m => m.messageId === messageId);
   
   if (!message) {
@@ -382,12 +386,12 @@ function markMessageRead(messageId, userId) {
   
   message.unreadBy = (message.unreadBy || []).filter(id => id !== userId);
   
-  writeMessages(data);
+  writeMessages(req.sessionId, data);
   return { message, data };
 }
 
 function markMessageUnread(messageId, userId) {
-  const data = readMessages();
+  const data = readMessages(req.sessionId);
   const message = data.messages.find(m => m.messageId === messageId);
   
   if (!message) {
@@ -399,12 +403,12 @@ function markMessageUnread(messageId, userId) {
     message.unreadBy.push(userId);
   }
   
-  writeMessages(data);
+  writeMessages(req.sessionId, data);
   return { message, data };
 }
 
 function deleteMessageForUser(messageId, userId) {
-  const data = readMessages();
+  const data = readMessages(req.sessionId);
   const message = data.messages.find(m => m.messageId === messageId);
   
   if (!message) {
@@ -421,12 +425,12 @@ function deleteMessageForUser(messageId, userId) {
     message.deletedBy.push(userId);
   }
   
-  writeMessages(data);
+  writeMessages(req.sessionId, data);
   return { message, data };
 }
 
 function getDiscussionSummary(userId) {
-  const data = readMessages();
+  const data = readMessages(req.sessionId);
   // Only count messages where user is a participant and hasn't deleted it
   const messages = data.messages.filter(m => {
     const deletedBy = m.deletedBy || [];
@@ -468,101 +472,108 @@ function getDiscussionSummary(userId) {
   };
 }
 
-// Chat storage functions (per-user AI chat history)
-function readChat() {
+// Chat storage functions (per-user AI chat history) - SESSION-AWARE
+function readChat(sessionId) {
   try {
-    if (fs.existsSync(chatFilePath)) {
-      const content = fs.readFileSync(chatFilePath, 'utf8');
+    const paths = getSessionPaths(sessionId);
+    if (fs.existsSync(paths.chatFilePath)) {
+      const content = fs.readFileSync(paths.chatFilePath, 'utf8');
       const cleanContent = content.replace(/^\uFEFF/, '');
       const data = JSON.parse(cleanContent);
       return data || {};
     }
     return {};
   } catch (e) {
-    console.error('Error reading chat:', e);
+    console.error(`Error reading chat for session ${sessionId}:`, e);
     return {};
   }
 }
 
-function saveChatMessage(userId, message) {
+function saveChatMessage(sessionId, userId, message) {
   try {
-    const allChats = readChat();
+    const paths = getSessionPaths(sessionId);
+    const allChats = readChat(sessionId);
     if (!allChats[userId]) allChats[userId] = [];
     allChats[userId].push(message);
-    fs.writeFileSync(chatFilePath, JSON.stringify(allChats, null, 2), 'utf8');
+    fs.writeFileSync(paths.chatFilePath, JSON.stringify(allChats, null, 2), 'utf8');
     return true;
   } catch (e) {
-    console.error('Error saving chat message:', e);
+    console.error(`Error saving chat message for session ${sessionId}:`, e);
     return false;
   }
 }
 
-function resetUserChat(userId) {
+function resetUserChat(sessionId, userId) {
   try {
-    const allChats = readChat();
+    const paths = getSessionPaths(sessionId);
+    const allChats = readChat(sessionId);
     delete allChats[userId];
-    fs.writeFileSync(chatFilePath, JSON.stringify(allChats, null, 2), 'utf8');
+    fs.writeFileSync(paths.chatFilePath, JSON.stringify(allChats, null, 2), 'utf8');
     return true;
   } catch (e) {
-    console.error('Error resetting chat:', e);
+    console.error(`Error resetting chat for session ${sessionId}:`, e);
     return false;
   }
 }
 
-// Fields storage functions (document field/variable definitions)
-function readVariables() {
+// Fields storage functions (document field/variable definitions) - SESSION-AWARE
+function readVariables(sessionId) {
   try {
-    if (fs.existsSync(variablesFilePath)) {
-      const content = fs.readFileSync(variablesFilePath, 'utf8');
+    const paths = getSessionPaths(sessionId);
+    if (fs.existsSync(paths.variablesFilePath)) {
+      const content = fs.readFileSync(paths.variablesFilePath, 'utf8');
       const cleanContent = content.replace(/^\uFEFF/, '');
       const data = JSON.parse(cleanContent);
       return data || {};
     }
     return {};
   } catch (e) {
-    console.error('Error reading variables:', e);
+    console.error(`Error reading variables for session ${sessionId}:`, e);
     return {};
   }
 }
 
-function saveVariable(variable) {
+function saveVariable(sessionId, variable) {
   try {
-    const variables = readVariables();
+    const paths = getSessionPaths(sessionId);
+    const variables = readVariables(sessionId);
     variables[variable.varId] = variable;
-    fs.writeFileSync(variablesFilePath, JSON.stringify(variables, null, 2), 'utf8');
+    fs.writeFileSync(paths.variablesFilePath, JSON.stringify(variables, null, 2), 'utf8');
     return true;
   } catch (e) {
-    console.error('Error saving variable:', e);
+    console.error(`Error saving variable for session ${sessionId}:`, e);
     return false;
   }
 }
 
-function updateVariable(varId, updates) {
+function updateVariable(sessionId, varId, updates) {
   try {
-    const variables = readVariables();
+    const paths = getSessionPaths(sessionId);
+    const variables = readVariables(sessionId);
     if (!variables[varId]) {
       return false;
     }
     variables[varId] = { ...variables[varId], ...updates, updatedAt: new Date().toISOString() };
-    fs.writeFileSync(variablesFilePath, JSON.stringify(variables, null, 2), 'utf8');
+    fs.writeFileSync(paths.variablesFilePath, JSON.stringify(variables, null, 2), 'utf8');
     return true;
   } catch (e) {
-    console.error('Error updating variable:', e);
+    console.error(`Error updating variable for session ${sessionId}:`, e);
     return false;
   }
 }
 
-function deleteVariable(varId) {
+function deleteVariable(sessionId, varId) {
   try {
-    const variables = readVariables();
+    const paths = getSessionPaths(sessionId);
+    const variables = readVariables(sessionId);
     if (!variables[varId]) {
       return false;
     }
     delete variables[varId];
-    fs.writeFileSync(variablesFilePath, JSON.stringify(variables, null, 2), 'utf8');
+    fs.writeFileSync(paths.variablesFilePath, JSON.stringify(variables, null, 2), 'utf8');
     return true;
   } catch (e) {
-    console.error('Error deleting variable:', e);
+    console.error(`Error deleting variable for session ${sessionId}:`, e);
     return false;
   }
 }
@@ -948,7 +959,7 @@ function buildActivityMessage(type, details = {}) {
       };
 
     // User authentication events (not yet wired up - full auth not implemented in prototype)
-    // TODO: Call logActivity('user:login', userId, { platform, ipAddress, userAgent }) when auth is implemented
+    // TODO: Call logActivity(req.sessionId, 'user:login', userId, { platform, ipAddress, userAgent }) when auth is implemented
     case 'user:login':
       return {
         action: 'logged in',
@@ -1193,24 +1204,13 @@ function buildActivityMessage(type, details = {}) {
   }
 }
 
-const dataWorkingDir = path.join(rootDir, 'data', 'working');
+// Session-isolated paths are now managed via getSessionPaths(sessionId)
+// Canonical paths remain global for shared resources
 const canonicalDocumentsDir = path.join(dataAppDir, 'documents');
 const canonicalExhibitsDir = path.join(dataAppDir, 'exhibits');
-const workingDocumentsDir = path.join(dataWorkingDir, 'documents');
-const workingExhibitsDir = path.join(dataWorkingDir, 'exhibits');
-const compiledDir = path.join(dataWorkingDir, 'compiled');
-const versionsDir = path.join(dataWorkingDir, 'versions');
-const approvalsFilePath = path.join(dataAppDir, 'approvals.json');
-const activityLogFilePath = path.join(dataAppDir, 'activity-log.json');
-const messagesFilePath = path.join(dataAppDir, 'messages.json');
-const chatFilePath = path.join(dataAppDir, 'chat.json');
-const variablesFilePath = path.join(dataAppDir, 'variables.json');
-const fieldsFilePath = path.join(dataAppDir, 'fields.json');
 
-// Ensure working directories exist
-for (const dir of [dataWorkingDir, workingDocumentsDir, workingExhibitsDir, compiledDir, versionsDir]) {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-}
+// Note: Working directories are now per-session and created on-demand via initializeSession()
+// Each session gets its own isolated directory: data/working-{sessionId}/
 
 // In-memory state (prototype)
 const DOCUMENT_ID = process.env.DOCUMENT_ID || 'default';
@@ -1339,10 +1339,11 @@ function buildBanner({ isCheckedOut, isOwner, checkedOutBy }) {
 }
 
 // Approvals helpers
-function loadApprovals() {
+function loadApprovals(sessionId) {
   try {
-    if (fs.existsSync(approvalsFilePath)) {
-      const j = JSON.parse(fs.readFileSync(approvalsFilePath, 'utf8'));
+    const paths = getSessionPaths(sessionId);
+    if (fs.existsSync(paths.approvalsFilePath)) {
+      const j = JSON.parse(fs.readFileSync(paths.approvalsFilePath, 'utf8'));
       if (j && Array.isArray(j.approvers)) return { approvers: j.approvers, revision: Number(j.revision) || serverState.approvalsRevision };
     }
   } catch {}
@@ -1355,10 +1356,11 @@ function loadApprovals() {
   return { approvers, revision: serverState.approvalsRevision };
 }
 
-function saveApprovals(list) {
+function saveApprovals(sessionId, list) {
   try {
+    const paths = getSessionPaths(sessionId);
     const data = { approvers: Array.isArray(list) ? list : [], revision: serverState.approvalsRevision };
-    fs.writeFileSync(approvalsFilePath, JSON.stringify(data, null, 2));
+    fs.writeFileSync(paths.approvalsFilePath, JSON.stringify(data, null, 2));
     return true;
   } catch { return false; }
 }
@@ -1448,6 +1450,202 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
+// ====================================================================
+// JWT Session Management
+// ====================================================================
+
+// Initialize session directory with seed data
+function initializeSession(sessionId) {
+  const sessionDir = path.join(rootDir, 'data', `working-${sessionId}`);
+  const canonicalDir = path.join(rootDir, 'data', 'app');
+  
+  // Create session directories
+  const documentsDir = path.join(sessionDir, 'documents');
+  const versionsDir = path.join(sessionDir, 'versions');
+  const exhibitsDir = path.join(sessionDir, 'exhibits');
+  
+  fs.mkdirSync(documentsDir, { recursive: true });
+  fs.mkdirSync(versionsDir, { recursive: true });
+  fs.mkdirSync(exhibitsDir, { recursive: true });
+  
+  // Copy seed data - default document
+  const canonicalDoc = path.join(canonicalDir, 'documents', 'default.docx');
+  if (fs.existsSync(canonicalDoc)) {
+    fs.copyFileSync(canonicalDoc, path.join(documentsDir, 'default.docx'));
+  }
+  
+  // Copy seed exhibits
+  const canonicalExhibitsDir = path.join(canonicalDir, 'exhibits');
+  if (fs.existsSync(canonicalExhibitsDir)) {
+    const exhibits = fs.readdirSync(canonicalExhibitsDir);
+    for (const exhibit of exhibits) {
+      const canonicalPath = path.join(canonicalExhibitsDir, exhibit);
+      const exhibitPath = path.join(exhibitsDir, exhibit);
+      if (fs.statSync(canonicalPath).isFile()) {
+        fs.copyFileSync(canonicalPath, exhibitPath);
+      }
+    }
+  }
+  
+  // Initialize JSON state files from seed data
+  const seedVariables = path.join(canonicalDir, 'variables.seed.json');
+  if (fs.existsSync(seedVariables)) {
+    fs.copyFileSync(seedVariables, path.join(sessionDir, 'variables.json'));
+  } else {
+    fs.writeFileSync(path.join(sessionDir, 'variables.json'), '{"variables":{}}');
+  }
+  
+  // Initialize empty state files
+  fs.writeFileSync(
+    path.join(sessionDir, 'state.json'),
+    JSON.stringify({
+      checkedOutBy: null,
+      documentVersion: 1,
+      title: 'Redlined & Signed',
+      status: 'draft',
+      lastUpdated: new Date().toISOString(),
+      revision: 0
+    }, null, 2)
+  );
+  
+  fs.writeFileSync(path.join(sessionDir, 'approvals.json'), JSON.stringify({
+    approvers: [
+      { id: 'user1', name: 'Warren Peace', approved: false, revision: 0 },
+      { id: 'user2', name: 'Ivy League', approved: false, revision: 0 },
+      { id: 'user3', name: 'Sue Pervisor', approved: false, revision: 0 },
+      { id: 'user4', name: 'Ella Mentor', approved: false, revision: 0 },
+      { id: 'user5', name: 'Cole Lateral', approved: false, revision: 0 }
+    ]
+  }, null, 2));
+  
+  fs.writeFileSync(path.join(sessionDir, 'activity-log.json'), '[]');
+  fs.writeFileSync(path.join(sessionDir, 'messages.json'), '{"messages":[],"posts":[]}');
+  fs.writeFileSync(path.join(sessionDir, 'chat.json'), '{"user1":[],"user2":[],"user3":[],"user4":[],"user5":[]}');
+  fs.writeFileSync(path.join(sessionDir, 'fields.json'), '[]');
+  
+  console.log(`✅ Initialized session directory: ${sessionId}`);
+}
+
+// Get session-specific working directory
+function getWorkingDir(sessionId) {
+  const sessionDir = path.join(rootDir, 'data', `working-${sessionId}`);
+  
+  // Create if doesn't exist
+  if (!fs.existsSync(sessionDir)) {
+    initializeSession(sessionId);
+  }
+  
+  return sessionDir;
+}
+
+// Get all session-specific file paths
+// This is the SINGLE SOURCE OF TRUTH for session-isolated file paths
+function getSessionPaths(sessionId) {
+  const sessionDir = getWorkingDir(sessionId);
+  
+  return {
+    // Session directory root
+    sessionDir,
+    
+    // Working directories
+    workingDocumentsDir: path.join(sessionDir, 'documents'),
+    workingExhibitsDir: path.join(sessionDir, 'exhibits'),
+    compiledDir: path.join(sessionDir, 'compiled'),
+    versionsDir: path.join(sessionDir, 'versions'),
+    
+    // State files
+    approvalsFilePath: path.join(sessionDir, 'approvals.json'),
+    activityLogFilePath: path.join(sessionDir, 'activity-log.json'),
+    messagesFilePath: path.join(sessionDir, 'messages.json'),
+    chatFilePath: path.join(sessionDir, 'chat.json'),
+    variablesFilePath: path.join(sessionDir, 'variables.json'),
+    fieldsFilePath: path.join(sessionDir, 'fields.json')
+  };
+}
+
+// Session creation endpoint (no auth required)
+app.post('/api/v1/session/start', (req, res) => {
+  try {
+    const sessionId = `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Create JWT token
+    const token = jwt.sign(
+      { sessionId },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRATION }
+    );
+    
+    // Initialize session directory with seed data
+    initializeSession(sessionId);
+    
+    console.log(`🔐 Created new session: ${sessionId}`);
+    
+    res.json({ 
+      token, 
+      sessionId,
+      expiresIn: JWT_EXPIRATION
+    });
+  } catch (err) {
+    console.error('❌ Failed to create session:', err);
+    res.status(500).json({ error: 'Failed to create session' });
+  }
+});
+
+// JWT authentication middleware (backward-compatible with default session)
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // "Bearer TOKEN"
+  
+  if (!token) {
+    // No token = use default session (backward compatible)
+    req.sessionId = 'default';
+    console.log(`⚠️ No JWT token - using default session (${req.path})`);
+    return next();
+  }
+  
+  try {
+    // Verify and decode token
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Attach session info to request
+    req.sessionId = decoded.sessionId;
+    req.tokenPayload = decoded;
+    
+    // Ensure session directory exists
+    getWorkingDir(req.sessionId);
+    
+    next();
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(403).json({ 
+        error: 'Token expired',
+        action: 'refresh_token',
+        endpoint: '/api/v1/session/start'
+      });
+    }
+    
+    // Invalid token = fall back to default session (graceful degradation)
+    console.warn(`⚠️ Invalid JWT token - using default session (${req.path})`);
+    req.sessionId = 'default';
+    next();
+  }
+}
+
+// Apply JWT auth to all API routes (except session creation and health check)
+app.use('/api/v1', (req, res, next) => {
+  // Skip auth for these endpoints
+  if (req.path === '/session/start' || req.path === '/health') {
+    return next();
+  }
+  
+  // Apply JWT authentication
+  authenticateToken(req, res, next);
+});
+
+// ====================================================================
+// End JWT Session Management
+// ====================================================================
+
 // WebSocket reverse proxy for collaboration under same HTTPS origin
 const COLLAB_TARGET = process.env.COLLAB_TARGET || 'http://localhost:4002';
 const collabProxy = createProxyMiddleware({
@@ -1470,21 +1668,23 @@ app.get(['/view', '/'], (req, res) => {
   res.sendFile(path.join(webDir, 'view.html'));
 });
 
-// Files: default document resolution (working copy preferred)
-function resolveDefaultDocPath() {
-  const working = path.join(workingDocumentsDir, 'default.docx');
+// Files: default document resolution (working copy preferred) - SESSION-AWARE
+function resolveDefaultDocPath(sessionId) {
+  const paths = getSessionPaths(sessionId);
+  const working = path.join(paths.workingDocumentsDir, 'default.docx');
   if (fs.existsSync(working)) return working;
   return path.join(canonicalDocumentsDir, 'default.docx');
 }
 
-// Files: exhibits listing (canonical only for now)
-function listExhibits() {
+// Files: exhibits listing (canonical only for now) - SESSION-AWARE
+function listExhibits(sessionId) {
+  const paths = getSessionPaths(sessionId);
   const names = new Set();
   const items = [];
   // Prefer working copies first
-  if (fs.existsSync(workingExhibitsDir)) {
-    for (const f of fs.readdirSync(workingExhibitsDir)) {
-      const p = path.join(workingExhibitsDir, f);
+  if (fs.existsSync(paths.workingExhibitsDir)) {
+    for (const f of fs.readdirSync(paths.workingExhibitsDir)) {
+      const p = path.join(paths.workingExhibitsDir, f);
       if (fs.statSync(p).isDirectory()) continue;
       names.add(f);
       items.push({ name: f, url: `/exhibits/${encodeURIComponent(f)}` });
@@ -1511,7 +1711,8 @@ app.get('/documents/canonical/default.docx', (req, res) => {
 });
 
 app.get('/documents/working/default.docx', (req, res) => {
-  const p = path.join(workingDocumentsDir, 'default.docx');
+  const paths = getSessionPaths(req.sessionId);
+  const p = path.join(paths.workingDocumentsDir, 'default.docx');
   if (!fs.existsSync(p)) return res.status(404).send('working default.docx not found');
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Content-Disposition', 'inline; filename="default.docx"');
@@ -1520,7 +1721,8 @@ app.get('/documents/working/default.docx', (req, res) => {
 
 // Serve canonical exhibits
 app.get('/exhibits/:name', (req, res) => {
-  const w = path.join(workingExhibitsDir, req.params.name);
+  const paths = getSessionPaths(req.sessionId);
+  const w = path.join(paths.workingExhibitsDir, req.params.name);
   const c = path.join(canonicalExhibitsDir, req.params.name);
   const p = fs.existsSync(w) ? w : c;
   if (!fs.existsSync(p)) return res.status(404).send('exhibit not found');
@@ -1580,22 +1782,24 @@ app.get('/api/v1/users', (req, res) => {
 
 app.get('/api/v1/activity', (req, res) => {
   try {
-    if (!fs.existsSync(activityLogFilePath)) {
+    const paths = getSessionPaths(req.sessionId);
+    
+    if (!fs.existsSync(paths.activityLogFilePath)) {
       // Initialize empty file if it doesn't exist
-      fs.writeFileSync(activityLogFilePath, '[]', 'utf8');
+      fs.writeFileSync(paths.activityLogFilePath, '[]', 'utf8');
       return res.json({ activities: [] });
     }
 
     let activities = [];
     try {
-      const content = fs.readFileSync(activityLogFilePath, 'utf8');
+      const content = fs.readFileSync(paths.activityLogFilePath, 'utf8');
       // Handle potential BOM
       const cleanContent = content.replace(/^\uFEFF/, '');
       activities = JSON.parse(cleanContent);
     } catch (parseError) {
-      console.error('Error parsing activity log, reinitializing:', parseError);
+      console.error(`Error parsing activity log for session ${req.sessionId}, reinitializing:`, parseError);
       // Reinitialize corrupted file
-      fs.writeFileSync(activityLogFilePath, '[]', 'utf8');
+      fs.writeFileSync(paths.activityLogFilePath, '[]', 'utf8');
       activities = [];
     }
 
@@ -1614,7 +1818,7 @@ app.get('/api/v1/activity', (req, res) => {
 app.get('/api/v1/messages', (req, res) => {
   try {
     const { state, internal, privileged, search, userId } = req.query;
-    const data = readMessages();
+    const data = readMessages(req.sessionId);
     let messages = data.messages.filter(m => !m.deletedAt);
     
     // Filter by participant - only show conversations where userId is a participant
@@ -1739,7 +1943,7 @@ app.post('/api/v1/messages', (req, res) => {
     });
     
     // Log activity
-    logActivity('message:created', userId, {
+    logActivity(req.sessionId, 'message:created', userId, {
       messageId: result.message.messageId,
       title: result.message.title,
       recipients: recipients.length,
@@ -1783,7 +1987,7 @@ app.post('/api/v1/messages/:messageId/post', (req, res) => {
     }
     
     // Log activity
-    logActivity('message:post-created', userId, {
+    logActivity(req.sessionId, 'message:post-created', userId, {
       messageId: messageId,
       postId: result.post.postId,
       conversationTitle: result.message.title || 'Untitled',
@@ -1830,10 +2034,10 @@ app.post('/api/v1/messages/:messageId/state', (req, res) => {
         userId
       });
       
-      const data = readMessages();
+      const data = readMessages(req.sessionId);
       const postCount = data.posts.filter(p => p.messageId === messageId).length;
       
-      logActivity('message:archived', userId, { 
+      logActivity(req.sessionId, 'message:archived', userId, { 
         messageId,
         title: result.message.title,
         participants: result.message.participants.map(p => p.label).join(', '),
@@ -1854,10 +2058,10 @@ app.post('/api/v1/messages/:messageId/state', (req, res) => {
         userId
       });
       
-      const data = readMessages();
+      const data = readMessages(req.sessionId);
       const postCount = data.posts.filter(p => p.messageId === messageId).length;
       
-      logActivity('message:unarchived', userId, { 
+      logActivity(req.sessionId, 'message:unarchived', userId, { 
         messageId,
         title: result.message.title,
         participants: result.message.participants.map(p => p.label).join(', '),
@@ -1893,7 +2097,7 @@ app.post('/api/v1/messages/:messageId/flags', (req, res) => {
     });
     
     // Log activity
-    logActivity('message:flags-updated', userId, {
+    logActivity(req.sessionId, 'message:flags-updated', userId, {
       messageId,
       title: result.message.title,
       internal: result.message.internal,
@@ -1973,11 +2177,11 @@ app.post('/api/v1/messages/:messageId/delete', (req, res) => {
       userId
     });
     
-    const data = readMessages();
+    const data = readMessages(req.sessionId);
     const postCount = data.posts.filter(p => p.messageId === messageId).length;
     
     // Log activity
-    logActivity('message:deleted', userId, {
+    logActivity(req.sessionId, 'message:deleted', userId, {
       messageId,
       title: result.message.title,
       participants: result.message.participants.map(p => p.label).join(', '),
@@ -1999,7 +2203,7 @@ app.post('/api/v1/messages/:messageId/delete', (req, res) => {
 app.get('/api/v1/messages/export.csv', (req, res) => {
   try {
     const { scope, messageIds, includeInternal, includePrivileged, includePosts } = req.query;
-    const data = readMessages();
+    const data = readMessages(req.sessionId);
     let messages = data.messages.filter(t => !t.deletedAt);
     
     // Filter by scope
@@ -2045,7 +2249,7 @@ app.get('/api/v1/messages/export.csv', (req, res) => {
     if (includeInternal === 'true') filters.push('internal');
     if (includePrivileged === 'true') filters.push('privileged');
     
-    logActivity('message:exported', userId, {
+    logActivity(req.sessionId, 'message:exported', userId, {
       scope: scope || 'all',
       filters: filters.join(', '),
       messageCount: messages.length,
@@ -2081,7 +2285,7 @@ app.get('/api/v1/chat', (req, res) => {
     if (!userId) {
       return res.status(400).json({ error: 'Missing userId' });
     }
-    const allChats = readChat();
+    const allChats = readChat(req.sessionId);
     const userChat = allChats[userId] || [];
     return res.json({ messages: userChat });
   } catch (e) {
@@ -2096,7 +2300,7 @@ app.post('/api/v1/chat/reset', (req, res) => {
     if (!userId) {
       return res.status(400).json({ error: 'Missing userId' });
     }
-    resetUserChat(userId);
+    resetUserChat(req.sessionId, userId);
     return res.json({ ok: true });
   } catch (e) {
     console.error('Error resetting chat:', e);
@@ -2107,7 +2311,7 @@ app.post('/api/v1/chat/reset', (req, res) => {
 // Variables API
 app.get('/api/v1/variables', (req, res) => {
   try {
-    const variables = readVariables();
+    const variables = readVariables(req.sessionId);
     return res.json({ variables });
   } catch (e) {
     console.error('Error reading variables:', e);
@@ -2133,7 +2337,7 @@ app.post('/api/v1/variables', (req, res) => {
     const generatedVarId = varId || `var-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
     // Check for duplicate varId
-    const existingVariables = readVariables();
+    const existingVariables = readVariables(req.sessionId);
     if (existingVariables[generatedVarId]) {
       return res.status(409).json({ error: 'Variable with this ID already exists' });
     }
@@ -2158,12 +2362,12 @@ app.post('/api/v1/variables', (req, res) => {
     }
     
     // Save to storage
-    if (!saveVariable(variable)) {
+    if (!saveVariable(req.sessionId, variable)) {
       return res.status(500).json({ error: 'Failed to save variable' });
     }
     
     // Log activity
-    logActivity('variable:created', userId || 'system', { 
+    logActivity(req.sessionId, 'variable:created', userId || 'system', { 
       varId: generatedVarId, 
       displayLabel
     });
@@ -2188,7 +2392,7 @@ app.put('/api/v1/variables/:varId', (req, res) => {
     const { displayLabel, type, category, value, email, docusignRole, userId } = req.body;
     
     // Check if variable exists
-    const existingVariables = readVariables();
+    const existingVariables = readVariables(req.sessionId);
     if (!existingVariables[varId]) {
       return res.status(404).json({ error: 'Variable not found' });
     }
@@ -2228,16 +2432,16 @@ app.put('/api/v1/variables/:varId', (req, res) => {
     }
     
     // Update variable
-    if (!updateVariable(varId, updates)) {
+    if (!updateVariable(req.sessionId, varId, updates)) {
       return res.status(500).json({ error: 'Failed to update variable' });
     }
     
     // Get updated variable
-    const updatedVariables = readVariables();
+    const updatedVariables = readVariables(req.sessionId);
     const updatedVariable = updatedVariables[varId];
     
     // Log activity
-    logActivity('variable:updated', userId || 'system', { 
+    logActivity(req.sessionId, 'variable:updated', userId || 'system', { 
       varId,
       displayLabel: updatedVariable.displayLabel,
       changes,
@@ -2268,7 +2472,7 @@ app.delete('/api/v1/variables/:varId', (req, res) => {
     const { userId } = req.query;
     
     // Check if variable exists
-    const existingVariables = readVariables();
+    const existingVariables = readVariables(req.sessionId);
     if (!existingVariables[varId]) {
       return res.status(404).json({ error: 'Variable not found' });
     }
@@ -2276,12 +2480,12 @@ app.delete('/api/v1/variables/:varId', (req, res) => {
     const variable = existingVariables[varId];
     
     // Delete variable
-    if (!deleteVariable(varId)) {
+    if (!deleteVariable(req.sessionId, varId)) {
       return res.status(500).json({ error: 'Failed to delete variable' });
     }
     
     // Log activity
-    logActivity('variable:deleted', userId || 'system', { 
+    logActivity(req.sessionId, 'variable:deleted', userId || 'system', { 
       varId,
       displayLabel: variable.displayLabel
     });
@@ -2307,7 +2511,7 @@ app.put('/api/v1/variables/:varId/value', (req, res) => {
     const { value, userId } = req.body;
     
     // Check if variable exists
-    const existingVariables = readVariables();
+    const existingVariables = readVariables(req.sessionId);
     if (!existingVariables[varId]) {
       return res.status(404).json({ error: 'Variable not found' });
     }
@@ -2320,16 +2524,16 @@ app.put('/api/v1/variables/:varId/value', (req, res) => {
       updatedBy: userId || 'system'
     };
     
-    if (!updateVariable(varId, updates)) {
+    if (!updateVariable(req.sessionId, varId, updates)) {
       return res.status(500).json({ error: 'Failed to update variable value' });
     }
     
     // Get updated variable
-    const updatedVariables = readVariables();
+    const updatedVariables = readVariables(req.sessionId);
     const updatedVariable = updatedVariables[varId];
     
     // Log activity with specific valueChanged type
-    logActivity('variable:valueChanged', userId || 'system', { 
+    logActivity(req.sessionId, 'variable:valueChanged', userId || 'system', { 
       varId,
       displayLabel: updatedVariable.displayLabel,
       oldValue,
@@ -2357,7 +2561,7 @@ app.put('/api/v1/variables/:varId/value', (req, res) => {
 });
 
 app.get('/api/v1/current-document', (req, res) => {
-  const p = resolveDefaultDocPath();
+  const p = resolveDefaultDocPath(req.sessionId);
   const exists = fs.existsSync(p);
   res.json({
     id: DOCUMENT_ID,
@@ -2381,7 +2585,7 @@ app.get('/api/v1/state-matrix', (req, res) => {
   const canWrite = !isCheckedOut || isOwner;
   const rolePerm = roleMap[derivedRole] || defaultPerms;
   const banner = buildBanner({ isCheckedOut, isOwner, checkedOutBy: checkedOutLabel });
-  const approvals = loadApprovals();
+  const approvals = loadApprovals(req.sessionId);
   const approvalsSummary = computeApprovalsSummary(approvals.approvers);
   const config = {
     documentId: DOCUMENT_ID,
@@ -2530,7 +2734,7 @@ app.post('/api/v1/status/cycle', (req, res) => {
       try {
     const userId = req.body?.userId || 'user1';
         const docContext = getDocumentContext();
-        logActivity('document:status-change', userId, { 
+        logActivity(req.sessionId, 'document:status-change', userId, { 
           from: cur, 
           to: next,
           documentTitle: docContext.title,
@@ -2552,7 +2756,8 @@ app.post('/api/v1/document/upload', upload.single('file'), (req, res) => {
   // Normalize to default.docx working copy when name differs
   const uploaded = req.file?.path;
   if (!uploaded) return res.status(400).json({ error: 'No file' });
-  const dest = path.join(workingDocumentsDir, 'default.docx');
+  const paths = getSessionPaths(req.sessionId);
+  const dest = path.join(paths.workingDocumentsDir, 'default.docx');
   try {
     fs.copyFileSync(uploaded, dest);
     const userId = req.body?.userId || 'user1';
@@ -2564,7 +2769,7 @@ app.post('/api/v1/document/upload', upload.single('file'), (req, res) => {
     if (!testMode) {
       try {
         const docContext = getDocumentContext();
-    logActivity('document:upload', userId, {
+    logActivity(req.sessionId, 'document:upload', userId, {
       filename: req.file?.originalname || 'default.docx',
       size: req.file?.size,
           documentTitle: docContext.title,
@@ -2584,7 +2789,8 @@ app.post('/api/v1/document/upload', upload.single('file'), (req, res) => {
 });
 
 app.post('/api/v1/document/revert', (req, res) => {
-  const working = path.join(workingDocumentsDir, 'default.docx');
+  const paths = getSessionPaths(req.sessionId);
+  const working = path.join(paths.workingDocumentsDir, 'default.docx');
   if (fs.existsSync(working)) fs.rmSync(working);
   bumpRevision();
   const actorUserId = req.body?.userId || 'system';
@@ -2596,7 +2802,7 @@ app.post('/api/v1/document/revert', (req, res) => {
   if (!testMode) {
     try { 
       const docContext = getDocumentContext();
-      logActivity('version:restore', actorUserId, { 
+      logActivity(req.sessionId, 'version:restore', actorUserId, { 
         platform, 
         version: versionNow,
         previousVersion,
@@ -2613,6 +2819,7 @@ app.post('/api/v1/document/revert', (req, res) => {
 // Save progress: write working copy bytes without releasing checkout
 app.post('/api/v1/save-progress', (req, res) => {
   try {
+    const paths = getSessionPaths(req.sessionId);
     const userId = req.body?.userId || 'user1';
     const platform = (req.body?.platform || req.query?.platform || '').toLowerCase();
     const base64 = req.body?.base64 || '';
@@ -2628,17 +2835,17 @@ app.post('/api/v1/save-progress', (req, res) => {
       const by = resolveUserLabel(serverState.checkedOutBy);
       return res.status(409).json({ error: `Checked out by ${by}` });
     }
-    const dest = path.join(workingDocumentsDir, 'default.docx');
+    const dest = path.join(paths.workingDocumentsDir, 'default.docx');
     try { fs.writeFileSync(dest, bytes); } catch { return res.status(500).json({ error: 'write_failed' }); }
     bumpRevision();
     bumpDocumentVersion(userId, platform || 'word');
     // Save versioned snapshot and metadata
     try {
       const ver = Number(serverState.documentVersion) || 1;
-      const vDoc = path.join(versionsDir, `v${ver}.docx`);
+      const vDoc = path.join(paths.versionsDir, `v${ver}.docx`);
       fs.writeFileSync(vDoc, bytes);
       const meta = { version: ver, savedBy: serverState.updatedBy || { userId, label: userId }, savedAt: new Date().toISOString() };
-      fs.writeFileSync(path.join(versionsDir, `v${ver}.json`), JSON.stringify(meta, null, 2));
+      fs.writeFileSync(path.join(paths.versionsDir, `v${ver}.json`), JSON.stringify(meta, null, 2));
       broadcast({ type: 'versions:update' });
     } catch {}
 
@@ -2646,7 +2853,7 @@ app.post('/api/v1/save-progress', (req, res) => {
     if (!testMode) {
       try {
         const docContext = getDocumentContext();
-    logActivity('document:save', userId, {
+    logActivity(req.sessionId, 'document:save', userId, {
       autoSave: false,
       size: bytes.length,
           documentTitle: docContext.title,
@@ -2673,14 +2880,15 @@ app.post('/api/v1/save-progress', (req, res) => {
 // List versions (newest first) with inferred Version 1
 app.get('/api/v1/versions', (req, res) => {
   try {
+    const paths = getSessionPaths(req.sessionId);
     const items = [];
     try {
-      if (fs.existsSync(versionsDir)) {
-        for (const f of fs.readdirSync(versionsDir)) {
+      if (fs.existsSync(paths.versionsDir)) {
+        for (const f of fs.readdirSync(paths.versionsDir)) {
           const m = /^v(\d+)\.json$/i.exec(f);
           if (!m) continue;
           const ver = Number(m[1]);
-          try { const j = JSON.parse(fs.readFileSync(path.join(versionsDir, f), 'utf8')); items.push({ version: ver, savedBy: j.savedBy || null, savedAt: j.savedAt || null }); } catch {}
+          try { const j = JSON.parse(fs.readFileSync(path.join(paths.versionsDir, f), 'utf8')); items.push({ version: ver, savedBy: j.savedBy || null, savedAt: j.savedAt || null }); } catch {}
         }
       }
     } catch {}
@@ -2694,19 +2902,20 @@ app.get('/api/v1/versions', (req, res) => {
 // Stream a specific version (1 = canonical; otherwise working snapshot)
 app.get('/api/v1/versions/:n', (req, res) => {
   try {
+    const paths = getSessionPaths(req.sessionId);
     const n = Number(req.params.n);
     if (!Number.isFinite(n) || n < 1) return res.status(400).json({ error: 'invalid_version' });
     let p = null;
     if (n === 1) p = path.join(canonicalDocumentsDir, 'default.docx');
     else {
-      const vDoc = path.join(versionsDir, `v${n}.docx`);
+      const vDoc = path.join(paths.versionsDir, `v${n}.docx`);
       if (fs.existsSync(vDoc)) {
         p = vDoc;
       } else {
         // If the requested version is the current version and no snapshot exists, serve working document
         const currentVersion = Number(serverState.documentVersion || 1);
         if (n === currentVersion) {
-          const workingDoc = path.join(workingDocumentsDir, 'default.docx');
+          const workingDoc = path.join(paths.workingDocumentsDir, 'default.docx');
           if (fs.existsSync(workingDoc)) {
             p = workingDoc;
           } else {
@@ -2717,7 +2926,7 @@ app.get('/api/v1/versions/:n', (req, res) => {
       }
     }
     if (!p || !fs.existsSync(p)) {
-      console.error(`❌ Version ${n} not found. versionsDir: ${versionsDir}, serverState.documentVersion: ${serverState.documentVersion}`);
+      console.error(`❌ Version ${n} not found for session ${req.sessionId}. versionsDir: ${paths.versionsDir}, serverState.documentVersion: ${serverState.documentVersion}`);
       return res.status(404).json({ error: 'not_found' });
     }
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
@@ -2739,7 +2948,7 @@ app.post('/api/v1/versions/view', (req, res) => {
     if (!testMode) {
       try { 
         const docContext = getDocumentContext();
-        logActivity('version:view', actorUserId, { 
+        logActivity(req.sessionId, 'version:view', actorUserId, { 
           version: n, 
           platform: originPlatform,
           documentTitle: docContext.title,
@@ -2756,7 +2965,7 @@ app.post('/api/v1/versions/view', (req, res) => {
 
 // Approvals API
 app.get('/api/v1/approvals', (req, res) => {
-  const { approvers, revision } = loadApprovals();
+  const { approvers, revision } = loadApprovals(req.sessionId);
   const summary = computeApprovalsSummary(approvers);
   res.json({ approvers, summary, revision });
 });
@@ -2772,7 +2981,7 @@ app.post('/api/v1/approvals/set', (req, res) => {
     const role = getUserRole(actorUserId);
     const canOverride = !!(loadRoleMap()[role] && loadRoleMap()[role].override);
     if (actorUserId !== targetUserId && !canOverride) return res.status(403).json({ error: 'forbidden' });
-    const data = loadApprovals();
+    const data = loadApprovals(req.sessionId);
     const list = data.approvers.map(a => {
       if (a.userId === targetUserId) {
         return { ...a, approved, notes: (notes !== undefined ? notes : a.notes) };
@@ -2782,7 +2991,7 @@ app.post('/api/v1/approvals/set', (req, res) => {
     // Normalize order to 1..N
     for (let i = 0; i < list.length; i++) list[i].order = i + 1;
     bumpApprovalsRevision();
-    saveApprovals(list);
+    saveApprovals(req.sessionId, list);
     const summary = computeApprovalsSummary(list);
     broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary });
     // Log workflow activity with progress and actor info
@@ -2798,7 +3007,7 @@ app.post('/api/v1/approvals/set', (req, res) => {
     if (summary.approved === summary.total && summary.total > 0) {
       broadcast({ type: 'approval:complete', completedBy: actorUserId, timestamp: Date.now() });
       // Log workflow completion
-      logActivity('workflow:complete', actorUserId, { total: summary.total, approved: summary.approved });
+      logActivity(req.sessionId, 'workflow:complete', actorUserId, { total: summary.total, approved: summary.approved });
     }
     
     res.json({ approvers: list, summary, revision: serverState.approvalsRevision });
@@ -2810,14 +3019,14 @@ app.post('/api/v1/approvals/set', (req, res) => {
 app.post('/api/v1/approvals/reset', (req, res) => {
   try {
     const actorUserId = req.body?.actorUserId || 'system';
-    const data = loadApprovals();
+    const data = loadApprovals(req.sessionId);
     const list = (data.approvers || []).map((a, i) => ({ userId: a.userId, name: a.name, order: i + 1, approved: false, notes: '' }));
     bumpApprovalsRevision();
-    saveApprovals(list);
+    saveApprovals(req.sessionId, list);
     const summary = computeApprovalsSummary(list);
     broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary, notice: { type: 'reset', by: actorUserId } });
     // Log workflow reset
-    logActivity('workflow:reset', actorUserId, {});
+    logActivity(req.sessionId, 'workflow:reset', actorUserId, {});
     res.json({ approvers: list, summary, revision: serverState.approvalsRevision });
   } catch (e) {
     res.status(500).json({ error: 'approvals_reset_failed' });
@@ -2827,11 +3036,11 @@ app.post('/api/v1/approvals/reset', (req, res) => {
 app.post('/api/v1/approvals/notify', (req, res) => {
   try {
     const actorUserId = req.body?.actorUserId || 'user1';
-    const data = loadApprovals();
+    const data = loadApprovals(req.sessionId);
     const summary = computeApprovalsSummary(data.approvers);
     broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary, notice: { type: 'request_review', by: actorUserId } });
     // Log review request
-    logActivity('workflow:request-review', actorUserId, {});
+    logActivity(req.sessionId, 'workflow:request-review', actorUserId, {});
     res.json({ approvers: data.approvers, summary, revision: serverState.approvalsRevision });
   } catch (e) {
     res.status(500).json({ error: 'approvals_notify_failed' });
@@ -2840,7 +3049,7 @@ app.post('/api/v1/approvals/notify', (req, res) => {
 
 // Snapshot: copy working/canonical default to a timestamped backup
 app.post('/api/v1/document/snapshot', (req, res) => {
-  const src = resolveDefaultDocPath();
+  const src = resolveDefaultDocPath(req.sessionId);
   if (!fs.existsSync(src)) return res.status(404).json({ error: 'default.docx not found' });
   const ts = new Date().toISOString().replace(/[:.]/g, '-');
   const snapDir = path.join(dataWorkingDir, 'snapshots');
@@ -2856,7 +3065,7 @@ app.post('/api/v1/document/snapshot', (req, res) => {
     if (!testMode) {
       try {
         const docContext = getDocumentContext();
-    logActivity('document:snapshot', userId, {
+    logActivity(req.sessionId, 'document:snapshot', userId, {
           version: docContext.version,
           documentTitle: docContext.title,
           status: docContext.status,
@@ -2904,11 +3113,12 @@ app.post('/api/v1/test-mode', (req, res) => {
 // Factory reset: wipe working overlays and reset server state with preset data
 app.post('/api/v1/factory-reset', (req, res) => {
   try {
+    const paths = getSessionPaths(req.sessionId);
     const userId = req.body?.userId || req.query?.userId || 'system';
     const platform = req.query?.platform || req.body?.platform || 'web';
       const preset = req.body?.preset || req.query?.preset || 'empty';
 
-      console.log(`🔄 [Factory Reset] Starting with scenario: ${preset}`);
+      console.log(`🔄 [Factory Reset] Starting with scenario: ${preset} for session ${req.sessionId}`);
       console.log(`📦 [Factory Reset] Request body:`, req.body);
 
       // Check if it's a preset (in presets/) or a user scenario (in scenarios/)
@@ -2929,17 +3139,17 @@ app.post('/api/v1/factory-reset', (req, res) => {
       console.log(`📂 [Factory Reset] Loading from: ${presetDir} (${isUserScenario ? 'user scenario' : 'preset'})`);
     
     // Log activity BEFORE clearing activity log!
-    logActivity('system:scenario-loaded', userId, { platform, scenarioId: preset, isUserScenario });
+    logActivity(req.sessionId, 'system:scenario-loaded', userId, { platform, scenarioId: preset, isUserScenario });
     
     // Remove working document overlay first
-    const wDoc = path.join(workingDocumentsDir, 'default.docx');
+    const wDoc = path.join(paths.workingDocumentsDir, 'default.docx');
     if (fs.existsSync(wDoc)) fs.rmSync(wDoc);
     
     // Check if preset has a custom document and copy it
     const presetDocFile = path.join(presetDir, 'default.docx');
     if (fs.existsSync(presetDocFile)) {
       try {
-        if (!fs.existsSync(workingDocumentsDir)) fs.mkdirSync(workingDocumentsDir, { recursive: true });
+        if (!fs.existsSync(paths.workingDocumentsDir)) fs.mkdirSync(paths.workingDocumentsDir, { recursive: true });
         fs.copyFileSync(presetDocFile, wDoc);
         console.log(`✅ Loaded preset document: ${preset}`);
       } catch (e) {
@@ -2950,9 +3160,9 @@ app.post('/api/v1/factory-reset', (req, res) => {
     }
     
     // Remove exhibits overlays
-    if (fs.existsSync(workingExhibitsDir)) {
-      for (const f of fs.readdirSync(workingExhibitsDir)) {
-        const p = path.join(workingExhibitsDir, f);
+    if (fs.existsSync(paths.workingExhibitsDir)) {
+      for (const f of fs.readdirSync(paths.workingExhibitsDir)) {
+        const p = path.join(paths.workingExhibitsDir, f);
         try { if (fs.statSync(p).isFile()) fs.rmSync(p); } catch {}
       }
     }
@@ -2960,21 +3170,21 @@ app.post('/api/v1/factory-reset', (req, res) => {
     const presetApprovalsFile = path.join(presetDir, 'approvals.json');
     if (fs.existsSync(presetApprovalsFile)) {
       try {
-        fs.copyFileSync(presetApprovalsFile, approvalsFilePath);
-        const approvals = JSON.parse(fs.readFileSync(approvalsFilePath, 'utf8'));
+        fs.copyFileSync(presetApprovalsFile, paths.approvalsFilePath);
+        const approvals = JSON.parse(fs.readFileSync(paths.approvalsFilePath, 'utf8'));
         console.log(`✅ Loaded approvals from preset: ${preset} (${approvals.approvers?.length || 0} approvers)`);
       } catch (e) {
         console.error(`❌ Failed to copy preset approvals:`, e.message);
       }
     } else {
       // Clear approvals data if no preset
-      try { if (fs.existsSync(approvalsFilePath)) fs.rmSync(approvalsFilePath); } catch {}
+      try { if (fs.existsSync(paths.approvalsFilePath)) fs.rmSync(paths.approvalsFilePath); } catch {}
       console.log(`ℹ️  No preset approvals found - cleared approvals`);
     }
     bumpApprovalsRevision();
     
     // Broadcast updated approvals to all clients so UI reflects new state
-    const loadedApprovals = loadApprovals();
+    const loadedApprovals = loadApprovals(req.sessionId);
     const approvalsSummary = computeApprovalsSummary(loadedApprovals.approvers);
     broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary: approvalsSummary });
     
@@ -3014,48 +3224,48 @@ app.post('/api/v1/factory-reset', (req, res) => {
     
     // Copy preset activity log
     if (fs.existsSync(presetActivityFile)) {
-      fs.copyFileSync(presetActivityFile, activityLogFilePath);
-      const activityCount = JSON.parse(fs.readFileSync(activityLogFilePath, 'utf8')).length;
+      fs.copyFileSync(presetActivityFile, paths.activityLogFilePath);
+      const activityCount = JSON.parse(fs.readFileSync(paths.activityLogFilePath, 'utf8')).length;
       console.log(`✅ Loaded activity log from preset: ${preset} (${activityCount} items)`);
     } else {
       console.error(`❌ [Factory Reset] Activity log file not found: ${presetActivityFile}`);
     // Clear activity log
-    try { if (fs.existsSync(activityLogFilePath)) fs.rmSync(activityLogFilePath); } catch {}
+    try { if (fs.existsSync(paths.activityLogFilePath)) fs.rmSync(paths.activityLogFilePath); } catch {}
     }
     
     // Copy preset messages
     if (fs.existsSync(presetMessagesFile)) {
-      fs.copyFileSync(presetMessagesFile, messagesFilePath);
-      const msgs = JSON.parse(fs.readFileSync(messagesFilePath, 'utf8'));
+      fs.copyFileSync(presetMessagesFile, paths.messagesFilePath);
+      const msgs = JSON.parse(fs.readFileSync(paths.messagesFilePath, 'utf8'));
       console.log(`✅ Loaded messages from preset: ${preset} (${msgs.messages?.length || 0} messages, ${msgs.posts?.length || 0} posts)`);
     } else {
       console.error(`❌ [Factory Reset] Messages file not found: ${presetMessagesFile}`);
       // Clear messages
-    try { if (fs.existsSync(messagesFilePath)) fs.rmSync(messagesFilePath); } catch {}
+    try { if (fs.existsSync(paths.messagesFilePath)) fs.rmSync(paths.messagesFilePath); } catch {}
     }
     
     // Copy preset fields
     if (fs.existsSync(presetFieldsFile)) {
-      fs.copyFileSync(presetFieldsFile, fieldsFilePath);
-      const fields = JSON.parse(fs.readFileSync(fieldsFilePath, 'utf8'));
+      fs.copyFileSync(presetFieldsFile, paths.fieldsFilePath);
+      const fields = JSON.parse(fs.readFileSync(paths.fieldsFilePath, 'utf8'));
       console.log(`✅ Loaded fields from preset: ${preset} (${Object.keys(fields).length} fields)`);
     } else {
       console.error(`❌ [Factory Reset] Fields file not found: ${presetFieldsFile}`);
       // Clear fields
-      try { if (fs.existsSync(fieldsFilePath)) fs.rmSync(fieldsFilePath); } catch {}
+      try { if (fs.existsSync(paths.fieldsFilePath)) fs.rmSync(paths.fieldsFilePath); } catch {}
     }
     
     // Copy preset chat history
     const presetChatFile = path.join(presetDir, 'chat.json');
     if (fs.existsSync(presetChatFile)) {
-      fs.copyFileSync(presetChatFile, chatFilePath);
-      const chat = JSON.parse(fs.readFileSync(chatFilePath, 'utf8'));
+      fs.copyFileSync(presetChatFile, paths.chatFilePath);
+      const chat = JSON.parse(fs.readFileSync(paths.chatFilePath, 'utf8'));
       const userCount = Object.keys(chat).length;
       console.log(`✅ Loaded chat history from preset: ${preset} (${userCount} users)`);
     } else {
       console.error(`❌ [Factory Reset] Chat file not found: ${presetChatFile}`);
       // Clear chat history
-      try { if (fs.existsSync(chatFilePath)) fs.rmSync(chatFilePath); } catch {}
+      try { if (fs.existsSync(paths.chatFilePath)) fs.rmSync(paths.chatFilePath); } catch {}
     }
     
     // Restore variables: check for preset-specific variables first, fall back to seed
@@ -3063,16 +3273,16 @@ app.post('/api/v1/factory-reset', (req, res) => {
     const variablesSeedPath = path.join(dataAppDir, 'variables.seed.json');
     try {
       if (fs.existsSync(presetVariablesFile)) {
-        fs.copyFileSync(presetVariablesFile, variablesFilePath);
-        const vars = JSON.parse(fs.readFileSync(variablesFilePath, 'utf8'));
+        fs.copyFileSync(presetVariablesFile, paths.variablesFilePath);
+        const vars = JSON.parse(fs.readFileSync(paths.variablesFilePath, 'utf8'));
         console.log(`✅ Variables loaded from preset: ${preset} (${Object.keys(vars).length} variables)`);
       } else if (fs.existsSync(variablesSeedPath)) {
-        fs.copyFileSync(variablesSeedPath, variablesFilePath);
+        fs.copyFileSync(variablesSeedPath, paths.variablesFilePath);
         console.log('✅ Variables restored from seed data (no preset-specific variables)');
       } else {
         console.error('❌ No variables file found! Variables will be empty.');
-        if (fs.existsSync(variablesFilePath)) {
-          fs.rmSync(variablesFilePath);
+        if (fs.existsSync(paths.variablesFilePath)) {
+          fs.rmSync(paths.variablesFilePath);
         }
       }
     } catch (e) {
@@ -3080,15 +3290,15 @@ app.post('/api/v1/factory-reset', (req, res) => {
     }
     
     // Remove snapshots entirely
-    const snapDir = path.join(dataWorkingDir, 'snapshots');
+    const snapDir = path.join(paths.sessionDir, 'snapshots');
     if (fs.existsSync(snapDir)) {
       try { fs.rmSync(snapDir, { recursive: true, force: true }); } catch {}
     }
     // Clear compiled outputs (merged PDFs)
-    if (fs.existsSync(compiledDir)) {
+    if (fs.existsSync(paths.compiledDir)) {
       try {
-        for (const f of fs.readdirSync(compiledDir)) {
-          const p = path.join(compiledDir, f);
+        for (const f of fs.readdirSync(paths.compiledDir)) {
+          const p = path.join(paths.compiledDir, f);
           try { if (fs.statSync(p).isFile()) fs.rmSync(p); } catch {}
         }
       } catch {}
@@ -3096,10 +3306,10 @@ app.post('/api/v1/factory-reset', (req, res) => {
     // Handle version history: check for preset versions, otherwise clear all
     try {
       // First, clear existing versions
-      if (fs.existsSync(versionsDir)) {
-        try { fs.rmSync(versionsDir, { recursive: true, force: true }); } catch {}
+      if (fs.existsSync(paths.versionsDir)) {
+        try { fs.rmSync(paths.versionsDir, { recursive: true, force: true }); } catch {}
       }
-      if (!fs.existsSync(versionsDir)) fs.mkdirSync(versionsDir, { recursive: true });
+      if (!fs.existsSync(paths.versionsDir)) fs.mkdirSync(paths.versionsDir, { recursive: true });
       
       // Check if preset has version snapshots and copy them
       const presetVersionsDir = path.join(presetDir, 'versions');
@@ -3109,7 +3319,7 @@ app.post('/api/v1/factory-reset', (req, res) => {
         for (const vFile of versionFiles) {
           if (vFile.endsWith('.docx') || vFile.endsWith('.json')) {
             const srcPath = path.join(presetVersionsDir, vFile);
-            const destPath = path.join(versionsDir, vFile);
+            const destPath = path.join(paths.versionsDir, vFile);
             try {
               fs.copyFileSync(srcPath, destPath);
               if (vFile.endsWith('.docx')) copiedCount++;
@@ -3141,7 +3351,7 @@ app.post('/api/v1/factory-reset', (req, res) => {
     // Note: Don't broadcast variables:reset - let the document reload naturally apply variables from preset
     // Notify clients that versions list changed
     broadcast({ type: 'versions:update' });
-    const approvals = loadApprovals();
+    const approvals = loadApprovals(req.sessionId);
     broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary: computeApprovalsSummary(approvals.approvers) });
     return res.json({ ok: true, preset });
   } catch (e) {
@@ -3228,7 +3438,8 @@ app.post('/api/v1/scenarios/save', (req, res) => {
     }
     
     // Copy working document
-    const workingDoc = path.join(workingDocumentsDir, 'default.docx');
+    const paths = getSessionPaths(req.sessionId);
+    const workingDoc = path.join(paths.workingDocumentsDir, 'default.docx');
     const destDoc = path.join(scenarioDir, 'default.docx');
     if (fs.existsSync(workingDoc)) {
       fs.copyFileSync(workingDoc, destDoc);
@@ -3249,7 +3460,7 @@ app.post('/api/v1/scenarios/save', (req, res) => {
       const versionFiles = fs.readdirSync(versionsDir);
       for (const vFile of versionFiles) {
         if (vFile.endsWith('.docx') || vFile.endsWith('.json')) {
-          const srcPath = path.join(versionsDir, vFile);
+          const srcPath = path.join(paths.versionsDir, vFile);
           const destPath = path.join(versionsDestDir, vFile);
           fs.copyFileSync(srcPath, destPath);
         }
@@ -3307,7 +3518,7 @@ app.post('/api/v1/scenarios/save', (req, res) => {
     );
     
     // Log activity
-    logActivity('system:scenario-saved', userId, { scenarioName: name, slug });
+    logActivity(req.sessionId, 'system:scenario-saved', userId, { scenarioName: name, slug });
     
     console.log(`✅ Saved scenario: ${name} (${slug})`);
     
@@ -3415,7 +3626,7 @@ app.delete('/api/v1/scenarios/:id', (req, res) => {
     fs.rmSync(scenarioDir, { recursive: true, force: true });
     
     // Log activity
-    logActivity('system:scenario-deleted', userId, { scenarioName, slug: id });
+    logActivity(req.sessionId, 'system:scenario-deleted', userId, { scenarioName, slug: id });
     
     console.log(`✅ Deleted scenario: ${scenarioName} (${id})`);
     
@@ -3458,7 +3669,7 @@ app.post('/api/v1/checkout', (req, res) => {
   if (!testMode) {
     try {
       const docContext = getDocumentContext();
-      logActivity('document:checkout', userId, {
+      logActivity(req.sessionId, 'document:checkout', userId, {
         documentTitle: docContext.title,
         version: docContext.version,
         status: docContext.status,
@@ -3502,7 +3713,7 @@ app.post('/api/v1/checkin', (req, res) => {
   if (!testMode) {
     try {
       const docContext = getDocumentContext();
-  logActivity('document:checkin', userId, {
+  logActivity(req.sessionId, 'document:checkin', userId, {
         documentTitle: docContext.title,
         version: docContext.version,
         checkoutDuration: durationText,
@@ -3537,7 +3748,7 @@ app.post('/api/v1/checkout/cancel', (req, res) => {
   if (!testMode) {
     try {
       const docContext = getDocumentContext();
-      logActivity('document:checkout:cancel', userId, {
+      logActivity(req.sessionId, 'document:checkout:cancel', userId, {
         documentTitle: docContext.title,
         version: docContext.version,
         platform: req.body?.platform || 'web'
@@ -3572,7 +3783,7 @@ app.post('/api/v1/checkout/override', (req, res) => {
     if (!testMode) {
       try { 
         const docContext = getDocumentContext();
-        logActivity('document:checkout:override', userId, { 
+        logActivity(req.sessionId, 'document:checkout:override', userId, { 
           previousUserId,
           documentTitle: docContext.title,
           version: docContext.version,
@@ -3593,7 +3804,7 @@ app.post('/api/v1/checkout/override', (req, res) => {
 // API endpoint to refresh document context
 app.post('/api/v1/refresh-document', async (req, res) => {
   try {
-    await loadDocumentContext();
+    await loadDocumentContext(req.sessionId);
     res.json({
       ok: true,
       message: 'Document context refreshed',
@@ -3620,7 +3831,7 @@ app.post('/api/v1/versions/compare', async (req, res) => {
     async function getDocxPath(v) {
       const p = (v === 1)
         ? path.join(canonicalDocumentsDir, 'default.docx')
-        : path.join(versionsDir, `v${v}.docx`);
+        : path.join(paths.versionsDir, `v${v}.docx`);
       return p;
     }
 
@@ -3770,13 +3981,13 @@ app.post('/api/v1/events/client', async (req, res) => {
     if (type === 'chat' && text) {
       try {
         const message = `[${userId}] ${text}`;
-        saveChatMessage(userId, message);
+        saveChatMessage(req.sessionId, userId, message);
       } catch {}
     }
 
     if (type === 'chat' && text) {
       try {
-        const systemPrompt = await getSystemPrompt();
+        const systemPrompt = await getSystemPrompt(req.sessionId);
         const result = await generateReply({ messages: [{ role: 'user', content: text }], systemPrompt });
         if (result && result.ok && result.content) {
           const replyText = String(result.content).trim();
@@ -3794,11 +4005,11 @@ app.post('/api/v1/events/client', async (req, res) => {
             } catch {}
         } else {
           const msg = `LLM error: ${result && result.error ? result.error : 'Unknown error'}`;
-          logActivity('system:error', 'system', { error: msg, source: 'llm' });
+          logActivity(req.sessionId, 'system:error', 'system', { error: msg, source: 'llm' });
         }
       } catch (e) {
         const msg = `LLM error: ${e && e.message ? e.message : 'Unknown error'}`;
-        logActivity('system:error', 'system', { error: msg, source: 'llm' });
+        logActivity(req.sessionId, 'system:error', 'system', { error: msg, source: 'llm' });
       }
     } else if (type === 'chat:stop') {
       try { broadcast({ type: 'chat:reset', payload: { reason: 'user_stop', MessagePlatform: originPlatform }, userId, role: 'assistant', platform: 'server' }); } catch {}
@@ -3904,7 +4115,7 @@ app.post('/api/v1/chat/system-prompt', (req, res) => {
     fs.writeFileSync(customPromptPath, prompt.trim(), 'utf8');
     
     // Log activity
-    logActivity('system:prompt-update', req.body?.userId || 'system', { 
+    logActivity(req.sessionId, 'system:prompt-update', req.body?.userId || 'system', { 
       promptLength: prompt.trim().length 
     });
     
@@ -3923,7 +4134,7 @@ app.post('/api/v1/chat/system-prompt/reset', (req, res) => {
     }
     
     // Log activity
-    logActivity('system:prompt-reset', req.body?.userId || 'system', {});
+    logActivity(req.sessionId, 'system:prompt-reset', req.body?.userId || 'system', {});
     
     res.json({ ok: true });
   } catch (e) {
@@ -3932,7 +4143,7 @@ app.post('/api/v1/chat/system-prompt/reset', (req, res) => {
 });
 
 app.get('/api/v1/exhibits', (req, res) => {
-  res.json({ items: listExhibits() });
+  res.json({ items: listExhibits(req.sessionId) });
 });
 
 app.post('/api/v1/exhibits/upload', upload.single('file'), (req, res) => {
@@ -3943,7 +4154,7 @@ app.post('/api/v1/exhibits/upload', upload.single('file'), (req, res) => {
   const platform = req.query?.platform || req.body?.platform || 'web';
   
   // Log activity
-  logActivity('exhibit:upload', userId, {
+  logActivity(req.sessionId, 'exhibit:upload', userId, {
     filename: req.file?.originalname || path.basename(uploaded),
     size: req.file?.size,
     platform
@@ -3965,7 +4176,8 @@ app.delete('/api/v1/exhibits/:filename', (req, res) => {
     }
     
     // Try to delete from both working and canonical directories
-    const workingPath = path.join(workingExhibitsDir, filename);
+    const paths = getSessionPaths(req.sessionId);
+    const workingPath = path.join(paths.workingExhibitsDir, filename);
     const canonicalPath = path.join(canonicalExhibitsDir, filename);
     
     let deleted = false;
@@ -3992,7 +4204,7 @@ app.delete('/api/v1/exhibits/:filename', (req, res) => {
     }
     
     // Log activity
-    logActivity('exhibit:deleted', userId, {
+    logActivity(req.sessionId, 'exhibit:deleted', userId, {
       filename,
       size: fileSize,
       usedInDocuments: false, // TODO: Check if referenced in document
@@ -4013,19 +4225,20 @@ app.post('/api/v1/compile', async (req, res) => {
     const userId = req.body?.userId || 'user1';
     const platform = req.query?.platform || req.body?.platform || 'web';
     const names = Array.isArray(req.body?.exhibits) ? req.body.exhibits.filter(Boolean) : [];
+    const paths = getSessionPaths(req.sessionId);
     const outName = `packet-${Date.now()}.pdf`;
-    const outPath = path.join(compiledDir, outName);
+    const outPath = path.join(paths.compiledDir, outName);
     // 1) Resolve current document path (DOCX)
-    const docPath = resolveDefaultDocPath();
+    const docPath = resolveDefaultDocPath(req.sessionId);
     if (!fs.existsSync(docPath)) return res.status(404).json({ error: 'no_default_doc' });
     // 2) Convert to PDF using LibreOffice (soffice)
-    const tempDocPdf = path.join(compiledDir, `doc-${Date.now()}.pdf`);
+    const tempDocPdf = path.join(paths.compiledDir, `doc-${Date.now()}.pdf`);
     const convertedPath = await convertDocxToPdf(docPath, tempDocPdf);
     if (!convertedPath || !fs.existsSync(convertedPath)) return res.status(500).json({ error: 'convert_failed' });
     // 3) Collect exhibit PDFs
     const exhibitPaths = [];
     for (const n of names) {
-      const w = path.join(workingExhibitsDir, n);
+      const w = path.join(paths.workingExhibitsDir, n);
       const c = path.join(canonicalExhibitsDir, n);
       const p = fs.existsSync(w) ? w : c;
       if (p && fs.existsSync(p) && /\.pdf$/i.test(p)) exhibitPaths.push(p);
@@ -4046,7 +4259,7 @@ app.post('/api/v1/compile', async (req, res) => {
       try {
         const docContext = getDocumentContext();
         const compiledStats = fs.existsSync(outPath) ? fs.statSync(outPath) : null;
-    logActivity('document:compile', userId, {
+    logActivity(req.sessionId, 'document:compile', userId, {
       format: 'pdf',
       includeExhibits: names.length > 0,
       exhibitCount: names.length,
@@ -4142,7 +4355,7 @@ app.post('/api/v1/send-vendor', (req, res) => {
   if (!testMode) {
     try {
       const docContext = getDocumentContext();
-  logActivity('document:send-vendor', userId, {
+  logActivity(req.sessionId, 'document:send-vendor', userId, {
     vendor: vendorName,
     email: vendorEmail,
         documentTitle: docContext.title,
@@ -4307,8 +4520,9 @@ function initializeWorkingData() {
     }
     
     // Copy canonical document to working if it doesn't exist
+    const paths = getSessionPaths(req.sessionId);
     const canonicalDoc = path.join(canonicalDocumentsDir, 'default.docx');
-    const workingDoc = path.join(workingDocumentsDir, 'default.docx');
+    const workingDoc = path.join(paths.workingDocumentsDir, 'default.docx');
     
     if (fs.existsSync(canonicalDoc) && !fs.existsSync(workingDoc)) {
       fs.copyFileSync(canonicalDoc, workingDoc);
@@ -4320,7 +4534,7 @@ function initializeWorkingData() {
       const exhibits = fs.readdirSync(canonicalExhibitsDir);
       for (const exhibit of exhibits) {
         const canonicalPath = path.join(canonicalExhibitsDir, exhibit);
-        const workingPath = path.join(workingExhibitsDir, exhibit);
+        const workingPath = path.join(paths.workingExhibitsDir, exhibit);
         if (fs.statSync(canonicalPath).isFile() && !fs.existsSync(workingPath)) {
           fs.copyFileSync(canonicalPath, workingPath);
           console.log(`✅ Copied exhibit: ${exhibit}`);
@@ -4334,7 +4548,10 @@ function initializeWorkingData() {
   }
 }
 
-initializeWorkingData();
+// Initialize default session for backward compatibility
+// This ensures the "default" session exists for non-JWT requests
+initializeSession('default');
+console.log('✅ Default session initialized (backward compatibility)');
 
 // In production, always use HTTP (Render provides HTTPS at the edge)
 // In dev, try to use HTTPS with dev certificates

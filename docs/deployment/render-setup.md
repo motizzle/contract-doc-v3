@@ -530,11 +530,17 @@ For uptime monitoring:
 - ✅ All traffic is HTTPS by default
 - ✅ HTTP redirects to HTTPS automatically
 
-### Access Control
+### Access Control & Session Isolation
 
 - Render services are public by default
-- Consider adding authentication if needed
-- Use environment variables for admin credentials
+- **JWT authentication enabled** for per-user session isolation
+- Each user automatically gets an isolated session with their own data
+- **Required:** Set `JWT_SECRET` environment variable (see Environment Variables section)
+  ```bash
+  # Generate a secure secret:
+  node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+  ```
+- Sessions expire after 7 days (automatic token refresh)
 
 ---
 
@@ -550,9 +556,14 @@ For uptime monitoring:
    - Render auto-configures from `render.yaml`
    - Click "Apply"
 
-3. **Verify Environment Variables**
+3. **Set Environment Variables**
    - Dashboard > Environment
-   - Ensure `PORT=10000` and `NODE_ENV=production`
+   - **Required:** `JWT_SECRET` - Generate secure secret (see command below)
+   - Verify: `PORT=10000` and `NODE_ENV=production`
+   ```bash
+   # Generate JWT_SECRET:
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   ```
 
 4. **Check Disk is Attached**
    - Dashboard > Disks

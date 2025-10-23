@@ -20,6 +20,131 @@
     }
   }
 
+  // ====================================================================
+  // JWT Authentication - Global fetch() Override
+  // ====================================================================
+  
+  // Global token storage
+  let authToken = null;
+  let isInitializingAuth = false;
+
+  // Initialize authentication on app load
+  async function initializeAuth() {
+    if (isInitializingAuth) {
+      // Prevent concurrent initialization
+      while (isInitializingAuth) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      return authToken;
+    }
+
+    isInitializingAuth = true;
+    try {
+      // Try to retrieve existing token
+      authToken = localStorage.getItem('wordftw_auth_token');
+      
+      if (!authToken) {
+        // Request new token from server
+        console.log('🔐 No token found, requesting new session...');
+        authToken = await requestNewToken();
+      } else {
+        console.log('🔐 Using existing authentication token');
+      }
+      
+      return authToken;
+    } finally {
+      isInitializingAuth = false;
+    }
+  }
+
+  // Request new token from server
+  async function requestNewToken() {
+    try {
+      const API_BASE = getApiBase();
+      // Use original fetch to avoid infinite recursion
+      const response = await window._originalFetch(`${API_BASE}/api/v1/session/start`, {
+        method: 'POST'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to create session: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      authToken = data.token;
+      localStorage.setItem('wordftw_auth_token', authToken);
+      
+      console.log(`✅ New session created: ${data.sessionId}`);
+      console.log(`🕐 Token expires in: ${data.expiresIn}`);
+      
+      return authToken;
+    } catch (err) {
+      console.error('❌ Failed to initialize session:', err);
+      throw err;
+    }
+  }
+
+  // Store original fetch before overriding
+  if (!window._originalFetch) {
+    window._originalFetch = window.fetch;
+  }
+
+  // Override global fetch() to automatically add JWT to API calls
+  window.fetch = async function(url, options = {}) {
+    // Ensure we have a token
+    if (!authToken && !isInitializingAuth) {
+      await initializeAuth();
+    }
+    
+    // Check if this is an API call to our backend
+    const urlString = typeof url === 'string' ? url : (url instanceof URL ? url.href : '');
+    const isApiCall = urlString.startsWith('/api/') || 
+                     urlString.includes('/api/v1/') ||
+                     urlString.startsWith(getApiBase());
+    
+    // Skip auth for session creation endpoint (avoid recursion)
+    const isSessionEndpoint = urlString.includes('/api/v1/session/start');
+    
+    // Add JWT token to API calls
+    if (isApiCall && !isSessionEndpoint && authToken) {
+      options.headers = {
+        'Authorization': `Bearer ${authToken}`,
+        ...options.headers
+      };
+    }
+    
+    // Call original fetch
+    const response = await window._originalFetch(url, options);
+    
+    // Auto-refresh expired tokens
+    if (isApiCall && !isSessionEndpoint && (response.status === 401 || response.status === 403)) {
+      const errorData = await response.clone().json().catch(() => ({}));
+      
+      if (errorData.action === 'refresh_token' || errorData.action === 'request_new_token' || errorData.action === 'request_token') {
+        console.warn('🔄 Token expired or invalid, requesting new session...');
+        localStorage.removeItem('wordftw_auth_token');
+        authToken = null;
+        await initializeAuth();
+        
+        // Retry with new token
+        options.headers = {
+          'Authorization': `Bearer ${authToken}`,
+          ...options.headers
+        };
+        return window._originalFetch(url, options);
+      }
+    }
+    
+    return response;
+  };
+
+  // Initialize auth when the module loads
+  setTimeout(() => initializeAuth(), 100);
+
+  // ====================================================================
+  // End JWT Authentication
+  // ====================================================================
+
   function mountReactApp(opts) {
     const options = opts || {};
     const selector = options.rootSelector || '#app-root';

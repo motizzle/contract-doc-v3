@@ -23,6 +23,7 @@
     "diff-match-patch": "^1.0.5",
     "express": "^5.1.0",
     "http-proxy-middleware": "^2.0.6",
+    "jsonwebtoken": "^9.0.2",
     "mammoth": "^1.11.0",
     "multer": "^2.0.2",
     "office-addin-dev-certs": "^2.0.3",

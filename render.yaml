@@ -15,6 +15,11 @@ services:
         value: 10000
       - key: ALLOW_HTTP
         value: true
+      # REQUIRED: JWT Authentication Secret
+      # Generate via: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+      # Set this in Render dashboard (Environment > Environment Variables)
+      - key: JWT_SECRET
+        sync: false  # Secret - set manually in Render dashboard
       # Optional: LLM Configuration (defaults to Ollama)
       - key: LLM_PROVIDER
         value: ollama
