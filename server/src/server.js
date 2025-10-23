@@ -1554,6 +1554,7 @@ function getSessionPaths(sessionId) {
     versionsDir: path.join(sessionDir, 'versions'),
     
     // State files
+    stateFilePath: path.join(sessionDir, 'state.json'),
     approvalsFilePath: path.join(sessionDir, 'approvals.json'),
     activityLogFilePath: path.join(sessionDir, 'activity-log.json'),
     messagesFilePath: path.join(sessionDir, 'messages.json'),
@@ -1561,6 +1562,53 @@ function getSessionPaths(sessionId) {
     variablesFilePath: path.join(sessionDir, 'variables.json'),
     fieldsFilePath: path.join(sessionDir, 'fields.json')
   };
+}
+
+// Load session-specific state
+function loadSessionState(sessionId) {
+  const paths = getSessionPaths(sessionId);
+  
+  try {
+    if (fs.existsSync(paths.stateFilePath)) {
+      const state = JSON.parse(fs.readFileSync(paths.stateFilePath, 'utf8'));
+      return state;
+    }
+  } catch (err) {
+    console.error(`Error loading session state for ${sessionId}:`, err);
+  }
+  
+  // Return default state if file doesn't exist or can't be read
+  return {
+    checkedOutBy: null,
+    documentVersion: 1,
+    title: 'Redlined & Signed',
+    status: 'draft',
+    lastUpdated: new Date().toISOString(),
+    revision: 0,
+    approvalsRevision: 1,
+    updatedBy: null,
+    updatedPlatform: null
+  };
+}
+
+// Save session-specific state
+function saveSessionState(sessionId, state) {
+  const paths = getSessionPaths(sessionId);
+  
+  try {
+    fs.writeFileSync(paths.stateFilePath, JSON.stringify(state, null, 2));
+  } catch (err) {
+    console.error(`Error saving session state for ${sessionId}:`, err);
+  }
+}
+
+// Bump session revision
+function bumpSessionRevision(sessionId) {
+  const state = loadSessionState(sessionId);
+  state.revision = (Number(state.revision) || 0) + 1;
+  state.lastUpdated = new Date().toISOString();
+  saveSessionState(sessionId, state);
+  return state.revision;
 }
 
 // Session creation endpoint (no auth required)
@@ -2574,14 +2622,18 @@ app.get('/api/v1/current-document', (req, res) => {
 
 app.get('/api/v1/state-matrix', (req, res) => {
   const { platform = 'web', userId = 'user1' } = req.query;
+  
+  // Load session-specific state
+  const state = loadSessionState(req.sessionId);
+  
   // Derive role from users.json
   const derivedRole = getUserRole(userId);
   const roleMap = loadRoleMap();
   const defaultPerms = { checkout: true, checkin: true, override: true, sendVendor: true };
-  const isCheckedOut = !!serverState.checkedOutBy;
-  const isOwner = serverState.checkedOutBy === userId;
+  const isCheckedOut = !!state.checkedOutBy;
+  const isOwner = state.checkedOutBy === userId;
   // Resolve display label for checked-out user (fallbacks to raw id)
-  const checkedOutLabel = resolveUserLabel(serverState.checkedOutBy);
+  const checkedOutLabel = resolveUserLabel(state.checkedOutBy);
   const canWrite = !isCheckedOut || isOwner;
   const rolePerm = roleMap[derivedRole] || defaultPerms;
   const banner = buildBanner({ isCheckedOut, isOwner, checkedOutBy: checkedOutLabel });
@@ -2589,14 +2641,14 @@ app.get('/api/v1/state-matrix', (req, res) => {
   const approvalsSummary = computeApprovalsSummary(approvals.approvers);
   const config = {
     documentId: DOCUMENT_ID,
-    documentVersion: serverState.documentVersion,
-    title: serverState.title,
-    status: serverState.status,
-    lastUpdated: serverState.lastUpdated,
-    updatedBy: serverState.updatedBy,
+    documentVersion: state.documentVersion,
+    title: state.title,
+    status: state.status,
+    lastUpdated: state.lastUpdated,
+    updatedBy: state.updatedBy,
     lastSaved: {
-      user: serverState.updatedBy || 'Unknown User',
-      timestamp: serverState.lastUpdated || 'Unknown Time'
+      user: state.updatedBy || 'Unknown User',
+      timestamp: state.lastUpdated || 'Unknown Time'
     },
     buttons: {
       replaceDefaultBtn: true,
@@ -2625,25 +2677,25 @@ app.get('/api/v1/state-matrix', (req, res) => {
         const requestingUserId = String(req.query?.userId || '');
         const originPlatform = String(req.query?.platform || 'web');
         const lastByUserId = (() => {
-          try { return String(serverState.updatedBy && (serverState.updatedBy.id || serverState.updatedBy.userId || serverState.updatedBy)); } catch { return ''; }
+          try { return String(state.updatedBy && (state.updatedBy.id || state.updatedBy.userId || state.updatedBy)); } catch { return ''; }
         })();
         // Notify if: client has a known version (>0), server advanced, and update was from different user or different platform
         // Treat only clientLoaded <= 0 as unknown/initial. Version 1 is a valid, loaded baseline.
         const clientKnown = Number.isFinite(clientLoaded) && clientLoaded > 0;
-        const serverAdvanced = serverState.documentVersion > clientLoaded;
+        const serverAdvanced = state.documentVersion > clientLoaded;
         const updatedByAnother = (!!lastByUserId && requestingUserId && (lastByUserId !== requestingUserId));
-        const differentPlatform = !!serverState.updatedPlatform && serverState.updatedPlatform !== originPlatform;
+        const differentPlatform = !!state.updatedPlatform && state.updatedPlatform !== originPlatform;
         const shouldNotify = clientKnown && serverAdvanced && (updatedByAnother || differentPlatform);
 
         if (shouldNotify) {
-          const by = serverState.updatedBy && (serverState.updatedBy.label || serverState.updatedBy.userId) || 'someone';
+          const by = state.updatedBy && (state.updatedBy.label || state.updatedBy.userId) || 'someone';
           list.unshift({ state: 'update_available', title: 'Update available', message: `${by} updated this document.` });
         }
       } catch {}
       // Disable viewer-only banner
       return list;
     })(),
-    checkoutStatus: { isCheckedOut, checkedOutUserId: serverState.checkedOutBy },
+    checkoutStatus: { isCheckedOut, checkedOutUserId: state.checkedOutBy },
     viewerMessage: isCheckedOut
       ? { type: isOwner ? 'info' : 'warning', text: isOwner ? `Checked out by you` : `Checked out by ${checkedOutLabel}` }
       : { type: 'success', text: 'Available for editing' },
@@ -3643,12 +3695,15 @@ app.post('/api/v1/checkout', (req, res) => {
   const userId = req.body?.userId || 'user1';
   const clientVersion = req.body?.clientVersion || 0;
   
-  if (serverState.checkedOutBy && serverState.checkedOutBy !== userId) {
-    return res.status(409).json({ error: `Already checked out by ${serverState.checkedOutBy}` });
+  // Load session-specific state
+  const state = loadSessionState(req.sessionId);
+  
+  if (state.checkedOutBy && state.checkedOutBy !== userId) {
+    return res.status(409).json({ error: `Already checked out by ${state.checkedOutBy}` });
   }
   
   // Check if client is on current version
-  const currentVersion = serverState.documentVersion || 1;
+  const currentVersion = state.documentVersion || 1;
   const isOutdated = clientVersion < currentVersion;
   
   if (isOutdated && !req.body?.forceCheckout) {
@@ -3660,10 +3715,11 @@ app.post('/api/v1/checkout', (req, res) => {
     });
   }
   
-  serverState.checkedOutBy = userId;
-  serverState.checkedOutByAt = Date.now(); // Track checkout time
-  serverState.lastUpdated = new Date().toISOString();
-  persistState();
+  // Update session state
+  state.checkedOutBy = userId;
+  state.checkedOutByAt = Date.now(); // Track checkout time
+  state.lastUpdated = new Date().toISOString();
+  saveSessionState(req.sessionId, state);
 
   // Log activity (skip in test mode)
   if (!testMode) {
@@ -3681,22 +3737,26 @@ app.post('/api/v1/checkout', (req, res) => {
     }
   }
 
-  broadcast({ type: 'checkout', userId });
+  broadcast({ type: 'checkout', userId, sessionId: req.sessionId });
   res.json({ ok: true, checkedOutBy: userId });
 });
 
 app.post('/api/v1/checkin', (req, res) => {
   const userId = req.body?.userId || 'user1';
-  if (!serverState.checkedOutBy) {
+  
+  // Load session-specific state
+  const state = loadSessionState(req.sessionId);
+  
+  if (!state.checkedOutBy) {
     return res.status(409).json({ error: 'Not checked out' });
   }
-  if (serverState.checkedOutBy !== userId) {
-    const by = resolveUserLabel(serverState.checkedOutBy);
+  if (state.checkedOutBy !== userId) {
+    const by = resolveUserLabel(state.checkedOutBy);
     return res.status(409).json({ error: `Checked out by ${by}` });
   }
   // Calculate checkout duration
-  const checkoutDuration = serverState.checkedOutByAt 
-    ? Math.round((Date.now() - serverState.checkedOutByAt) / 1000 / 60) // minutes
+  const checkoutDuration = state.checkedOutByAt 
+    ? Math.round((Date.now() - state.checkedOutByAt) / 1000 / 60) // minutes
     : null;
   const durationText = checkoutDuration 
     ? checkoutDuration < 60 
@@ -3704,10 +3764,11 @@ app.post('/api/v1/checkin', (req, res) => {
       : `${Math.round(checkoutDuration / 60)} hr${Math.round(checkoutDuration / 60) !== 1 ? 's' : ''}`
     : null;
 
-  serverState.checkedOutBy = null;
-  serverState.checkedOutByAt = null;
-  serverState.lastUpdated = new Date().toISOString();
-  persistState();
+  // Update session state
+  state.checkedOutBy = null;
+  state.checkedOutByAt = null;
+  state.lastUpdated = new Date().toISOString();
+  saveSessionState(req.sessionId, state);
 
   // Log activity (skip in test mode)
   if (!testMode) {
@@ -3725,24 +3786,30 @@ app.post('/api/v1/checkin', (req, res) => {
     }
   }
 
-  broadcast({ type: 'checkin', userId });
+  broadcast({ type: 'checkin', userId, sessionId: req.sessionId });
   res.json({ ok: true });
 });
 
 // Cancel checkout: release lock without any additional actions
 app.post('/api/v1/checkout/cancel', (req, res) => {
   const userId = req.body?.userId || 'user1';
-  if (!serverState.checkedOutBy) {
+  
+  // Load session-specific state
+  const state = loadSessionState(req.sessionId);
+  
+  if (!state.checkedOutBy) {
     return res.status(409).json({ error: 'Not checked out' });
   }
-  if (serverState.checkedOutBy !== userId) {
-    const by = resolveUserLabel(serverState.checkedOutBy);
+  if (state.checkedOutBy !== userId) {
+    const by = resolveUserLabel(state.checkedOutBy);
     return res.status(409).json({ error: `Checked out by ${by}` });
   }
-  serverState.checkedOutBy = null;
-  serverState.checkedOutByAt = null;
-  serverState.lastUpdated = new Date().toISOString();
-  persistState();
+  
+  // Update session state
+  state.checkedOutBy = null;
+  state.checkedOutByAt = null;
+  state.lastUpdated = new Date().toISOString();
+  saveSessionState(req.sessionId, state);
 
   // Log activity (skip in test mode)
   if (!testMode) {
@@ -3759,7 +3826,7 @@ app.post('/api/v1/checkout/cancel', (req, res) => {
     }
   }
 
-  broadcast({ type: 'checkoutCancel', userId });
+  broadcast({ type: 'checkoutCancel', userId, sessionId: req.sessionId });
   res.json({ ok: true });
 });
 
@@ -3771,13 +3838,19 @@ app.post('/api/v1/checkout/override', (req, res) => {
   const canOverride = !!(roleMap[derivedRole] && roleMap[derivedRole].override);
   // finalization removed
   if (!canOverride) return res.status(403).json({ error: 'Forbidden' });
+  
+  // Load session-specific state
+  const state = loadSessionState(req.sessionId);
+  
   // Override: clear any existing checkout, reverting to Available to check out
-  if (serverState.checkedOutBy) {
-    const previousUserId = serverState.checkedOutBy;
-    serverState.checkedOutBy = null;
-    serverState.checkedOutByAt = null;
-    serverState.lastUpdated = new Date().toISOString();
-    persistState();
+  if (state.checkedOutBy) {
+    const previousUserId = state.checkedOutBy;
+    
+    // Update session state
+    state.checkedOutBy = null;
+    state.checkedOutByAt = null;
+    state.lastUpdated = new Date().toISOString();
+    saveSessionState(req.sessionId, state);
     
     // Log activity (skip in test mode)
     if (!testMode) {
@@ -3794,7 +3867,7 @@ app.post('/api/v1/checkout/override', (req, res) => {
       }
     }
     
-    broadcast({ type: 'overrideCheckout', userId });
+    broadcast({ type: 'overrideCheckout', userId, sessionId: req.sessionId });
     return res.json({ ok: true, checkedOutBy: null });
   }
   // Nothing to clear; already available
