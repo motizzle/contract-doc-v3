@@ -47,7 +47,7 @@ async function loadDocumentContext(sessionId) {
     const mammoth = require('mammoth');
 
     const paths = getSessionPaths(sessionId);
-    
+
     // Try working directory first (more recent), then app directory
     const workingDocPath = path.join(paths.workingDocumentsDir, 'default.docx');
     const appDocPath = path.join(dataAppDir, 'documents', 'default.docx');
@@ -1611,6 +1611,23 @@ function bumpSessionRevision(sessionId) {
   return state.revision;
 }
 
+// Bump document version (session-aware)
+function bumpDocumentVersion(sessionId, updatedByUserId, platform) {
+  const state = loadSessionState(sessionId);
+  state.documentVersion = (Number(state.documentVersion) || 0) + 1;
+  const users = loadUsers();
+  let label = updatedByUserId || 'user1';
+  try {
+    const u = users.find(u => (u?.id || u?.label) === updatedByUserId);
+    if (u) label = u.label || u.id || updatedByUserId;
+  } catch {}
+  state.updatedBy = { userId: updatedByUserId || 'user1', label };
+  state.updatedPlatform = (platform === 'word' || platform === 'web') ? platform : null;
+  state.lastUpdated = new Date().toISOString();
+  saveSessionState(sessionId, state);
+  return state.documentVersion;
+}
+
 // Session creation endpoint (no auth required)
 app.post('/api/v1/session/start', (req, res) => {
   try {
@@ -2878,6 +2895,10 @@ app.post('/api/v1/save-progress', (req, res) => {
     const userId = req.body?.userId || 'user1';
     const platform = (req.body?.platform || req.query?.platform || '').toLowerCase();
     const base64 = req.body?.base64 || '';
+    
+    // Load session-specific state
+    const state = loadSessionState(req.sessionId);
+    
     // First validate payload shape to provide precise 4xx on bad input
     let bytes;
     try { bytes = Buffer.from(String(base64), 'base64'); } catch { return res.status(400).json({ error: 'invalid_base64' }); }
@@ -2885,23 +2906,29 @@ app.post('/api/v1/save-progress', (req, res) => {
     if (!(bytes[0] === 0x50 && bytes[1] === 0x4b)) return res.status(400).json({ error: 'invalid_docx_magic' });
     if (bytes.length < 1024) return res.status(400).json({ error: 'invalid_docx_small', size: bytes.length });
     // Then enforce document state
-    if (!serverState.checkedOutBy) return res.status(409).json({ error: 'Not checked out' });
-    if (serverState.checkedOutBy !== userId) {
-      const by = resolveUserLabel(serverState.checkedOutBy);
+    if (!state.checkedOutBy) return res.status(409).json({ error: 'Not checked out' });
+    if (state.checkedOutBy !== userId) {
+      const by = resolveUserLabel(state.checkedOutBy);
       return res.status(409).json({ error: `Checked out by ${by}` });
     }
     const dest = path.join(paths.workingDocumentsDir, 'default.docx');
     try { fs.writeFileSync(dest, bytes); } catch { return res.status(500).json({ error: 'write_failed' }); }
-    bumpRevision();
-    bumpDocumentVersion(userId, platform || 'word');
+    
+    // Bump session-specific revision and version
+    bumpSessionRevision(req.sessionId);
+    const newVersion = bumpDocumentVersion(req.sessionId, userId, platform || 'word');
+    
+    // Reload state to get updated values
+    const updatedState = loadSessionState(req.sessionId);
+    
     // Save versioned snapshot and metadata
     try {
-      const ver = Number(serverState.documentVersion) || 1;
+      const ver = newVersion;
       const vDoc = path.join(paths.versionsDir, `v${ver}.docx`);
       fs.writeFileSync(vDoc, bytes);
-      const meta = { version: ver, savedBy: serverState.updatedBy || { userId, label: userId }, savedAt: new Date().toISOString() };
+      const meta = { version: ver, savedBy: updatedState.updatedBy || { userId, label: userId }, savedAt: new Date().toISOString() };
       fs.writeFileSync(path.join(paths.versionsDir, `v${ver}.json`), JSON.stringify(meta, null, 2));
-      broadcast({ type: 'versions:update' });
+      broadcast({ type: 'versions:update', sessionId: req.sessionId });
     } catch {}
 
     // Log activity (skip in test mode)
@@ -3319,7 +3346,7 @@ app.post('/api/v1/factory-reset', (req, res) => {
       console.log(`✅ Loaded chat history from preset: ${preset} (${userCount} users)`);
     } else {
       console.error(`❌ [Factory Reset] Chat file not found: ${presetChatFile}`);
-      // Clear chat history
+    // Clear chat history
       try { if (fs.existsSync(paths.chatFilePath)) fs.rmSync(paths.chatFilePath); } catch {}
     }
     
@@ -4548,14 +4575,14 @@ function tryCreateHttpsServer() {
     // 1) Office dev certs (shared with add-in 4000) - SKIP in production
     const isProduction = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
     if (!isProduction) {
-      try {
-        // Lazy require to keep runtime optional
-        const devCerts = require('office-addin-dev-certs');
-        const httpsOptions = devCerts && devCerts.getHttpsServerOptions ? devCerts.getHttpsServerOptions() : null;
-        if (httpsOptions && httpsOptions.key && httpsOptions.cert) {
-          return https.createServer({ key: httpsOptions.key, cert: httpsOptions.cert, ca: httpsOptions.ca }, app);
-        }
-      } catch { /* ignore; may not be installed */ }
+    try {
+      // Lazy require to keep runtime optional
+      const devCerts = require('office-addin-dev-certs');
+      const httpsOptions = devCerts && devCerts.getHttpsServerOptions ? devCerts.getHttpsServerOptions() : null;
+      if (httpsOptions && httpsOptions.key && httpsOptions.cert) {
+        return https.createServer({ key: httpsOptions.key, cert: httpsOptions.cert, ca: httpsOptions.ca }, app);
+      }
+    } catch { /* ignore; may not be installed */ }
     }
     // 2) PFX if available
     const pfxPath = process.env.SSL_PFX_PATH || path.join(rootDir, 'server', 'config', 'dev-cert.pfx');
@@ -4677,7 +4704,7 @@ if (httpsServer) {
       console.log(`(HTTPS provided by Render at the edge)`);
     } else {
       console.warn(`ALLOW_HTTP=true enabled. HTTP server running on http://${HOST}:${APP_PORT}`);
-      console.warn('Install Office dev certs (preferred) or place dev-cert.pfx under server/config to enable HTTPS.');
+    console.warn('Install Office dev certs (preferred) or place dev-cert.pfx under server/config to enable HTTPS.');
     }
     console.log(`SuperDoc backend: ${SUPERDOC_BASE_URL}`);
   });
