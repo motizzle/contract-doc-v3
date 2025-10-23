@@ -622,6 +622,25 @@
           sse.onmessage = (ev) => {
             try {
               const p = JSON.parse(ev.data);
+              
+              // Session Isolation: Ignore events from other sessions
+              // Get our session ID from localStorage
+              const ourToken = localStorage.getItem('wordftw_auth_token');
+              let ourSessionId = null;
+              if (ourToken) {
+                try {
+                  const payload = JSON.parse(atob(ourToken.split('.')[1]));
+                  ourSessionId = payload.sessionId;
+                } catch {}
+              }
+              
+              // If event has sessionId and it doesn't match ours, ignore it
+              // (Keep backward compatibility: if no sessionId in event, process it)
+              if (p.sessionId && ourSessionId && p.sessionId !== ourSessionId) {
+                console.log(`🚫 [SSE] Ignoring event from different session: ${p.type} (session: ${p.sessionId})`);
+                return; // Ignore this event
+              }
+              
               if (p && p.ts) setLastTs(p.ts);
               const nextRev = (typeof p.revision === 'number') ? p.revision : null;
               if (nextRev !== null) setRevision(nextRev);
