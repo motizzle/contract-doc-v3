@@ -40,13 +40,16 @@
 
     isInitializingAuth = true;
     try {
+      // ALWAYS generate and store fingerprint (needed for session sharing)
+      const fingerprint = generateFingerprint();
+      localStorage.setItem('wordftw_fingerprint', fingerprint);
+      
       // Try to retrieve existing token
       authToken = localStorage.getItem('wordftw_auth_token');
       
       // Word add-in: Try to get shared session from browser
       if (!authToken && window.Office && window.Office.context) {
         console.log('📎 Word add-in detected - checking for shared session...');
-        const fingerprint = generateFingerprint();
         const API_BASE = getApiBase();
         
         try {
@@ -119,10 +122,8 @@
   async function requestNewToken() {
     try {
       const API_BASE = getApiBase();
-      const fingerprint = generateFingerprint();
-      
-      // Store fingerprint for installer
-      localStorage.setItem('wordftw_fingerprint', fingerprint);
+      // Get fingerprint from localStorage (already generated in getAuthToken)
+      const fingerprint = localStorage.getItem('wordftw_fingerprint');
       console.log(`🔑 Machine fingerprint: ${fingerprint}`);
       
       // Use original fetch to avoid infinite recursion
