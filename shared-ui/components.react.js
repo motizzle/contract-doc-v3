@@ -42,13 +42,15 @@
     try {
       // ALWAYS generate and store fingerprint (needed for session sharing)
       const fingerprint = generateFingerprint();
+      const oldFingerprint = localStorage.getItem('wordftw_fingerprint');
       localStorage.setItem('wordftw_fingerprint', fingerprint);
       
       // Try to retrieve existing token
       authToken = localStorage.getItem('wordftw_auth_token');
       
-      // Word add-in: Try to get shared session from browser
-      if (!authToken && window.Office && window.Office.context) {
+      // Word add-in: ALWAYS try to get shared session from browser (even if we have a token)
+      // This ensures Word syncs with browser session even after restart
+      if (window.Office && window.Office.context) {
         console.log('📎 Word add-in detected - checking for shared session...');
         const API_BASE = getApiBase();
         
@@ -60,6 +62,7 @@
           if (response.ok) {
             const data = await response.json();
             if (data.token) {
+              // Use shared session if available
               authToken = data.token;
               localStorage.setItem('wordftw_auth_token', authToken);
               console.log(`✅ Using shared session from browser: ${data.sessionId}`);
@@ -67,7 +70,7 @@
             }
           }
         } catch (e) {
-          console.log('ℹ️ No shared session found');
+          console.log('ℹ️ No shared session found, will use existing token or create new');
         }
       }
       
