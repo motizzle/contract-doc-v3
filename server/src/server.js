@@ -3266,10 +3266,10 @@ app.post('/api/v1/factory-reset', (req, res) => {
     }
     bumpApprovalsRevision();
     
-    // Broadcast updated approvals to all clients so UI reflects new state
+    // Broadcast updated approvals to this session only
     const loadedApprovals = loadApprovals(req.sessionId);
     const approvalsSummary = computeApprovalsSummary(loadedApprovals.approvers);
-    broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary: approvalsSummary });
+    broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary: approvalsSummary, sessionId: req.sessionId });
     
     // Load preset files
     const presetStateFile = path.join(presetDir, 'state.json');
@@ -3277,33 +3277,36 @@ app.post('/api/v1/factory-reset', (req, res) => {
     const presetMessagesFile = path.join(presetDir, 'messages.json');
     const presetFieldsFile = path.join(presetDir, 'fields.json');
     
+    // Load session-specific state
+    let sessionState = loadSessionState(req.sessionId);
+    
     // Copy preset state
     if (fs.existsSync(presetStateFile)) {
       const presetState = JSON.parse(fs.readFileSync(presetStateFile, 'utf8'));
-      serverState.checkedOutBy = presetState.checkedOutBy || null;
-      serverState.documentVersion = presetState.documentVersion || 1;
-      serverState.title = presetState.title || 'Redlined & Signed';
-      serverState.status = presetState.status || 'draft';
-      serverState.updatedBy = presetState.updatedBy || null;
-      serverState.updatedPlatform = presetState.updatedPlatform || null;
-      serverState.lastUpdated = new Date().toISOString();
+      sessionState.checkedOutBy = presetState.checkedOutBy || null;
+      sessionState.documentVersion = presetState.documentVersion || 1;
+      sessionState.title = presetState.title || 'Redlined & Signed';
+      sessionState.status = presetState.status || 'draft';
+      sessionState.updatedBy = presetState.updatedBy || null;
+      sessionState.updatedPlatform = presetState.updatedPlatform || null;
+      sessionState.lastUpdated = new Date().toISOString();
       console.log(`✅ Loaded state from preset: ${preset}`);
-      console.log(`📊 [Factory Reset] New serverState:`, { title: serverState.title, status: serverState.status, documentVersion: serverState.documentVersion });
+      console.log(`📊 [Factory Reset] New sessionState:`, { title: sessionState.title, status: sessionState.status, documentVersion: sessionState.documentVersion });
     } else {
       console.error(`❌ [Factory Reset] State file not found: ${presetStateFile}`);
       // Fallback to default state
-      serverState.checkedOutBy = null;
-      serverState.documentVersion = 1;
-      serverState.title = 'Redlined & Signed';
-      serverState.status = 'draft';
-      serverState.updatedBy = null;
-      serverState.updatedPlatform = null;
-      serverState.lastUpdated = new Date().toISOString();
+      sessionState.checkedOutBy = null;
+      sessionState.documentVersion = 1;
+      sessionState.title = 'Redlined & Signed';
+      sessionState.status = 'draft';
+      sessionState.updatedBy = null;
+      sessionState.updatedPlatform = null;
+      sessionState.lastUpdated = new Date().toISOString();
     }
     
-    // Persist state to disk
-    persistState();
-    console.log(`💾 [Factory Reset] State persisted to disk`);
+    // Persist state to session-specific disk
+    saveSessionState(req.sessionId, sessionState);
+    console.log(`💾 [Factory Reset] State persisted to disk for session ${req.sessionId}`);
     
     // Copy preset activity log
     if (fs.existsSync(presetActivityFile)) {
@@ -3421,24 +3424,29 @@ app.post('/api/v1/factory-reset', (req, res) => {
       console.error('❌ Failed to handle version history:', e.message);
     }
     
-    bumpRevision();
-    persistState();
-    broadcast({ type: 'factoryReset', preset, revision: serverState.revision });
-    broadcast({ type: 'documentRevert' });
-    // Notify clients to clear local messaging state
-    broadcast({ type: 'messaging:reset' });
-    // Notify clients to clear activity state
-    broadcast({ type: 'activity:reset' });
-    // Notify all clients to clear AI chat state
-    broadcast({ type: 'chat:reset', payload: { all: true } });
+    // Bump session-specific revision
+    bumpSessionRevision(req.sessionId);
+    sessionState = loadSessionState(req.sessionId); // Reload to get updated revision
+    
+    // Broadcast to THIS session only
+    broadcast({ type: 'factoryReset', preset, revision: sessionState.revision, sessionId: req.sessionId });
+    broadcast({ type: 'documentRevert', sessionId: req.sessionId });
+    // Notify THIS session's clients to clear local messaging state
+    broadcast({ type: 'messaging:reset', sessionId: req.sessionId });
+    // Notify THIS session's clients to clear activity state
+    broadcast({ type: 'activity:reset', sessionId: req.sessionId });
+    // Notify THIS session's clients to clear AI chat state
+    broadcast({ type: 'chat:reset', payload: { all: true }, sessionId: req.sessionId });
     // Note: Don't broadcast variables:reset - let the document reload naturally apply variables from preset
-    // Notify clients that versions list changed
-    broadcast({ type: 'versions:update' });
+    // Notify THIS session's clients that versions list changed
+    broadcast({ type: 'versions:update', sessionId: req.sessionId });
     const approvals = loadApprovals(req.sessionId);
-    broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary: computeApprovalsSummary(approvals.approvers) });
+    broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary: computeApprovalsSummary(approvals.approvers), sessionId: req.sessionId });
+    
+    console.log(`✅ [Factory Reset] Completed for session ${req.sessionId} - preset: ${preset}`);
     return res.json({ ok: true, preset });
   } catch (e) {
-    console.error('Factory reset error:', e);
+    console.error(`❌ [Factory Reset] Error for session ${req.sessionId}:`, e);
     return res.status(500).json({ error: 'Factory reset failed', details: e.message });
   }
 });
