@@ -1,0 +1,34 @@
+{
+  "approvers": [
+    {
+      "id": "user1",
+      "name": "Warren Peace",
+      "approved": false,
+      "revision": 0
+    },
+    {
+      "id": "user2",
+      "name": "Ivy League",
+      "approved": false,
+      "revision": 0
+    },
+    {
+      "id": "user3",
+      "name": "Sue Pervisor",
+      "approved": false,
+      "revision": 0
+    },
+    {
+      "id": "user4",
+      "name": "Ella Mentor",
+      "approved": false,
+      "revision": 0
+    },
+    {
+      "id": "user5",
+      "name": "Cole Lateral",
+      "approved": false,
+      "revision": 0
+    }
+  ]
+}

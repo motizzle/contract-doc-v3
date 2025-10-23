@@ -6,7 +6,10 @@ services:
     name: wordftw
     runtime: node
     plan: free
-    buildCommand: cd server && npm install
+    buildCommand: |
+      cd server && npm install
+      cd ../addin && npm install && npm run build
+      cp -r dist/* ../server/public/
     startCommand: cd server && npm run start:production
     envVars:
       - key: NODE_ENV
