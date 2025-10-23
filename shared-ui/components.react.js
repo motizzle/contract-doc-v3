@@ -10,10 +10,10 @@
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     
     if (isLocalhost) {
-      // Always use the API server port (4001), not the dev server port (4000)
-      // The dev server (4000) is for serving the add-in HTML/JS
-      // The API server (4001) is for all backend API calls
-      return 'https://localhost:4001';
+    // Always use the API server port (4001), not the dev server port (4000)
+    // The dev server (4000) is for serving the add-in HTML/JS
+    // The API server (4001) is for all backend API calls
+    return 'https://localhost:4001';
     } else {
       // Production: API is served from same domain
       return window.location.origin;
@@ -616,7 +616,13 @@
         refresh();
         let sse;
         try {
-          sse = new EventSource(`${API_BASE}/api/v1/events`);
+          // EventSource doesn't support custom headers, so pass token as query param
+          const token = localStorage.getItem('wordftw_auth_token');
+          const eventsUrl = token 
+            ? `${API_BASE}/api/v1/events?token=${encodeURIComponent(token)}`
+            : `${API_BASE}/api/v1/events`;
+          
+          sse = new EventSource(eventsUrl);
           window.eventSource = sse; // Expose for other components (VariablesPanel, etc.)
           sse.onopen = () => { setIsConnected(true); addLog('Connected to server', 'network'); };
           sse.onmessage = (ev) => {

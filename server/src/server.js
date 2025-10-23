@@ -4544,6 +4544,25 @@ app.get('/api/v1/ui/modal/send-vendor', (req, res) => {
 
 // SSE events
 app.get('/api/v1/events', (req, res) => {
+  // EventSource can't send custom headers, so check query param for token
+  const tokenFromQuery = req.query.token;
+  const tokenFromHeader = req.headers['authorization']?.split(' ')[1];
+  const token = tokenFromQuery || tokenFromHeader;
+  
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.sessionId = decoded.sessionId;
+      console.log(`✅ SSE connected with session: ${req.sessionId}`);
+    } catch (err) {
+      req.sessionId = 'default';
+      console.warn(`⚠️ Invalid SSE token - using default session`);
+    }
+  } else {
+    req.sessionId = 'default';
+    console.warn(`⚠️ No JWT token - using default session (/events)`);
+  }
+  
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
