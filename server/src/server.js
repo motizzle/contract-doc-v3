@@ -247,8 +247,8 @@ function writeMessages(sessionId, data) {
   }
 }
 
-function createMessage({ title, createdBy, participants, internal, external, privileged, text }) {
-  const data = readMessages(req.sessionId);
+function createMessage(sessionId, { title, createdBy, participants, internal, external, privileged, text }) {
+  const data = readMessages(sessionId);
   const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   const now = Date.now();
   
@@ -284,12 +284,12 @@ function createMessage({ title, createdBy, participants, internal, external, pri
     data.posts.push(post);
   }
   
-  writeMessages(req.sessionId, data);
+  writeMessages(sessionId, data);
   return { message, data };
 }
 
-function addPostToMessage(messageId, author, text, privileged = false) {
-  const data = readMessages(req.sessionId);
+function addPostToMessage(sessionId, messageId, author, text, privileged = false) {
+  const data = readMessages(sessionId);
   const message = data.messages.find(m => m.messageId === messageId);
   
   if (!message) {
@@ -314,12 +314,12 @@ function addPostToMessage(messageId, author, text, privileged = false) {
     .map(p => p.userId)
     .filter(id => id !== author.userId);
   
-  writeMessages(req.sessionId, data);
+  writeMessages(sessionId, data);
   return { post, message, data };
 }
 
-function archiveMessageForUser(messageId, userId) {
-  const data = readMessages(req.sessionId);
+function archiveMessageForUser(sessionId, messageId, userId) {
+  const data = readMessages(sessionId);
   const message = data.messages.find(m => m.messageId === messageId);
   
   if (!message) {
@@ -336,12 +336,12 @@ function archiveMessageForUser(messageId, userId) {
     message.archivedBy.push(userId);
   }
   
-  writeMessages(req.sessionId, data);
+  writeMessages(sessionId, data);
   return { message, data };
 }
 
-function unarchiveMessageForUser(messageId, userId) {
-  const data = readMessages(req.sessionId);
+function unarchiveMessageForUser(sessionId, messageId, userId) {
+  const data = readMessages(sessionId);
   const message = data.messages.find(m => m.messageId === messageId);
   
   if (!message) {
@@ -356,12 +356,12 @@ function unarchiveMessageForUser(messageId, userId) {
   // Remove userId from archivedBy
   message.archivedBy = message.archivedBy.filter(id => id !== userId);
   
-  writeMessages(req.sessionId, data);
+  writeMessages(sessionId, data);
   return { message, data };
 }
 
-function updateMessageFlags(messageId, { internal, external, privileged }) {
-  const data = readMessages(req.sessionId);
+function updateMessageFlags(sessionId, messageId, { internal, external, privileged }) {
+  const data = readMessages(sessionId);
   const message = data.messages.find(m => m.messageId === messageId);
   
   if (!message) {
@@ -372,12 +372,12 @@ function updateMessageFlags(messageId, { internal, external, privileged }) {
   if (typeof external === 'boolean') message.external = external;
   if (typeof privileged === 'boolean') message.privileged = privileged;
   
-  writeMessages(req.sessionId, data);
+  writeMessages(sessionId, data);
   return { message, data };
 }
 
-function markMessageRead(messageId, userId) {
-  const data = readMessages(req.sessionId);
+function markMessageRead(sessionId, messageId, userId) {
+  const data = readMessages(sessionId);
   const message = data.messages.find(m => m.messageId === messageId);
   
   if (!message) {
@@ -386,12 +386,12 @@ function markMessageRead(messageId, userId) {
   
   message.unreadBy = (message.unreadBy || []).filter(id => id !== userId);
   
-  writeMessages(req.sessionId, data);
+  writeMessages(sessionId, data);
   return { message, data };
 }
 
-function markMessageUnread(messageId, userId) {
-  const data = readMessages(req.sessionId);
+function markMessageUnread(sessionId, messageId, userId) {
+  const data = readMessages(sessionId);
   const message = data.messages.find(m => m.messageId === messageId);
   
   if (!message) {
@@ -403,12 +403,12 @@ function markMessageUnread(messageId, userId) {
     message.unreadBy.push(userId);
   }
   
-  writeMessages(req.sessionId, data);
+  writeMessages(sessionId, data);
   return { message, data };
 }
 
-function deleteMessageForUser(messageId, userId) {
-  const data = readMessages(req.sessionId);
+function deleteMessageForUser(sessionId, messageId, userId) {
+  const data = readMessages(sessionId);
   const message = data.messages.find(m => m.messageId === messageId);
   
   if (!message) {
@@ -425,12 +425,12 @@ function deleteMessageForUser(messageId, userId) {
     message.deletedBy.push(userId);
   }
   
-  writeMessages(req.sessionId, data);
+  writeMessages(sessionId, data);
   return { message, data };
 }
 
-function getDiscussionSummary(userId) {
-  const data = readMessages(req.sessionId);
+function getDiscussionSummary(sessionId, userId) {
+  const data = readMessages(sessionId);
   // Only count messages where user is a participant and hasn't deleted it
   const messages = data.messages.filter(m => {
     const deletedBy = m.deletedBy || [];
@@ -1970,7 +1970,7 @@ app.post('/api/v1/messages', (req, res) => {
       : recipients.map(r => r.label).join(', ') || 'Untitled Message';
     
     // Create Message
-    const result = createMessage({
+    const result = createMessage(req.sessionId, {
       title: MessageTitle,
       createdBy,
       participants: recipients,
@@ -2028,7 +2028,7 @@ app.post('/api/v1/messages/:messageId/post', (req, res) => {
       label: currentUser?.label || 'User'
     };
     
-    const result = addPostToMessage(messageId, author, text, !!privileged);
+    const result = addPostToMessage(req.sessionId, messageId, author, text, !!privileged);
     
     if (result.error) {
       return res.status(404).json({ error: result.error });
@@ -2071,7 +2071,7 @@ app.post('/api/v1/messages/:messageId/state', (req, res) => {
     
     if (state === 'archived') {
       // Archive is user-specific - add user to archivedBy array
-      const result = archiveMessageForUser(messageId, userId);
+      const result = archiveMessageForUser(req.sessionId, messageId, userId);
       if (result.error) {
         return res.status(404).json({ error: result.error });
       }
@@ -2095,7 +2095,7 @@ app.post('/api/v1/messages/:messageId/state', (req, res) => {
       return res.json({ ok: true, message: result.message });
     } else if (state === 'open') {
       // Unarchive is user-specific - remove user from archivedBy array
-      const result = unarchiveMessageForUser(messageId, userId);
+      const result = unarchiveMessageForUser(req.sessionId, messageId, userId);
       if (result.error) {
         return res.status(404).json({ error: result.error });
       }
@@ -2132,7 +2132,7 @@ app.post('/api/v1/messages/:messageId/flags', (req, res) => {
     const { messageId } = req.params;
     const { internal, external, privileged, userId } = req.body;
     
-    const result = updateMessageFlags(messageId, { internal, external, privileged });
+    const result = updateMessageFlags(req.sessionId, messageId, { internal, external, privileged });
     
     if (result.error) {
       return res.status(404).json({ error: result.error });
@@ -2173,8 +2173,8 @@ app.post('/api/v1/messages/:messageId/read', (req, res) => {
     }
     
     const result = unread 
-      ? markMessageUnread(messageId, userId)
-      : markMessageRead(messageId, userId);
+      ? markMessageUnread(req.sessionId, messageId, userId)
+      : markMessageRead(req.sessionId, messageId, userId);
     
     if (result.error) {
       return res.status(404).json({ error: result.error });
@@ -2212,7 +2212,7 @@ app.post('/api/v1/messages/:messageId/delete', (req, res) => {
       return res.status(400).json({ error: 'userId is required' });
     }
     
-    const result = deleteMessageForUser(messageId, userId);
+    const result = deleteMessageForUser(req.sessionId, messageId, userId);
     
     if (result.error) {
       return res.status(404).json({ error: result.error });
@@ -2318,7 +2318,7 @@ app.get('/api/v1/messages/export.csv', (req, res) => {
 app.get('/api/v1/discussion/summary', (req, res) => {
   try {
     const { userId } = req.query;
-    const summary = getDiscussionSummary(userId || 'user1');
+    const summary = getDiscussionSummary(req.sessionId, userId || 'user1');
     return res.json(summary);
   } catch (e) {
     console.error('Error getting discussion summary:', e);
