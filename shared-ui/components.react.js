@@ -946,30 +946,64 @@
 
       // Do not auto-sync viewingVersion to server documentVersion; viewing changes only on local actions
 
-      // Compute initial document source on web (prefer working overlay)
+      // Compute initial document source and load into Word/Web
       React.useEffect(() => {
-        if (typeof Office !== 'undefined') return; // Word path handles separately
         (async () => {
           try {
-            const src = await choosePreferredDocUrl(Date.now());
-            setDocumentSource(src);
-            addLog(`Document source updated`, 'document');
-            // Initialize version from first matrix load
+            // Get the preferred document URL
+            const w = `${API_BASE}/documents/working/default.docx`;
+            const c = `${API_BASE}/documents/canonical/default.docx`;
+            let url = c;
             try {
-              const r = await fetch(`${API_BASE}/api/v1/state-matrix?platform=web&userId=${encodeURIComponent(userId)}`);
+              const h = await fetch(w, { method: 'HEAD' });
+              if (h.ok) {
+                const len = Number(h.headers.get('content-length') || '0');
+                if (Number.isFinite(len) && len > MIN_DOCX_SIZE) url = w;
+              }
+            } catch {}
+            
+            const finalUrl = `${url}?rev=${Date.now()}`;
+            
+            // Initialize version from state-matrix
+            let initialVersion = 1;
+            try {
+              const r = await fetch(`${API_BASE}/api/v1/state-matrix?platform=${typeof Office !== 'undefined' ? 'word' : 'web'}&userId=${encodeURIComponent(userId)}`);
               if (r.ok) {
                 const j = await r.json();
                 const v = Number(j?.config?.documentVersion || 1);
-                const ver = Number.isFinite(v) && v > 0 ? v : 1;
-                setLoadedVersion(ver);
+                initialVersion = Number.isFinite(v) && v > 0 ? v : 1;
+                setLoadedVersion(initialVersion);
                 
-                try { setViewingVersion(ver); } catch {}
-                try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: ver, payload: { messagePlatform: 'web' } } })); } catch {}
+                try { setViewingVersion(initialVersion); } catch {}
+                try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: initialVersion, payload: { messagePlatform: typeof Office !== 'undefined' ? 'word' : 'web' } } })); } catch {}
               }
             } catch {}
-          } catch (e) { addError({ kind: 'doc_init', message: 'Failed to choose initial document', cause: String(e) }); }
+            
+            // Load document into Word or Web
+            if (typeof Office !== 'undefined') {
+              // Word add-in: Load document into Word
+              console.log(`📄 Loading initial document into Word: version ${initialVersion}`);
+              const res = await fetch(finalUrl, { cache: 'no-store' });
+              if (res && res.ok) {
+                const buf = await res.arrayBuffer();
+                const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
+                await Word.run(async (context) => { 
+                  context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); 
+                  await context.sync(); 
+                });
+                addLog(`Document loaded (version ${initialVersion})`, 'document');
+              }
+            } else {
+              // Web: Load document into SuperDoc
+              setDocumentSource(finalUrl);
+              addLog(`Document source updated`, 'document');
+            }
+          } catch (e) { 
+            addError({ kind: 'doc_init', message: 'Failed to load initial document', cause: String(e) }); 
+            console.error('❌ Failed to load initial document:', e);
+          }
         })();
-      }, [API_BASE, addLog, addError, choosePreferredDocUrl]);
+      }, [API_BASE, addLog, addError]);
 
       // Do NOT auto-update document on revision changes. The banner/CTA controls refresh.
 
