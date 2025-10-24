@@ -4413,11 +4413,18 @@
             style: { display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between' }
           }, [
             React.createElement('div', { key: 'text', style: { fontSize: '14px', color: '#6d5ef1', fontWeight: 500 } }, '🔗 Link to browser session?'),
-            React.createElement('button', {
-              key: 'link',
-              onClick: () => setShowInput(true),
-              style: { padding: '6px 12px', background: '#6d5ef1', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }
-            }, 'Enter Code')
+            React.createElement('div', { key: 'buttons', style: { display: 'flex', gap: '8px' } }, [
+              React.createElement('button', {
+                key: 'link',
+                onClick: () => setShowInput(true),
+                style: { padding: '6px 12px', background: '#6d5ef1', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }
+              }, 'Enter Code'),
+              React.createElement('button', {
+                key: 'close',
+                onClick: () => setDismissed(true),
+                style: { padding: '6px 12px', background: 'transparent', color: '#6d5ef1', border: '1px solid #c4b5fd', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }
+              }, '×')
+            ])
           ]);
         }
         
