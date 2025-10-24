@@ -1517,14 +1517,23 @@ function initializeSession(sessionId) {
     }, null, 2)
   );
   
+  // Load users from canonical users.json and initialize approvals from them
+  const users = loadUsers();
+  const approvers = users.map((u, i) => {
+    const id = u && (u.id || u.label) || `user${i + 1}`;
+    const name = u && (u.label || u.id) || id;
+    return { userId: id, name, order: i + 1, approved: false, notes: '' };
+  });
+  
   fs.writeFileSync(path.join(sessionDir, 'approvals.json'), JSON.stringify({
-    approvers: [
-      { id: 'user1', name: 'Warren Peace', approved: false, revision: 0 },
-      { id: 'user2', name: 'Kent Ucky', approved: false, revision: 0 },
-      { id: 'user3', name: 'Chief Executive Officer', approved: false, revision: 0 },
-      { id: 'user4', name: 'Chief Financial Officer', approved: false, revision: 0 },
-      { id: 'user5', name: 'General Counsel', approved: false, revision: 0 }
-    ]
+    approvers: approvers.length > 0 ? approvers : [
+      { userId: 'user1', name: 'Warren Peace', order: 1, approved: false, notes: '' },
+      { userId: 'user2', name: 'Kent Uckey', order: 2, approved: false, notes: '' },
+      { userId: 'user3', name: 'Yuri Lee Laffed', order: 3, approved: false, notes: '' },
+      { userId: 'user4', name: 'Hugh R Ewe', order: 4, approved: false, notes: '' },
+      { userId: 'user5', name: 'Gettysburger King', order: 5, approved: false, notes: '' }
+    ],
+    revision: 0
   }, null, 2));
   
   fs.writeFileSync(path.join(sessionDir, 'activity-log.json'), '[]');
@@ -2158,7 +2167,8 @@ app.post('/api/v1/messages', (req, res) => {
     // Broadcast SSE event
     broadcast({
       type: 'message:created',
-      message: result.message
+      message: result.message,
+      sessionId: req.sessionId
     });
     
     // Log activity
@@ -2220,7 +2230,8 @@ app.post('/api/v1/messages/:messageId/post', (req, res) => {
     broadcast({
       type: 'message:post-added',
       post: result.post,
-      message: result.message
+      message: result.message,
+      sessionId: req.sessionId
     });
     
     return res.json({ ok: true, post: result.post, message: result.message });
@@ -2250,7 +2261,8 @@ app.post('/api/v1/messages/:messageId/state', (req, res) => {
       broadcast({
         type: 'message:state-changed',
         message: result.message,
-        userId
+        userId,
+        sessionId: req.sessionId
       });
       
       const data = readMessages(req.sessionId);
@@ -2274,7 +2286,8 @@ app.post('/api/v1/messages/:messageId/state', (req, res) => {
       broadcast({
         type: 'message:state-changed',
         message: result.message,
-        userId
+        userId,
+        sessionId: req.sessionId
       });
       
       const data = readMessages(req.sessionId);
@@ -2312,7 +2325,8 @@ app.post('/api/v1/messages/:messageId/flags', (req, res) => {
     // Broadcast SSE event
     broadcast({
       type: 'message:flags-updated',
-      message: result.message
+      message: result.message,
+      sessionId: req.sessionId
     });
     
     // Log activity
@@ -2363,7 +2377,8 @@ app.post('/api/v1/messages/:messageId/read', (req, res) => {
     broadcast({
       type: 'message:read',
       message: result.message,
-      userId
+      userId,
+      sessionId: req.sessionId
     });
     
     return res.json({ ok: true, message: result.message });
@@ -2393,7 +2408,8 @@ app.post('/api/v1/messages/:messageId/delete', (req, res) => {
     broadcast({
       type: 'message:deleted',
       message: result.message,
-      userId
+      userId,
+      sessionId: req.sessionId
     });
     
     const data = readMessages(req.sessionId);
@@ -3226,7 +3242,7 @@ app.post('/api/v1/approvals/set', (req, res) => {
     bumpApprovalsRevision();
     saveApprovals(req.sessionId, list);
     const summary = computeApprovalsSummary(list);
-    broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary });
+    broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary, sessionId: req.sessionId });
     // Log workflow activity with progress and actor info
     const activityType = approved ? 'workflow:approve' : 'workflow:remove-approval';
     logActivity(activityType, actorUserId, { 
@@ -3238,7 +3254,7 @@ app.post('/api/v1/approvals/set', (req, res) => {
     
     // Check if all approvals are complete and trigger celebration
     if (summary.approved === summary.total && summary.total > 0) {
-      broadcast({ type: 'approval:complete', completedBy: actorUserId, timestamp: Date.now() });
+      broadcast({ type: 'approval:complete', completedBy: actorUserId, timestamp: Date.now(), sessionId: req.sessionId });
       // Log workflow completion
       logActivity(req.sessionId, 'workflow:complete', actorUserId, { total: summary.total, approved: summary.approved });
     }
@@ -3257,7 +3273,7 @@ app.post('/api/v1/approvals/reset', (req, res) => {
     bumpApprovalsRevision();
     saveApprovals(req.sessionId, list);
     const summary = computeApprovalsSummary(list);
-    broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary, notice: { type: 'reset', by: actorUserId } });
+    broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary, notice: { type: 'reset', by: actorUserId }, sessionId: req.sessionId });
     // Log workflow reset
     logActivity(req.sessionId, 'workflow:reset', actorUserId, {});
     res.json({ approvers: list, summary, revision: serverState.approvalsRevision });
@@ -3271,7 +3287,7 @@ app.post('/api/v1/approvals/notify', (req, res) => {
     const actorUserId = req.body?.actorUserId || 'user1';
     const data = loadApprovals(req.sessionId);
     const summary = computeApprovalsSummary(data.approvers);
-    broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary, notice: { type: 'request_review', by: actorUserId } });
+    broadcast({ type: 'approvals:update', revision: serverState.approvalsRevision, summary, notice: { type: 'request_review', by: actorUserId }, sessionId: req.sessionId });
     // Log review request
     logActivity(req.sessionId, 'workflow:request-review', actorUserId, {});
     res.json({ approvers: data.approvers, summary, revision: serverState.approvalsRevision });

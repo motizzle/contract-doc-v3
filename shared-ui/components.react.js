@@ -761,11 +761,11 @@
                   window.dispatchEvent(new CustomEvent('approval:complete', { detail: p }));
                 } catch {}
               }
-              // Handle messages updates (sync messaging panel)
-              if (p && p.type === 'messages:update') {
+              // Handle message events (sync messaging panel)
+              if (p && p.type && p.type.startsWith('message:')) {
                 try {
-                  window.dispatchEvent(new CustomEvent('message:created', { detail: p }));
-                  console.log('📨 Messages updated via SSE');
+                  window.dispatchEvent(new CustomEvent(p.type, { detail: p }));
+                  console.log('📨 Message event via SSE:', p.type);
                 } catch {}
               }
               // Handle status changes (for banner drop celebration)
