@@ -1385,24 +1385,35 @@ Double-click: use-local.bat
 
 #### Implementation Checklist
 
-- [ ] **Create Scripts:**
+- [ ] **Create Environment Switcher Scripts:**
   - [ ] `tools/scripts/use-local.bat` (Windows)
   - [ ] `tools/scripts/use-deployed.bat` (Windows)
   - [ ] `tools/scripts/use-local.command` (macOS)
   - [ ] `tools/scripts/use-deployed.command` (macOS)
+- [ ] **Create Local Testing Scripts:**
+  - [ ] `tools/scripts/test-install-local.bat` (Windows)
+  - [ ] `tools/scripts/test-uninstall-local.bat` (Windows)
+  - [ ] `tools/scripts/test-install-local.command` (macOS)
+  - [ ] `tools/scripts/test-uninstall-local.command` (macOS)
+  - [ ] These should use `addin/manifest.xml` (local) for testing
+  - [ ] Should provide detailed output for debugging
 - [ ] **Set Permissions:**
-  - [ ] Make macOS scripts executable (`chmod +x *.command`)
+  - [ ] Make macOS scripts executable (`chmod +x tools/scripts/*.command`)
 - [ ] **Test Both Platforms:**
   - [ ] Test switching local → deployed → local (Windows)
   - [ ] Test switching local → deployed → local (macOS)
+  - [ ] Test local install/uninstall flow (Windows)
+  - [ ] Test local install/uninstall flow (macOS)
   - [ ] Verify Word add-in loads from correct environment
 - [ ] **Documentation:**
   - [ ] Add "Developer Workflow" section to README
   - [ ] Document when to use each script
   - [ ] Add troubleshooting for common issues
+  - [ ] Update `tools/scripts/README.md` with new scripts
 - [ ] **Developer Experience:**
-  - [ ] Consider adding to npm scripts: `npm run addin:use-local`
+  - [ ] Consider adding to npm scripts: `npm run addin:use-local`, `npm run addin:use-deployed`
   - [ ] Add to VSCode tasks for even faster switching
+  - [ ] Add to `tools/scripts/README.md` quick reference
 
 ---
 
@@ -1476,17 +1487,34 @@ Double-click: use-local.bat
 
 ## Related Files
 
-**Installers:**
+### Production Scripts (Served to End Users)
+**Location:** `server/public/` (deployed, downloadable from web app)
+
 - `server/public/install-addin.bat` (Windows installer)
 - `server/public/install-addin.command` (macOS installer)
 - `server/public/uninstall-addin.bat` (Windows uninstaller, new)
 - `server/public/uninstall-addin.command` (macOS uninstaller, new)
 
-**Developer Utilities:**
+**Purpose:** These are downloaded by end users from the deployed web app and run on their machines to install/uninstall the Word add-in pointing to the **production** server.
+
+---
+
+### Developer Scripts (Local Development Only)
+**Location:** `tools/scripts/` (not deployed, for developers only)
+
+**Environment Switchers:**
 - `tools/scripts/use-local.bat` (Windows: switch to local add-in, new)
 - `tools/scripts/use-deployed.bat` (Windows: switch to deployed add-in, new)
 - `tools/scripts/use-local.command` (macOS: switch to local add-in, new)
 - `tools/scripts/use-deployed.command` (macOS: switch to deployed add-in, new)
+
+**Local Testing:**
+- `tools/scripts/test-install-local.bat` (Test install process locally, new)
+- `tools/scripts/test-uninstall-local.bat` (Test uninstall process locally, new)
+- `tools/scripts/test-install-local.command` (macOS version, new)
+- `tools/scripts/test-uninstall-local.command` (macOS version, new)
+
+**Purpose:** These help developers test, debug, and switch between local and deployed add-in environments without affecting production scripts.
 
 **Server:**
 - `server/src/server.js` (serves manifest at `/manifest.xml`)
