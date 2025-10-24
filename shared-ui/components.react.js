@@ -4298,16 +4298,16 @@
         const handleShow = async () => {
           console.log('[LinkCodeBanner] Show event triggered!');
           
-          // Check if we have a link code, if not, get one
-          let code = localStorage.getItem('wordftw_link_code');
-          if (!code && !isWordHost) {
-            console.log('[LinkCodeBanner] No link code found - refreshing session...');
+          // ALWAYS generate a fresh link code from the server (browser only)
+          if (!isWordHost) {
+            console.log('[LinkCodeBanner] Generating fresh link code from server...');
             try {
               const fingerprint = localStorage.getItem('wordftw_fingerprint');
               const API_BASE = getApiBase();
               
-              // Clear old token and request new one
+              // Clear old token and request new session with fresh link code
               localStorage.removeItem('wordftw_auth_token');
+              localStorage.removeItem('wordftw_link_code');
               
               const fetchFn = window._originalFetch || fetch;
               const response = await fetchFn(`${API_BASE}/api/v1/session/start`, {
@@ -4323,19 +4323,17 @@
                 if (data.linkCode) {
                   localStorage.setItem('wordftw_link_code', data.linkCode);
                   setLinkCode(data.linkCode);
-                  code = data.linkCode;
-                  console.log('[LinkCodeBanner] ✅ Link code obtained after refresh:', data.linkCode);
+                  console.log('[LinkCodeBanner] ✅ Fresh link code obtained:', data.linkCode);
+                  
+                  // Show the banner with the new code
+                  setShowBanner(true);
+                  setDismissed(false);
+                  localStorage.removeItem('wordftw_link_banner_dismissed');
                 }
               }
             } catch (err) {
-              console.error('[LinkCodeBanner] Failed to refresh session:', err);
+              console.error('[LinkCodeBanner] Failed to generate link code:', err);
             }
-          }
-          
-          if (code) {
-            setShowBanner(true);
-            setDismissed(false);
-            localStorage.removeItem('wordftw_link_banner_dismissed');
           }
         };
         
