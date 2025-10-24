@@ -40,39 +40,12 @@
 
     isInitializingAuth = true;
     try {
-      // ALWAYS generate and store fingerprint (needed for session sharing)
+      // ALWAYS generate and store fingerprint (for persistent computer linking)
       const fingerprint = generateFingerprint();
-      const oldFingerprint = localStorage.getItem('wordftw_fingerprint');
       localStorage.setItem('wordftw_fingerprint', fingerprint);
       
       // Try to retrieve existing token
       authToken = localStorage.getItem('wordftw_auth_token');
-      
-      // Word add-in: ALWAYS try to get shared session from browser (even if we have a token)
-      // This ensures Word syncs with browser session even after restart
-      if (window.Office && window.Office.context) {
-        console.log('📎 Word add-in detected - checking for shared session...');
-        const API_BASE = getApiBase();
-        
-        try {
-          const response = await window._originalFetch(
-            `${API_BASE}/api/v1/session/by-fingerprint?fingerprint=${encodeURIComponent(fingerprint)}`
-          );
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (data.token) {
-              // Use shared session if available
-              authToken = data.token;
-              localStorage.setItem('wordftw_auth_token', authToken);
-              console.log(`✅ Using shared session from browser: ${data.sessionId}`);
-              return authToken;
-            }
-          }
-        } catch (e) {
-          console.log('ℹ️ No shared session found, will use existing token or create new');
-        }
-      }
       
       if (!authToken) {
         // Request new token from server
@@ -144,8 +117,17 @@
       authToken = data.token;
       localStorage.setItem('wordftw_auth_token', authToken);
       
+      // Store link code if provided (for browser to share with Word)
+      if (data.linkCode) {
+        localStorage.setItem('wordftw_link_code', data.linkCode);
+        console.log(`🔗 Link code generated: ${data.linkCode}`);
+      }
+      
       console.log(`✅ New session created: ${data.sessionId}`);
       console.log(`🕐 Token expires in: ${data.expiresIn}`);
+      if (data.linked) {
+        console.log(`🔗 Session is linked to another device`);
+      }
       
       return authToken;
     } catch (err) {
@@ -153,6 +135,46 @@
       throw err;
     }
   }
+
+  // Submit link code to create permanent link (Word add-in → Browser)
+  async function submitLinkCode(linkCode) {
+    try {
+      const API_BASE = getApiBase();
+      const fingerprint = localStorage.getItem('wordftw_fingerprint');
+      
+      const response = await window._originalFetch(`${API_BASE}/api/v1/session/link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ linkCode, fingerprint })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to link sessions');
+      }
+      
+      const data = await response.json();
+      
+      // Update our token to the linked session
+      authToken = data.token;
+      localStorage.setItem('wordftw_auth_token', data.token);
+      localStorage.removeItem('wordftw_link_code'); // We're linked now
+      
+      console.log(`🔗 Successfully linked to browser session: ${data.sessionId}`);
+      
+      // Force a full page reload to use the new session
+      window.location.reload();
+      
+      return data;
+    } catch (err) {
+      console.error('❌ Failed to link sessions:', err);
+      throw err;
+    }
+  }
+  
+  // Expose link functions globally for Word add-in
+  window.wordFTW_getLinkCode = () => localStorage.getItem('wordftw_link_code');
+  window.wordFTW_submitLinkCode = submitLinkCode;
 
   // Store original fetch before overriding
   if (!window._originalFetch) {
@@ -4241,6 +4263,116 @@
       return React.createElement('div', { className: 'd-grid grid-cols-2 column-gap-8 row-gap-6 grid-auto-rows-minmax-27' }, [btn('Open New Document', openNew), btn('View Latest', viewLatest)]);
     }
 
+    // Link Code Banner (for syncing Word and Browser)
+    function LinkCodeBanner() {
+      const [linkCode, setLinkCode] = React.useState(null);
+      const [showInput, setShowInput] = React.useState(false);
+      const [inputValue, setInputValue] = React.useState('');
+      const [error, setError] = React.useState(null);
+      const [loading, setLoading] = React.useState(false);
+      const isWordHost = typeof Office !== 'undefined';
+      
+      // Check for link code on mount
+      React.useEffect(() => {
+        const code = localStorage.getItem('wordftw_link_code');
+        if (code) {
+          setLinkCode(code);
+        }
+      }, []);
+      
+      // Handle link code submission (Word add-in only)
+      const handleSubmitCode = async () => {
+        if (!inputValue || inputValue.length !== 6) {
+          setError('Please enter a 6-character code');
+          return;
+        }
+        
+        setLoading(true);
+        setError(null);
+        
+        try {
+          await window.wordFTW_submitLinkCode(inputValue.toUpperCase());
+          // Page will reload after successful link
+        } catch (err) {
+          setError(err.message || 'Failed to link. Check the code and try again.');
+          setLoading(false);
+        }
+      };
+      
+      // Browser: Show link code
+      if (!isWordHost && linkCode) {
+        return React.createElement('div', {
+          className: 'my-2 p-3 border border-blue-200 bg-blue-50 rounded-md',
+          style: { display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between' }
+        }, [
+          React.createElement('div', { key: 'text', style: { display: 'flex', flexDirection: 'column', gap: '4px' } }, [
+            React.createElement('div', { key: 'title', style: { fontWeight: 600, color: '#1e40af' } }, '🔗 Link Code for Word Add-in'),
+            React.createElement('div', { key: 'desc', style: { fontSize: '13px', color: '#3b82f6' } }, 'Open Word add-in and enter this code to sync:'),
+            React.createElement('div', { key: 'code', style: { fontSize: '20px', fontWeight: 700, color: '#1e40af', letterSpacing: '3px', fontFamily: 'monospace' } }, linkCode)
+          ]),
+          React.createElement('button', {
+            key: 'copy',
+            onClick: () => {
+              navigator.clipboard.writeText(linkCode);
+              alert('Code copied!');
+            },
+            style: { padding: '8px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }
+          }, '📋 Copy')
+        ]);
+      }
+      
+      // Word add-in: Show input field
+      if (isWordHost && !linkCode) {
+        if (!showInput) {
+          return React.createElement('div', {
+            className: 'my-2 p-3 border border-purple-200 bg-purple-50 rounded-md',
+            style: { display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between' }
+          }, [
+            React.createElement('div', { key: 'text', style: { fontSize: '14px', color: '#6d5ef1', fontWeight: 500 } }, '🔗 Link to browser session?'),
+            React.createElement('button', {
+              key: 'link',
+              onClick: () => setShowInput(true),
+              style: { padding: '6px 12px', background: '#6d5ef1', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }
+            }, 'Enter Code')
+          ]);
+        }
+        
+        return React.createElement('div', {
+          className: 'my-2 p-3 border border-purple-200 bg-purple-50 rounded-md',
+          style: { display: 'flex', flexDirection: 'column', gap: '12px' }
+        }, [
+          React.createElement('div', { key: 'title', style: { fontWeight: 600, color: '#6d5ef1' } }, '🔗 Enter Link Code from Browser'),
+          React.createElement('div', { key: 'input-row', style: { display: 'flex', gap: '8px', alignItems: 'center' } }, [
+            React.createElement('input', {
+              key: 'input',
+              type: 'text',
+              maxLength: 6,
+              placeholder: 'ABC123',
+              value: inputValue,
+              onChange: (e) => setInputValue(e.target.value.toUpperCase()),
+              disabled: loading,
+              style: { flex: 1, padding: '8px 12px', border: '2px solid #c4b5fd', borderRadius: '6px', fontSize: '16px', fontWeight: 600, letterSpacing: '2px', fontFamily: 'monospace', textTransform: 'uppercase' }
+            }),
+            React.createElement('button', {
+              key: 'submit',
+              onClick: handleSubmitCode,
+              disabled: loading || inputValue.length !== 6,
+              style: { padding: '8px 20px', background: loading || inputValue.length !== 6 ? '#ccc' : '#6d5ef1', color: 'white', border: 'none', borderRadius: '6px', cursor: loading || inputValue.length !== 6 ? 'not-allowed' : 'pointer', fontWeight: 600 }
+            }, loading ? 'Linking...' : 'Link'),
+            React.createElement('button', {
+              key: 'cancel',
+              onClick: () => { setShowInput(false); setInputValue(''); setError(null); },
+              disabled: loading,
+              style: { padding: '8px 16px', background: 'transparent', color: '#6d5ef1', border: '1px solid #c4b5fd', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }
+            }, '×')
+          ]),
+          error ? React.createElement('div', { key: 'error', style: { fontSize: '13px', color: '#dc2626', fontWeight: 500 } }, error) : null
+        ]);
+      }
+      
+      return null;
+    }
+    
     function ErrorBanner() {
       const { lastError } = React.useContext(StateContext);
       if (!lastError) return null;
@@ -6441,6 +6573,7 @@
           (isWordHost ? React.createElement(UIButton, { key: 'open-og', label: 'Open in OpenGov ↗', onClick: () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'open-gov' } })); } catch {} }, variant: 'tertiary', style: { marginLeft: 'auto' } }) : null),
         ]),
         React.createElement(InlineTitleEditor, { key: 'title' }),
+        React.createElement(LinkCodeBanner, null),
         React.createElement(ErrorBanner, null),
         (typeof Office === 'undefined' ? React.createElement(SuperDocHost, { key: 'host', src: documentSource }) : null),
         React.createElement('div', { className: '', style: { marginTop: 8 } }, [

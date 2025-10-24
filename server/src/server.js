@@ -22,9 +22,13 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2:3b'; // Better reason
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production-min-32-chars';
 const JWT_EXPIRATION = '7d'; // 7 days
 
-// Machine fingerprint → sessionId mapping for browser/Word sync
-// Maps fingerprint to { sessionId, token, createdAt }
-const fingerprintSessions = new Map();
+// Session linking system for browser/Word sync
+// Active link codes (expire after 15 minutes)
+const activeLinkCodes = new Map(); // code → { fingerprint, token, sessionId, expires }
+// Permanent computer links (survive token refresh)
+const permanentLinks = new Map(); // fingerprint → linkedFingerprint
+// Fingerprint sessions (for link lookup)
+const fingerprintSessions = new Map(); // fingerprint → { sessionId, token, createdAt }
 
 // Default System Prompt - Single source of truth
 const DEFAULT_SYSTEM_PROMPT = `You are a helpful AI assistant. Answer questions based on the provided document context.
@@ -1633,21 +1637,69 @@ function bumpDocumentVersion(sessionId, updatedByUserId, platform) {
   return state.documentVersion;
 }
 
+// Helper: Generate 6-digit link code
+function generateLinkCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclude confusing chars
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+// Helper: Check if fingerprint has a permanent link
+function getLinkedSession(fingerprint) {
+  if (!fingerprint) return null;
+  
+  // Check for permanent link
+  const linkedFingerprint = permanentLinks.get(fingerprint);
+  if (linkedFingerprint) {
+    // Return the linked session
+    return fingerprintSessions.get(linkedFingerprint);
+  }
+  
+  return null;
+}
+
 // Session creation endpoint (no auth required)
 app.post('/api/v1/session/start', (req, res) => {
   try {
     const { fingerprint } = req.body || {};
     
-    // Check if we already have a session for this fingerprint
-    if (fingerprint && fingerprintSessions.has(fingerprint)) {
-      const existing = fingerprintSessions.get(fingerprint);
-      console.log(`🔑 Returning existing session for fingerprint: ${fingerprint.substring(0, 12)}...`);
-      return res.json({
-        token: existing.token,
-        sessionId: existing.sessionId,
-        expiresIn: JWT_EXPIRATION,
-        shared: true
-      });
+    // Check for permanent link first
+    if (fingerprint) {
+      const linkedSession = getLinkedSession(fingerprint);
+      if (linkedSession) {
+        console.log(`🔗 Returning linked session for fingerprint: ${fingerprint.substring(0, 12)}...`);
+        return res.json({
+          token: linkedSession.token,
+          sessionId: linkedSession.sessionId,
+          expiresIn: JWT_EXPIRATION,
+          linked: true
+        });
+      }
+      
+      // Check if we already have a session for this fingerprint
+      if (fingerprintSessions.has(fingerprint)) {
+        const existing = fingerprintSessions.get(fingerprint);
+        console.log(`🔑 Returning existing session for fingerprint: ${fingerprint.substring(0, 12)}...`);
+        
+        // Get or create link code for this session
+        let linkCode = null;
+        for (const [code, data] of activeLinkCodes.entries()) {
+          if (data.fingerprint === fingerprint) {
+            linkCode = code;
+            break;
+          }
+        }
+        
+        return res.json({
+          token: existing.token,
+          sessionId: existing.sessionId,
+          expiresIn: JWT_EXPIRATION,
+          linkCode: linkCode
+        });
+      }
     }
     
     // Use crypto.randomUUID() for truly unique session IDs (no collisions)
@@ -1672,6 +1724,19 @@ app.post('/api/v1/session/start', (req, res) => {
       console.log(`🔑 Stored fingerprint mapping: ${fingerprint.substring(0, 12)}... → ${sessionId}`);
     }
     
+    // Generate link code (for browser to share with Word)
+    let linkCode = null;
+    if (fingerprint) {
+      linkCode = generateLinkCode();
+      activeLinkCodes.set(linkCode, {
+        fingerprint,
+        token,
+        sessionId,
+        expires: Date.now() + (15 * 60 * 1000) // 15 minutes
+      });
+      console.log(`🔗 Generated link code: ${linkCode} for session ${sessionId}`);
+    }
+    
     // Initialize session directory with seed data
     initializeSession(sessionId);
     
@@ -1680,7 +1745,8 @@ app.post('/api/v1/session/start', (req, res) => {
     res.json({ 
       token, 
       sessionId,
-      expiresIn: JWT_EXPIRATION
+      expiresIn: JWT_EXPIRATION,
+      linkCode
     });
   } catch (err) {
     console.error('❌ Failed to create session:', err);
@@ -1688,31 +1754,45 @@ app.post('/api/v1/session/start', (req, res) => {
   }
 });
 
-// Get session by fingerprint (for Word add-in to share browser session)
-app.get('/api/v1/session/by-fingerprint', (req, res) => {
+// Link two computers together using a link code
+app.post('/api/v1/session/link', (req, res) => {
   try {
-    const { fingerprint } = req.query;
+    const { linkCode, fingerprint } = req.body || {};
     
-    if (!fingerprint) {
-      return res.status(400).json({ error: 'Fingerprint required' });
+    if (!linkCode || !fingerprint) {
+      return res.status(400).json({ error: 'Link code and fingerprint required' });
     }
     
-    const session = fingerprintSessions.get(fingerprint);
+    // Check if code exists and is not expired
+    const linkData = activeLinkCodes.get(linkCode.toUpperCase());
     
-    if (!session) {
-      return res.status(404).json({ error: 'No session found for this fingerprint' });
+    if (!linkData) {
+      return res.status(404).json({ error: 'Invalid or expired link code' });
     }
     
-    console.log(`🔍 Found shared session for fingerprint: ${fingerprint.substring(0, 12)}... → ${session.sessionId}`);
+    if (Date.now() > linkData.expires) {
+      activeLinkCodes.delete(linkCode);
+      return res.status(410).json({ error: 'Link code expired' });
+    }
     
+    // Create permanent bidirectional link
+    permanentLinks.set(fingerprint, linkData.fingerprint); // Word → Browser
+    permanentLinks.set(linkData.fingerprint, fingerprint); // Browser → Word
+    
+    console.log(`🔗 Permanent link created: ${fingerprint.substring(0, 12)}... ↔ ${linkData.fingerprint.substring(0, 12)}...`);
+    
+    // Return the linked session
     res.json({
-      token: session.token,
-      sessionId: session.sessionId,
-      expiresIn: JWT_EXPIRATION
+      token: linkData.token,
+      sessionId: linkData.sessionId,
+      expiresIn: JWT_EXPIRATION,
+      linked: true
     });
+    
+    // Keep the code active for a bit longer in case they need to link another device
   } catch (err) {
-    console.error('❌ Failed to get session by fingerprint:', err);
-    res.status(500).json({ error: 'Failed to get session' });
+    console.error('❌ Failed to link sessions:', err);
+    res.status(500).json({ error: 'Failed to link sessions' });
   }
 });
 
@@ -4766,6 +4846,21 @@ function initializeWorkingData() {
 // This ensures the "default" session exists for non-JWT requests
 initializeSession('default');
 console.log('✅ Default session initialized (backward compatibility)');
+
+// Cleanup expired link codes every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  let cleaned = 0;
+  for (const [code, data] of activeLinkCodes.entries()) {
+    if (now > data.expires) {
+      activeLinkCodes.delete(code);
+      cleaned++;
+    }
+  }
+  if (cleaned > 0) {
+    console.log(`🧹 Cleaned up ${cleaned} expired link code(s)`);
+  }
+}, 5 * 60 * 1000); // 5 minutes
 
 // In production, always use HTTP (Render provides HTTPS at the edge)
 // In dev, try to use HTTPS with dev certificates
