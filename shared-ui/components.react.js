@@ -1532,6 +1532,7 @@
       const nestedItems = [
         menuItem('Open New Document', handleOpenNewDocument, !isWord), // Hide in add-in (already has button)
         menuItem('Install Word Add-in', () => { window.dispatchEvent(new CustomEvent('show-install-modal')); }, !isWord), // Show in browser only
+        menuItem('Enter Link Code', () => { window.dispatchEvent(new CustomEvent('show-link-code-modal')); }, isWord), // Show in Word add-in only
         menuItem('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true),
         menuItem('Override Checkout', actions.override, !!btns.overrideBtn),
         menuItem('Scenario Loader', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'factory-reset' } })); } catch {} }, 130); } catch {} }, true, { danger: true }),
@@ -4404,68 +4405,7 @@
         ]);
       }
       
-      // Word add-in: Show input field
-      if (isWordHost && !linkCode) {
-        if (!showInput) {
-          return React.createElement('div', {
-            className: 'my-2 p-3 border border-purple-200 bg-purple-50 rounded-md',
-            style: { display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between' }
-          }, [
-            React.createElement('div', { key: 'text', style: { fontSize: '14px', color: '#6d5ef1', fontWeight: 500 } }, '🔗 Link to browser session?'),
-            React.createElement('div', { key: 'buttons', style: { display: 'flex', gap: '8px' } }, [
-              React.createElement('button', {
-                key: 'link',
-                onClick: () => setShowInput(true),
-                style: { padding: '6px 12px', background: '#6d5ef1', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }
-              }, 'Enter Code'),
-              React.createElement('button', {
-                key: 'close',
-                onClick: () => {
-                  setDismissed(true);
-                  // Persist dismissed state so it doesn't reappear
-                  if (typeof localStorage !== 'undefined') {
-                    localStorage.setItem('linkBannerDismissed', 'true');
-                  }
-                },
-                style: { padding: '6px 12px', background: 'transparent', color: '#6d5ef1', border: '1px solid #c4b5fd', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }
-              }, '×')
-            ])
-          ]);
-        }
-        
-        return React.createElement('div', {
-          className: 'my-2 p-3 border border-purple-200 bg-purple-50 rounded-md',
-          style: { display: 'flex', flexDirection: 'column', gap: '12px' }
-        }, [
-          React.createElement('div', { key: 'title', style: { fontWeight: 600, color: '#6d5ef1' } }, '🔗 Enter Link Code from Browser'),
-          React.createElement('div', { key: 'input-row', style: { display: 'flex', gap: '8px', alignItems: 'center' } }, [
-            React.createElement('input', {
-              key: 'input',
-              type: 'text',
-              maxLength: 6,
-              placeholder: 'ABC123',
-              value: inputValue,
-              onChange: (e) => setInputValue(e.target.value.toUpperCase()),
-              disabled: loading,
-              style: { flex: 1, padding: '8px 12px', border: '2px solid #c4b5fd', borderRadius: '6px', fontSize: '16px', fontWeight: 600, letterSpacing: '2px', fontFamily: 'monospace', textTransform: 'uppercase' }
-            }),
-            React.createElement('button', {
-              key: 'submit',
-              onClick: handleSubmitCode,
-              disabled: loading || inputValue.length !== 6,
-              style: { padding: '8px 20px', background: loading || inputValue.length !== 6 ? '#ccc' : '#6d5ef1', color: 'white', border: 'none', borderRadius: '6px', cursor: loading || inputValue.length !== 6 ? 'not-allowed' : 'pointer', fontWeight: 600 }
-            }, loading ? 'Linking...' : 'Link'),
-            React.createElement('button', {
-              key: 'cancel',
-              onClick: () => { setShowInput(false); setInputValue(''); setError(null); },
-              disabled: loading,
-              style: { padding: '8px 16px', background: 'transparent', color: '#6d5ef1', border: '1px solid #c4b5fd', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }
-            }, '×')
-          ]),
-          error ? React.createElement('div', { key: 'error', style: { fontSize: '13px', color: '#dc2626', fontWeight: 500 } }, error) : null
-        ]);
-      }
-      
+      // No inline banner for Word add-in anymore - use modal from menu instead
       return null;
     }
     
@@ -4621,6 +4561,147 @@
       }, []);
       
       return showModal ? React.createElement(InstallAddInModal, { onClose: () => setShowModal(false) }) : null;
+    }
+    
+    // Link Code Modal (for Word add-in only)
+    function LinkCodeModal({ onClose }) {
+      const [inputValue, setInputValue] = React.useState('');
+      const [loading, setLoading] = React.useState(false);
+      const [error, setError] = React.useState(null);
+      
+      const handleSubmitCode = async () => {
+        if (!inputValue || inputValue.length !== 6) {
+          setError('Please enter a 6-character code');
+          return;
+        }
+        
+        setLoading(true);
+        setError(null);
+        
+        try {
+          await window.wordFTW_submitLinkCode(inputValue.toUpperCase());
+          // Page will reload after successful link
+        } catch (err) {
+          setError(err.message || 'Failed to link. Check the code and try again.');
+          setLoading(false);
+        }
+      };
+      
+      const handleKeyPress = (e) => {
+        if (e.key === 'Enter' && inputValue.length === 6 && !loading) {
+          handleSubmitCode();
+        }
+      };
+      
+      return React.createElement('div', {
+        style: {
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000
+        },
+        onClick: onClose
+      }, 
+        React.createElement('div', {
+          style: {
+            background: 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            maxWidth: '420px',
+            width: '90%',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
+          },
+          onClick: (e) => e.stopPropagation()
+        }, [
+          React.createElement('div', { key: 'header', style: { marginBottom: '20px' } }, [
+            React.createElement('h2', { key: 'title', style: { margin: 0, fontSize: '20px', fontWeight: 600, color: '#111827' } }, '🔗 Enter Link Code'),
+            React.createElement('p', { key: 'desc', style: { margin: '8px 0 0 0', fontSize: '14px', color: '#6b7280' } }, 'Enter the 6-character code from your browser to sync this Word document.')
+          ]),
+          React.createElement('div', { key: 'input-section', style: { display: 'flex', flexDirection: 'column', gap: '12px' } }, [
+            React.createElement('input', {
+              key: 'input',
+              type: 'text',
+              maxLength: 6,
+              placeholder: 'ABC123',
+              value: inputValue,
+              onChange: (e) => setInputValue(e.target.value.toUpperCase()),
+              onKeyPress: handleKeyPress,
+              disabled: loading,
+              autoFocus: true,
+              style: {
+                padding: '12px 16px',
+                border: '2px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '20px',
+                fontWeight: 600,
+                letterSpacing: '4px',
+                fontFamily: 'monospace',
+                textTransform: 'uppercase',
+                textAlign: 'center'
+              }
+            }),
+            error ? React.createElement('div', { key: 'error', style: { fontSize: '13px', color: '#dc2626', fontWeight: 500 } }, error) : null
+          ]),
+          React.createElement('div', { key: 'buttons', style: { display: 'flex', gap: '8px', marginTop: '20px' } }, [
+            React.createElement('button', {
+              key: 'cancel',
+              onClick: onClose,
+              disabled: loading,
+              style: {
+                flex: 1,
+                padding: '10px',
+                background: 'transparent',
+                color: '#6b7280',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '14px'
+              }
+            }, 'Cancel'),
+            React.createElement('button', {
+              key: 'submit',
+              onClick: handleSubmitCode,
+              disabled: loading || inputValue.length !== 6,
+              style: {
+                flex: 1,
+                padding: '10px',
+                background: loading || inputValue.length !== 6 ? '#9ca3af' : '#4B3FFF',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: loading || inputValue.length !== 6 ? 'not-allowed' : 'pointer',
+                fontWeight: 600,
+                fontSize: '14px'
+              }
+            }, loading ? 'Linking...' : 'Link Session')
+          ])
+        ])
+      );
+    }
+    
+    // Link Code Modal Manager (listens for show-link-code-modal event)
+    function LinkCodeModalManager() {
+      const [showModal, setShowModal] = React.useState(false);
+      const isWordHost = typeof Office !== 'undefined' && Office.context && Office.context.host;
+      
+      // Only show modal in Word add-in
+      if (!isWordHost) return null;
+      
+      // Listen for show-link-code-modal event
+      React.useEffect(() => {
+        const handleShowModal = () => setShowModal(true);
+        window.addEventListener('show-link-code-modal', handleShowModal);
+        return () => window.removeEventListener('show-link-code-modal', handleShowModal);
+      }, []);
+      
+      return showModal ? React.createElement(LinkCodeModal, { onClose: () => setShowModal(false) }) : null;
     }
     
     function ErrorBanner() {
@@ -6826,6 +6907,7 @@
         React.createElement(LinkCodeBanner, null),
         React.createElement(ErrorBanner, null),
         React.createElement(InstallAddInModalManager, { key: 'install-modal' }),
+        React.createElement(LinkCodeModalManager, { key: 'link-code-modal' }),
         (typeof Office === 'undefined' ? React.createElement(SuperDocHost, { key: 'host', src: documentSource }) : null),
         React.createElement('div', { className: '', style: { marginTop: 8 } }, [
           React.createElement('div', { className: 'd-flex items-center gap-8 flex-wrap' }, [
