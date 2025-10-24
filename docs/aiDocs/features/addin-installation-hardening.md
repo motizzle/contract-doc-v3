@@ -1492,15 +1492,17 @@ Double-click: use-local.bat
 
 - `server/public/install-addin.bat` (Windows installer)
 - `server/public/install-addin.command` (macOS installer)
-- `server/public/uninstall-addin.bat` (Windows uninstaller, new)
-- `server/public/uninstall-addin.command` (macOS uninstaller, new)
 
-**Purpose:** These are downloaded by end users from the deployed web app and run on their machines to install/uninstall the Word add-in pointing to the **production** server.
+**Purpose:** These are downloaded by end users from the deployed web app and run on their machines to install the Word add-in pointing to the **production** server.
 
 ---
 
 ### Developer Scripts (Local Development Only)
 **Location:** `tools/scripts/` (not deployed, for developers only)
+
+**Uninstallers:**
+- `tools/scripts/uninstall-addin.bat` (Windows: remove add-in completely)
+- `tools/scripts/uninstall-addin.command` (macOS: remove add-in completely)
 
 **Environment Switchers:**
 - `tools/scripts/use-local.bat` (Windows: switch to local add-in, new)
@@ -1508,13 +1510,14 @@ Double-click: use-local.bat
 - `tools/scripts/use-local.command` (macOS: switch to local add-in, new)
 - `tools/scripts/use-deployed.command` (macOS: switch to deployed add-in, new)
 
-**Local Testing:**
+**Testing Utilities:**
+- `tools/scripts/refresh-addin-deployed.bat` (Windows: clear cache and reload deployed add-in)
 - `tools/scripts/test-install-local.bat` (Test install process locally, new)
 - `tools/scripts/test-uninstall-local.bat` (Test uninstall process locally, new)
 - `tools/scripts/test-install-local.command` (macOS version, new)
 - `tools/scripts/test-uninstall-local.command` (macOS version, new)
 
-**Purpose:** These help developers test, debug, and switch between local and deployed add-in environments without affecting production scripts.
+**Purpose:** These help developers test, debug, and switch between local and deployed add-in environments. Uninstallers are here for easy access during development and testing.
 
 **Server:**
 - `server/src/server.js` (serves manifest at `/manifest.xml`)
