@@ -23,7 +23,7 @@
   <!-- React UMD (local) and React entry (shared) -->
   <script defer src="/vendor/react/react.production.min.js"></script>
   <script defer src="/vendor/react/react-dom.production.min.js"></script>
-  <script defer src="/ui/components.react.js?v=link-code-v5"></script>
+  <script defer src="/ui/components.react.js?v=install-modal-v1"></script>
   <script type="module">
     import { ensureSuperDocLoaded, mountSuperdoc, getCurrentRole, getModeForRole, getUserDisplayName, getUserEmail } from '/web/superdoc-init.js?v=debug-cc-clean';
     
@@ -83,56 +83,27 @@
 <body>
   <div id="og-navbar">
     <a class="nav-image" href="https://procurement.opengov.com" target="_blank" rel="noopener noreferrer" aria-label="OpenGov Procurement"></a>
-    <a id="install-addin-btn" href="/install-addin.bat" download style="
-      position: absolute;
-      right: 20px;
-      top: 50%;
-      transform: translateY(-50%);
-      background: #4B3FFF;
-      color: white;
-      padding: 10px 20px;
-      border-radius: 6px;
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 14px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      transition: background 0.2s;
-    " onmouseover="this.style.background='#3a2ecc'" onmouseout="this.style.background='#4B3FFF'">
-      📥 Install Word Add-in
-    </a>
+    <!-- React button will mount here -->
+    <div id="install-btn-mount" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%);"></div>
   </div>
   <script>
-    // Detect OS and update installer button
-    (function() {
-      const btn = document.getElementById('install-addin-btn');
-      const userAgent = navigator.userAgent.toLowerCase();
-      const isMac = /mac|darwin/.test(userAgent);
-      const isWindows = /win/.test(userAgent);
-      
-      if (isMac) {
-        btn.href = '/install-addin.command';
-        btn.download = 'install-addin.command';
-        btn.title = 'Download installer for Mac';
-      } else if (isWindows) {
-        btn.href = '/install-addin.bat';
-        btn.download = 'install-addin.bat';
-        btn.title = 'Download installer for Windows';
-      } else {
-        // Linux or other - show manual instructions link
-        btn.href = '/manifest.xml';
-        btn.download = 'manifest.xml';
-        btn.textContent = '📥 Download Manifest';
-        btn.title = 'Download manifest.xml for manual installation';
-      }
-      
-      // Show link code banner when clicked
-      btn.addEventListener('click', function() {
-        // Small delay to ensure download starts first
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('show-link-code'));
-        }, 500);
-      });
-    })();
+    // Mount Install Add-in button after React loads
+    window.addEventListener('load', () => {
+      // Wait for React to be available
+      const mountButton = () => {
+        if (window.React && window.ReactDOM && window.InstallAddInButton) {
+          const container = document.getElementById('install-btn-mount');
+          if (container) {
+            const root = ReactDOM.createRoot(container);
+            root.render(React.createElement(window.InstallAddInButton));
+          }
+        } else {
+          // Retry after a short delay
+          setTimeout(mountButton, 100);
+        }
+      };
+      mountButton();
+    });
   </script>
   <div id="layout">
     <div id="editor-col">

@@ -4421,7 +4421,13 @@
               }, 'Enter Code'),
               React.createElement('button', {
                 key: 'close',
-                onClick: () => setDismissed(true),
+                onClick: () => {
+                  setDismissed(true);
+                  // Persist dismissed state so it doesn't reappear
+                  if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem('linkBannerDismissed', 'true');
+                  }
+                },
                 style: { padding: '6px 12px', background: 'transparent', color: '#6d5ef1', border: '1px solid #c4b5fd', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }
               }, '×')
             ])
@@ -4462,6 +4468,164 @@
       }
       
       return null;
+    }
+    
+    // Install Add-in Modal (for browser only)
+    function InstallAddInModal({ onClose }) {
+      const [isDownloading, setIsDownloading] = React.useState(false);
+      const [isGenerating, setIsGenerating] = React.useState(false);
+      
+      const handleInstallAndLink = async () => {
+        setIsDownloading(true);
+        
+        // Detect OS and download appropriate installer
+        const userAgent = navigator.userAgent.toLowerCase();
+        const isMac = /mac|darwin/.test(userAgent);
+        const isWindows = /win/.test(userAgent);
+        
+        let downloadUrl = '/manifest.xml';
+        let filename = 'manifest.xml';
+        
+        if (isMac) {
+          downloadUrl = '/install-addin.command';
+          filename = 'install-addin.command';
+        } else if (isWindows) {
+          downloadUrl = '/install-addin.bat';
+          filename = 'install-addin.bat';
+        }
+        
+        // Trigger download
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = filename;
+        a.click();
+        
+        // Small delay, then show link code
+        setTimeout(() => {
+          setIsDownloading(false);
+          window.dispatchEvent(new CustomEvent('show-link-code'));
+          onClose();
+        }, 500);
+      };
+      
+      const handleGenerateCodeOnly = () => {
+        setIsGenerating(true);
+        // Just show link code without downloading
+        window.dispatchEvent(new CustomEvent('show-link-code'));
+        onClose();
+      };
+      
+      return React.createElement('div', {
+        style: {
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000
+        },
+        onClick: onClose
+      }, 
+        React.createElement('div', {
+          style: {
+            background: 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            maxWidth: '480px',
+            width: '90%',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
+          },
+          onClick: (e) => e.stopPropagation()
+        }, [
+          React.createElement('div', { key: 'header', style: { marginBottom: '20px' } }, [
+            React.createElement('h2', { key: 'title', style: { margin: 0, fontSize: '20px', fontWeight: 600, color: '#111827' } }, '📥 Install Word Add-in'),
+            React.createElement('p', { key: 'desc', style: { margin: '8px 0 0 0', fontSize: '14px', color: '#6b7280' } }, 'Choose how you want to set up the Word add-in:')
+          ]),
+          React.createElement('div', { key: 'options', style: { display: 'flex', flexDirection: 'column', gap: '12px' } }, [
+            React.createElement('button', {
+              key: 'install',
+              onClick: handleInstallAndLink,
+              disabled: isDownloading,
+              style: {
+                padding: '16px',
+                background: isDownloading ? '#9ca3af' : '#4B3FFF',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: isDownloading ? 'not-allowed' : 'pointer',
+                fontWeight: 600,
+                fontSize: '15px',
+                textAlign: 'left',
+                transition: 'all 0.2s'
+              }
+            }, [
+              React.createElement('div', { key: 'title', style: { marginBottom: '4px' } }, isDownloading ? '⏳ Downloading...' : '✅ Install & Generate Link Code'),
+              React.createElement('div', { key: 'desc', style: { fontSize: '13px', opacity: 0.9, fontWeight: 400 } }, 'Download the installer and generate a code to link Word with this browser session.')
+            ]),
+            React.createElement('button', {
+              key: 'generate',
+              onClick: handleGenerateCodeOnly,
+              disabled: isGenerating,
+              style: {
+                padding: '16px',
+                background: 'white',
+                color: '#4B3FFF',
+                border: '2px solid #4B3FFF',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '15px',
+                textAlign: 'left',
+                transition: 'all 0.2s'
+              }
+            }, [
+              React.createElement('div', { key: 'title', style: { marginBottom: '4px' } }, '🔗 Generate Link Code Only'),
+              React.createElement('div', { key: 'desc', style: { fontSize: '13px', fontWeight: 400 } }, 'Already installed? Just generate a code to link Word with this browser.')
+            ])
+          ]),
+          React.createElement('button', {
+            key: 'cancel',
+            onClick: onClose,
+            style: {
+              marginTop: '16px',
+              width: '100%',
+              padding: '10px',
+              background: 'transparent',
+              color: '#6b7280',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: '14px'
+            }
+          }, 'Cancel')
+        ])
+      );
+    }
+    
+    // Install Add-in Button (for navbar in browser)
+    function InstallAddInButton() {
+      const [showModal, setShowModal] = React.useState(false);
+      const isWordHost = typeof Office !== 'undefined' && Office.context && Office.context.host;
+      
+      // Don't show button in Word add-in
+      if (isWordHost) return null;
+      
+      return React.createElement(React.Fragment, null, [
+        React.createElement('button', {
+          key: 'btn',
+          onClick: () => setShowModal(true),
+          className: 'btn btn--tertiary',
+          style: { 
+            margin: '0',
+            whiteSpace: 'nowrap'
+          }
+        }, '📥 Install Word Add-in'),
+        showModal ? React.createElement(InstallAddInModal, { key: 'modal', onClose: () => setShowModal(false) }) : null
+      ]);
     }
     
     function ErrorBanner() {
@@ -6848,6 +7012,8 @@
     win.openReactModal = function(id, options) {
       try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id, options: options || {} } })); } catch {}
     };
+    // Export InstallAddInButton for navbar mounting
+    win.InstallAddInButton = InstallAddInButton;
   } catch (_) {}
 })(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));
 
