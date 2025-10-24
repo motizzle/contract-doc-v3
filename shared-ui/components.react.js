@@ -4411,12 +4411,46 @@
     
     // Install Add-in Modal (for browser only)
     function InstallAddInModal({ onClose }) {
-      const [isDownloading, setIsDownloading] = React.useState(false);
-      const [isGenerating, setIsGenerating] = React.useState(false);
+      const [linkCode, setLinkCode] = React.useState(null);
+      const [isLoading, setIsLoading] = React.useState(false);
+      const [copied, setCopied] = React.useState(false);
+      
+      const generateLinkCode = async () => {
+        setIsLoading(true);
+        
+        try {
+          const fingerprint = localStorage.getItem('wordftw_fingerprint');
+          const API_BASE = getApiBase();
+          
+          // Clear old token and request new session with fresh link code
+          localStorage.removeItem('wordftw_auth_token');
+          localStorage.removeItem('wordftw_link_code');
+          
+          const fetchFn = window._originalFetch || fetch;
+          const response = await fetchFn(`${API_BASE}/api/v1/session/start`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fingerprint })
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            localStorage.setItem('wordftw_auth_token', data.token);
+            
+            if (data.linkCode) {
+              localStorage.setItem('wordftw_link_code', data.linkCode);
+              setLinkCode(data.linkCode);
+              console.log('[InstallModal] ✅ Fresh link code generated:', data.linkCode);
+            }
+          }
+        } catch (err) {
+          console.error('[InstallModal] Failed to generate link code:', err);
+        } finally {
+          setIsLoading(false);
+        }
+      };
       
       const handleInstallAndLink = async () => {
-        setIsDownloading(true);
-        
         // Detect OS and download appropriate installer
         const userAgent = navigator.userAgent.toLowerCase();
         const isMac = /mac|darwin/.test(userAgent);
@@ -4439,20 +4473,126 @@
         a.download = filename;
         a.click();
         
-        // Small delay, then show link code
-        setTimeout(() => {
-          setIsDownloading(false);
-          window.dispatchEvent(new CustomEvent('show-link-code'));
-          onClose();
-        }, 500);
+        // Generate and show link code
+        await generateLinkCode();
       };
       
-      const handleGenerateCodeOnly = () => {
-        setIsGenerating(true);
-        // Just show link code without downloading
-        window.dispatchEvent(new CustomEvent('show-link-code'));
-        onClose();
+      const handleGenerateCodeOnly = async () => {
+        await generateLinkCode();
       };
+      
+      const handleCopy = () => {
+        if (linkCode) {
+          navigator.clipboard.writeText(linkCode);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }
+      };
+      
+      // Show code if generated, otherwise show options
+      const content = linkCode ? [
+        React.createElement('div', { key: 'header', style: { marginBottom: '20px' } }, [
+          React.createElement('h2', { key: 'title', style: { margin: 0, fontSize: '20px', fontWeight: 600, color: '#111827' } }, '✅ Link Code Generated'),
+          React.createElement('p', { key: 'desc', style: { margin: '8px 0 0 0', fontSize: '14px', color: '#6b7280' } }, 'Open Word add-in and enter this code to sync:')
+        ]),
+        React.createElement('div', { key: 'code-display', style: { background: '#f9fafb', border: '2px solid #e5e7eb', borderRadius: '8px', padding: '20px', textAlign: 'center' } }, [
+          React.createElement('div', { key: 'code', style: { fontSize: '32px', fontWeight: 700, color: '#1e40af', letterSpacing: '6px', fontFamily: 'monospace' } }, linkCode)
+        ]),
+        React.createElement('div', { key: 'buttons', style: { display: 'flex', gap: '8px', marginTop: '20px' } }, [
+          React.createElement('button', {
+            key: 'copy',
+            onClick: handleCopy,
+            style: {
+              flex: 1,
+              padding: '12px',
+              background: '#4B3FFF',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: '14px'
+            }
+          }, copied ? '✓ Copied!' : '📋 Copy Code'),
+          React.createElement('button', {
+            key: 'close',
+            onClick: onClose,
+            style: {
+              flex: 1,
+              padding: '12px',
+              background: 'transparent',
+              color: '#6b7280',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: '14px'
+            }
+          }, 'Close')
+        ])
+      ] : [
+        React.createElement('div', { key: 'header', style: { marginBottom: '20px' } }, [
+          React.createElement('h2', { key: 'title', style: { margin: 0, fontSize: '20px', fontWeight: 600, color: '#111827' } }, '📥 Install Word Add-in'),
+          React.createElement('p', { key: 'desc', style: { margin: '8px 0 0 0', fontSize: '14px', color: '#6b7280' } }, 'Choose how you want to set up the Word add-in:')
+        ]),
+        React.createElement('div', { key: 'options', style: { display: 'flex', flexDirection: 'column', gap: '12px' } }, [
+          React.createElement('button', {
+            key: 'install',
+            onClick: handleInstallAndLink,
+            disabled: isLoading,
+            style: {
+              padding: '16px',
+              background: isLoading ? '#9ca3af' : '#4B3FFF',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              fontWeight: 600,
+              fontSize: '15px',
+              textAlign: 'left',
+              transition: 'all 0.2s'
+            }
+          }, [
+            React.createElement('div', { key: 'title', style: { marginBottom: '4px' } }, isLoading ? '⏳ Generating...' : '✅ Install & Generate Link Code'),
+            React.createElement('div', { key: 'desc', style: { fontSize: '13px', opacity: 0.9, fontWeight: 400 } }, 'Download the installer and generate a code to link Word with this browser session.')
+          ]),
+          React.createElement('button', {
+            key: 'generate',
+            onClick: handleGenerateCodeOnly,
+            disabled: isLoading,
+            style: {
+              padding: '16px',
+              background: 'white',
+              color: '#4B3FFF',
+              border: '2px solid #4B3FFF',
+              borderRadius: '8px',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              fontWeight: 600,
+              fontSize: '15px',
+              textAlign: 'left',
+              transition: 'all 0.2s'
+            }
+          }, [
+            React.createElement('div', { key: 'title', style: { marginBottom: '4px' } }, isLoading ? '⏳ Generating...' : '🔗 Generate Link Code Only'),
+            React.createElement('div', { key: 'desc', style: { fontSize: '13px', fontWeight: 400 } }, 'Already installed? Just generate a code to link Word with this browser.')
+          ])
+        ]),
+        React.createElement('button', {
+          key: 'cancel',
+          onClick: onClose,
+          style: {
+            marginTop: '16px',
+            width: '100%',
+            padding: '10px',
+            background: 'transparent',
+            color: '#6b7280',
+            border: 'none',
+            cursor: 'pointer',
+            fontWeight: 600,
+            fontSize: '14px'
+          }
+        }, 'Cancel')
+      ];
       
       return React.createElement('div', {
         style: {
@@ -4479,69 +4619,7 @@
             boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
           },
           onClick: (e) => e.stopPropagation()
-        }, [
-          React.createElement('div', { key: 'header', style: { marginBottom: '20px' } }, [
-            React.createElement('h2', { key: 'title', style: { margin: 0, fontSize: '20px', fontWeight: 600, color: '#111827' } }, '📥 Install Word Add-in'),
-            React.createElement('p', { key: 'desc', style: { margin: '8px 0 0 0', fontSize: '14px', color: '#6b7280' } }, 'Choose how you want to set up the Word add-in:')
-          ]),
-          React.createElement('div', { key: 'options', style: { display: 'flex', flexDirection: 'column', gap: '12px' } }, [
-            React.createElement('button', {
-              key: 'install',
-              onClick: handleInstallAndLink,
-              disabled: isDownloading,
-              style: {
-                padding: '16px',
-                background: isDownloading ? '#9ca3af' : '#4B3FFF',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: isDownloading ? 'not-allowed' : 'pointer',
-                fontWeight: 600,
-                fontSize: '15px',
-                textAlign: 'left',
-                transition: 'all 0.2s'
-              }
-            }, [
-              React.createElement('div', { key: 'title', style: { marginBottom: '4px' } }, isDownloading ? '⏳ Downloading...' : '✅ Install & Generate Link Code'),
-              React.createElement('div', { key: 'desc', style: { fontSize: '13px', opacity: 0.9, fontWeight: 400 } }, 'Download the installer and generate a code to link Word with this browser session.')
-            ]),
-            React.createElement('button', {
-              key: 'generate',
-              onClick: handleGenerateCodeOnly,
-              disabled: isGenerating,
-              style: {
-                padding: '16px',
-                background: 'white',
-                color: '#4B3FFF',
-                border: '2px solid #4B3FFF',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: '15px',
-                textAlign: 'left',
-                transition: 'all 0.2s'
-              }
-            }, [
-              React.createElement('div', { key: 'title', style: { marginBottom: '4px' } }, '🔗 Generate Link Code Only'),
-              React.createElement('div', { key: 'desc', style: { fontSize: '13px', fontWeight: 400 } }, 'Already installed? Just generate a code to link Word with this browser.')
-            ])
-          ]),
-          React.createElement('button', {
-            key: 'cancel',
-            onClick: onClose,
-            style: {
-              marginTop: '16px',
-              width: '100%',
-              padding: '10px',
-              background: 'transparent',
-              color: '#6b7280',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '14px'
-            }
-          }, 'Cancel')
-        ])
+        }, content)
       );
     }
     
