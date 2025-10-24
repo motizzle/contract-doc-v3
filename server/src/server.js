@@ -1520,10 +1520,10 @@ function initializeSession(sessionId) {
   fs.writeFileSync(path.join(sessionDir, 'approvals.json'), JSON.stringify({
     approvers: [
       { id: 'user1', name: 'Warren Peace', approved: false, revision: 0 },
-      { id: 'user2', name: 'Ivy League', approved: false, revision: 0 },
-      { id: 'user3', name: 'Sue Pervisor', approved: false, revision: 0 },
-      { id: 'user4', name: 'Ella Mentor', approved: false, revision: 0 },
-      { id: 'user5', name: 'Cole Lateral', approved: false, revision: 0 }
+      { id: 'user2', name: 'Kent Ucky', approved: false, revision: 0 },
+      { id: 'user3', name: 'Chief Executive Officer', approved: false, revision: 0 },
+      { id: 'user4', name: 'Chief Financial Officer', approved: false, revision: 0 },
+      { id: 'user5', name: 'General Counsel', approved: false, revision: 0 }
     ]
   }, null, 2));
   

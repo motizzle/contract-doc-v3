@@ -761,6 +761,13 @@
                   window.dispatchEvent(new CustomEvent('approval:complete', { detail: p }));
                 } catch {}
               }
+              // Handle messages updates (sync messaging panel)
+              if (p && p.type === 'messages:update') {
+                try {
+                  window.dispatchEvent(new CustomEvent('message:created', { detail: p }));
+                  console.log('📨 Messages updated via SSE');
+                } catch {}
+              }
               // Handle status changes (for banner drop celebration)
               if (p && p.type === 'status') {
                 try {
