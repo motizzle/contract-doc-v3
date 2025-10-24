@@ -1804,6 +1804,17 @@ app.post('/api/v1/session/link', (req, res) => {
     
     console.log(`🔗 Permanent link created: ${fingerprint.substring(0, 12)}... ↔ ${linkData.fingerprint.substring(0, 12)}...`);
     
+    // Broadcast session-linked event to the browser session
+    // This tells the browser that Word just linked to it successfully
+    broadcast({
+      type: 'session-linked',
+      sessionId: linkData.sessionId,
+      timestamp: Date.now(),
+      linkedFrom: 'word-addin'
+    });
+    
+    console.log(`📡 Broadcasted session-linked event to session ${linkData.sessionId}`);
+    
     // Return the linked session
     res.json({
       token: linkData.token,

@@ -782,6 +782,14 @@
                   console.log('📡 Dispatched window event:', p.type, p);
                 } catch {}
               }
+              // Handle session-linked event (Word add-in successfully linked)
+              if (p && p.type === 'session-linked') {
+                console.log('🔗 Session linked from Word add-in - refreshing page...');
+                // Reload the page to hide the link code banner and sync with Word
+                setTimeout(() => {
+                  window.location.reload();
+                }, 500); // Small delay to ensure server state is synced
+              }
               // Only log user-relevant events as notifications
               if (p && p.type) {
                 switch (p.type) {
