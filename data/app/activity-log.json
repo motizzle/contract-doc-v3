@@ -1,20 +1,2 @@
-[
-  {
-    "id": "act_1761260218819_nviwhxz6n",
-    "timestamp": 1761260218819,
-    "type": "document:checkout",
-    "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
-      "platform": "web"
-    },
-    "action": "checked out",
-    "target": "document",
-    "details": {
-      "documentTitle": "Redlined & Signed",
-      "version": 1,
-      "status": "draft"
-    },
-    "message": "Kent Uckey checked out \"Redlined & Signed\" (v1)"
-  }
-]
+[]
+

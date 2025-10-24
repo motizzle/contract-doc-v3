@@ -4798,30 +4798,9 @@ function tryCreateHttpsServer() {
   throw new Error('No HTTPS certificate available. Install Office dev certs or provide server/config/dev-cert.pfx. Set ALLOW_HTTP=true to use HTTP for dev only.');
 }
 
-// Initialize variables with seed data if none exist
-function initializeVariables() {
-  const variablesSeedPath = path.join(dataAppDir, 'variables.seed.json');
-  try {
-    console.log('🔍 Checking for variables at:', variablesFilePath);
-    console.log('🔍 Seed file location:', variablesSeedPath);
-    console.log('🔍 Seed file exists?', fs.existsSync(variablesSeedPath));
-    
-    if (!fs.existsSync(variablesFilePath) && fs.existsSync(variablesSeedPath)) {
-      console.log('📦 Initializing variables from seed data...');
-      fs.copyFileSync(variablesSeedPath, variablesFilePath);
-      console.log('✅ Variables initialized with seed data');
-    } else if (fs.existsSync(variablesFilePath)) {
-      console.log('✅ Variables file already exists');
-    } else if (!fs.existsSync(variablesSeedPath)) {
-      console.error('❌ Seed file not found at:', variablesSeedPath);
-    }
-  } catch (e) {
-    console.error('❌ Failed to initialize variables from seed:', e.message);
-  }
-}
-
-// Initialize on startup
-initializeVariables();
+// Legacy: Variables are now initialized per-session in initializeSession()
+// This function is no longer needed with session isolation
+// Each session gets its own variables.json from variables.seed.json
 
 // Initialize working directories and copy canonical document
 // This is critical for Render's free tier which has no persistent storage
