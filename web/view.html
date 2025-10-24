@@ -23,7 +23,7 @@
   <!-- React UMD (local) and React entry (shared) -->
   <script defer src="/vendor/react/react.production.min.js"></script>
   <script defer src="/vendor/react/react-dom.production.min.js"></script>
-  <script defer src="/ui/components.react.js?v=install-modal-v1"></script>
+  <script defer src="/ui/components.react.js?v=install-modal-v2"></script>
   <script type="module">
     import { ensureSuperDocLoaded, mountSuperdoc, getCurrentRole, getModeForRole, getUserDisplayName, getUserEmail } from '/web/superdoc-init.js?v=debug-cc-clean';
     
@@ -76,7 +76,22 @@
         console.error('❌ Failed to load SuperDoc:', error);
       }
       // Phase 2 will unify mount; keep single-shot call for now to preserve behavior
-      try { if (window.mountReactApp && window.React && window.ReactDOM) window.mountReactApp({ rootSelector: '#app-root' }); } catch {}
+      try { 
+        if (window.mountReactApp && window.React && window.ReactDOM) {
+          window.mountReactApp({ rootSelector: '#app-root' });
+          
+          // Mount Install Add-in button in navbar
+          if (window.InstallAddInButton) {
+            const container = document.getElementById('install-btn-mount');
+            if (container && window.ReactDOM.createRoot) {
+              const root = window.ReactDOM.createRoot(container);
+              root.render(window.React.createElement(window.InstallAddInButton));
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to mount React:', err);
+      }
     });
   </script>
 </head>
@@ -86,25 +101,6 @@
     <!-- React button will mount here -->
     <div id="install-btn-mount" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%);"></div>
   </div>
-  <script>
-    // Mount Install Add-in button after React loads
-    window.addEventListener('load', () => {
-      // Wait for React to be available
-      const mountButton = () => {
-        if (window.React && window.ReactDOM && window.InstallAddInButton) {
-          const container = document.getElementById('install-btn-mount');
-          if (container) {
-            const root = ReactDOM.createRoot(container);
-            root.render(React.createElement(window.InstallAddInButton));
-          }
-        } else {
-          // Retry after a short delay
-          setTimeout(mountButton, 100);
-        }
-      };
-      mountButton();
-    });
-  </script>
   <div id="layout">
     <div id="editor-col">
       <div id="superdoc-toolbar"></div>
