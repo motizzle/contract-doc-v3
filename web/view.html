@@ -23,7 +23,7 @@
   <!-- React UMD (local) and React entry (shared) -->
   <script defer src="/vendor/react/react.production.min.js"></script>
   <script defer src="/vendor/react/react-dom.production.min.js"></script>
-  <script defer src="/ui/components.react.js?v=install-modal-v4"></script>
+  <script defer src="/ui/components.react.js?v=install-in-menu"></script>
   <script type="module">
     import { ensureSuperDocLoaded, mountSuperdoc, getCurrentRole, getModeForRole, getUserDisplayName, getUserEmail } from '/web/superdoc-init.js?v=debug-cc-clean';
     
@@ -83,17 +83,7 @@
 <body>
   <div id="og-navbar">
     <a class="nav-image" href="https://procurement.opengov.com" target="_blank" rel="noopener noreferrer" aria-label="OpenGov Procurement"></a>
-    <!-- Simple button that triggers React modal -->
-    <button id="install-addin-btn" class="btn btn--tertiary" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); margin: 0;">
-      📥 Install Word Add-in
-    </button>
   </div>
-  <script>
-    // Button click handler to show modal
-    document.getElementById('install-addin-btn').addEventListener('click', function() {
-      window.dispatchEvent(new CustomEvent('show-install-modal'));
-    });
-  </script>
   <div id="layout">
     <div id="editor-col">
       <div id="superdoc-toolbar"></div>
