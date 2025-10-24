@@ -4290,16 +4290,53 @@
       
       // Listen for trigger event (from download button)
       React.useEffect(() => {
-        const handleShow = () => {
+        const handleShow = async () => {
           console.log('[LinkCodeBanner] Show event triggered!');
-          setShowBanner(true);
-          setDismissed(false);
-          localStorage.removeItem('wordftw_link_banner_dismissed');
+          
+          // Check if we have a link code, if not, get one
+          let code = localStorage.getItem('wordftw_link_code');
+          if (!code && !isWordHost) {
+            console.log('[LinkCodeBanner] No link code found - refreshing session...');
+            try {
+              const fingerprint = localStorage.getItem('wordftw_fingerprint');
+              const API_BASE = getApiBase();
+              
+              // Clear old token and request new one
+              localStorage.removeItem('wordftw_auth_token');
+              
+              const fetchFn = window._originalFetch || fetch;
+              const response = await fetchFn(`${API_BASE}/api/v1/session/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fingerprint })
+              });
+              
+              if (response.ok) {
+                const data = await response.json();
+                localStorage.setItem('wordftw_auth_token', data.token);
+                
+                if (data.linkCode) {
+                  localStorage.setItem('wordftw_link_code', data.linkCode);
+                  setLinkCode(data.linkCode);
+                  code = data.linkCode;
+                  console.log('[LinkCodeBanner] ✅ Link code obtained after refresh:', data.linkCode);
+                }
+              }
+            } catch (err) {
+              console.error('[LinkCodeBanner] Failed to refresh session:', err);
+            }
+          }
+          
+          if (code) {
+            setShowBanner(true);
+            setDismissed(false);
+            localStorage.removeItem('wordftw_link_banner_dismissed');
+          }
         };
         
         window.addEventListener('show-link-code', handleShow);
         return () => window.removeEventListener('show-link-code', handleShow);
-      }, []);
+      }, [isWordHost]);
       
       // Handle dismissing the banner
       const handleDismiss = () => {
