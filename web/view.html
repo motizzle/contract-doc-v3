@@ -23,7 +23,7 @@
   <!-- React UMD (local) and React entry (shared) -->
   <script defer src="/vendor/react/react.production.min.js"></script>
   <script defer src="/vendor/react/react-dom.production.min.js"></script>
-  <script defer src="/ui/components.react.js?v=install-modal-v2"></script>
+  <script defer src="/ui/components.react.js?v=install-modal-v3"></script>
   <script type="module">
     import { ensureSuperDocLoaded, mountSuperdoc, getCurrentRole, getModeForRole, getUserDisplayName, getUserEmail } from '/web/superdoc-init.js?v=debug-cc-clean';
     
@@ -80,14 +80,23 @@
         if (window.mountReactApp && window.React && window.ReactDOM) {
           window.mountReactApp({ rootSelector: '#app-root' });
           
-          // Mount Install Add-in button in navbar
-          if (window.InstallAddInButton) {
-            const container = document.getElementById('install-btn-mount');
-            if (container && window.ReactDOM.createRoot) {
-              const root = window.ReactDOM.createRoot(container);
-              root.render(window.React.createElement(window.InstallAddInButton));
+          // Mount Install Add-in button in navbar (with retry for deferred script)
+          const mountButton = () => {
+            console.log('[Button Mount] Checking for InstallAddInButton...', !!window.InstallAddInButton);
+            if (window.InstallAddInButton) {
+              const container = document.getElementById('install-btn-mount');
+              console.log('[Button Mount] Container found:', !!container);
+              if (container && window.ReactDOM.createRoot) {
+                const root = window.ReactDOM.createRoot(container);
+                root.render(window.React.createElement(window.InstallAddInButton));
+                console.log('✅ Install button mounted successfully');
+              }
+            } else {
+              // Retry after short delay
+              setTimeout(mountButton, 50);
             }
-          }
+          };
+          mountButton();
         }
       } catch (err) {
         console.error('Failed to mount React:', err);
