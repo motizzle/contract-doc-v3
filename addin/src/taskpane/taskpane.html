@@ -56,10 +56,11 @@
           
           // Mount SuperDoc to access field annotation commands
           // Document loaded here should match what's open in Word
+          // Use relative URL to work in both local and deployed environments
           const superdocInstance = mountSuperdoc({
             selector: '#superdoc',
             toolbar: '#superdoc-toolbar',
-            document: 'https://localhost:4001/documents/working/default.docx',
+            document: '/documents/working/default.docx',
             documentMode: 'editing',
             pagination: false,
             rulers: false
@@ -79,7 +80,7 @@
     <link rel="preload" as="script" href="/vendor/react/react-dom.production.min.js" />
     <script defer src="/vendor/react/react.production.min.js"></script>
     <script defer src="/vendor/react/react-dom.production.min.js"></script>
-    <script defer src="/ui/components.react.js?v=activity-badge-fixed"></script>
+    <script defer src="/ui/components.react.js?v=document-load-fix"></script>
     <script>
       (function(){
         function randInt(min, max){ return Math.floor(Math.random() * (max - min + 1)) + min; }
