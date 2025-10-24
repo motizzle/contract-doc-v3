@@ -12,31 +12,24 @@ echo "Closing Word if running..."
 osascript -e 'quit app "Microsoft Word"' 2>/dev/null
 sleep 2
 
-# Register the HTTPS catalog with Word
-echo "Registering add-in catalog..."
-CATALOG_URL="https://wordftw.onrender.com"
+# Download manifest to temp location
+echo "Downloading manifest..."
+TEMP_DIR="$HOME/.wordftw-addin"
+mkdir -p "$TEMP_DIR"
+curl -s -o "$TEMP_DIR/manifest.xml" "https://wordftw.onrender.com/manifest.xml"
 
-# Create preferences directory if it doesn't exist
-PREF_DIR="$HOME/Library/Preferences"
-PLIST_FILE="$PREF_DIR/com.microsoft.office.plist"
-
-# Use defaults command to add the catalog
-defaults write com.microsoft.office OfficeWebAddinCatalogUrl -string "$CATALOG_URL"
+# Register manifest in Office preferences
+echo "Registering add-in..."
+MANIFEST_ID="wordftw-addin-prod"
+defaults write com.microsoft.Word "wef.developer.manifests" -dict-add "$MANIFEST_ID" "$TEMP_DIR/manifest.xml"
 
 echo ""
 echo "========================================"
 echo " Installation Complete!"
 echo "========================================"
 echo ""
-echo "The catalog has been registered:"
-echo "$CATALOG_URL"
-echo ""
-echo "Word will now open. To use the add-in:"
-echo ""
-echo "1. Click the 'Insert' tab"
-echo "2. Click 'My Add-ins'"
-echo "3. Click 'SHARED FOLDER' at the top"
-echo "4. Click 'Redlined & Signed'"
+echo "The add-in has been registered and will appear in:"
+echo "Insert > My Add-ins > Developer Add-ins"
 echo ""
 echo "Press any key to open Word now..."
 read -n 1 -s
@@ -45,4 +38,3 @@ read -n 1 -s
 open -a "Microsoft Word"
 
 exit 0
-
