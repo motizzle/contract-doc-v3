@@ -23,7 +23,7 @@
   <!-- React UMD (local) and React entry (shared) -->
   <script defer src="/vendor/react/react.production.min.js"></script>
   <script defer src="/vendor/react/react-dom.production.min.js"></script>
-  <script defer src="/ui/components.react.js?v=install-modal-v3"></script>
+  <script defer src="/ui/components.react.js?v=install-modal-v4"></script>
   <script type="module">
     import { ensureSuperDocLoaded, mountSuperdoc, getCurrentRole, getModeForRole, getUserDisplayName, getUserEmail } from '/web/superdoc-init.js?v=debug-cc-clean';
     
@@ -76,40 +76,24 @@
         console.error('❌ Failed to load SuperDoc:', error);
       }
       // Phase 2 will unify mount; keep single-shot call for now to preserve behavior
-      try { 
-        if (window.mountReactApp && window.React && window.ReactDOM) {
-          window.mountReactApp({ rootSelector: '#app-root' });
-          
-          // Mount Install Add-in button in navbar (with retry for deferred script)
-          const mountButton = () => {
-            console.log('[Button Mount] Checking for InstallAddInButton...', !!window.InstallAddInButton);
-            if (window.InstallAddInButton) {
-              const container = document.getElementById('install-btn-mount');
-              console.log('[Button Mount] Container found:', !!container);
-              if (container && window.ReactDOM.createRoot) {
-                const root = window.ReactDOM.createRoot(container);
-                root.render(window.React.createElement(window.InstallAddInButton));
-                console.log('✅ Install button mounted successfully');
-              }
-            } else {
-              // Retry after short delay
-              setTimeout(mountButton, 50);
-            }
-          };
-          mountButton();
-        }
-      } catch (err) {
-        console.error('Failed to mount React:', err);
-      }
+      try { if (window.mountReactApp && window.React && window.ReactDOM) window.mountReactApp({ rootSelector: '#app-root' }); } catch {}
     });
   </script>
 </head>
 <body>
   <div id="og-navbar">
     <a class="nav-image" href="https://procurement.opengov.com" target="_blank" rel="noopener noreferrer" aria-label="OpenGov Procurement"></a>
-    <!-- React button will mount here -->
-    <div id="install-btn-mount" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%);"></div>
+    <!-- Simple button that triggers React modal -->
+    <button id="install-addin-btn" class="btn btn--tertiary" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); margin: 0;">
+      📥 Install Word Add-in
+    </button>
   </div>
+  <script>
+    // Button click handler to show modal
+    document.getElementById('install-addin-btn').addEventListener('click', function() {
+      window.dispatchEvent(new CustomEvent('show-install-modal'));
+    });
+  </script>
   <div id="layout">
     <div id="editor-col">
       <div id="superdoc-toolbar"></div>

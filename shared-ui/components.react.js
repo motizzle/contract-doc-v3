@@ -4606,26 +4606,22 @@
       );
     }
     
-    // Install Add-in Button (for navbar in browser)
-    function InstallAddInButton() {
+    // Install Add-in Modal Manager (listens for show-install-modal event)
+    function InstallAddInModalManager() {
       const [showModal, setShowModal] = React.useState(false);
       const isWordHost = typeof Office !== 'undefined' && Office.context && Office.context.host;
       
-      // Don't show button in Word add-in
+      // Don't show modal in Word add-in
       if (isWordHost) return null;
       
-      return React.createElement(React.Fragment, null, [
-        React.createElement('button', {
-          key: 'btn',
-          onClick: () => setShowModal(true),
-          className: 'btn btn--tertiary',
-          style: { 
-            margin: '0',
-            whiteSpace: 'nowrap'
-          }
-        }, '📥 Install Word Add-in'),
-        showModal ? React.createElement(InstallAddInModal, { key: 'modal', onClose: () => setShowModal(false) }) : null
-      ]);
+      // Listen for show-install-modal event
+      React.useEffect(() => {
+        const handleShowModal = () => setShowModal(true);
+        window.addEventListener('show-install-modal', handleShowModal);
+        return () => window.removeEventListener('show-install-modal', handleShowModal);
+      }, []);
+      
+      return showModal ? React.createElement(InstallAddInModal, { onClose: () => setShowModal(false) }) : null;
     }
     
     function ErrorBanner() {
@@ -6830,6 +6826,7 @@
         React.createElement(InlineTitleEditor, { key: 'title' }),
         React.createElement(LinkCodeBanner, null),
         React.createElement(ErrorBanner, null),
+        React.createElement(InstallAddInModalManager, { key: 'install-modal' }),
         (typeof Office === 'undefined' ? React.createElement(SuperDocHost, { key: 'host', src: documentSource }) : null),
         React.createElement('div', { className: '', style: { marginTop: 8 } }, [
           React.createElement('div', { className: 'd-flex items-center gap-8 flex-wrap' }, [
@@ -7012,8 +7009,6 @@
     win.openReactModal = function(id, options) {
       try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id, options: options || {} } })); } catch {}
     };
-    // Export InstallAddInButton for navbar mounting
-    win.InstallAddInButton = InstallAddInButton;
   } catch (_) {}
 })(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));
 
