@@ -23,7 +23,7 @@
   <!-- React UMD (local) and React entry (shared) -->
   <script defer src="/vendor/react/react.production.min.js"></script>
   <script defer src="/vendor/react/react-dom.production.min.js"></script>
-  <script defer src="/ui/components.react.js?v=link-code-v1"></script>
+  <script defer src="/ui/components.react.js?v=link-code-v2"></script>
   <script type="module">
     import { ensureSuperDocLoaded, mountSuperdoc, getCurrentRole, getModeForRole, getUserDisplayName, getUserEmail } from '/web/superdoc-init.js?v=debug-cc-clean';
     
@@ -124,6 +124,14 @@
         btn.textContent = '📥 Download Manifest';
         btn.title = 'Download manifest.xml for manual installation';
       }
+      
+      // Show link code banner when clicked
+      btn.addEventListener('click', function() {
+        // Small delay to ensure download starts first
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('show-link-code'));
+        }, 500);
+      });
     })();
   </script>
   <div id="layout">

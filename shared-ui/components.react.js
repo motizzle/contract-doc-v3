@@ -4266,6 +4266,8 @@
     // Link Code Banner (for syncing Word and Browser)
     function LinkCodeBanner() {
       const [linkCode, setLinkCode] = React.useState(null);
+      const [showBanner, setShowBanner] = React.useState(false);
+      const [dismissed, setDismissed] = React.useState(false);
       const [showInput, setShowInput] = React.useState(false);
       const [inputValue, setInputValue] = React.useState('');
       const [error, setError] = React.useState(null);
@@ -4278,7 +4280,30 @@
         if (code) {
           setLinkCode(code);
         }
+        
+        // Check if banner was dismissed
+        const wasDismissed = localStorage.getItem('wordftw_link_banner_dismissed') === 'true';
+        setDismissed(wasDismissed);
       }, []);
+      
+      // Listen for trigger event (from download button)
+      React.useEffect(() => {
+        const handleShow = () => {
+          setShowBanner(true);
+          setDismissed(false);
+          localStorage.removeItem('wordftw_link_banner_dismissed');
+        };
+        
+        window.addEventListener('show-link-code', handleShow);
+        return () => window.removeEventListener('show-link-code', handleShow);
+      }, []);
+      
+      // Handle dismissing the banner
+      const handleDismiss = () => {
+        setDismissed(true);
+        setShowBanner(false);
+        localStorage.setItem('wordftw_link_banner_dismissed', 'true');
+      };
       
       // Handle link code submission (Word add-in only)
       const handleSubmitCode = async () => {
@@ -4299,25 +4324,38 @@
         }
       };
       
-      // Browser: Show link code
-      if (!isWordHost && linkCode) {
+      // Browser: Show link code (only if triggered and not dismissed)
+      if (!isWordHost && linkCode && showBanner && !dismissed) {
         return React.createElement('div', {
           className: 'my-2 p-3 border border-blue-200 bg-blue-50 rounded-md',
           style: { display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between' }
         }, [
-          React.createElement('div', { key: 'text', style: { display: 'flex', flexDirection: 'column', gap: '4px' } }, [
-            React.createElement('div', { key: 'title', style: { fontWeight: 600, color: '#1e40af' } }, '🔗 Link Code for Word Add-in'),
-            React.createElement('div', { key: 'desc', style: { fontSize: '13px', color: '#3b82f6' } }, 'Open Word add-in and enter this code to sync:'),
-            React.createElement('div', { key: 'code', style: { fontSize: '20px', fontWeight: 700, color: '#1e40af', letterSpacing: '3px', fontFamily: 'monospace' } }, linkCode)
+          React.createElement('div', { key: 'text', style: { display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 } }, [
+            React.createElement('div', { key: 'title', style: { fontWeight: 600, color: '#1e40af', fontSize: '15px' } }, '🔗 Link Code for Word Add-in'),
+            React.createElement('div', { key: 'desc', style: { fontSize: '13px', color: '#3b82f6', marginTop: '4px' } }, 'Open Word add-in and enter this code to sync:'),
+            React.createElement('div', { key: 'code', style: { fontSize: '22px', fontWeight: 700, color: '#1e40af', letterSpacing: '4px', fontFamily: 'monospace', marginTop: '8px' } }, linkCode)
           ]),
-          React.createElement('button', {
-            key: 'copy',
-            onClick: () => {
-              navigator.clipboard.writeText(linkCode);
-              alert('Code copied!');
-            },
-            style: { padding: '8px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }
-          }, '📋 Copy')
+          React.createElement('div', { key: 'actions', style: { display: 'flex', flexDirection: 'column', gap: '8px' } }, [
+            React.createElement('button', {
+              key: 'copy',
+              onClick: () => {
+                navigator.clipboard.writeText(linkCode);
+                const btn = document.querySelector('[data-copy-btn]');
+                if (btn) {
+                  const oldText = btn.textContent;
+                  btn.textContent = '✓ Copied!';
+                  setTimeout(() => { btn.textContent = oldText; }, 2000);
+                }
+              },
+              'data-copy-btn': true,
+              style: { padding: '8px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', whiteSpace: 'nowrap' }
+            }, '📋 Copy'),
+            React.createElement('button', {
+              key: 'close',
+              onClick: handleDismiss,
+              style: { padding: '8px 16px', background: 'transparent', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }
+            }, 'Close')
+          ])
         ]);
       }
       
