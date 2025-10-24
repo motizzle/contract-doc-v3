@@ -1113,6 +1113,310 @@ describe('macOS Installation', () => {
   - [ ] Test complete uninstall flows
   - [ ] Add uninstall verification
 
+### Phase 3.5: Developer Environment Switcher Scripts (0.5 days)
+
+**Purpose:** Provide one-click scripts for developers to switch between local and deployed add-in environments during development and testing.
+
+#### Rationale
+
+During development, developers need to:
+- **99% of time:** Test against local server (`localhost:4001`) with local add-in (`localhost:4000`)
+- **1% of time:** Test against deployed server (`wordftw.onrender.com`) to verify deployment
+
+Manually switching manifests is error-prone and tedious:
+```powershell
+# Manual process (annoying!)
+npx office-addin-debugging stop addin/manifest.xml
+npx office-addin-debugging start server/public/manifest.xml
+# Oops, which one am I using now? 🤔
+```
+
+**Solution:** Simple double-click scripts that handle the switching automatically.
+
+---
+
+#### Windows Implementation: `use-local.bat`
+
+**Location:** `tools/scripts/use-local.bat`
+
+```batch
+@echo off
+echo ========================================
+echo  Switch to LOCAL Add-in
+echo ========================================
+echo.
+echo Switching Word add-in to local development environment...
+echo.
+
+REM Stop any currently sideloaded manifests
+echo [1/3] Stopping deployed manifest...
+npx office-addin-debugging stop server/public/manifest.xml >nul 2>&1
+
+echo [2/3] Stopping local manifest (if any)...
+npx office-addin-debugging stop addin/manifest.xml >nul 2>&1
+
+REM Start local manifest
+echo [3/3] Starting local manifest...
+npx office-addin-debugging start addin/manifest.xml
+
+if %ERRORLEVEL% EQU 0 (
+  echo.
+  echo ========================================
+  echo  ✅ SUCCESS
+  echo ========================================
+  echo.
+  echo Word add-in now points to:
+  echo   📍 Add-in:  https://localhost:4000
+  echo   📍 API:     https://localhost:4001
+  echo.
+  echo Make sure your local servers are running:
+  echo   Terminal 1: node server/src/server.js
+  echo   Terminal 2: cd addin ^&^& npm run dev-server
+  echo.
+) else (
+  echo.
+  echo ========================================
+  echo  ❌ ERROR
+  echo ========================================
+  echo.
+  echo Failed to start local manifest.
+  echo Make sure you have the add-in development tools installed:
+  echo   npm install -g office-addin-debugging
+  echo.
+)
+
+pause
+```
+
+---
+
+#### Windows Implementation: `use-deployed.bat`
+
+**Location:** `tools/scripts/use-deployed.bat`
+
+```batch
+@echo off
+echo ========================================
+echo  Switch to DEPLOYED Add-in
+echo ========================================
+echo.
+echo Switching Word add-in to deployed environment...
+echo.
+
+REM Stop any currently sideloaded manifests
+echo [1/3] Stopping local manifest...
+npx office-addin-debugging stop addin/manifest.xml >nul 2>&1
+
+echo [2/3] Stopping deployed manifest (if any)...
+npx office-addin-debugging stop server/public/manifest.xml >nul 2>&1
+
+REM Start deployed manifest
+echo [3/3] Starting deployed manifest...
+npx office-addin-debugging start server/public/manifest.xml
+
+if %ERRORLEVEL% EQU 0 (
+  echo.
+  echo ========================================
+  echo  ✅ SUCCESS
+  echo ========================================
+  echo.
+  echo Word add-in now points to:
+  echo   📍 Add-in:  https://wordftw.onrender.com
+  echo   📍 API:     https://wordftw.onrender.com/api/v1
+  echo.
+  echo This is the PRODUCTION environment.
+  echo Use this to test the deployed version.
+  echo.
+) else (
+  echo.
+  echo ========================================
+  echo  ❌ ERROR
+  echo ========================================
+  echo.
+  echo Failed to start deployed manifest.
+  echo Make sure you have the add-in development tools installed:
+  echo   npm install -g office-addin-debugging
+  echo.
+)
+
+pause
+```
+
+---
+
+#### macOS Implementation: `use-local.command`
+
+**Location:** `tools/scripts/use-local.command`
+
+```bash
+#!/bin/bash
+
+echo "========================================"
+echo " Switch to LOCAL Add-in"
+echo "========================================"
+echo ""
+echo "Switching Word add-in to local development environment..."
+echo ""
+
+# Stop any currently sideloaded manifests
+echo "[1/3] Stopping deployed manifest..."
+npx office-addin-debugging stop server/public/manifest.xml >/dev/null 2>&1
+
+echo "[2/3] Stopping local manifest (if any)..."
+npx office-addin-debugging stop addin/manifest.xml >/dev/null 2>&1
+
+# Start local manifest
+echo "[3/3] Starting local manifest..."
+if npx office-addin-debugging start addin/manifest.xml; then
+  echo ""
+  echo "========================================"
+  echo " ✅ SUCCESS"
+  echo "========================================"
+  echo ""
+  echo "Word add-in now points to:"
+  echo "  📍 Add-in:  https://localhost:4000"
+  echo "  📍 API:     https://localhost:4001"
+  echo ""
+  echo "Make sure your local servers are running:"
+  echo "  Terminal 1: node server/src/server.js"
+  echo "  Terminal 2: cd addin && npm run dev-server"
+  echo ""
+else
+  echo ""
+  echo "========================================"
+  echo " ❌ ERROR"
+  echo "========================================"
+  echo ""
+  echo "Failed to start local manifest."
+  echo "Make sure you have the add-in development tools installed:"
+  echo "  npm install -g office-addin-debugging"
+  echo ""
+fi
+
+read -p "Press enter to exit..."
+```
+
+**Setup:** Make executable with `chmod +x tools/scripts/use-local.command`
+
+---
+
+#### macOS Implementation: `use-deployed.command`
+
+**Location:** `tools/scripts/use-deployed.command`
+
+```bash
+#!/bin/bash
+
+echo "========================================"
+echo " Switch to DEPLOYED Add-in"
+echo "========================================"
+echo ""
+echo "Switching Word add-in to deployed environment..."
+echo ""
+
+# Stop any currently sideloaded manifests
+echo "[1/3] Stopping local manifest..."
+npx office-addin-debugging stop addin/manifest.xml >/dev/null 2>&1
+
+echo "[2/3] Stopping deployed manifest (if any)..."
+npx office-addin-debugging stop server/public/manifest.xml >/dev/null 2>&1
+
+# Start deployed manifest
+echo "[3/3] Starting deployed manifest..."
+if npx office-addin-debugging start server/public/manifest.xml; then
+  echo ""
+  echo "========================================"
+  echo " ✅ SUCCESS"
+  echo "========================================"
+  echo ""
+  echo "Word add-in now points to:"
+  echo "  📍 Add-in:  https://wordftw.onrender.com"
+  echo "  📍 API:     https://wordftw.onrender.com/api/v1"
+  echo ""
+  echo "This is the PRODUCTION environment."
+  echo "Use this to test the deployed version."
+  echo ""
+else
+  echo ""
+  echo "========================================"
+  echo " ❌ ERROR"
+  echo "========================================"
+  echo ""
+  echo "Failed to start deployed manifest."
+  echo "Make sure you have the add-in development tools installed:"
+  echo "  npm install -g office-addin-debugging"
+  echo ""
+fi
+
+read -p "Press enter to exit..."
+```
+
+**Setup:** Make executable with `chmod +x tools/scripts/use-deployed.command`
+
+---
+
+#### Usage Workflow
+
+**Daily Development (Local):**
+```powershell
+# Morning: Switch to local
+Double-click: use-local.bat
+
+# Start servers in two terminals
+Terminal 1> node server/src/server.js
+Terminal 2> cd addin; npm run dev-server
+
+# Develop all day, refresh taskpane as needed
+```
+
+**Testing Deployed (Rare):**
+```powershell
+# Switch to deployed to test production
+Double-click: use-deployed.bat
+
+# Test the deployed version
+# (No local servers needed)
+
+# Switch back to local
+Double-click: use-local.bat
+```
+
+---
+
+#### Implementation Checklist
+
+- [ ] **Create Scripts:**
+  - [ ] `tools/scripts/use-local.bat` (Windows)
+  - [ ] `tools/scripts/use-deployed.bat` (Windows)
+  - [ ] `tools/scripts/use-local.command` (macOS)
+  - [ ] `tools/scripts/use-deployed.command` (macOS)
+- [ ] **Set Permissions:**
+  - [ ] Make macOS scripts executable (`chmod +x *.command`)
+- [ ] **Test Both Platforms:**
+  - [ ] Test switching local → deployed → local (Windows)
+  - [ ] Test switching local → deployed → local (macOS)
+  - [ ] Verify Word add-in loads from correct environment
+- [ ] **Documentation:**
+  - [ ] Add "Developer Workflow" section to README
+  - [ ] Document when to use each script
+  - [ ] Add troubleshooting for common issues
+- [ ] **Developer Experience:**
+  - [ ] Consider adding to npm scripts: `npm run addin:use-local`
+  - [ ] Add to VSCode tasks for even faster switching
+
+---
+
+#### Benefits
+
+✅ **One-click switching** between environments  
+✅ **No manual manifest management** required  
+✅ **Clear feedback** on which environment is active  
+✅ **Prevents mistakes** (forgetting to stop old manifest)  
+✅ **Faster development** iteration  
+✅ **Better testing** of deployed environment  
+
+---
+
 ### Phase 4: Automated Testing (2 days)
 - [ ] **Cross-Platform Tests (37 tests total):**
   - [ ] Phase 1: Dependencies (5 tests - both platforms)
@@ -1178,9 +1482,16 @@ describe('macOS Installation', () => {
 - `server/public/uninstall-addin.bat` (Windows uninstaller, new)
 - `server/public/uninstall-addin.command` (macOS uninstaller, new)
 
+**Developer Utilities:**
+- `tools/scripts/use-local.bat` (Windows: switch to local add-in, new)
+- `tools/scripts/use-deployed.bat` (Windows: switch to deployed add-in, new)
+- `tools/scripts/use-local.command` (macOS: switch to local add-in, new)
+- `tools/scripts/use-deployed.command` (macOS: switch to deployed add-in, new)
+
 **Server:**
 - `server/src/server.js` (serves manifest at `/manifest.xml`)
-- `addin/manifest.xml` (source manifest)
+- `addin/manifest.xml` (source manifest, local development)
+- `server/public/manifest.xml` (production manifest, deployed)
 - `render.yaml` (deployment config for Render.com)
 
 **Tests:**
