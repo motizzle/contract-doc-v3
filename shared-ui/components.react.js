@@ -4277,18 +4277,21 @@
       // Check for link code on mount
       React.useEffect(() => {
         const code = localStorage.getItem('wordftw_link_code');
+        console.log('[LinkCodeBanner] Link code from localStorage:', code);
         if (code) {
           setLinkCode(code);
         }
         
         // Check if banner was dismissed
         const wasDismissed = localStorage.getItem('wordftw_link_banner_dismissed') === 'true';
+        console.log('[LinkCodeBanner] Banner dismissed?', wasDismissed);
         setDismissed(wasDismissed);
       }, []);
       
       // Listen for trigger event (from download button)
       React.useEffect(() => {
         const handleShow = () => {
+          console.log('[LinkCodeBanner] Show event triggered!');
           setShowBanner(true);
           setDismissed(false);
           localStorage.removeItem('wordftw_link_banner_dismissed');
@@ -4325,7 +4328,9 @@
       };
       
       // Browser: Show link code (only if triggered and not dismissed)
+      console.log('[LinkCodeBanner] Render check:', { isWordHost, linkCode, showBanner, dismissed });
       if (!isWordHost && linkCode && showBanner && !dismissed) {
+        console.log('[LinkCodeBanner] ✅ Rendering banner');
         return React.createElement('div', {
           className: 'my-2 p-3 border border-blue-200 bg-blue-50 rounded-md',
           style: { display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between' }
