@@ -798,15 +798,19 @@
                     break;
                   case 'checkout':
                     addLog('Document checked out', 'info');
+                    refresh(); // Refresh state-matrix to update checkout status
                     break;
                   case 'checkin':
                     addLog('Document checked in', 'success');
+                    refresh(); // Refresh state-matrix to update checkout status
                     break;
                   case 'checkoutCancel':
                     addLog('Checkout cancelled', 'warning');
+                    refresh(); // Refresh state-matrix to update checkout status
                     break;
                   case 'overrideCheckout':
                     addLog('Checkout override performed', 'warning');
+                    refresh(); // Refresh state-matrix to update checkout status
                     break;
                   // Skip logging: hello, saveProgress, chat events, sendVendor, and plain approvals:update
                 }
