@@ -1684,13 +1684,27 @@ app.post('/api/v1/session/start', (req, res) => {
         const existing = fingerprintSessions.get(fingerprint);
         console.log(`🔑 Returning existing session for fingerprint: ${fingerprint.substring(0, 12)}...`);
         
-        // Get or create link code for this session
+        // Always generate a fresh link code (or find existing one)
         let linkCode = null;
         for (const [code, data] of activeLinkCodes.entries()) {
-          if (data.fingerprint === fingerprint) {
+          if (data.fingerprint === fingerprint && Date.now() < data.expires) {
             linkCode = code;
             break;
           }
+        }
+        
+        // If no valid code exists, generate a new one
+        if (!linkCode) {
+          linkCode = generateLinkCode();
+          activeLinkCodes.set(linkCode, {
+            fingerprint,
+            token: existing.token,
+            sessionId: existing.sessionId,
+            expires: Date.now() + (15 * 60 * 1000) // 15 minutes
+          });
+          console.log(`🔗 Generated fresh link code: ${linkCode} for existing session ${existing.sessionId}`);
+        } else {
+          console.log(`🔗 Reusing valid link code: ${linkCode}`);
         }
         
         return res.json({
