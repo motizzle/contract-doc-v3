@@ -32,5 +32,12 @@ server/test-results/
 /setup-env.ps1
 
 # Generated manifest files (auto-created by build script)
-addin/manifest.production.xml
 addin/manifest-deploy.xml
+addin/manifest.production.xml
+
+# Build artifacts - ALL files in server/public are copied during build
+# Source: addin/dist/* and addin/public/*
+server/public/
+# Exception: Helper pages are source files (not build artifacts)
+!server/public/clear-session.html
+!server/public/install-instructions.html

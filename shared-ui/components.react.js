@@ -40,6 +40,17 @@
 
     isInitializingAuth = true;
     try {
+      // LOCAL DEVELOPMENT: Skip authentication entirely on localhost
+      // Both browser and Word add-in will use the 'default' session
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      
+      if (isLocalhost) {
+        console.log('🏠 Local development mode - using default session (no authentication)');
+        authToken = null; // No token = server uses 'default' session
+        return null;
+      }
+      
+      // PRODUCTION: Use JWT authentication for session isolation
       // ALWAYS generate and store fingerprint (for persistent computer linking)
       const fingerprint = generateFingerprint();
       localStorage.setItem('wordftw_fingerprint', fingerprint);
@@ -939,6 +950,87 @@
 
         return () => { try { sse && sse.close(); } catch {} };
       }, [API_BASE, refresh, addLog, loadActivities]);
+
+      // Global listener for version:view events (handles loading documents in Word/Web)
+      React.useEffect(() => {
+        const onVersionView = async (e) => {
+          try {
+            const n = Number(e.detail?.version);
+            if (!Number.isFinite(n) || n < 1) return;
+            
+            // Check if this event is meant for this platform
+            const currentPlatform = typeof Office !== 'undefined' ? 'word' : 'web';
+            const messagePlatform = e.detail?.payload?.messagePlatform;
+            
+            console.log(`[DEBUG] Global version:view event received:`, {
+              version: n,
+              currentPlatform,
+              messagePlatform,
+              fullDetail: e.detail
+            });
+            
+            // If messagePlatform is specified and doesn't match us, ignore it
+            // This means the event came from SSE and is for the OTHER platform
+            if (messagePlatform && messagePlatform !== currentPlatform) {
+              console.log(`[DEBUG] Global version:view - IGNORING event for platform: ${messagePlatform} (we are ${currentPlatform})`);
+              return;
+            }
+            
+            console.log(`[DEBUG] Global version:view handler - PROCESSING and loading version ${n} (platform: ${currentPlatform})`);
+            setViewingVersion(n);
+            
+            const url = `${API_BASE}/api/v1/versions/${n}?rev=${Date.now()}`;
+            
+            if (typeof Office !== 'undefined') {
+              // Word add-in: Load document into Word
+              try {
+                console.log(`📄 [Global] Loading version ${n} into Word - fetching from ${url}`);
+                const res = await fetch(url, { cache: 'no-store' });
+                console.log(`📄 [Global] Fetch response: ${res.status} ${res.ok}`);
+                
+                if (!res.ok) throw new Error(`Failed to fetch version: ${res.status}`);
+                
+                console.log(`📄 [Global] Converting to arrayBuffer...`);
+                const buf = await res.arrayBuffer();
+                console.log(`📄 [Global] Buffer size: ${buf.byteLength} bytes`);
+                
+                const b64 = (function(buf) {
+                  let bin = '';
+                  const bytes = new Uint8Array(buf);
+                  for (let i = 0; i < bytes.byteLength; i++) {
+                    bin += String.fromCharCode(bytes[i]);
+                  }
+                  return btoa(bin);
+                })(buf);
+                
+                console.log(`📄 [Global] Base64 length: ${b64.length}, calling Word.run...`);
+                await Word.run(async (context) => {
+                  console.log(`📄 [Global] Inside Word.run, replacing document body...`);
+                  context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace);
+                  await context.sync();
+                  console.log(`📄 [Global] Word.run sync complete`);
+                });
+                
+                console.log(`✅ [Global] Successfully loaded version ${n} into Word`);
+                addLog(`Loaded version ${n} into Word`, 'document');
+              } catch (err) {
+                console.error(`❌ [Global] Failed to load version ${n} in Word:`, err);
+                console.error(`❌ [Global] Error details:`, err.message, err.stack);
+                addLog(`Failed to load version ${n}: ${err.message}`, 'error');
+              }
+            } else {
+              // Web: Update document source
+              setDocumentSource(url);
+              addLog(`Viewing version ${n}`, 'document');
+            }
+          } catch (err) {
+            console.error('version:view handler error:', err);
+          }
+        };
+        
+        window.addEventListener('version:view', onVersionView);
+        return () => window.removeEventListener('version:view', onVersionView);
+      }, [API_BASE, addLog, setDocumentSource, setViewingVersion]);
 
       const addError = React.useCallback((err) => {
         try { setLastError(err || null); if (err && err.message) addLog(`Error: ${err.message}`, 'error'); } catch {}
@@ -4179,7 +4271,8 @@
           try {
             const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
             await fetch(`${API_BASE}/api/v1/versions/view`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version: n, platform: plat }) });
-            try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: n } })); } catch {}
+            // Dispatch LOCAL event with platform info so it loads locally but not cross-platform
+            try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: n, payload: { messagePlatform: plat } } })); } catch {}
           } catch {}
         } });
       };
@@ -4463,13 +4556,25 @@
       const [linkCode, setLinkCode] = React.useState(null);
       const [isLoading, setIsLoading] = React.useState(false);
       const [copied, setCopied] = React.useState(false);
+      const [error, setError] = React.useState(null);
       
       const generateLinkCode = async () => {
         setIsLoading(true);
+        setError(null);
         
         try {
-          const fingerprint = localStorage.getItem('wordftw_fingerprint');
+          let fingerprint = localStorage.getItem('wordftw_fingerprint');
+          
+          // If no fingerprint exists, generate one now
+          if (!fingerprint) {
+            console.log('[InstallModal] No fingerprint found, generating...');
+            fingerprint = generateFingerprint();
+            localStorage.setItem('wordftw_fingerprint', fingerprint);
+          }
+          
           const API_BASE = getApiBase();
+          console.log('[InstallModal] Requesting link code from:', `${API_BASE}/api/v1/session/start`);
+          console.log('[InstallModal] Fingerprint:', fingerprint.substring(0, 12) + '...');
           
           // Clear old token and request new session with fresh link code
           localStorage.removeItem('wordftw_auth_token');
@@ -4482,18 +4587,30 @@
             body: JSON.stringify({ fingerprint })
           });
           
+          console.log('[InstallModal] Response status:', response.status);
+          
           if (response.ok) {
             const data = await response.json();
+            console.log('[InstallModal] Response data:', { hasToken: !!data.token, hasLinkCode: !!data.linkCode, linkCode: data.linkCode });
+            
             localStorage.setItem('wordftw_auth_token', data.token);
             
             if (data.linkCode) {
               localStorage.setItem('wordftw_link_code', data.linkCode);
               setLinkCode(data.linkCode);
               console.log('[InstallModal] ✅ Fresh link code generated:', data.linkCode);
+            } else {
+              console.error('[InstallModal] ❌ No link code in response');
+              setError('Server did not generate a link code. Please try again.');
             }
+          } else {
+            const errorText = await response.text();
+            console.error('[InstallModal] ❌ Request failed:', response.status, errorText);
+            setError(`Failed to generate code (${response.status}). Please refresh and try again.`);
           }
         } catch (err) {
-          console.error('[InstallModal] Failed to generate link code:', err);
+          console.error('[InstallModal] ❌ Failed to generate link code:', err);
+          setError(`Connection error: ${err.message}. Please check your network and try again.`);
         } finally {
           setIsLoading(false);
         }
@@ -4547,6 +4664,7 @@
         React.createElement('div', { key: 'code-display', style: { background: '#f9fafb', border: '2px solid #e5e7eb', borderRadius: '8px', padding: '20px', textAlign: 'center' } }, [
           React.createElement('div', { key: 'code', style: { fontSize: '32px', fontWeight: 700, color: '#1e40af', letterSpacing: '6px', fontFamily: 'monospace' } }, linkCode)
         ]),
+        error ? React.createElement('div', { key: 'error', style: { marginTop: '16px', padding: '12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#991b1b', fontSize: '14px' } }, error) : null,
         React.createElement('div', { key: 'buttons', style: { display: 'flex', gap: '8px', marginTop: '20px' } }, [
           React.createElement('button', {
             key: 'copy',
@@ -4626,6 +4744,7 @@
             React.createElement('div', { key: 'desc', style: { fontSize: '13px', fontWeight: 400 } }, 'Already installed? Just generate a code to link Word with this browser.')
           ])
         ]),
+        error ? React.createElement('div', { key: 'error', style: { marginTop: '16px', padding: '12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#991b1b', fontSize: '14px' } }, error) : null,
         React.createElement('button', {
           key: 'cancel',
           onClick: onClose,

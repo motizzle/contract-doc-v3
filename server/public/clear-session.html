@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Clearing Local Session...</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .container {
+      text-align: center;
+      padding: 40px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+    h1 { margin: 0 0 20px 0; font-size: 32px; }
+    p { font-size: 18px; opacity: 0.9; }
+    .spinner {
+      margin: 20px auto;
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔄 Setting Up Local Development</h1>
+    <div class="spinner"></div>
+    <p id="status">Clearing old session data...</p>
+  </div>
+
+  <script>
+    // Clear all session data
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // Clear service worker cache if exists
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        names.forEach(name => caches.delete(name));
+      });
+    }
+    
+    // Update status
+    document.getElementById('status').textContent = 'Ready! Redirecting to app...';
+    
+    // Redirect to main app after 1 second
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 1000);
+  </script>
+</body>
+</html>
+

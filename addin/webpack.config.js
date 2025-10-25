@@ -78,15 +78,10 @@ module.exports = async (env, options) => {
             to: "assets/[name][ext][query]",
           },
           {
-            from: "manifest*.xml",
-            to: "[name]" + "[ext]",
-            transform(content) {
-              if (dev) {
-                return content;
-              } else {
-                return content.toString().replace(new RegExp(urlDev, "g"), urlProd);
-              }
-            },
+            // In development: copy dev manifest (localhost URLs)
+            // In production: copy production manifest from public/ (already has production URLs)
+            from: dev ? "manifest.xml" : "public/manifest.xml",
+            to: "manifest.xml",
           },
         ],
       }),

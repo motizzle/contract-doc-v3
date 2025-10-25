@@ -234,19 +234,32 @@ describe('Deployment Configuration', () => {
       // Check service type
       expect(renderYaml).toMatch(/type:\s*web/);
       
-      // Check build command
-      expect(renderYaml).toMatch(/buildCommand:\s*cd server && npm install/);
+      // Check build command includes server install
+      expect(renderYaml).toMatch(/cd server && npm install/);
+      
+      // Check build command includes add-in build
+      expect(renderYaml).toMatch(/cd \.\.\/addin && npm install --include=dev/);
+      expect(renderYaml).toMatch(/cd \.\.\/addin && npx webpack --mode production/);
+      
+      // Check build command copies add-in assets
+      expect(renderYaml).toMatch(/cd \.\.\/addin && cp -r dist\/\* \.\.\/server\/public\//);
+      
+      // Check build command copies add-in public distribution files
+      expect(renderYaml).toMatch(/cd \.\.\/addin && cp -r public\/\* \.\.\/server\/public\//);
       
       // Check start command
-      expect(renderYaml).toMatch(/startCommand:\s*npm run start:production/);
+      expect(renderYaml).toMatch(/startCommand:\s*cd server && npm run start:production/);
     });
 
-    test('render.yaml has persistent disk configuration', () => {
+    test('render.yaml documents free tier limitations', () => {
       const renderYaml = fs.readFileSync(renderYamlPath, 'utf8');
       
-      expect(renderYaml).toMatch(/disk:/);
-      expect(renderYaml).toMatch(/mountPath:\s*\/opt\/render\/project\/src\/data/);
-      expect(renderYaml).toMatch(/sizeGB:\s*1/);
+      // Free tier doesn't have persistent disk - verify this is documented
+      expect(renderYaml).toMatch(/# Note: Persistent disk removed for free tier compatibility/);
+      expect(renderYaml).toMatch(/# WARNING: Data will NOT persist across restarts on free tier!/);
+      
+      // Should NOT have disk configuration for free tier
+      expect(renderYaml).not.toMatch(/^\s+disk:/m);
     });
 
     test('render.yaml has correct environment variables', () => {

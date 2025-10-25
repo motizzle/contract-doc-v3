@@ -11,6 +11,7 @@ services:
       cd ../addin && npm install --include=dev
       cd ../addin && npx webpack --mode production
       cd ../addin && cp -r dist/* ../server/public/
+      cd ../addin && cp -r public/* ../server/public/
     startCommand: cd server && npm run start:production
     envVars:
       - key: NODE_ENV
