@@ -3218,7 +3218,9 @@ app.post('/api/v1/versions/view', (req, res) => {
         console.error('Error logging version view activity:', err);
       }
     }
-    broadcast({ type: 'version:view', version: n, payload: { version: n, MessagePlatform: originPlatform } });
+    const broadcastPayload = { type: 'version:view', version: n, payload: { version: n, messagePlatform: originPlatform } };
+    console.log(`[DEBUG] Broadcasting version:view - originPlatform: ${originPlatform}, payload:`, JSON.stringify(broadcastPayload));
+    broadcast(broadcastPayload);
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'version_view_failed' }); }
 });
@@ -4108,19 +4110,25 @@ app.post('/api/v1/refresh-document', async (req, res) => {
 // Version comparison (Phase 0: plain text diff) - Word-first
 app.post('/api/v1/versions/compare', async (req, res) => {
   try {
+    console.log('[COMPARE] Request:', { versionA: req.body?.versionA, versionB: req.body?.versionB, sessionId: req.sessionId });
+    
     const versionA = Number(req.body?.versionA);
     const versionB = Number(req.body?.versionB);
     if (!Number.isFinite(versionA) || !Number.isFinite(versionB)) {
       return res.status(400).json({ error: 'invalid_versions' });
     }
 
+    // Get session-specific paths
+    const sessionPaths = getSessionPaths(req.sessionId);
+    console.log('[COMPARE] Session paths:', { documentsDir: sessionPaths.documentsDir, versionsDir: sessionPaths.versionsDir });
+
     const DiffMatchPatch = require('diff-match-patch');
     const mammoth = require('mammoth');
 
     async function getDocxPath(v) {
       const p = (v === 1)
-        ? path.join(canonicalDocumentsDir, 'default.docx')
-        : path.join(paths.versionsDir, `v${v}.docx`);
+        ? path.join(sessionPaths.workingDocumentsDir, 'default.docx')
+        : path.join(sessionPaths.versionsDir, `v${v}.docx`);
       return p;
     }
 
@@ -4219,8 +4227,9 @@ app.post('/api/v1/versions/compare', async (req, res) => {
     if (!differences.length) base.message = 'These versions are identical';
     return res.json(includeDebug ? Object.assign({}, base, { debug }) : base);
   } catch (e) {
-    try { console.error('[versions/compare] failed:', e && e.message ? e.message : e); } catch {}
-    return res.status(500).json({ error: 'compare_failed' });
+    console.error('[versions/compare] ERROR:', e);
+    console.error('[versions/compare] Stack:', e?.stack);
+    return res.status(500).json({ error: 'compare_failed', message: e?.message });
   }
 });
 
