@@ -39,6 +39,42 @@ WordFTW revolutionizes contract authoring by providing a **single source of trut
 
 ---
 
+## 🚀 Deployment & Session Status
+
+**Live Prototype:** https://wordftw.onrender.com
+
+### Current State (as of deployment branch)
+
+#### ✅ What's Working
+- **JWT-based session isolation** - Each browser instance gets its own isolated data
+- **Browser ↔ Word add-in linking** - One-click link code system syncs sessions across platforms
+- **Automated sideloading** - Windows: `tools/scripts/run-local.bat` handles everything
+- **Cross-platform parity** - Identical UI/behavior in Word add-in and web browser
+- **Real-time sync** - SSE broadcasts keep linked sessions in perfect sync
+
+#### 🔧 Session Management
+- **Separate browsers = separate sessions** - Each browser tab/window has its own isolated data
+- **Link code workflow:**
+  1. Open https://wordftw.onrender.com in browser
+  2. Click 3-dot menu → "Install Word Add-in" → Download installer
+  3. Run installer (downloads manifest + registers add-in)
+  4. Click "Generate Code" to get 6-character code
+  5. Open Word → WordFTW add-in → 3-dot menu → "Enter Link Code"
+  6. Sessions now sync in real-time!
+- **Persistent links** - Once linked, browser ↔ Word stays synced even after refresh
+- **Session expiry** - JWT tokens last 7 days, link codes expire after 15 minutes
+
+#### 🖥️ Platform Status
+- **Windows** ✅ Fully working with automated scripts (`run-local.bat`, `run-deployed.bat`)
+- **macOS** 🚧 Installer/uninstaller scripts implemented, awaiting Mac hardware for testing
+
+#### 📂 File Structure
+- **`addin/manifest.xml`** - Development manifest (localhost URLs) - edit this
+- **`addin/public/manifest.xml`** - Production manifest (auto-generated via git hooks)
+- **`server/public/`** - Deployment artifacts (built from `addin/dist/` + `addin/public/`)
+
+---
+
 ## ✨ Features
 
 - ✅ **Cross-platform editing** - Word add-in + Web browser with identical UI
