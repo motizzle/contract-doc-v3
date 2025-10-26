@@ -33,27 +33,43 @@ echo ========================================
 echo  Installation Complete!
 echo ========================================
 echo.
-echo The add-in has been registered and will appear in:
-echo Insert ^> My Add-ins ^> Developer Add-ins
+echo Downloading document and opening Word...
 echo.
-echo Press any key to open Word with a blank document...
-pause >nul
 
 REM Download the default document from the server
-echo Downloading document...
 set DOC_PATH=%TEMP%\wordftw-document.docx
 
-powershell -Command "try { Invoke-WebRequest -Uri 'https://wordftw.onrender.com/documents/working/default.docx' -OutFile '%DOC_PATH%' -ErrorAction Stop } catch { exit 1 }"
+powershell -Command "try { Invoke-WebRequest -Uri 'https://wordftw.onrender.com/documents/working/default.docx' -OutFile '%DOC_PATH%' -ErrorAction Stop; Write-Host '  Document downloaded' } catch { Write-Host '  Download failed'; exit 1 }"
 
-REM Open Word with the downloaded document (add-in will auto-load)
+REM Open Word with the downloaded document
 if exist "%DOC_PATH%" (
-  echo Opening Word with document...
   start winword.exe "%DOC_PATH%"
+  timeout /t 2 /nobreak >nul
+  echo.
+  echo ========================================
+  echo  Next Steps: Activate the Add-in
+  echo ========================================
+  echo.
+  echo Word is now open with your document.
+  echo.
+  echo TO ACTIVATE THE ADD-IN ^(first time only^):
+  echo   1. In Word, click the "Insert" tab
+  echo   2. Click "Get Add-ins" or "My Add-ins"
+  echo   3. Click "Developer Add-ins" at the top
+  echo   4. Click "Redlined ^& Signed"
+  echo.
+  echo The add-in panel will appear on the right side.
+  echo After this first activation, it will remember your choice.
+  echo.
 ) else (
-  echo Could not download document, opening Word normally...
-  echo You can open a document manually to activate the add-in.
+  echo.
+  echo [ERROR] Could not download document from server.
+  echo Please check your internet connection.
+  echo.
   start winword.exe
 )
 
+echo Press any key to close this window...
+pause >nul
 exit /b 0
 

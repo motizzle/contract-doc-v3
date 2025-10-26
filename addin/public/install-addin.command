@@ -140,40 +140,48 @@ echo "========================================"
 echo " [SUCCESS] Installation Complete!"
 echo "========================================"
 echo ""
-echo "The add-in has been registered and will appear in Word:"
-echo "  Insert > My Add-ins > Developer Add-ins"
+echo "Installation log saved to: $LOG_FILE"
 echo ""
-echo "Next steps:"
-echo "1. Open Word with document (press enter below)"
-echo "2. The add-in will appear automatically"
-echo "3. Or go to: Insert > My Add-ins > Developer Add-ins"
+echo "Downloading document and opening Word..."
 echo ""
-echo "Installation log saved to:"
-echo "$LOG_FILE"
-echo ""
-read -p "Press enter to open Word with document..."
 
 # Download the document
-echo "Downloading document..."
 DOC_PATH="$HOME/.wordftw-addin/document.docx"
 if curl -f -s -o "$DOC_PATH" "https://wordftw.onrender.com/documents/working/default.docx"; then
   echo "[OK] Document downloaded"
   # Open Word with the document
-  if ! open -a "Microsoft Word" "$DOC_PATH" 2>/dev/null; then
+  if open -a "Microsoft Word" "$DOC_PATH" 2>/dev/null; then
+    sleep 2
+    echo ""
+    echo "========================================"
+    echo " Next Steps: Activate the Add-in"
+    echo "========================================"
+    echo ""
+    echo "Word is now open with your document."
+    echo ""
+    echo "TO ACTIVATE THE ADD-IN (first time only):"
+    echo "  1. In Word, click the 'Insert' tab"
+    echo "  2. Click 'Get Add-ins' or 'My Add-ins'"
+    echo "  3. Click 'Developer Add-ins' at the top"
+    echo "  4. Click 'Redlined & Signed'"
+    echo ""
+    echo "The add-in panel will appear on the right side."
+    echo "After this first activation, it will remember your choice."
+    echo ""
+  else
     echo "[WARN] Could not open Word with document"
-    echo "Trying to open Word normally..."
-    open -a "Microsoft Word" 2>/dev/null || echo "Please open Word manually from Applications"
+    echo "Please open Word manually and then open the document:"
+    echo "  $DOC_PATH"
   fi
 else
-  echo "[WARN] Could not download document"
-  echo "Opening Word normally..."
-  if ! open -a "Microsoft Word" 2>/dev/null; then
-    echo "[WARN] Could not open Word automatically"
-    echo "Please open Word manually from Applications"
-    read -p "Press enter to exit..."
-  fi
+  echo "[ERROR] Could not download document from server"
+  echo "Please check your internet connection."
+  echo ""
+  open -a "Microsoft Word" 2>/dev/null || echo "Please open Word manually from Applications"
 fi
 
+echo ""
+read -p "Press enter to close..."
 echo ""
 echo "Installation completed: $(date)"
 exit 0
