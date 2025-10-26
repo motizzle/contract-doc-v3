@@ -36,11 +36,24 @@ echo.
 echo The add-in has been registered and will appear in:
 echo Insert ^> My Add-ins ^> Developer Add-ins
 echo.
-echo Press any key to open Word now...
+echo Press any key to open Word with a blank document...
 pause >nul
 
-REM Open Word
-start winword.exe
+REM Download the default document from the server
+echo Downloading document...
+set DOC_PATH=%TEMP%\wordftw-document.docx
+
+powershell -Command "try { Invoke-WebRequest -Uri 'https://wordftw.onrender.com/documents/working/default.docx' -OutFile '%DOC_PATH%' -ErrorAction Stop } catch { exit 1 }"
+
+REM Open Word with the downloaded document (add-in will auto-load)
+if exist "%DOC_PATH%" (
+  echo Opening Word with document...
+  start winword.exe "%DOC_PATH%"
+) else (
+  echo Could not download document, opening Word normally...
+  echo You can open a document manually to activate the add-in.
+  start winword.exe
+)
 
 exit /b 0
 
