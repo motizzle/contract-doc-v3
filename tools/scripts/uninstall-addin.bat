@@ -32,11 +32,13 @@ echo [DEBUG] Checking registry...
 reg query "HKCU\Software\Microsoft\Office\16.0\WEF\Developer" /v "wordftw-addin-prod" >nul 2>&1
 if %ERRORLEVEL% EQU 0 (
   echo [DEBUG] Registry entry found, deleting...
-  reg delete "HKCU\Software\Microsoft\Office\16.0\WEF\Developer" /v "wordftw-addin-prod" /f
+  reg delete "HKCU\Software\Microsoft\Office\16.0\WEF\Developer" /v "wordftw-addin-prod" /f >nul 2>&1
   if ERRORLEVEL 1 (
     echo   - Failed to remove registry entry
   ) else (
     echo   - Registry entry removed
+    REM Wait for registry to propagate (Windows registry changes aren't instant)
+    timeout /t 1 /nobreak >nul
   )
 ) else (
   echo   - Registry entry not found (already removed)
@@ -71,8 +73,9 @@ if exist "%TEMP_DIR%" (
 )
 echo.
 
-REM Verify complete removal
+REM Verify complete removal (wait for Windows registry to fully update)
 echo Verifying uninstall...
+timeout /t 1 /nobreak >nul
 reg query "HKCU\Software\Microsoft\Office\16.0\WEF\Developer" /v "wordftw-addin-prod" >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
   echo.
