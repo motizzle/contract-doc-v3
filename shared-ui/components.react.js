@@ -793,6 +793,13 @@
                   console.log('📡 Dispatched window event:', p.type, p);
                 } catch {}
               }
+              // Handle version sharing events
+              if (p && p.type === 'version:shared') {
+                try {
+                  window.dispatchEvent(new CustomEvent('version:shared', { detail: p }));
+                  console.log('📡 Version sharing changed:', p.version, p.sharedWithVendor);
+                } catch {}
+              }
               // Handle session-linked event (Word add-in successfully linked)
               if (p && p.type === 'session-linked') {
                 console.log('🔗 Session linked from Word add-in - refreshing page...');
@@ -4196,23 +4203,45 @@
 
     function VersionsPanel() {
       const API_BASE = getApiBase();
-      const { config, addLog, viewingVersion, setViewingVersion, setDocumentSource } = React.useContext(StateContext);
+      const stateContext = React.useContext(StateContext);
+      const { config, addLog, viewingVersion, setViewingVersion, setDocumentSource } = stateContext;
       const [items, setItems] = React.useState([]);
+      const [canShare, setCanShare] = React.useState(false);
       const [confirm, setConfirm] = React.useState(null);
+      
+      // Use a ref to always get the latest currentUser without causing refresh to recreate
+      const currentUserRef = React.useRef(stateContext.currentUser);
+      
       const refresh = React.useCallback(async () => {
         try {
           console.log('🔄 [VersionsPanel] refresh called');
-          const url = `${API_BASE}/api/v1/versions?rev=${Date.now()}`;
+          // Read from ref to get the LATEST value, not a stale closure
+          const userId = currentUserRef.current || 'user1';
+          console.log('🔄 [VersionsPanel] currentUser from ref:', userId);
+          const url = `${API_BASE}/api/v1/versions?userId=${userId}&rev=${Date.now()}`;
           const r = await fetch(url, { cache: 'no-store' });
           if (r.ok) {
             const j = await r.json();
             const arr = Array.isArray(j.items) ? j.items : [];
-            console.log(`📥 [VersionsPanel] Fetched ${arr.length} versions`);
+            const canShareFlag = j.canShare || false;
+            console.log(`📥 [VersionsPanel] Fetched ${arr.length} versions, canShare: ${canShareFlag}, currentUser: ${userId}`);
+            console.log('📥 [VersionsPanel] API response:', j);
             setItems(arr);
+            setCanShare(canShareFlag);
+          } else {
+            console.error('❌ [VersionsPanel] Fetch failed:', r.status, r.statusText);
           }
-        } catch {}
+        } catch (err) {
+          console.error('❌ [VersionsPanel] Error:', err);
+        }
       }, [API_BASE]);
-      React.useEffect(() => { refresh(); }, [refresh]);
+      
+      // Refresh when user changes
+      React.useEffect(() => {
+        currentUserRef.current = stateContext.currentUser;
+        refresh();
+      }, [stateContext.currentUser, refresh]);
+      
       React.useEffect(() => {
         const onVersionsUpdate = () => { 
           console.log('🔄 [VersionsPanel] versions:update event received');
@@ -4224,6 +4253,22 @@
             setViewingVersion(1); 
             setTimeout(() => refresh(), 100); 
           } catch {} 
+        };
+        const onVersionShared = (ev) => {
+          console.log('🔄 [VersionsPanel] version:shared event received', ev.detail);
+          try {
+            const { version: versionNum, sharedWithVendor, sharedBy, sharedAt } = ev.detail || {};
+            if (versionNum !== undefined) {
+              // Update the specific version in the list
+              setItems(prev => prev.map(item => 
+                item.version === versionNum 
+                  ? { ...item, sharedWithVendor, sharedBy, sharedAt }
+                  : item
+              ));
+            }
+          } catch (err) {
+            console.error('Error handling version:shared event:', err);
+          }
         };
         const onVersionView = async (ev) => {
           try {
@@ -4255,10 +4300,12 @@
         };
         try { window.addEventListener('versions:update', onVersionsUpdate); } catch {}
         try { window.addEventListener('factoryReset', onFactory); } catch {}
+        try { window.addEventListener('version:shared', onVersionShared); } catch {}
         try { window.addEventListener('version:view', onVersionView); } catch {}
         return () => {
           try { window.removeEventListener('versions:update', onVersionsUpdate); } catch {}
           try { window.removeEventListener('factoryReset', onFactory); } catch {}
+          try { window.removeEventListener('version:shared', onVersionShared); } catch {}
           try { window.removeEventListener('version:view', onVersionView); } catch {}
         };
       }, [API_BASE, addLog, setDocumentSource, setViewingVersion]);
@@ -4270,36 +4317,167 @@
         setConfirm({ title: 'View this version?', message: `You are about to view version ${n}. Continue?`, onConfirm: async () => {
           try {
             const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
-            await fetch(`${API_BASE}/api/v1/versions/view`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version: n, platform: plat }) });
+            const userId = currentUserRef.current || 'user1';
+            await fetch(`${API_BASE}/api/v1/versions/view`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version: n, platform: plat, userId }) });
             // Dispatch LOCAL event with platform info so it loads locally but not cross-platform
             try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: n, payload: { messagePlatform: plat } } })); } catch {}
           } catch {}
         } });
+      };
+      const onToggleShare = async (v, currentlyShared) => {
+        const n = Number(v);
+        if (!Number.isFinite(n) || n < 1) return;
+        
+        if (currentlyShared) {
+          // Confirm before unsharing
+          setConfirm({ 
+            title: 'Remove vendor access?', 
+            message: `Version ${n} will no longer be available to vendors. Continue?`, 
+            onConfirm: async () => {
+              try {
+                const userId = currentUserRef.current || 'user1';
+                const res = await fetch(`${API_BASE}/api/v1/versions/${n}/share`, { 
+                  method: 'POST', 
+                  headers: { 'Content-Type': 'application/json' }, 
+                  body: JSON.stringify({ userId, shared: false })
+                });
+                if (res.ok) {
+                  console.log(`✅ Version ${n} unshared successfully`);
+                  // Update will come via SSE event
+                } else {
+                  console.error(`❌ Failed to unshare version ${n}`);
+                }
+              } catch (err) {
+                console.error('Error unsharing version:', err);
+              }
+            }
+          });
+        } else {
+          // Share immediately without confirmation
+          try {
+            const userId = currentUserRef.current || 'user1';
+            const res = await fetch(`${API_BASE}/api/v1/versions/${n}/share`, { 
+              method: 'POST', 
+              headers: { 'Content-Type': 'application/json' }, 
+              body: JSON.stringify({ userId, shared: true })
+            });
+            if (res.ok) {
+              console.log(`✅ Version ${n} shared successfully`);
+              // Update will come via SSE event
+            } else {
+              console.error(`❌ Failed to share version ${n}`);
+            }
+          } catch (err) {
+            console.error('Error sharing version:', err);
+          }
+        }
       };
       const card = (it, i) => {
         const v = Number(it.version || 1);
         const who = (it.savedBy && (it.savedBy.label || it.savedBy.userId)) || 'Unknown';
         const when = it.savedAt ? new Date(it.savedAt).toLocaleString() : '—';
         const isView = isViewing(v);
+        const isShared = it.sharedWithVendor || false;
+        const sharedBy = (it.sharedBy && (it.sharedBy.label || it.sharedBy.userId)) || null;
+        const isDemo = v === 1;  // Version 1 is the demo document
+        const note = it.note || null;
+        
+        if (i === 0) {
+          console.log('🎨 [VersionsPanel] Rendering first card with canShare:', canShare, 'currentUser from ref:', currentUserRef.current);
+        }
 
+        // Determine card styling based on state
+        let borderWidth = '1px';
+        let borderColor = '#E5E7EB';
+        let backgroundColor = '#FFFFFF';
+        
+        if (isView) {
+          // Currently viewing this version
+          borderColor = '#6366F1';
+          backgroundColor = '#EEF2FF';
+        }
+        
+        if (isShared) {
+          // Shared with vendor - thicker border and darker background
+          borderWidth = '2px';
+          borderColor = '#059669';  // Green to match sharing indicator
+          backgroundColor = isView ? '#D1FAE5' : '#F0FDF4';  // Light green tint
+        }
+        
         const baseCardStyle = {
-          border: `1px solid ${isView ? '#6366F1' : '#E5E7EB'}`,
+          border: `${borderWidth} solid ${borderColor}`,
           borderRadius: 12,
           padding: '14px 16px',
-          cursor: 'pointer',
-          background: isView ? '#EEF2FF' : '#FFFFFF'
+          background: backgroundColor
         };
 
-        const titleRow = React.createElement('div', { key: 'title-row', className: 'd-flex items-center', style: { gap: 12 } }, [
-          React.createElement('div', { key: 't', style: { fontWeight: 600, fontSize: 16, color: '#111827' } }, `Version ${v}`),
-          (isView ? React.createElement('span', { key: 'view', style: { fontSize: 12, color: '#374151', fontWeight: 600 } }, 'Viewing') : null)
+        const titleRow = React.createElement('div', { key: 'title-row', className: 'd-flex items-center justify-between' }, [
+          React.createElement('div', { key: 'left', className: 'd-flex items-center', style: { gap: 8 } }, [
+            React.createElement('div', { key: 't', style: { fontWeight: 600, fontSize: 16, color: '#111827' } }, `Version ${v}`),
+            (isDemo ? React.createElement('span', { 
+              key: 'demo', 
+              style: { 
+                fontSize: 11, 
+                color: '#6366F1', 
+                fontWeight: 600,
+                background: '#EEF2FF',
+                padding: '2px 8px',
+                borderRadius: 6,
+                border: '1px solid #C7D2FE'
+              } 
+            }, 'DEMO') : null),
+            (isView ? React.createElement('span', { key: 'view', style: { fontSize: 12, color: '#374151', fontWeight: 600 } }, 'Viewing') : null)
+          ]),
+          (canShare && !isDemo ? React.createElement('div', { key: 'actions', className: 'd-flex items-center', style: { gap: 8 }, onClick: (e) => e.stopPropagation() }, [
+            React.createElement('button', {
+              key: 'share-btn',
+              onClick: (e) => { e.stopPropagation(); onToggleShare(v, isShared); },
+              className: 'btn btn-sm',
+              style: { 
+                padding: '4px 12px', 
+                fontSize: 13,
+                background: isShared ? '#F3F4F6' : '#3B82F6',
+                color: isShared ? '#374151' : '#FFFFFF',
+                border: isShared ? '1px solid #D1D5DB' : 'none'
+              }
+            }, isShared ? 'Unshare' : 'Share'),
+            React.createElement('button', {
+              key: 'view-btn',
+              onClick: (e) => { e.stopPropagation(); onClickView(v); },
+              className: 'btn btn-sm',
+              style: { padding: '4px 12px', fontSize: 13, background: '#F3F4F6', color: '#374151', border: '1px solid #D1D5DB' }
+            }, 'View')
+          ]) : React.createElement('button', {
+            key: 'view-btn',
+            onClick: (e) => { e.stopPropagation(); onClickView(v); },
+            className: 'btn btn-sm',
+            style: { padding: '4px 12px', fontSize: 13, background: '#F3F4F6', color: '#374151', border: '1px solid #D1D5DB' }
+          }, 'View'))
         ]);
 
         const metaRow = React.createElement('div', { key: 'meta', style: { marginTop: 6, fontSize: 14, color: '#6B7280' } }, `${who} at ${when}`);
+        
+        const sharingRow = isDemo ? React.createElement('div', { 
+          key: 'demo-note', 
+          style: { marginTop: 6, fontSize: 13, color: '#6366F1', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }
+        }, [
+          React.createElement('span', { key: 'check', style: { fontSize: 16 } }, '✓'),
+          React.createElement('span', { key: 'text' }, 'Always shared with vendors (demo document)')
+        ]) : ((isShared && (canShare || sharedBy)) ? React.createElement('div', { 
+          key: 'sharing', 
+          style: { marginTop: 6, fontSize: 13, color: '#059669', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }
+        }, [
+          React.createElement('span', { key: 'check', style: { fontSize: 16 } }, '✓'),
+          React.createElement('span', { key: 'text' }, `Shared with vendor${sharedBy ? ` by ${sharedBy}` : ''}`)
+        ]) : (canShare ? React.createElement('div', { 
+          key: 'not-sharing', 
+          style: { marginTop: 6, fontSize: 13, color: '#6B7280' }
+        }, 'Not shared with vendor') : null));
 
-        return React.createElement('div', { key: `v-${v}-${i}`, onClick: () => onClickView(v), style: baseCardStyle }, [
+        return React.createElement('div', { key: `v-${v}-${i}`, style: baseCardStyle }, [
           titleRow,
-          metaRow
+          metaRow,
+          sharingRow
         ]);
       };
       const list = (items || []).map(card);
