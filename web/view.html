@@ -12,10 +12,6 @@
   <link rel="preload" as="script" href="/vendor/react/react-dom.production.min.js" />
     <!-- Shared branding styles -->
     <link href="/web/branding.css?v=banner-animation" rel="stylesheet" />
-  <style>
-    /* Platform-specific: navbar background asset path (can't be in branding.css) */
-    #og-navbar .nav-image { background-image: url('/web/assets/procurement-navbar.png'); }
-  </style>
   <!-- SuperDoc 0.14.19 requires this global for track changes to work -->
   <script>
     window.__IS_DEBUG__ = false;
@@ -82,7 +78,13 @@
 </head>
 <body>
   <div id="og-navbar">
-    <a class="nav-image" href="https://procurement.opengov.com" target="_blank" rel="noopener noreferrer" aria-label="OpenGov Procurement"></a>
+    <a class="navbar-left" href="https://opengov.com" target="_blank" rel="noopener noreferrer">
+      <img src="/web/assets/navbar-left.png" alt="OpenGov" height="48">
+    </a>
+    <div class="navbar-spacer"></div>
+    <a class="navbar-right" href="https://procurement.opengov.com" target="_blank" rel="noopener noreferrer">
+      <img src="/web/assets/navbar-right.png" alt="Procurement" height="48">
+    </a>
   </div>
   <div id="layout">
     <div id="editor-col">

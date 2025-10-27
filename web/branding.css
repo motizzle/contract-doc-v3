@@ -759,7 +759,7 @@ body .brand-header-bg .pulse-pill {
    All layout rules for web viewer - no inline styles!
 ------------------------------------------------------- */
 
-/* Top navigation bar (web only) */
+/* Top navigation bar (web only) - Three-section layout */
 #og-navbar {
   position: fixed;
   top: 0;
@@ -767,18 +767,31 @@ body .brand-header-bg .pulse-pill {
   right: 0;
   height: 48px;
   background: #ffffff;
+  background-image: none; /* Ensure no background image */
   border-bottom: 1px solid rgba(0,0,0,0.08);
   z-index: 10000;
+  display: flex;
+  align-items: center;
+  padding: 0 20px; /* Side padding */
+}
+
+.navbar-left, .navbar-right {
+  flex-shrink: 0; /* Don't compress the images */
+  display: flex;
+  align-items: center;
+}
+
+.navbar-left img, .navbar-right img {
+  height: 48px;
+  width: auto; /* Maintain aspect ratio */
   display: block;
 }
-#og-navbar .nav-image {
-  display: block;
-  width: 100%;
-  height: 100%;
-  background-size: contain;
-  background-position: left center;
-  background-repeat: no-repeat;
-  /* background-image set in view.html (asset path) */
+
+.navbar-spacer {
+  flex-grow: 1; /* Takes up all available space */
+  min-width: 20px; /* Minimum gap between left and right */
+  background: #ffffff; /* Explicit white background */
+  background-image: none; /* Ensure no background image */
 }
 
 /* Global body */
