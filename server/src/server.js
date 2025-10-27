@@ -1494,10 +1494,12 @@ function initializeSession(sessionId) {
   const documentsDir = path.join(sessionDir, 'documents');
   const versionsDir = path.join(sessionDir, 'versions');
   const exhibitsDir = path.join(sessionDir, 'exhibits');
+  const compiledDir = path.join(sessionDir, 'compiled');
   
   fs.mkdirSync(documentsDir, { recursive: true });
   fs.mkdirSync(versionsDir, { recursive: true });
   fs.mkdirSync(exhibitsDir, { recursive: true });
+  fs.mkdirSync(compiledDir, { recursive: true });
   
   // Copy seed data - default document
   const canonicalDoc = path.join(canonicalDir, 'documents', 'default.docx');
