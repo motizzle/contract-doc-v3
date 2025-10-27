@@ -2008,11 +2008,12 @@ app.get('/exhibits/:name', (req, res) => {
   res.sendFile(p);
 });
 
-// Uploads
+// Uploads (session-aware)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    if (req.path.includes('/exhibits')) return cb(null, workingExhibitsDir);
-    return cb(null, workingDocumentsDir);
+    const paths = getSessionPaths(req.sessionId);
+    if (req.path.includes('/exhibits')) return cb(null, paths.workingExhibitsDir);
+    return cb(null, paths.workingDocumentsDir);
   },
   filename: (req, file, cb) => cb(null, file.originalname),
 });
@@ -3044,11 +3045,17 @@ app.post('/api/v1/status/cycle', (req, res) => {
 app.post('/api/v1/document/upload', upload.single('file'), (req, res) => {
   // Normalize to default.docx working copy when name differs
   const uploaded = req.file?.path;
-  if (!uploaded) return res.status(400).json({ error: 'No file' });
+  console.log('[UPLOAD] Received file:', uploaded, 'sessionId:', req.sessionId);
+  if (!uploaded) {
+    console.error('[UPLOAD] No file in request');
+    return res.status(400).json({ error: 'No file' });
+  }
   const paths = getSessionPaths(req.sessionId);
   const dest = path.join(paths.workingDocumentsDir, 'default.docx');
+  console.log('[UPLOAD] Destination:', dest);
   try {
     fs.copyFileSync(uploaded, dest);
+    console.log('[UPLOAD] File copied successfully');
     const userId = req.body?.userId || 'user1';
     const platform = req.query?.platform || req.body?.platform || 'web';
     bumpRevision();
@@ -3073,7 +3080,8 @@ app.post('/api/v1/document/upload', upload.single('file'), (req, res) => {
     broadcast({ type: 'documentUpload', name: 'default.docx' });
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: 'Upload failed' });
+    console.error('[UPLOAD] Error:', e);
+    res.status(500).json({ error: 'Upload failed', detail: e.message });
   }
 });
 
@@ -4802,13 +4810,28 @@ app.post('/api/v1/compile', async (req, res) => {
     const paths = getSessionPaths(req.sessionId);
     const outName = `packet-${Date.now()}.pdf`;
     const outPath = path.join(paths.compiledDir, outName);
+    
+    // Ensure compiled directory exists
+    if (!fs.existsSync(paths.compiledDir)) {
+      console.log('[COMPILE] Creating compiled directory:', paths.compiledDir);
+      fs.mkdirSync(paths.compiledDir, { recursive: true });
+    }
+    
     // 1) Resolve current document path (DOCX)
     const docPath = resolveDefaultDocPath(req.sessionId);
+    console.log('[COMPILE] Document path:', docPath, 'exists:', fs.existsSync(docPath));
     if (!fs.existsSync(docPath)) return res.status(404).json({ error: 'no_default_doc' });
+    
     // 2) Convert to PDF using LibreOffice (soffice)
     const tempDocPdf = path.join(paths.compiledDir, `doc-${Date.now()}.pdf`);
+    console.log('[COMPILE] Converting DOCX to PDF...');
     const convertedPath = await convertDocxToPdf(docPath, tempDocPdf);
-    if (!convertedPath || !fs.existsSync(convertedPath)) return res.status(500).json({ error: 'convert_failed' });
+    console.log('[COMPILE] Conversion result:', convertedPath, 'exists:', convertedPath && fs.existsSync(convertedPath));
+    if (!convertedPath || !fs.existsSync(convertedPath)) {
+      console.error('[COMPILE] Failed to convert document to PDF');
+      return res.status(500).json({ error: 'convert_failed', detail: 'LibreOffice conversion failed. Is LibreOffice installed?' });
+    }
+    
     // 3) Collect exhibit PDFs
     const exhibitPaths = [];
     for (const n of names) {
@@ -4817,14 +4840,24 @@ app.post('/api/v1/compile', async (req, res) => {
       const p = fs.existsSync(w) ? w : c;
       if (p && fs.existsSync(p) && /\.pdf$/i.test(p)) exhibitPaths.push(p);
     }
+    console.log('[COMPILE] Found', exhibitPaths.length, 'exhibit PDFs');
+    
     // 4) Merge into packet
     const buffers = [];
     buffers.push(fs.readFileSync(convertedPath));
     for (const p of exhibitPaths) {
-      try { buffers.push(fs.readFileSync(p)); } catch {}
+      try { buffers.push(fs.readFileSync(p)); } catch (err) {
+        console.error('[COMPILE] Failed to read exhibit:', p, err);
+      }
     }
+    console.log('[COMPILE] Merging', buffers.length, 'PDFs...');
     const merged = await mergePdfs(buffers);
-    if (!merged) return res.status(500).json({ error: 'merge_failed' });
+    if (!merged) {
+      console.error('[COMPILE] Failed to merge PDFs');
+      return res.status(500).json({ error: 'merge_failed', detail: 'PDF merge failed' });
+    }
+    
+    console.log('[COMPILE] Writing output to:', outPath);
     fs.writeFileSync(outPath, merged);
     try { if (convertedPath && fs.existsSync(convertedPath)) fs.rmSync(convertedPath); } catch {}
     
@@ -4847,10 +4880,12 @@ app.post('/api/v1/compile', async (req, res) => {
       }
     }
     
+    console.log('[COMPILE] Success! URL:', `/compiled/${encodeURIComponent(outName)}`);
     broadcast({ type: 'compile', name: outName });
     return res.json({ ok: true, url: `/compiled/${encodeURIComponent(outName)}` });
   } catch (e) {
-    return res.status(500).json({ error: 'compile_failed' });
+    console.error('[COMPILE] Error:', e);
+    return res.status(500).json({ error: 'compile_failed', detail: e.message });
   }
 });
 
