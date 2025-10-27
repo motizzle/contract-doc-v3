@@ -784,6 +784,28 @@ function buildActivityMessage(type, details = {}) {
         message: `${userLabel} restored "${details.documentTitle || 'document'}" to v${details.version || '—'}${details.previousVersion ? ` (from v${details.previousVersion})` : ''}`
       };
 
+    case 'version:shared':
+      return {
+        action: 'shared version with vendor',
+        target: 'version',
+        details: { 
+          version: details.version,
+          sharedWithVendor: details.sharedWithVendor
+        },
+        message: `${userLabel} shared Version ${details.version} with vendor`
+      };
+
+    case 'version:unshared':
+      return {
+        action: 'removed vendor access',
+        target: 'version',
+        details: { 
+          version: details.version,
+          sharedWithVendor: details.sharedWithVendor
+        },
+        message: `${userLabel} removed vendor access to Version ${details.version}`
+      };
+
     case 'system:error':
       return {
         action: 'encountered error',
@@ -1502,6 +1524,21 @@ function initializeSession(sessionId) {
     fs.copyFileSync(seedVariables, path.join(sessionDir, 'variables.json'));
   } else {
     fs.writeFileSync(path.join(sessionDir, 'variables.json'), '{"variables":{}}');
+  }
+  
+  // Initialize Version 1 metadata (demo document, always shared)
+  const v1MetaPath = path.join(versionsDir, 'v1.json');
+  if (!fs.existsSync(v1MetaPath)) {
+    const v1Meta = {
+      version: 1,
+      savedBy: { userId: 'system', label: 'System' },
+      savedAt: new Date().toISOString(),
+      sharedWithVendor: true,
+      sharedBy: { userId: 'system', label: 'System' },
+      sharedAt: new Date().toISOString(),
+      note: 'Demo Document'
+    };
+    fs.writeFileSync(v1MetaPath, JSON.stringify(v1Meta, null, 2));
   }
   
   // Initialize empty state files
@@ -3104,7 +3141,14 @@ app.post('/api/v1/save-progress', (req, res) => {
       const ver = newVersion;
       const vDoc = path.join(paths.versionsDir, `v${ver}.docx`);
       fs.writeFileSync(vDoc, bytes);
-      const meta = { version: ver, savedBy: updatedState.updatedBy || { userId, label: userId }, savedAt: new Date().toISOString() };
+      const meta = { 
+        version: ver, 
+        savedBy: updatedState.updatedBy || { userId, label: userId }, 
+        savedAt: new Date().toISOString(),
+        sharedWithVendor: false,  // DEFAULT: not shared with vendors
+        sharedBy: null,
+        sharedAt: null
+      };
       fs.writeFileSync(path.join(paths.versionsDir, `v${ver}.json`), JSON.stringify(meta, null, 2));
       broadcast({ type: 'versions:update', sessionId: req.sessionId });
     } catch {}
@@ -3141,6 +3185,7 @@ app.post('/api/v1/save-progress', (req, res) => {
 app.get('/api/v1/versions', (req, res) => {
   try {
     const paths = getSessionPaths(req.sessionId);
+    const userId = req.query.userId || 'user1';
     const items = [];
     try {
       if (fs.existsSync(paths.versionsDir)) {
@@ -3148,14 +3193,39 @@ app.get('/api/v1/versions', (req, res) => {
           const m = /^v(\d+)\.json$/i.exec(f);
           if (!m) continue;
           const ver = Number(m[1]);
-          try { const j = JSON.parse(fs.readFileSync(path.join(paths.versionsDir, f), 'utf8')); items.push({ version: ver, savedBy: j.savedBy || null, savedAt: j.savedAt || null }); } catch {}
+          try { 
+            const j = JSON.parse(fs.readFileSync(path.join(paths.versionsDir, f), 'utf8')); 
+            items.push({ 
+              version: ver, 
+              savedBy: j.savedBy || null, 
+              savedAt: j.savedAt || null,
+              sharedWithVendor: j.sharedWithVendor !== undefined ? j.sharedWithVendor : false,
+              sharedBy: j.sharedBy || null,
+              sharedAt: j.sharedAt || null
+            }); 
+          } catch {}
         }
       }
     } catch {}
     const hasV1 = items.some(it => Number(it.version) === 1);
-    if (!hasV1) items.push({ version: 1, savedBy: { userId: 'system', label: 'System' }, savedAt: serverState.lastUpdated || null });
+    if (!hasV1) items.push({ 
+      version: 1, 
+      savedBy: { userId: 'system', label: 'System' }, 
+      savedAt: serverState.lastUpdated || null,
+      sharedWithVendor: true,  // Always shared - this is the demo document
+      sharedBy: { userId: 'system', label: 'System' },
+      sharedAt: serverState.lastUpdated || null,
+      note: 'Demo Document'
+    });
     items.sort((a, b) => (b.version || 0) - (a.version || 0));
-    res.json({ items });
+    
+    // Filter versions based on user role
+    const filteredItems = filterVersionsForUser(userId, items);
+    
+    // Check if user can share versions
+    const canShare = canShareVersions(userId);
+    
+    res.json({ items: filteredItems, canShare });
   } catch { res.status(500).json({ error: 'versions_list_failed' }); }
 });
 
@@ -3164,7 +3234,43 @@ app.get('/api/v1/versions/:n', (req, res) => {
   try {
     const paths = getSessionPaths(req.sessionId);
     const n = Number(req.params.n);
+    const userId = req.query.userId || 'user1';
+    
     if (!Number.isFinite(n) || n < 1) return res.status(400).json({ error: 'invalid_version' });
+    
+    // Load all versions to check permissions
+    const allVersions = [];
+    try {
+      if (fs.existsSync(paths.versionsDir)) {
+        for (const f of fs.readdirSync(paths.versionsDir)) {
+          const m = /^v(\d+)\.json$/i.exec(f);
+          if (!m) continue;
+          const ver = Number(m[1]);
+          try { 
+            const j = JSON.parse(fs.readFileSync(path.join(paths.versionsDir, f), 'utf8')); 
+            allVersions.push({ 
+              version: ver,
+              sharedWithVendor: j.sharedWithVendor !== undefined ? j.sharedWithVendor : false
+            }); 
+          } catch {}
+        }
+      }
+    } catch {}
+    
+    // Add version 1 if not present
+    if (!allVersions.some(v => v.version === 1)) {
+      allVersions.push({ version: 1, sharedWithVendor: false });
+    }
+    
+    // Check if user has permission to access this version
+    if (!canAccessVersion(userId, n, allVersions)) {
+      console.warn(`⛔ User ${userId} denied access to version ${n}`);
+      return res.status(403).json({ 
+        error: 'access_denied', 
+        message: 'This version is not available to you' 
+      });
+    }
+    
     let p = null;
     if (n === 1) p = path.join(canonicalDocumentsDir, 'default.docx');
     else {
@@ -3204,6 +3310,41 @@ app.post('/api/v1/versions/view', (req, res) => {
     if (!Number.isFinite(n) || n < 1) return res.status(400).json({ error: 'invalid_version' });
     const originPlatform = String(req.body?.platform || req.query?.platform || 'web');
     const actorUserId = req.body?.userId || 'user1';
+    
+    // Load all versions to check permissions
+    const paths = getSessionPaths(req.sessionId);
+    const allVersions = [];
+    try {
+      if (fs.existsSync(paths.versionsDir)) {
+        for (const f of fs.readdirSync(paths.versionsDir)) {
+          const m = /^v(\d+)\.json$/i.exec(f);
+          if (!m) continue;
+          const ver = Number(m[1]);
+          try { 
+            const j = JSON.parse(fs.readFileSync(path.join(paths.versionsDir, f), 'utf8')); 
+            allVersions.push({ 
+              version: ver,
+              sharedWithVendor: j.sharedWithVendor !== undefined ? j.sharedWithVendor : false
+            }); 
+          } catch {}
+        }
+      }
+    } catch {}
+    
+    // Add version 1 if not present
+    if (!allVersions.some(v => v.version === 1)) {
+      allVersions.push({ version: 1, sharedWithVendor: false });
+    }
+    
+    // Check if user has permission to view this version
+    if (!canAccessVersion(actorUserId, n, allVersions)) {
+      console.warn(`⛔ User ${actorUserId} denied access to view version ${n}`);
+      return res.status(403).json({ 
+        error: 'access_denied', 
+        message: `Version ${n} is not shared with vendors` 
+      });
+    }
+    
     // Log activity: user viewed a specific version (skip in test mode)
     if (!testMode) {
       try { 
@@ -3224,6 +3365,139 @@ app.post('/api/v1/versions/view', (req, res) => {
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'version_view_failed' }); }
 });
+
+// Share/Unshare version with vendors
+app.post('/api/v1/versions/:n/share', (req, res) => {
+  try {
+    const versionNumber = Number(req.params.n);
+    const userId = req.body?.userId || 'user1';
+    const shared = !!req.body?.shared;
+    
+    if (!Number.isFinite(versionNumber) || versionNumber < 1) {
+      return res.status(400).json({ error: 'invalid_version' });
+    }
+    
+    // Check if user has permission to share versions (editors only)
+    if (!canShareVersions(userId)) {
+      return res.status(403).json({ 
+        error: 'permission_denied', 
+        message: 'Only editors can share versions' 
+      });
+    }
+    
+    const paths = getSessionPaths(req.sessionId);
+    const versionJsonPath = path.join(paths.versionsDir, `v${versionNumber}.json`);
+    
+    // Version 1 is special (canonical demo document) - always shared, cannot be unshared
+    if (versionNumber === 1) {
+      return res.status(400).json({ 
+        error: 'cannot_modify_demo', 
+        message: 'Version 1 is the demo document and is always shared with vendors. It cannot be unshared.' 
+      });
+    } else {
+      // Check if version exists
+      if (!fs.existsSync(versionJsonPath)) {
+        return res.status(404).json({ 
+          error: 'version_not_found', 
+          message: `Version ${versionNumber} does not exist` 
+        });
+      }
+      
+      // Update version metadata
+      const versionMeta = JSON.parse(fs.readFileSync(versionJsonPath, 'utf8'));
+      versionMeta.sharedWithVendor = shared;
+      versionMeta.sharedBy = shared ? { userId, label: getUserLabel(userId) } : null;
+      versionMeta.sharedAt = shared ? new Date().toISOString() : null;
+      fs.writeFileSync(versionJsonPath, JSON.stringify(versionMeta, null, 2));
+    }
+    
+    // Log activity (skip in test mode)
+    if (!testMode) {
+      try {
+        const activityType = shared ? 'version:shared' : 'version:unshared';
+        logActivity(req.sessionId, activityType, userId, { 
+          version: versionNumber,
+          sharedWithVendor: shared
+        });
+      } catch (err) {
+        console.error('Error logging version sharing activity:', err);
+      }
+    }
+    
+    // Broadcast SSE event to all clients
+    broadcast({ 
+      type: 'version:shared',
+      sessionId: req.sessionId,
+      version: versionNumber,
+      sharedWithVendor: shared,
+      sharedBy: shared ? { userId, label: getUserLabel(userId) } : null,
+      sharedAt: shared ? new Date().toISOString() : null,
+      timestamp: Date.now()
+    });
+    
+    // Return updated version metadata
+    const updatedMeta = JSON.parse(fs.readFileSync(versionJsonPath, 'utf8'));
+    res.json({ 
+      ok: true, 
+      version: updatedMeta
+    });
+    
+  } catch (e) {
+    console.error('❌ Version sharing error:', e.message);
+    res.status(500).json({ error: 'version_sharing_failed' });
+  }
+});
+
+// Version Sharing Helper Functions
+function canAccessVersion(userId, versionNumber, versionData) {
+  // Get user role
+  const user = loadUsers().find(u => u.id === userId);
+  const role = user?.role || 'viewer';
+  
+  console.log(`[canAccessVersion] userId: ${userId}, user:`, user, `role: ${role}`);
+  
+  // Editors and internal users (suggester, viewer) can access all versions
+  if (role === 'editor' || role === 'suggester' || role === 'viewer') {
+    return true;
+  }
+  
+  // Vendors can only access shared versions
+  if (role === 'vendor') {
+    const version = versionData.find(v => v.version === versionNumber);
+    return version && version.sharedWithVendor === true;
+  }
+  
+  return false;
+}
+
+function filterVersionsForUser(userId, allVersions) {
+  const user = loadUsers().find(u => u.id === userId);
+  const role = user?.role || 'viewer';
+  
+  console.log(`[filterVersionsForUser] userId: ${userId}, user:`, user, `role: ${role}`);
+  
+  // Internal users see all versions
+  if (role !== 'vendor') {
+    return allVersions;
+  }
+  
+  // Vendors only see shared versions
+  return allVersions.filter(v => v.sharedWithVendor === true);
+}
+
+function canShareVersions(userId) {
+  const user = loadUsers().find(u => u.id === userId);
+  const role = user?.role || 'viewer';
+  
+  console.log(`[canShareVersions] userId: ${userId}, user:`, user, `role: ${role}, canShare: ${role === 'editor'}`);
+  
+  return role === 'editor';
+}
+
+function getUserLabel(userId) {
+  const user = loadUsers().find(u => u.id === userId);
+  return user?.label || userId;
+}
 
 // Approvals API
 app.get('/api/v1/approvals', (req, res) => {
