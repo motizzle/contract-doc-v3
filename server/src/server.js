@@ -4623,21 +4623,22 @@ app.post('/api/v1/events/client', async (req, res) => {
 // Helper function for demo AI response when LLM is unavailable
 function getDemoAIResponse() {
   const jokes = [
-    "Why don't contracts ever get lonely? Because they're always surrounded by clauses!",
-    "What did the attorney say when they found a typo in the contract? 'That's a grave period!'",
-    "Why did the Word document go to therapy? It had too many issues with commitment!",
-    "How do documents stay in shape? They do cross-references!",
-    "Why don't legal documents play hide and seek? Because good luck finding the disclaimers!",
-    "What's a lawyer's favorite punctuation mark? The fine print!",
-    "Why was the contract feeling stressed? Too many obligations and not enough consideration!",
-    "How do you know a document is well-organized? It has its own table of contents!",
-    "Why did the paragraph break up with the sentence? It needed more space!",
-    "What do you call a document that tells jokes? A Microsoft Word of humor!"
+    { setup: "Why don't contracts ever get lonely?", punchline: "Because they're always surrounded by clauses!" },
+    { setup: "What did the attorney say when they found a typo in the contract?", punchline: "'That's a grave period!'" },
+    { setup: "Why did the Word document go to therapy?", punchline: "It had too many issues with commitment!" },
+    { setup: "How do documents stay in shape?", punchline: "They do cross-references!" },
+    { setup: "Why don't legal documents play hide and seek?", punchline: "Because good luck finding the disclaimers!" },
+    { setup: "What's a lawyer's favorite punctuation mark?", punchline: "The fine print!" },
+    { setup: "Why was the contract feeling stressed?", punchline: "Too many obligations and not enough consideration!" },
+    { setup: "How do you know a document is well-organized?", punchline: "It has its own table of contents!" },
+    { setup: "Why did the paragraph break up with the sentence?", punchline: "It needed more space!" },
+    { setup: "What do you call a document that tells jokes?", punchline: "A Microsoft Word of humor!" }
   ];
   
   const randomJoke = jokes[Math.floor(Math.random() * jokes.length)];
+  const jokeText = `${randomJoke.setup}\n${randomJoke.punchline}`;
   
-  return `🤖 **AI Demo Mode**\n\nThis is a demo environment. In the real world the AI would be your companion, aware of what's happening and helping whenever you need it (in a closed loop process, where your data is protected).\n\nFor now, here's a silly joke to brighten your day:\n\n\n${randomJoke}\n\n`;
+  return `🤖 **AI Demo Mode**\n\nThis is a demo environment. In the real world the AI would be your companion, aware of what's happening and helping whenever you need it (in a closed loop process, where your data is protected).\n\nFor now, here's a silly joke to brighten your day:\n\n${jokeText}\n\n`;
 }
 
 // Helper function for fallback scripted responses
