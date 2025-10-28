@@ -4636,7 +4636,7 @@ function getDemoAIResponse() {
   ];
   
   const randomJoke = jokes[Math.floor(Math.random() * jokes.length)];
-  const jokeText = `${randomJoke.setup}\n${randomJoke.punchline}`;
+  const jokeText = `${randomJoke.setup}\n\n${randomJoke.punchline}`;
   
   return `🤖 **AI Demo Mode**\n\nThis is a demo environment. In the real world the AI would be your companion, aware of what's happening and helping whenever you need it (in a closed loop process, where your data is protected).\n\nFor now, here's a silly joke to brighten your day:\n\n${jokeText}\n\n`;
 }
