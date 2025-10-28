@@ -3613,6 +3613,11 @@ app.post('/api/v1/versions/:n/share', writeLimiter, validateVersionParam, valida
 
 // Version Sharing Helper Functions
 function canAccessVersion(userId, versionNumber, versionData) {
+  // Version 1 (canonical demo document) is always accessible to everyone
+  if (versionNumber === 1) {
+    return true;
+  }
+  
   // Get user role
   const user = loadUsers().find(u => u.id === userId);
   const role = user?.role || 'viewer';
