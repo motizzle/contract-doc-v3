@@ -50,24 +50,35 @@ The automated test suite (`server/e2e/hardening-full-flow.spec.ts`) covers:
 
 ## Quick Start
 
-**Run all hardening tests:**
+**Run ALL tests (API + UI) automatically:**
+```bash
+tools\scripts\run-all-tests.bat
+```
+This script:
+- Starts the server
+- Runs API tests (Jest)
+- Runs UI tests (Playwright)  
+- Shows summary
+- Cleans up
+
+**Run only UI tests:**
 ```bash
 cd server
-npm start  # In one terminal (wait for "Server running")
-npm run test:ui  # In another terminal
+npm start  # Terminal 1
+npm run test:ui  # Terminal 2
 ```
 
-**Watch tests run in browser (see what's happening):**
+**Watch tests run in browser:**
 ```bash
 npm run test:ui:headed
 ```
 
-**Debug a failing test (step through with Playwright Inspector):**
+**Debug a failing test:**
 ```bash
 npm run test:ui:debug
 ```
 
-**Expected:** All tests pass (green ✓), no console errors reported
+**Expected:** All tests pass (green ✓), no console errors
 
 ---
 
