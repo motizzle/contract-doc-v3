@@ -16,10 +16,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "$json = Get-Content pack
 echo Version set to 1.0.0
 echo.
 
-echo Step 2: Starting server...
+echo Step 2: Kill any existing servers and start fresh...
+powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 4001 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }"
+timeout /t 2 /nobreak >nul
+echo Old servers stopped
+echo.
+
+echo Starting server on https://localhost:4001...
 start /B cmd /c "npm start"
 timeout /t 5 /nobreak >nul
-echo Server started on https://localhost:4001
+echo Server started
 echo.
 
 echo Step 3: Open your browser
