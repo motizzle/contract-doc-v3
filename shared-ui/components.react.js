@@ -1936,7 +1936,6 @@
         } catch { return { title: '', message: '' }; }
       })();
 
-      const { updateAvailable, updateDismissed, serverVersion } = React.useContext(StateContext);
       const CLIENT_VERSION = '1.0.0'; // Will be replaced with actual version at build time
       
       const handleRefreshNow = () => {
