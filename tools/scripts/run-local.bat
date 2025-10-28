@@ -57,35 +57,29 @@ echo [4/8] Setting up environment...
 echo   - Environment configured (AI uses demo mode with jokes)
 echo.
 
-REM Check if main server is already running
-echo [5/8] Checking main server...
+REM Kill and restart main server (ensure code changes take effect)
+echo [5/8] Restarting main server...
 set SCRIPT_DIR=%~dp0
-netstat -ano | findstr :4001 >nul 2>&1
-if %ERRORLEVEL% EQU 0 (
-  echo   - Server already running on port 4001
-) else (
-  echo   - Starting main server...
-  start /MIN powershell -NoProfile -ExecutionPolicy Bypass -Command "cd '%SCRIPT_DIR%..\..\server'; npm start"
-  echo   - Main server starting on https://localhost:4001
-  echo   - (Server will open in minimized window)
-  echo   - Waiting for server to be ready...
-  timeout /t 5 /nobreak >nul
-)
+powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 4001 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }"
+timeout /t 2 /nobreak >nul
+echo   - Starting main server...
+start /MIN powershell -NoProfile -ExecutionPolicy Bypass -Command "cd '%SCRIPT_DIR%..\..\server'; npm start"
+echo   - Main server starting on https://localhost:4001
+echo   - (Server will open in minimized window)
+echo   - Waiting for server to be ready...
+timeout /t 5 /nobreak >nul
 echo.
 
-REM Check if add-in dev server is running
-echo [6/8] Checking add-in dev server...
-netstat -ano | findstr :4000 >nul 2>&1
-if %ERRORLEVEL% EQU 0 (
-  echo   - Add-in dev server already running on port 4000
-) else (
-  echo   - Starting add-in dev server...
-  start /MIN powershell -NoProfile -ExecutionPolicy Bypass -Command "cd '%SCRIPT_DIR%..\..\addin'; npm run dev-server"
-  echo   - Add-in dev server starting on https://localhost:4000
-  echo   - (Server will open in minimized window)
-  echo   - Waiting for dev server to be ready...
-  timeout /t 5 /nobreak >nul
-)
+REM Kill and restart add-in dev server (ensure code changes take effect)
+echo [6/8] Restarting add-in dev server...
+powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 4000 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }"
+timeout /t 2 /nobreak >nul
+echo   - Starting add-in dev server...
+start /MIN powershell -NoProfile -ExecutionPolicy Bypass -Command "cd '%SCRIPT_DIR%..\..\addin'; npm run dev-server"
+echo   - Add-in dev server starting on https://localhost:4000
+echo   - (Server will open in minimized window)
+echo   - Waiting for dev server to be ready...
+timeout /t 5 /nobreak >nul
 echo.
 
 REM Clear browser session data automatically
