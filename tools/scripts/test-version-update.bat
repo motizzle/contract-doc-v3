@@ -3,8 +3,17 @@ REM Test Version Update Detection Feature
 
 echo.
 echo ========================================
-echo Test Version Update Detection
+echo Test Version Update Detection (WEB ONLY)
 echo ========================================
+echo.
+echo NOTE: This tests port 4001 only (web interface)
+echo       Port 4000 (add-in) is NOT started
+echo.
+echo To test with Word add-in:
+echo   1. Open another terminal
+echo   2. Run: cd addin
+echo   3. Run: npm run dev-server
+echo   4. Wait for port 4000 to start
 echo.
 
 REM Navigate to project root
