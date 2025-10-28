@@ -17,6 +17,7 @@ const LLM_PROVIDER = process.env.LLM_PROVIDER || 'ollama'; // 'ollama' or 'opena
 const LLM_USE_OPENAI = String(process.env.LLM_USE_OPENAI || '').toLowerCase() === 'true';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2:3b'; // Better reasoning, still fast
+const AI_DEMO_MODE = String(process.env.AI_DEMO_MODE || '').toLowerCase() === 'true'; // Set to 'true' for deployed environments without AI
 
 // JWT Configuration - Session authentication
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production-min-32-chars';
@@ -2024,6 +2025,18 @@ const upload = multer({ storage });
 
 // API v1
 app.get('/api/v1/health', (req, res) => {
+  // Check if in demo mode first
+  if (AI_DEMO_MODE) {
+    return res.json({
+      ok: true,
+      superdoc: SUPERDOC_BASE_URL,
+      llmEnabled: false,
+      llmProvider: 'demo',
+      llmModel: null,
+      aiDemoMode: true
+    });
+  }
+  
   const llmEnabled = (LLM_PROVIDER === 'ollama') ||
                        (LLM_PROVIDER === 'openai' && !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'mock');
 
@@ -2042,7 +2055,8 @@ app.get('/api/v1/health', (req, res) => {
     superdoc: SUPERDOC_BASE_URL,
     llmEnabled: llmInfo.enabled,
     llmProvider: llmInfo.provider,
-    llmModel: llmInfo.enabled ? llmInfo.model : null
+    llmModel: llmInfo.enabled ? llmInfo.model : null,
+    aiDemoMode: false
   });
 });
 
@@ -4580,26 +4594,52 @@ app.post('/api/v1/events/client', async (req, res) => {
     }
 
     if (type === 'chat' && text) {
-      try {
-        const systemPrompt = await getSystemPrompt(req.sessionId);
-        const result = await generateReply({ messages: [{ role: 'user', content: text }], systemPrompt });
-        if (result && result.ok && result.content) {
-          const replyText = String(result.content).trim();
+      // Check if we're in demo mode (no AI available)
+      if (AI_DEMO_MODE) {
+        const demoResponse = getDemoAIResponse();
+        broadcast({
+          type: 'chat',
+          payload: { text: demoResponse, MessagePlatform: originPlatform },
+          userId: 'bot',
+          role: 'assistant',
+          platform: 'server'
+        });
+      } else {
+        // Try to use real AI (Ollama or OpenAI)
+        try {
+          const systemPrompt = await getSystemPrompt(req.sessionId);
+          const result = await generateReply({ messages: [{ role: 'user', content: text }], systemPrompt });
+          if (result && result.ok && result.content) {
+            const replyText = String(result.content).trim();
+              broadcast({
+                type: 'chat',
+              payload: { text: replyText, MessagePlatform: originPlatform },
+                userId: 'bot',
+                role: 'assistant',
+                platform: 'server'
+              });
+              // Save bot reply to chat history
+              try {
+                const botMessage = `[bot] ${replyText}`;
+                saveChatMessage(userId, botMessage);
+              } catch {}
+          } else {
+            // LLM failed - send demo fallback response with joke
+            const msg = `LLM error: ${result && result.error ? result.error : 'Unknown error'}`;
+            logActivity(req.sessionId, 'system:error', 'system', { error: msg, source: 'llm' });
+            
+            const demoResponse = getDemoAIResponse();
             broadcast({
               type: 'chat',
-            payload: { text: replyText, MessagePlatform: originPlatform },
+              payload: { text: demoResponse, MessagePlatform: originPlatform },
               userId: 'bot',
               role: 'assistant',
               platform: 'server'
             });
-            // Save bot reply to chat history
-            try {
-              const botMessage = `[bot] ${replyText}`;
-              saveChatMessage(userId, botMessage);
-            } catch {}
-        } else {
-          // LLM failed - send demo fallback response with joke
-          const msg = `LLM error: ${result && result.error ? result.error : 'Unknown error'}`;
+          }
+        } catch (e) {
+          // LLM exception - send demo fallback response with joke
+          const msg = `LLM error: ${e && e.message ? e.message : 'Unknown error'}`;
           logActivity(req.sessionId, 'system:error', 'system', { error: msg, source: 'llm' });
           
           const demoResponse = getDemoAIResponse();
@@ -4611,19 +4651,6 @@ app.post('/api/v1/events/client', async (req, res) => {
             platform: 'server'
           });
         }
-      } catch (e) {
-        // LLM exception - send demo fallback response with joke
-        const msg = `LLM error: ${e && e.message ? e.message : 'Unknown error'}`;
-        logActivity(req.sessionId, 'system:error', 'system', { error: msg, source: 'llm' });
-        
-        const demoResponse = getDemoAIResponse();
-        broadcast({
-          type: 'chat',
-          payload: { text: demoResponse, MessagePlatform: originPlatform },
-          userId: 'bot',
-          role: 'assistant',
-          platform: 'server'
-        });
       }
     } else if (type === 'chat:stop') {
       try { broadcast({ type: 'chat:reset', payload: { reason: 'user_stop', MessagePlatform: originPlatform }, userId, role: 'assistant', platform: 'server' }); } catch {}
@@ -4652,7 +4679,7 @@ function getDemoAIResponse() {
   
   const randomJoke = jokes[Math.floor(Math.random() * jokes.length)];
   
-  return `🤖 **AI Demo Mode**\n\nThis is a demo environment. In a production deployment with Ollama configured, the AI would analyze your document and provide intelligent responses to your questions.\n\nFor now, here's a silly joke to brighten your day:\n\n${randomJoke}\n\n_To enable real AI functionality, configure the Ollama service in your deployment environment._`;
+  return `🤖 **AI Demo Mode**\n\nThis is a demo environment. In the real world the AI would be your companion, aware of what's happening and helping whenever you need it (in a closed loop process, where your data is protected).\n\nFor now, here's a silly joke to brighten your day:\n\n${randomJoke}\n\n`;
 }
 
 // Helper function for fallback scripted responses
