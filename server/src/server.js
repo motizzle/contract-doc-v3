@@ -4346,16 +4346,56 @@ app.post('/api/v1/checkout', (req, res) => {
     return res.status(409).json({ error: `Already checked out by ${state.checkedOutBy}` });
   }
   
-  // Check if client is on current version
+  // Check if client is on latest *accessible* version (respects vendor permissions)
   const currentVersion = state.documentVersion || 1;
-  const isOutdated = clientVersion < currentVersion;
+  
+  // For vendors, determine the latest version they have access to
+  const userRole = getUserRole(userId);
+  const isVendor = userRole === 'vendor';
+  
+  let latestAccessibleVersion = currentVersion;
+  
+  if (isVendor) {
+    // Get all versions and filter by what vendor can access
+    const paths = getSessionPaths(req.sessionId);
+    const versionsDir = paths.versionsDir;
+    
+    if (fs.existsSync(versionsDir)) {
+      const files = fs.readdirSync(versionsDir);
+      const versionFiles = files.filter(f => f.match(/^v(\d+)\.json$/));
+      
+      const accessibleVersions = versionFiles
+        .map(f => {
+          const num = parseInt(f.match(/^v(\d+)\.json$/)[1], 10);
+          const metaPath = path.join(versionsDir, f);
+          try {
+            const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+            // Version 1 is always shared, or check sharedWithVendor flag
+            const isAccessible = num === 1 || meta.sharedWithVendor === true;
+            return { version: num, accessible: isAccessible };
+          } catch {
+            return { version: num, accessible: num === 1 };
+          }
+        })
+        .filter(v => v.accessible)
+        .map(v => v.version);
+      
+      if (accessibleVersions.length > 0) {
+        latestAccessibleVersion = Math.max(...accessibleVersions);
+      } else {
+        latestAccessibleVersion = 1; // Fallback to v1 which is always accessible
+      }
+    }
+  }
+  
+  const isOutdated = clientVersion < latestAccessibleVersion;
   
   if (isOutdated && !req.body?.forceCheckout) {
     return res.status(409).json({ 
       error: 'version_outdated', 
-      currentVersion, 
+      currentVersion: latestAccessibleVersion, // Return latest accessible, not absolute latest
       clientVersion,
-      message: 'Document has been updated. Do you want to check out the most recent version?'
+      message: `Document has been updated. Do you want to check out version ${latestAccessibleVersion}?`
     });
   }
   
