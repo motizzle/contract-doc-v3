@@ -4207,7 +4207,7 @@
     function VersionsPanel() {
       const API_BASE = getApiBase();
       const stateContext = React.useContext(StateContext);
-      const { config, addLog, viewingVersion, setViewingVersion, setDocumentSource } = stateContext;
+      const { config, addLog, viewingVersion, setViewingVersion, setDocumentSource, users } = stateContext;
       const [items, setItems] = React.useState([]);
       const [canShare, setCanShare] = React.useState(false);
       const [confirm, setConfirm] = React.useState(null);
@@ -4341,7 +4341,7 @@
           try { window.removeEventListener('version:shared', onVersionShared); } catch {}
           try { window.removeEventListener('version:view', onVersionView); } catch {}
         };
-      }, [API_BASE, addLog, setDocumentSource, setViewingVersion]);
+      }, [API_BASE, addLog, setDocumentSource, setViewingVersion, users, viewingVersion]);
       const isCurrent = (v) => { try { const cur = Number(config?.documentVersion || 1); return Number(v) === cur; } catch { return false; } };
       const isViewing = (v) => { try { return Number(v) === Number(viewingVersion || 0); } catch { return false; } };
         const onClickView = (v) => {
