@@ -8,12 +8,31 @@
 
 ## Pre-Test Setup
 
-1. Open deployed version: https://wordftw.onrender.com
-2. Open browser console (F12)
-3. Clear console
-4. Note starting time
+**Why Local?** Test YOUR changes before deploying. Fast iteration, safe to break things.
 
-**Expected:** Clean console, no errors on page load
+**Steps:**
+1. Start local server:
+   ```bash
+   cd server
+   npm start
+   ```
+2. Wait for "Server running on https://localhost:4001"
+3. Open https://localhost:4001 in browser
+4. Accept certificate warning (self-signed cert is expected)
+5. Open browser console (F12)
+6. Clear console
+7. Note starting time
+
+**Expected:** 
+- ✅ Server starts without errors
+- ✅ Page loads at https://localhost:4001
+- ✅ Clean console, no errors on page load
+- ✅ Sidebar loads with all panels
+
+**If server won't start:**
+- Check port 4001 isn't already in use: `netstat -ano | findstr :4001`
+- Kill any old node processes: `taskkill /F /IM node.exe`
+- Try again
 
 ---
 
@@ -695,16 +714,50 @@
 
 ## Next Steps
 
-**If ALL tests pass:**
-- ✅ Prototype is stable
-- ✅ Ready for demo
-- ✅ Document any known quirks
+**If ALL tests pass locally:**
+- ✅ Prototype is stable locally
+- ✅ Run automated tests: `cd server && npm test`
+- ✅ Commit and push fixes
+- ✅ Merge to main (when ready)
+- ✅ Deploy to Render
+- ✅ Run quick smoke test on deployed (see below)
 
 **If ANY tests fail:**
 - 🔧 Fix critical issues first
 - 🔧 Fix major issues next
 - 🔧 Document minor issues for later
 - 🔧 Re-run failed tests after fixes
+- 🔧 DO NOT deploy until local tests pass
+
+---
+
+## Deployed Smoke Test (5 minutes)
+
+**When:** AFTER merging to main and deploy completes
+
+**Why:** Verify deploy succeeded and no environment-specific issues
+
+**How:**
+1. Open https://wordftw.onrender.com
+2. Check console for errors
+3. Click a few buttons:
+   - Upload document
+   - Create snapshot
+   - Share version
+   - Switch users
+4. Verify basic functionality works
+
+**Expected:**
+- ✅ App loads
+- ✅ No console errors
+- ✅ Basic buttons work
+
+**If smoke test fails:**
+- 🚨 Rollback deploy or hotfix immediately
+- 🚨 Investigate environment-specific issue
+- 🚨 Fix locally, test, redeploy
+
+**Note:** Deployed testing is NOT for development. It's a final safety check after deployment.
 
 ---
 
