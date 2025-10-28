@@ -4152,8 +4152,8 @@ app.post('/api/v1/scenarios/save', (req, res) => {
     if (!fs.existsSync(versionsDestDir)) {
       fs.mkdirSync(versionsDestDir, { recursive: true });
     }
-    if (fs.existsSync(versionsDir)) {
-      const versionFiles = fs.readdirSync(versionsDir);
+    if (fs.existsSync(paths.versionsDir)) {
+      const versionFiles = fs.readdirSync(paths.versionsDir);
       for (const vFile of versionFiles) {
         if (vFile.endsWith('.docx') || vFile.endsWith('.json')) {
           const srcPath = path.join(paths.versionsDir, vFile);
