@@ -1,14 +1,14 @@
 {
-  "checkedOutBy": "user2",
-  "documentVersion": 2,
-  "title": "Redlined & Signed",
-  "status": "draft",
-  "lastUpdated": "2025-10-28T04:30:13.017Z",
-  "revision": 271,
+  "checkedOutBy": null,
+  "documentVersion": 1,
+  "title": "Test Scenario Document",
+  "status": "final",
+  "lastUpdated": "2025-10-28T06:57:25.598Z",
+  "revision": 381,
   "updatedBy": {
-    "userId": "user2",
-    "label": "Kent Uckey"
+    "userId": "user1",
+    "label": "Warren Peace"
   },
   "updatedPlatform": "word",
-  "checkedOutByAt": 1761625812066
+  "checkedOutByAt": 1761634642776
 }

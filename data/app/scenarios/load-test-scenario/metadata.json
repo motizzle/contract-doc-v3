@@ -1,0 +1,19 @@
+{
+  "id": "load-test-scenario",
+  "name": "Load Test Scenario",
+  "description": "For testing load",
+  "slug": "load-test-scenario",
+  "created": "2025-10-28T06:57:24.961Z",
+  "createdBy": {
+    "userId": "user1",
+    "label": "Warren Peace"
+  },
+  "lastUsed": null,
+  "stats": {
+    "activities": 0,
+    "messages": 0,
+    "variables": 20,
+    "approvals": 0,
+    "versions": 0
+  }
+}

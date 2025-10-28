@@ -1,13 +1,13 @@
 {
   "messages": [
     {
-      "messageId": "msg-1761611845961-e9txhyjsl",
+      "messageId": "msg-1761634646223-nudevawgt",
       "title": "User 2",
       "createdBy": {
         "userId": "user1",
         "label": "Warren Peace"
       },
-      "createdAt": 1761611845961,
+      "createdAt": 1761634646223,
       "participants": [
         {
           "userId": "user2",
@@ -20,7 +20,7 @@
       "external": false,
       "privileged": false,
       "state": "open",
-      "lastPostAt": 1761611845961,
+      "lastPostAt": 1761634646223,
       "unreadBy": [
         "user2"
       ],
@@ -29,41 +29,13 @@
       "deletedAt": null
     },
     {
-      "messageId": "msg-1761611846332-7522hwum8",
-      "title": "User 2",
-      "createdBy": {
-        "userId": "user1",
-        "label": "Warren Peace"
-      },
-      "createdAt": 1761611846332,
-      "participants": [
-        {
-          "userId": "user2",
-          "label": "User 2",
-          "email": "user2@test.com",
-          "internal": true
-        }
-      ],
-      "internal": false,
-      "external": false,
-      "privileged": false,
-      "state": "open",
-      "lastPostAt": 1761611846332,
-      "unreadBy": [
-        "user2"
-      ],
-      "archivedBy": [],
-      "deletedBy": [],
-      "deletedAt": null
-    },
-    {
-      "messageId": "msg-1761611846383-bjydk2yvx",
+      "messageId": "msg-1761634646241-z4qxxjnmp",
       "title": "User 3",
       "createdBy": {
         "userId": "user1",
         "label": "Warren Peace"
       },
-      "createdAt": 1761611846383,
+      "createdAt": 1761634646241,
       "participants": [
         {
           "userId": "user3",
@@ -76,7 +48,7 @@
       "external": false,
       "privileged": false,
       "state": "open",
-      "lastPostAt": 1761611846383,
+      "lastPostAt": 1761634646241,
       "unreadBy": [
         "user3"
       ],
@@ -85,13 +57,13 @@
       "deletedAt": null
     },
     {
-      "messageId": "msg-1761611846509-s17836o83",
+      "messageId": "msg-1761634646301-uu7wsjvld",
       "title": "User 2",
       "createdBy": {
         "userId": "user1",
         "label": "Warren Peace"
       },
-      "createdAt": 1761611846509,
+      "createdAt": 1761634646301,
       "participants": [
         {
           "userId": "user2",
@@ -104,7 +76,7 @@
       "external": false,
       "privileged": false,
       "state": "open",
-      "lastPostAt": 1761611846509,
+      "lastPostAt": 1761634646301,
       "unreadBy": [
         "user2"
       ],
@@ -113,13 +85,13 @@
       "deletedAt": null
     },
     {
-      "messageId": "msg-1761611846542-myhxg4bs6",
+      "messageId": "msg-1761634646313-mzrt9grsy",
       "title": "User 2",
       "createdBy": {
         "userId": "user1",
         "label": "Warren Peace"
       },
-      "createdAt": 1761611846542,
+      "createdAt": 1761634646314,
       "participants": [
         {
           "userId": "user2",
@@ -132,7 +104,7 @@
       "external": false,
       "privileged": false,
       "state": "open",
-      "lastPostAt": 1761611846542,
+      "lastPostAt": 1761634646314,
       "unreadBy": [
         "user2"
       ],
@@ -141,13 +113,13 @@
       "deletedAt": null
     },
     {
-      "messageId": "msg-1761611846582-if9ha1t9s",
+      "messageId": "msg-1761634646347-j732hqk45",
       "title": "Alice Smith, Bob Jones",
       "createdBy": {
         "userId": "user1",
         "label": "Warren Peace"
       },
-      "createdAt": 1761611846582,
+      "createdAt": 1761634646348,
       "participants": [
         {
           "userId": "user2",
@@ -166,7 +138,7 @@
       "external": false,
       "privileged": false,
       "state": "open",
-      "lastPostAt": 1761611846582,
+      "lastPostAt": 1761634646348,
       "unreadBy": [
         "user2",
         "user3"
@@ -176,13 +148,13 @@
       "deletedAt": null
     },
     {
-      "messageId": "msg-1761611846611-zz83r5uel",
+      "messageId": "msg-1761634646376-p6dr72bxq",
       "title": "User 2",
       "createdBy": {
         "userId": "user1",
         "label": "Warren Peace"
       },
-      "createdAt": 1761611846611,
+      "createdAt": 1761634646376,
       "participants": [
         {
           "userId": "user2",
@@ -195,7 +167,7 @@
       "external": false,
       "privileged": false,
       "state": "open",
-      "lastPostAt": 1761611846611,
+      "lastPostAt": 1761634646376,
       "unreadBy": [
         "user2"
       ],
@@ -204,13 +176,13 @@
       "deletedAt": null
     },
     {
-      "messageId": "msg-1761611846643-g8w3cyhcq",
+      "messageId": "msg-1761634646394-0sybvyhst",
       "title": "User 3",
       "createdBy": {
         "userId": "user1",
         "label": "Warren Peace"
       },
-      "createdAt": 1761611846643,
+      "createdAt": 1761634646394,
       "participants": [
         {
           "userId": "user3",
@@ -223,7 +195,7 @@
       "external": true,
       "privileged": false,
       "state": "open",
-      "lastPostAt": 1761611846643,
+      "lastPostAt": 1761634646394,
       "unreadBy": [
         "user3"
       ],
@@ -234,90 +206,79 @@
   ],
   "posts": [
     {
-      "postId": "post-1761611845961-bns2tjbcq",
-      "messageId": "msg-1761611845961-e9txhyjsl",
+      "postId": "post-1761634646223-x0lo944cr",
+      "messageId": "msg-1761634646223-nudevawgt",
       "author": {
         "userId": "user1",
         "label": "Warren Peace"
       },
-      "createdAt": 1761611845961,
-      "text": "Saved scenario message",
-      "privileged": false
-    },
-    {
-      "postId": "post-1761611846332-rbinf1gpb",
-      "messageId": "msg-1761611846332-7522hwum8",
-      "author": {
-        "userId": "user1",
-        "label": "Warren Peace"
-      },
-      "createdAt": 1761611846332,
+      "createdAt": 1761634646223,
       "text": "Contract terms discussion",
       "privileged": false
     },
     {
-      "postId": "post-1761611846383-itmu8iiy3",
-      "messageId": "msg-1761611846383-bjydk2yvx",
+      "postId": "post-1761634646241-db7n6or24",
+      "messageId": "msg-1761634646241-z4qxxjnmp",
       "author": {
         "userId": "user1",
         "label": "Warren Peace"
       },
-      "createdAt": 1761611846383,
+      "createdAt": 1761634646241,
       "text": "Budget planning meeting",
       "privileged": false
     },
     {
-      "postId": "post-1761611846509-2vb81lp3z",
-      "messageId": "msg-1761611846509-s17836o83",
+      "postId": "post-1761634646301-5vm0hhmfi",
+      "messageId": "msg-1761634646301-uu7wsjvld",
       "author": {
         "userId": "user1",
         "label": "Warren Peace"
       },
-      "createdAt": 1761611846509,
+      "createdAt": 1761634646301,
       "text": "First message",
       "privileged": false
     },
     {
-      "postId": "post-1761611846542-6gg2n76as",
-      "messageId": "msg-1761611846542-myhxg4bs6",
+      "postId": "post-1761634646314-3eostxgup",
+      "messageId": "msg-1761634646313-mzrt9grsy",
       "author": {
         "userId": "user1",
         "label": "Warren Peace"
       },
-      "createdAt": 1761611846542,
+      "createdAt": 1761634646314,
       "text": "Duplicate attempt",
       "privileged": false
     },
     {
-      "postId": "post-1761611846582-pyh6kw7yw",
-      "messageId": "msg-1761611846582-if9ha1t9s",
+      "postId": "post-1761634646348-xvhblkvvr",
+      "messageId": "msg-1761634646347-j732hqk45",
       "author": {
         "userId": "user1",
         "label": "Warren Peace"
       },
-      "createdAt": 1761611846582,
+      "createdAt": 1761634646348,
       "text": "Group discussion",
       "privileged": false
     },
     {
-      "postId": "post-1761611846611-npzhrxlph",
-      "messageId": "msg-1761611846611-zz83r5uel",
+      "postId": "post-1761634646376-g7wkqwt3e",
+      "messageId": "msg-1761634646376-p6dr72bxq",
       "author": {
         "userId": "user1",
         "label": "Warren Peace"
       },
-      "createdAt": 1761611846611,
+      "createdAt": 1761634646376,
       "text": "Internal message",
       "privileged": false
     },
     {
-      "postId": "post-1761611846643-6m0qy5805",
-      "messageId": "msg-1761611846643-g8w3cyhcq",
+      "postId": "post-1761634646394-c4gzts3d2",
+      "messageId": "msg-1761634646394-0sybvyhst",
       "author": {
         "userId": "user1",
         "label": "Warren Peace"
       },
-      "createdAt": 1761611846643,
+      "createdAt": 1761634646394,
       "text": "External message",
       "privileged": false
     }
