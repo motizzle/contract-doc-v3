@@ -12,6 +12,12 @@ const jwt = require('jsonwebtoken');
 // Import startup checks
 const { runStartupChecks } = require('./startup-checks');
 
+// Import middleware
+const { validate, validateVersionParam, validateVarIdParam } = require('./middleware/validation');
+const { errorHandler, AppError, sendError } = require('./middleware/error-handler');
+const { generalLimiter, writeLimiter, strictLimiter } = require('./middleware/rate-limit');
+const { standardTimeout, extendedTimeout, shortTimeout } = require('./middleware/timeout');
+
 // Import LLM module
 const { generateReply } = require('./lib/llm');
 
@@ -1480,6 +1486,10 @@ app.use((req, res, next) => {
   
   next();
 });
+
+// Apply global middleware
+app.use(generalLimiter); // Rate limiting for all requests
+app.use(standardTimeout); // Default 30-second timeout
 
 // CORS for Yeoman add-in dev server
 const allowedOrigins = new Set([
@@ -4356,9 +4366,9 @@ app.delete('/api/v1/scenarios/:id', (req, res) => {
 });
 
 // Checkout/Checkin endpoints
-app.post('/api/v1/checkout', (req, res) => {
-  const userId = req.body?.userId || 'user1';
-  const clientVersion = req.body?.clientVersion || 0;
+app.post('/api/v1/checkout', writeLimiter, validate('checkout'), (req, res) => {
+  const userId = req.body.userId;
+  const clientVersion = req.body.clientVersion || 0;
   
   // Load session-specific state
   const state = loadSessionState(req.sessionId);
@@ -4446,8 +4456,8 @@ app.post('/api/v1/checkout', (req, res) => {
   res.json({ ok: true, checkedOutBy: userId });
 });
 
-app.post('/api/v1/checkin', (req, res) => {
-  const userId = req.body?.userId || 'user1';
+app.post('/api/v1/checkin', writeLimiter, validate('checkin'), (req, res) => {
+  const userId = req.body.userId;
   
   // Load session-specific state
   const state = loadSessionState(req.sessionId);
@@ -5423,6 +5433,9 @@ setInterval(() => {
     console.log(`🧹 Cleaned up ${cleaned} expired link code(s)`);
   }
 }, 5 * 60 * 1000); // 5 minutes
+
+// Error handler middleware (must be last!)
+app.use(errorHandler);
 
 // In production, always use HTTP (Render provides HTTPS at the edge)
 // In dev, try to use HTTPS with dev certificates
