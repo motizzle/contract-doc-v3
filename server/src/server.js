@@ -2107,6 +2107,8 @@ app.get('/api/v1/health', (req, res) => {
   const health = {
     ok: !degraded,
     status: degraded ? 'degraded' : 'healthy',
+    version: require('../../package.json').version,
+    buildTime: process.env.BUILD_TIME || null,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     memory: {
@@ -5313,6 +5315,8 @@ app.get('/api/v1/events', (req, res) => {
       documentId: DOCUMENT_ID,
       revision: serverState.revision,
       type: 'hello',
+      serverVersion: require('../../package.json').version,
+      buildTime: process.env.BUILD_TIME || null,
       state: { checkedOutBy: serverState.checkedOutBy },
       ts: Date.now(),
     };

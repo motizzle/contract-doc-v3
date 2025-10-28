@@ -365,6 +365,13 @@
       const [approvalsSummary, setApprovalsSummary] = React.useState(null);
       const [approvalsRevision, setApprovalsRevision] = React.useState(0);
       const [messagingUnreadCount, setmessagingUnreadCount] = React.useState(0);
+      
+      // Version update detection
+      const CLIENT_VERSION = '1.0.0'; // Will be replaced with actual version at build time
+      const [serverVersion, setServerVersion] = React.useState(null);
+      const [updateAvailable, setUpdateAvailable] = React.useState(false);
+      const [updateDismissed, setUpdateDismissed] = React.useState(false);
+      
       const API_BASE = getApiBase();
 
       // Removed excessive logging
@@ -425,6 +432,27 @@
         };
       }, []);
 
+      // Check for server version updates
+      const checkForUpdates = React.useCallback(async () => {
+        try {
+          const response = await fetch(`${API_BASE}/api/v1/health`, { cache: 'no-store' });
+          if (!response.ok) return;
+          
+          const health = await response.json();
+          const newServerVersion = health.version;
+          
+          if (newServerVersion && newServerVersion !== CLIENT_VERSION) {
+            console.log(`🔄 [Version] Update available: ${CLIENT_VERSION} → ${newServerVersion}`);
+            setServerVersion(newServerVersion);
+            setUpdateAvailable(true);
+          } else if (newServerVersion) {
+            setServerVersion(newServerVersion);
+          }
+        } catch (err) {
+          console.warn('Failed to check for updates:', err);
+        }
+      }, [API_BASE]);
+      
       const addLog = React.useCallback((m, type = 'info') => {
         try {
           if (typeof m === 'string' && !m.includes('[Formatted]')) {
@@ -717,6 +745,13 @@
           } catch {}
         })();
         refresh();
+        
+        // Periodic version check (every 5 minutes)
+        checkForUpdates(); // Initial check
+        const versionCheckInterval = setInterval(() => {
+          checkForUpdates();
+        }, 5 * 60 * 1000); // 5 minutes
+        
         let sse;
         try {
           // EventSource doesn't support custom headers, so pass token, userId, and platform as query params
@@ -751,6 +786,17 @@
               if (p.sessionId && ourSessionId && p.sessionId !== ourSessionId) {
                 console.log(`🚫 [SSE] Ignoring event from different session: ${p.type} (session: ${p.sessionId})`);
                 return; // Ignore this event
+              }
+              
+              // Version update check on SSE hello event (server restart/reconnect)
+              if (p.type === 'hello' && p.serverVersion) {
+                if (p.serverVersion !== CLIENT_VERSION) {
+                  console.log(`🔄 [Version] Update detected via SSE: ${CLIENT_VERSION} → ${p.serverVersion}`);
+                  setServerVersion(p.serverVersion);
+                  setUpdateAvailable(true);
+                } else {
+                  setServerVersion(p.serverVersion);
+                }
               }
               
               if (p && p.ts) setLastTs(p.ts);
@@ -958,8 +1004,11 @@
         // Load initial activities
         loadActivities();
 
-        return () => { try { sse && sse.close(); } catch {} };
-      }, [API_BASE, refresh, addLog, loadActivities]);
+        return () => { 
+          try { sse && sse.close(); } catch {} 
+          clearInterval(versionCheckInterval);
+        };
+      }, [API_BASE, refresh, addLog, loadActivities, checkForUpdates]);
 
       // Global listener for version:view events (handles loading documents in Word/Web)
       React.useEffect(() => {
@@ -1382,7 +1431,7 @@
         },
       }), [API_BASE, refresh, userId, addLog, viewingVersion]);
 
-      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, activities, lastSeenActivityId, markActivitiesSeen, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, messagingUnreadCount, setmessagingUnreadCount, renderNotification, formatNotification, viewingVersion, setViewingVersion, refresh } }, React.createElement(App, { config }));
+      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, activities, lastSeenActivityId, markActivitiesSeen, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, messagingUnreadCount, setmessagingUnreadCount, renderNotification, formatNotification, viewingVersion, setViewingVersion, refresh, updateAvailable, updateDismissed, setUpdateDismissed, serverVersion } }, React.createElement(App, { config }));
     }
 
     function BannerStack(props) {
@@ -1887,8 +1936,86 @@
         } catch { return { title: '', message: '' }; }
       })();
 
+      const { updateAvailable, updateDismissed, serverVersion } = React.useContext(StateContext);
+      const CLIENT_VERSION = '1.0.0'; // Will be replaced with actual version at build time
+      
+      const handleRefreshNow = () => {
+        window.location.reload();
+      };
+      
+      const handleDismissUpdate = () => {
+        // Dismiss for this session
+        try {
+          const { setUpdateDismissed } = React.useContext(StateContext);
+          if (setUpdateDismissed) setUpdateDismissed(true);
+        } catch {}
+      };
+
       return React.createElement('div', { ref: rootRef, className: 'd-flex flex-column gap-6' },
         topLayout,
+        // App update banner (shown when server version != client version)
+        (updateAvailable && !updateDismissed ? (
+          React.createElement('div', { 
+            className: 'update-banner',
+            style: {
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              borderRadius: 12,
+              padding: 16,
+              color: '#fff',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+            }
+          },
+            React.createElement('div', { style: { position: 'relative', width: '100%' } }, [
+              React.createElement('div', { key: 'row', style: { display: 'grid', gridTemplateColumns: '24px 1fr auto auto', alignItems: 'center', columnGap: 12 } }, [
+                // Icon
+                React.createElement('div', { key: 'icon', style: { width: 24, height: 24, borderRadius: '50%', border: '2px solid currentColor', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14 } }, '🔄'),
+                // Text
+                React.createElement('div', { key: 'text', style: { color: 'inherit', textAlign: 'left' } }, [
+                  React.createElement('div', { key: 't', style: { fontWeight: 700 } }, 'App Update Available'),
+                  React.createElement('div', { key: 'm', style: { fontSize: 13, opacity: 0.95 } }, `Version ${CLIENT_VERSION} → ${serverVersion}. Refresh to update.`),
+                ]),
+                // Refresh button
+                React.createElement('button', {
+                  key: 'refresh-btn',
+                  onClick: handleRefreshNow,
+                  style: {
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    borderRadius: 6,
+                    padding: '6px 12px',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: 13,
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap'
+                  },
+                  onMouseOver: (e) => { e.target.style.background = 'rgba(255, 255, 255, 0.3)'; },
+                  onMouseOut: (e) => { e.target.style.background = 'rgba(255, 255, 255, 0.2)'; }
+                }, 'Refresh Now'),
+                // Dismiss button (X)
+                React.createElement('button', {
+                  key: 'dismiss-btn',
+                  onClick: handleDismissUpdate,
+                  title: 'Dismiss (will remind in 5 minutes)',
+                  style: {
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    fontSize: 18,
+                    padding: '0 4px',
+                    opacity: 0.7,
+                    transition: 'opacity 0.2s'
+                  },
+                  onMouseOver: (e) => { e.target.style.opacity = 1; },
+                  onMouseOut: (e) => { e.target.style.opacity = 0.7; }
+                }, '×')
+              ])
+            ])
+          )
+        ) : null),
+        // Document version banner (shown when viewing old document version)
         (showUpdateBanner ? (
           React.createElement('div', { className: 'update-banner' },
             React.createElement('div', { style: { position: 'relative', width: '100%' } }, [
@@ -4257,7 +4384,7 @@
       
       const refresh = React.useCallback(async () => {
         try {
-          console.log('🔄 [VersionsPanel] refresh called');
+          console.log('🔄 [Versiogit branchnsPanel] refresh called');
           // Read from ref to get the LATEST value, not a stale closure
           const userId = currentUserRef.current || 'user1';
           console.log('🔄 [VersionsPanel] currentUser from ref:', userId);
