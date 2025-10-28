@@ -4030,7 +4030,7 @@
         const bubbleCls = 'chat-bubble ' + (isMine ? 'mine' : 'other');
         return React.createElement('div', { key: i, className: rowCls }, [
           React.createElement('div', { key: 'ts', className: 'chat-timestamp ' + (isMine ? 'mine' : 'other') }, ts),
-          React.createElement('div', { key: 'b', className: bubbleCls, style: { wordBreak: 'break-word', overflowWrap: 'anywhere' } }, text)
+          React.createElement('div', { key: 'b', className: bubbleCls, style: { wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' } }, text)
         ]);
       }));
       const onKeyPress = (e) => {
