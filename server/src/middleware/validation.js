@@ -75,9 +75,10 @@ const schemas = {
   
   // Approvals
   setApproval: Joi.object({
-    userId: Joi.string().min(1).max(100).required(),
-    targetUserId: Joi.string().min(1).max(100).optional(),
-    approval: Joi.boolean().required(),
+    documentId: Joi.string().optional(),
+    actorUserId: Joi.string().min(1).max(100).required(),
+    targetUserId: Joi.string().min(1).max(100).required(),
+    approved: Joi.boolean().required(),
     notes: Joi.string().max(500).allow('').optional()
   }),
   
