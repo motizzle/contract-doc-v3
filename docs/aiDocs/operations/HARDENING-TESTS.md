@@ -1,12 +1,77 @@
 # WordFTW Prototype Hardening Tests
 
-**Purpose:** Verify every button works, every API call succeeds, and no console errors appear.
+**Purpose:** Automated tests that click every button, check every API call, and verify no console errors.
 
-**Time:** ~30 minutes for complete run
+**Time:** ~5 minutes (automated)
 
 ---
 
-## Pre-Test Setup
+## What Gets Tested (Automated)
+
+The automated test suite (`server/e2e/hardening-full-flow.spec.ts`) covers:
+
+**✅ Document Operations:**
+- Factory reset
+- Save progress
+- Take snapshot (create versions)
+
+**✅ Version Management:**
+- View previous versions
+- Share version with vendor
+- Vendor sees shared versions
+- Vendor saves (auto-shares)
+- Unshare removes access
+- Vendor auto-switches to fallback
+
+**✅ Checkout/Checkin:**
+- Checkout document
+- Other users see lock
+- Checkin releases lock
+- Checkout conflicts handled
+
+**✅ Variables:**
+- Variables panel loads
+- Edit variable values
+- API calls succeed
+
+**✅ Real-Time Updates (SSE):**
+- SSE connection established
+- Events propagate
+
+**✅ Error Handling:**
+- Checkout conflicts show errors
+- No console errors during normal usage
+
+**✅ Complete Workflows:**
+- Full editor workflow (checkout → save → snapshot → share → checkin)
+- Full vendor workflow (view → snapshot)
+
+---
+
+## Quick Start
+
+**Run all hardening tests:**
+```bash
+cd server
+npm start  # In one terminal (wait for "Server running")
+npm run test:ui  # In another terminal
+```
+
+**Watch tests run in browser (see what's happening):**
+```bash
+npm run test:ui:headed
+```
+
+**Debug a failing test (step through with Playwright Inspector):**
+```bash
+npm run test:ui:debug
+```
+
+**Expected:** All tests pass (green ✓), no console errors reported
+
+---
+
+## Pre-Test Setup (If Running Manually)
 
 **Why Local?** Test YOUR changes before deploying. Fast iteration, safe to break things.
 
