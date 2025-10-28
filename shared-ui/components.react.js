@@ -367,7 +367,7 @@
       const [messagingUnreadCount, setmessagingUnreadCount] = React.useState(0);
       
       // Version update detection
-      const CLIENT_VERSION = '1.0.0'; // Will be replaced with actual version at build time
+      const CLIENT_VERSION = window.APP_VERSION || '1.0.0';
       const [serverVersion, setServerVersion] = React.useState(null);
       const [updateAvailable, setUpdateAvailable] = React.useState(false);
       const [updateDismissed, setUpdateDismissed] = React.useState(false);
@@ -1936,7 +1936,7 @@
         } catch { return { title: '', message: '' }; }
       })();
 
-      const CLIENT_VERSION = '1.0.0'; // Will be replaced with actual version at build time
+      const CLIENT_VERSION = window.APP_VERSION || '1.0.0';
       
       const handleRefreshNow = () => {
         window.location.reload();
