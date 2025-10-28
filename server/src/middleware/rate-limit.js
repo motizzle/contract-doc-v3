@@ -24,8 +24,8 @@ const generalLimiter = rateLimit({
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
   legacyHeaders: false, // Disable `X-RateLimit-*` headers
   skip: (req) => {
-    // Skip rate limiting in test mode
-    return process.env.NODE_ENV === 'test';
+    // Only apply rate limiting in production
+    return process.env.NODE_ENV !== 'production';
   },
   handler: (req, res) => {
     const retryAfter = Math.ceil(req.rateLimit.resetTime - Date.now()) / 1000;
@@ -56,8 +56,8 @@ const writeLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
-    // Skip rate limiting in test mode
-    return process.env.NODE_ENV === 'test';
+    // Only apply rate limiting in production
+    return process.env.NODE_ENV !== 'production';
   },
   handler: (req, res) => {
     const retryAfter = Math.ceil(req.rateLimit.resetTime - Date.now()) / 1000;

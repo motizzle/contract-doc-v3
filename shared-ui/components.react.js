@@ -1500,7 +1500,7 @@
     }
 
     function ActionButtons() {
-      const { config, actions, revision, setDocumentSource, addLog, setLoadedVersion, users, currentUser, viewingVersion } = React.useContext(StateContext);
+      const { config, actions, revision, setDocumentSource, addLog, setLoadedVersion, users, currentUser, viewingVersion, updateAvailable, updateDismissed, setUpdateDismissed, serverVersion } = React.useContext(StateContext);
       const [confirm, setConfirm] = React.useState(null);
       const { tokens } = React.useContext(ThemeContext);
       const rootRef = React.useRef(null);
@@ -1945,10 +1945,7 @@
       
       const handleDismissUpdate = () => {
         // Dismiss for this session
-        try {
-          const { setUpdateDismissed } = React.useContext(StateContext);
-          if (setUpdateDismissed) setUpdateDismissed(true);
-        } catch {}
+        if (setUpdateDismissed) setUpdateDismissed(true);
       };
 
       return React.createElement('div', { ref: rootRef, className: 'd-flex flex-column gap-6' },
