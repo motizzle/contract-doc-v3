@@ -3843,10 +3843,17 @@ app.post('/api/v1/factory-reset', (req, res) => {
       console.error('❌ Failed to restore variables:', e.message);
     }
     
-    // Remove snapshots entirely
-    const snapDir = path.join(paths.sessionDir, 'snapshots');
-    if (fs.existsSync(snapDir)) {
-      try { fs.rmSync(snapDir, { recursive: true, force: true }); } catch {}
+    // Clear snapshots (but keep directory)
+    if (fs.existsSync(paths.snapshotsDir)) {
+      try {
+        for (const f of fs.readdirSync(paths.snapshotsDir)) {
+          const p = path.join(paths.snapshotsDir, f);
+          try { if (fs.statSync(p).isFile()) fs.rmSync(p); } catch {}
+        }
+      } catch {}
+    } else {
+      // Create snapshots directory if it doesn't exist
+      fs.mkdirSync(paths.snapshotsDir, { recursive: true });
     }
     // Clear compiled outputs (merged PDFs)
     if (fs.existsSync(paths.compiledDir)) {
