@@ -9,8 +9,15 @@ const multer = require('multer');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const jwt = require('jsonwebtoken');
 
+// Import startup checks
+const { runStartupChecks } = require('./startup-checks');
+
 // Import LLM module
 const { generateReply } = require('./lib/llm');
+
+// Run pre-flight checks before initialization
+const rootDir = path.join(__dirname, '..', '..');
+runStartupChecks(rootDir);
 
 // LLM Configuration - Support for Ollama (local) and OpenAI (remote)
 const LLM_PROVIDER = process.env.LLM_PROVIDER || 'ollama'; // 'ollama' or 'openai'
@@ -1456,6 +1463,24 @@ app.use(compression());
 // JSON body limit must accommodate DOCX base64 payloads for save-progress
 app.use(express.json({ limit: '50mb' }));
 
+// Track active requests for graceful shutdown
+let isShuttingDown = false;
+let activeRequests = 0;
+
+app.use((req, res, next) => {
+  if (isShuttingDown) {
+    res.status(503).json({ error: 'Server is shutting down' });
+    return;
+  }
+  
+  activeRequests++;
+  res.on('finish', () => {
+    activeRequests--;
+  });
+  
+  next();
+});
+
 // CORS for Yeoman add-in dev server
 const allowedOrigins = new Set([
   ADDIN_DEV_ORIGIN,
@@ -2046,15 +2071,57 @@ const upload = multer({ storage });
 
 // API v1
 app.get('/api/v1/health', (req, res) => {
-  // Always in demo mode - simplified
-  res.json({
-    ok: true,
+  const os = require('os');
+  
+  // Check memory usage
+  const totalMem = os.totalmem();
+  const freeMem = os.freemem();
+  const usedMem = totalMem - freeMem;
+  const memUsagePercent = (usedMem / totalMem) * 100;
+  const memWarning = memUsagePercent > 90;
+  
+  // Check filesystem access
+  let filesystemOk = true;
+  try {
+    const testPath = path.join(rootDir, 'data', '.health-check');
+    fs.writeFileSync(testPath, 'test');
+    fs.unlinkSync(testPath);
+  } catch (err) {
+    filesystemOk = false;
+  }
+  
+  // Overall health status
+  const degraded = memWarning || !filesystemOk;
+  const status = degraded ? 503 : 200;
+  
+  const health = {
+    ok: !degraded,
+    status: degraded ? 'degraded' : 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: {
+      total: Math.round(totalMem / 1024 / 1024),
+      used: Math.round(usedMem / 1024 / 1024),
+      free: Math.round(freeMem / 1024 / 1024),
+      usagePercent: Math.round(memUsagePercent),
+      warning: memWarning
+    },
+    filesystem: {
+      accessible: filesystemOk,
+      dataDir: path.join(rootDir, 'data')
+    },
+    ai: {
+      enabled: false,
+      mode: 'demo',
+      provider: 'demo',
+      model: null
+    },
     superdoc: SUPERDOC_BASE_URL,
-    llmEnabled: false,
-    llmProvider: 'demo',
-    llmModel: null,
-    aiDemoMode: true
-  });
+    activeRequests: activeRequests,
+    isShuttingDown: isShuttingDown
+  };
+  
+  res.status(status).json(health);
 });
 
 app.get('/api/v1/users', (req, res) => {
@@ -5331,5 +5398,71 @@ try {
     }
   });
 } catch {}
+
+// ====================================================================
+// Graceful Shutdown
+// ====================================================================
+
+function gracefulShutdown(signal) {
+  if (isShuttingDown) {
+    console.log(`\n⚠️  Received ${signal} again. Force shutting down...`);
+    process.exit(1);
+  }
+  
+  isShuttingDown = true;
+  console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
+  console.log(`📊 Active requests: ${activeRequests}`);
+  
+  // Stop accepting new requests
+  serverInstance.close(() => {
+    console.log('✅ Server closed to new connections');
+    
+    // Wait for active requests to complete (max 30 seconds)
+    const startTime = Date.now();
+    const checkInterval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      
+      if (activeRequests === 0) {
+        clearInterval(checkInterval);
+        console.log('✅ All requests completed');
+        console.log('👋 Server shut down gracefully');
+        process.exit(0);
+      }
+      
+      if (elapsed > 30000) {
+        clearInterval(checkInterval);
+        console.warn(`⚠️  Timeout reached with ${activeRequests} pending requests`);
+        console.log('👋 Server shut down with pending requests');
+        process.exit(0);
+      }
+      
+      // Log progress every 5 seconds
+      if (elapsed % 5000 < 100) {
+        console.log(`⏳ Waiting for ${activeRequests} active request(s)... (${Math.round(elapsed / 1000)}s elapsed)`);
+      }
+    }, 100);
+  });
+  
+  // Force shutdown after 35 seconds total
+  setTimeout(() => {
+    console.error('❌ Force shutdown after 35 seconds');
+    process.exit(1);
+  }, 35000);
+}
+
+// Handle shutdown signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Handle uncaught errors
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught Exception:', err);
+  gracefulShutdown('UNCAUGHT_EXCEPTION');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit on unhandled rejection, just log it
+});
 
 
