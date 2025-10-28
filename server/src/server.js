@@ -3448,6 +3448,39 @@ app.post('/api/v1/versions/:n/share', (req, res) => {
       }
     }
     
+    // If unsharing, determine fallback version for vendors currently viewing this version
+    let fallbackVersion = null;
+    if (!shared) {
+      // Get all versions to find the best fallback
+      const allVersions = [];
+      try {
+        if (fs.existsSync(paths.versionsDir)) {
+          for (const f of fs.readdirSync(paths.versionsDir)) {
+            const m = /^v(\d+)\.json$/i.exec(f);
+            if (!m) continue;
+            const ver = Number(m[1]);
+            try {
+              const j = JSON.parse(fs.readFileSync(path.join(paths.versionsDir, f), 'utf8'));
+              allVersions.push({ version: ver, sharedWithVendor: j.sharedWithVendor });
+            } catch {}
+          }
+        }
+      } catch {}
+      
+      // Add Version 1 (always shared)
+      if (!allVersions.some(v => v.version === 1)) {
+        allVersions.push({ version: 1, sharedWithVendor: true });
+      }
+      
+      // Find most recent shared version (excluding the one being unshared)
+      const sharedVersions = allVersions
+        .filter(v => v.sharedWithVendor && v.version !== versionNumber)
+        .sort((a, b) => b.version - a.version);
+      
+      fallbackVersion = sharedVersions.length > 0 ? sharedVersions[0].version : 1;
+      console.log(`📌 Unsharing version ${versionNumber}, fallback for vendors: ${fallbackVersion}`);
+    }
+    
     // Broadcast SSE event to all clients
     broadcast({ 
       type: 'version:shared',
@@ -3456,6 +3489,7 @@ app.post('/api/v1/versions/:n/share', (req, res) => {
       sharedWithVendor: shared,
       sharedBy: shared ? { userId, label: getUserLabel(userId) } : null,
       sharedAt: shared ? new Date().toISOString() : null,
+      fallbackVersion: fallbackVersion, // For vendors to switch to if currently viewing unshared version
       timestamp: Date.now()
     });
     

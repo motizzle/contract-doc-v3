@@ -4260,14 +4260,44 @@
         const onVersionShared = (ev) => {
           console.log('🔄 [VersionsPanel] version:shared event received', ev.detail);
           try {
-            const { version: versionNum, sharedWithVendor, sharedBy, sharedAt } = ev.detail || {};
+            const { version: versionNum, sharedWithVendor, sharedBy, sharedAt, fallbackVersion } = ev.detail || {};
             if (versionNum !== undefined) {
-              // Update the specific version in the list
-              setItems(prev => prev.map(item => 
-                item.version === versionNum 
-                  ? { ...item, sharedWithVendor, sharedBy, sharedAt }
-                  : item
-              ));
+              const currentUserId = currentUserRef.current || 'user1';
+              const currentRole = (users || []).find(u => u && u.id === currentUserId)?.role || 'viewer';
+              const isVendor = currentRole === 'vendor';
+              
+              // For vendors: if version is unshared, remove it from list
+              if (isVendor && sharedWithVendor === false) {
+                console.log(`🔄 [VersionsPanel] Vendor ${currentUserId}: removing unshared version ${versionNum}`);
+                
+                // Check if currently viewing the unshared version
+                if (viewingVersion === versionNum && fallbackVersion) {
+                  console.log(`🔄 [VersionsPanel] Vendor was viewing unshared version ${versionNum}, switching to ${fallbackVersion}`);
+                  // Switch to fallback version
+                  (async () => {
+                    try {
+                      const plat = (function(){ try { return (typeof Office !== 'undefined') ? 'word' : 'web'; } catch { return 'web'; } })();
+                      await fetch(`${API_BASE}/api/v1/versions/view`, { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify({ version: fallbackVersion, platform: plat, userId: currentUserId }) 
+                      });
+                    } catch (err) {
+                      console.error('Error switching to fallback version:', err);
+                    }
+                  })();
+                }
+                
+                // Remove from list
+                setItems(prev => prev.filter(item => item.version !== versionNum));
+              } else {
+                // For editors or when sharing: update the metadata
+                setItems(prev => prev.map(item => 
+                  item.version === versionNum 
+                    ? { ...item, sharedWithVendor, sharedBy, sharedAt }
+                    : item
+                ));
+              }
             }
           } catch (err) {
             console.error('Error handling version:shared event:', err);
