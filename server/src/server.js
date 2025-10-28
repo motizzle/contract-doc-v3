@@ -3995,6 +3995,7 @@ app.post('/api/v1/factory-reset', (req, res) => {
       } catch {}
     }
     // Handle version history: check for preset versions, otherwise clear all
+    let highestVersionNumber = 1;
     try {
       // First, clear existing versions
       if (fs.existsSync(paths.versionsDir)) {
@@ -4013,20 +4014,40 @@ app.post('/api/v1/factory-reset', (req, res) => {
             const destPath = path.join(paths.versionsDir, vFile);
             try {
               fs.copyFileSync(srcPath, destPath);
-              if (vFile.endsWith('.docx')) copiedCount++;
+              if (vFile.endsWith('.docx')) {
+                copiedCount++;
+                // Track highest version number
+                const match = vFile.match(/^v(\d+)\.docx$/);
+                if (match) {
+                  const versionNum = parseInt(match[1], 10);
+                  if (versionNum > highestVersionNumber) {
+                    highestVersionNumber = versionNum;
+                  }
+                }
+              }
             } catch (e) {
               console.error(`❌ Failed to copy version ${vFile}:`, e.message);
             }
           }
         }
         if (copiedCount > 0) {
-          console.log(`✅ Loaded ${copiedCount} version snapshot(s) from preset: ${preset}`);
+          console.log(`✅ Loaded ${copiedCount} version snapshot(s) from preset: ${preset} (highest: v${highestVersionNumber})`);
         }
       } else {
         console.log(`ℹ️  No preset version snapshots found - version history will be empty`);
       }
     } catch (e) {
       console.error('❌ Failed to handle version history:', e.message);
+    }
+    
+    // Update state.json to reflect the highest version number from the loaded scenario
+    try {
+      const sessionState = loadSessionState(req.sessionId);
+      sessionState.documentVersion = highestVersionNumber;
+      saveSessionState(req.sessionId, sessionState);
+      console.log(`✅ Updated state.json documentVersion to ${highestVersionNumber}`);
+    } catch (e) {
+      console.error('❌ Failed to update documentVersion in state:', e.message);
     }
     
     // Bump session-specific revision
