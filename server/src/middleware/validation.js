@@ -22,14 +22,23 @@
 const noOpValidate = (schemaName) => (req, res, next) => next();
 
 /**
- * No-op parameter validation - passes all requests through
+ * Parameter validation - parses params but doesn't validate
  */
-const noOpParamValidate = (req, res, next) => next();
+const validateVersionParam = (req, res, next) => {
+  // Parse version number from :n parameter
+  const n = parseInt(req.params.n, 10);
+  req.versionNumber = isNaN(n) ? undefined : n;
+  next();
+};
 
-// Export no-op middleware
+const validateVarIdParam = (req, res, next) => {
+  // Parse variable ID from :varId parameter
+  req.varId = req.params.varId;
+  next();
+};
+
+// Export middleware
 const validate = noOpValidate;
-const validateVersionParam = noOpParamValidate;
-const validateVarIdParam = noOpParamValidate;
 
 module.exports = {
   validate,
