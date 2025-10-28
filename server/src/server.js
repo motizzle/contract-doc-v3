@@ -4598,12 +4598,32 @@ app.post('/api/v1/events/client', async (req, res) => {
               saveChatMessage(userId, botMessage);
             } catch {}
         } else {
+          // LLM failed - send demo fallback response with joke
           const msg = `LLM error: ${result && result.error ? result.error : 'Unknown error'}`;
           logActivity(req.sessionId, 'system:error', 'system', { error: msg, source: 'llm' });
+          
+          const demoResponse = getDemoAIResponse();
+          broadcast({
+            type: 'chat',
+            payload: { text: demoResponse, MessagePlatform: originPlatform },
+            userId: 'bot',
+            role: 'assistant',
+            platform: 'server'
+          });
         }
       } catch (e) {
+        // LLM exception - send demo fallback response with joke
         const msg = `LLM error: ${e && e.message ? e.message : 'Unknown error'}`;
         logActivity(req.sessionId, 'system:error', 'system', { error: msg, source: 'llm' });
+        
+        const demoResponse = getDemoAIResponse();
+        broadcast({
+          type: 'chat',
+          payload: { text: demoResponse, MessagePlatform: originPlatform },
+          userId: 'bot',
+          role: 'assistant',
+          platform: 'server'
+        });
       }
     } else if (type === 'chat:stop') {
       try { broadcast({ type: 'chat:reset', payload: { reason: 'user_stop', MessagePlatform: originPlatform }, userId, role: 'assistant', platform: 'server' }); } catch {}
@@ -4614,6 +4634,26 @@ app.post('/api/v1/events/client', async (req, res) => {
     return res.status(500).json({ ok: false, error: 'events_client_failed' });
   }
 });
+
+// Helper function for demo AI response when LLM is unavailable
+function getDemoAIResponse() {
+  const jokes = [
+    "Why don't contracts ever get lonely? Because they're always surrounded by clauses!",
+    "What did the attorney say when they found a typo in the contract? 'That's a grave period!'",
+    "Why did the Word document go to therapy? It had too many issues with commitment!",
+    "How do documents stay in shape? They do cross-references!",
+    "Why don't legal documents play hide and seek? Because good luck finding the disclaimers!",
+    "What's a lawyer's favorite punctuation mark? The fine print!",
+    "Why was the contract feeling stressed? Too many obligations and not enough consideration!",
+    "How do you know a document is well-organized? It has its own table of contents!",
+    "Why did the paragraph break up with the sentence? It needed more space!",
+    "What do you call a document that tells jokes? A Microsoft Word of humor!"
+  ];
+  
+  const randomJoke = jokes[Math.floor(Math.random() * jokes.length)];
+  
+  return `🤖 **AI Demo Mode**\n\nThis is a demo environment. In a production deployment with Ollama configured, the AI would analyze your document and provide intelligent responses to your questions.\n\nFor now, here's a silly joke to brighten your day:\n\n${randomJoke}\n\n_To enable real AI functionality, configure the Ollama service in your deployment environment._`;
+}
 
 // Helper function for fallback scripted responses
 function getFallbackResponse(userId) {
