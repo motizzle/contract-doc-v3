@@ -1403,8 +1403,8 @@ function computeApprovalsSummary(list) {
   return { approved, total };
 }
 
-// SSE clients
-const sseClients = new Set();
+// SSE clients - now tracking userId and platform for targeted messages
+const sseClients = new Map(); // Map of res -> { userId, platform, sessionId }
 
 // Test mode flag - when enabled, SSE broadcasts are disabled and clients are disconnected
 let testMode = false;
@@ -1421,11 +1421,32 @@ function broadcast(event) {
     ...event
   };
   const payload = `data: ${JSON.stringify(enriched)}\n\n`;
-  for (const res of sseClients) {
+  for (const [res, clientInfo] of sseClients.entries()) {
     try {
       res.write(payload);
       res.flush?.();
     } catch { /* ignore */ }
+  }
+}
+
+// Send event to a specific user only (for private AI chat)
+function sendToUser(userId, platform, event) {
+  if (testMode) return;
+  const enriched = {
+    documentId: DOCUMENT_ID,
+    revision: serverState.revision,
+    documentVersion: Number(serverState.documentVersion) || 1,
+    ts: Date.now(),
+    ...event
+  };
+  const payload = `data: ${JSON.stringify(enriched)}\n\n`;
+  for (const [res, clientInfo] of sseClients.entries()) {
+    if (clientInfo.userId === userId && clientInfo.platform === platform) {
+      try {
+        res.write(payload);
+        res.flush?.();
+      } catch { /* ignore */ }
+    }
   }
 }
 
@@ -3633,7 +3654,7 @@ app.post('/api/v1/test-mode', (req, res) => {
     if (enabled) {
       // Disconnect all SSE clients to avoid conflicts during tests
       console.log(`🧪 Test mode ENABLED - disconnecting ${sseClients.size} SSE clients`);
-      for (const client of sseClients) {
+      for (const [client, clientInfo] of sseClients.entries()) {
         try { 
           client.write('data: {"type":"test-mode-enabled","message":"Server entering test mode. Please refresh."}\n\n');
           client.end(); 
@@ -4581,6 +4602,14 @@ app.post('/api/v1/events/client', async (req, res) => {
         const botMessage = `[bot] ${demoResponse}`;
         saveChatMessage(req.sessionId, userId, botMessage);
       } catch {}
+      
+      // Send AI response to the specific user who sent the message
+      sendToUser(userId, originPlatform, {
+        type: 'chat',
+        payload: { text: demoResponse, sender: 'bot' },
+        userId: 'bot',
+        role: 'bot'
+      });
     } else if (type === 'chat:stop') {
       // Chat stop is also per-user, no broadcast needed
     }
@@ -5076,11 +5105,15 @@ app.get('/api/v1/events', (req, res) => {
     console.warn(`⚠️ No JWT token - using default session (/events)`);
   }
   
+  // Get userId and platform from query params for targeted messaging
+  const userId = req.query.userId || 'user1';
+  const platform = req.query.platform || 'web';
+  
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders?.();
-  sseClients.add(res);
+  sseClients.set(res, { userId, platform, sessionId: req.sessionId });
   res.write(`retry: ${SSE_RETRY_MS}\n\n`);
   res.flush?.();
   // Send an initial hello event so clients see activity immediately after connect

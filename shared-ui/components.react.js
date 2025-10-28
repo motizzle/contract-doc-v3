@@ -719,11 +719,14 @@
         refresh();
         let sse;
         try {
-          // EventSource doesn't support custom headers, so pass token as query param
+          // EventSource doesn't support custom headers, so pass token, userId, and platform as query params
           const token = localStorage.getItem('wordftw_auth_token');
-          const eventsUrl = token 
-            ? `${API_BASE}/api/v1/events?token=${encodeURIComponent(token)}`
-            : `${API_BASE}/api/v1/events`;
+          const platform = isWordAddin ? 'word' : 'web';
+          const params = new URLSearchParams();
+          if (token) params.append('token', token);
+          params.append('userId', userId);
+          params.append('platform', platform);
+          const eventsUrl = `${API_BASE}/api/v1/events?${params.toString()}`;
           
           sse = new EventSource(eventsUrl);
           window.eventSource = sse; // Expose for other components (VariablesPanel, etc.)
