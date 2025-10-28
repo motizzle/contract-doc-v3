@@ -154,18 +154,10 @@ Check dependencies → Validate state → Create dirs → Health check → Accep
 - 408: Timeout
 - 409: Conflict (checkout)
 - 413: File too large
-- 429: Rate limit exceeded
 - 440: Session expired
 - 500: Internal error
 - 503: Service unavailable
 - 507: Disk full
-
-### Rate Limiting
-
-**General API:** 100 requests / 15 minutes
-**Write operations:** 10 requests / minute
-
-**Return 429** with retry-after time.
 
 ### Timeout Handling
 
@@ -409,7 +401,7 @@ Write to .tmp → Verify content → Atomic rename → Delete temp on failure
 
 1. **Installation (37)** - Install/uninstall flows, Windows & macOS
 2. **Server Infrastructure (25)** - Startup, shutdown, health checks
-3. **API Endpoints (45)** - Validation, errors, rate limiting
+3. **API Endpoints (45)** - Validation, errors
 4. **State Management (15)** - Validation, corruption, atomic updates
 5. **File Operations (20)** - Size limits, atomic writes, cleanup
 6. **Session Management (12)** - Timeouts, cleanup
@@ -473,7 +465,6 @@ Chaos tests → Performance tests → Report
 ### ✅ Week 2: API Layer (COMPLETED)
 - ✅ Input validation framework (Joi schemas for 13 endpoints)
 - ✅ Standardized error handling (26 error codes with resolutions)
-- ✅ Rate limiting (3 limiters: general, write, strict)
 - ✅ Timeout handling (standard, extended, short)
 - ✅ Applied to all critical write endpoints (13 total)
 - 📊 Test Results: 133/138 passing (96%)
@@ -549,7 +540,6 @@ Chaos tests → Performance tests → Report
 - `server/src/startup-checks.js` - Pre-flight validation
 - `server/src/middleware/validation.js` - Input validation
 - `server/src/middleware/error-handler.js` - Error handling
-- `server/src/middleware/rate-limit.js` - Rate limiting
 
 ### Client
 - `shared-ui/components.react.js` - React components with error boundaries
