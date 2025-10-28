@@ -2,18 +2,19 @@
 
 **Branch:** `hardening`  
 **Date:** October 28, 2025  
-**Status:** ✅ Both issues fixed and tested
+**Status:** ✅ Three issues fixed and tested
 
 ---
 
 ## Summary
 
-Before proceeding with Week 2 API layer hardening, we identified and fixed two critical bugs:
+Before proceeding with Week 2 API layer hardening, we identified and fixed three critical bugs:
 
 1. **Checkout prompt not respecting vendor permissions**
 2. **Scenario save endpoint broken (undefined variable)**
+3. **Scenario loading not syncing documentVersion with loaded versions**
 
-Both were pre-existing issues, not caused by the hardening work.
+All were pre-existing issues, not caused by the hardening work.
 
 ---
 
@@ -233,6 +234,113 @@ curl -X POST https://localhost:4001/api/v1/scenarios/save \
 
 ---
 
+## Bug #3: Scenario Loading - Version Number Sync
+
+**Commit:** 51e2dc0
+
+### Problem
+
+After saving and loading a scenario with multiple versions, the banner showed incorrect version information.
+
+**User Report:**
+```
+Saved scenario with 4 versions (v1, v2, v3, v4)
+After loading scenario:
+- Banner: "You're viewing version 1, the latest is 2" ❌
+- Versions panel: Shows 4 versions (v1, v2, v3, v4) ✅
+- Confusing mismatch!
+```
+
+### Root Cause
+
+The factory-reset/scenario loading endpoint does two things:
+1. ✅ Copies all version files from scenario to working directory
+2. ❌ Doesn't update `state.json` `documentVersion` field
+
+**What happened:**
+```javascript
+// Scenario save included:
+versions/v1.docx, v1.json
+versions/v2.docx, v2.json
+versions/v3.docx, v3.json
+versions/v4.docx, v4.json
+state.json: { documentVersion: 2 } // Whatever it was when saved
+
+// After loading:
+// ✅ All 4 version files copied to working directory
+// ❌ state.json still has documentVersion: 2 (not updated!)
+
+// Result:
+Banner reads state.json: "latest is 2"
+Versions panel scans directory: "4 versions found"
+→ Mismatch!
+```
+
+### Solution
+
+After copying version files, scan them to find the highest version number and update `state.json`:
+
+```javascript
+// Track highest version while copying
+let highestVersionNumber = 1;
+
+for (const vFile of versionFiles) {
+  if (vFile.endsWith('.docx')) {
+    fs.copyFileSync(srcPath, destPath);
+    
+    // Extract version number from filename
+    const match = vFile.match(/^v(\d+)\.docx$/);
+    if (match) {
+      const versionNum = parseInt(match[1], 10);
+      if (versionNum > highestVersionNumber) {
+        highestVersionNumber = versionNum;
+      }
+    }
+  }
+}
+
+// Update state.json to match
+const sessionState = loadSessionState(req.sessionId);
+sessionState.documentVersion = highestVersionNumber;
+saveSessionState(req.sessionId, sessionState);
+```
+
+### Result
+
+**Before:**
+```
+Scenario with 4 versions loads:
+- state.json: documentVersion = 2 (wrong)
+- Versions in directory: v1, v2, v3, v4
+- Banner: "latest is 2" ❌
+```
+
+**After:**
+```
+Scenario with 4 versions loads:
+- state.json: documentVersion = 4 (correct!)
+- Versions in directory: v1, v2, v3, v4
+- Banner: "latest is 4" ✅
+```
+
+### Files Changed
+- `server/src/server.js` (lines 3998-4051, +19 lines in factory-reset endpoint)
+
+### Testing
+
+**Manual test:**
+1. Create multiple versions (save document 3-4 times)
+2. Save scenario with custom name
+3. Load scenario
+4. Check banner message
+5. Verify it shows correct latest version
+
+**Expected:**
+- Banner version matches highest version in list
+- No confusing mismatch
+
+---
+
 ## Impact Analysis
 
 ### Bug #1: Checkout Prompt
@@ -250,6 +358,14 @@ curl -X POST https://localhost:4001/api/v1/scenarios/save \
 - **User Experience:** Blocking - couldn't save work
 - **Data Loss Risk:** High - users lose state they want to preserve
 - **Workaround:** None
+
+### Bug #3: Scenario Loading Version Sync
+- **Severity:** Medium
+- **Affected Users:** All users loading scenarios with multiple versions
+- **Frequency:** Every scenario load (100% occurrence)
+- **User Experience:** Confusing - incorrect version information
+- **Data Loss Risk:** None (cosmetic issue)
+- **Workaround:** Manual page refresh (but issue persists)
 
 ---
 
@@ -298,7 +414,11 @@ Proceed with API layer hardening (from `hardening.md`):
 - Lines 4155-4156: Fixed undefined variable
 - 2 lines changed
 
-**Total:** +44 lines, 2 changed
+**Bug #3 (Scenario Loading):**
+- Lines 3998-4051: Sync documentVersion with loaded versions
+- +19 lines
+
+**Total:** +63 lines, 2 changed
 
 ---
 
@@ -314,7 +434,9 @@ Proceed with API layer hardening (from `hardening.md`):
 
 1. **e7f9b34** - fix: Checkout prompt now respects vendor version permissions
 2. **142b675** - fix: Scenario save endpoint - undefined variable error
+3. **93339ce** - docs: Document two critical bug fixes before Week 2
+4. **51e2dc0** - fix: Scenario loading now updates documentVersion to match loaded versions
 
 **Branch:** `hardening`  
-**Total:** 7 commits (5 hardening + 2 bug fixes)
+**Total:** 9 commits (5 hardening + 4 bug fixes/docs)
 
