@@ -50,18 +50,29 @@ Complete hardening strategy for the entire application stack.
 ### Uninstallers
 
 **Complete removal:**
-- Remove registry/defaults entry
-- Clear Office cache
+- Remove registry/defaults entry with correct GUID
+- Kill Edge processes before cache clearing
+- Clear Office cache (gracefully handle locked files)
 - Delete manifest files
 - Verify clean uninstall
+
+**✅ Implemented:** Registry key fixes, locked file handling, error messages
 
 ### Developer Environment Switchers
 
 **One-click scripts:**
 - `use-local.bat` / `.command` - Switch to localhost:4000
 - `use-deployed.bat` / `.command` - Switch to production
+- `run-local.bat` - Start local dev environment
+  - Closes Word cleanly
+  - Removes deployed add-in if present
+  - **Kills and restarts server processes** (ports 4000/4001)
+  - Starts add-in dev server
+  - Sideloads local manifest
 - Automatic stop/start of manifests
 - Clear feedback on active environment
+
+**✅ Implemented:** run-local.bat now properly restarts servers to pick up code changes
 
 **Tests:** 37 installation tests (see `test-inventory.md`)
 
@@ -100,8 +111,10 @@ Check dependencies → Validate state → Create dirs → Health check → Accep
 **GET /api/v1/health:**
 - Memory usage (warn if >90%)
 - Filesystem access
-- LLM provider status
+- AI status (always reports demo mode)
 - Return 200 (ok) or 503 (degraded)
+
+**✅ Implemented:** Simplified AI to always use demo mode (no external LLM dependencies)
 
 **Tests:** 25 server infrastructure tests
 
@@ -250,7 +263,88 @@ Write to .tmp → Verify content → Atomic rename → Delete temp on failure
 
 ---
 
-## 7. Network Operations Hardening
+## 7. Version Sharing & Permission Hardening
+
+### Version Access Control
+
+**Role-based filtering:**
+- Editors: See all versions
+- Vendors: Only see shared versions
+- Version 1 always shared (demo document, cannot be unshared)
+
+**Server-side enforcement:**
+- `GET /api/v1/versions` filters by userId and role
+- `GET /api/v1/versions/:n` validates access before returning document
+- `POST /api/v1/versions/:n/share` validates editor permission
+
+### Vendor-Saved Versions
+
+**Auto-share behavior:**
+- When vendor saves document → version auto-shared with vendor
+- `sharedWithVendor: true` set automatically
+- Broadcast `version:shared` event
+- Vendor sees their own version immediately
+
+**✅ Implemented:** Vendors can now see and access their own saved versions
+
+### Share/Unshare Operations
+
+**Sharing workflow:**
+- Editor clicks share → API validates permissions
+- Server updates version metadata atomically
+- Broadcasts `version:shared` event
+- Vendors' UI refreshes with newly shared version
+
+**Unsharing workflow:**
+- Editor clicks unshare → API validates permissions
+- Server calculates fallback version (most recent shared version or v1)
+- Broadcasts `version:shared` with `fallbackVersion`
+- Vendors viewing unshared version auto-switch to fallback
+- Unshared version removed from vendors' list
+
+**Error handling:**
+- 403: Non-editors cannot share/unshare
+- 400: Version 1 cannot be unshared
+- 404: Version doesn't exist
+
+**✅ Implemented:** Share/unshare with auto-switch and permission validation
+
+### UI Permission Awareness
+
+**Version banner:**
+- Respects vendor permissions
+- Only shows "New Version Available" for accessible versions
+- Fetches latest accessible version per user
+- Falls back gracefully if fetch fails
+
+**Version list:**
+- Real-time updates via SSE events
+- Share/unshare buttons only visible to editors
+- Green styling for shared versions
+- DEMO badge for Version 1
+
+**✅ Implemented:** Banner, list, and share buttons all respect permissions
+
+### SSE Event Isolation
+
+**Chat messages:**
+- Per-user, per-platform isolation
+- AI chat responses sent only to requesting user
+- Broadcast explicitly skips `chat` and `chat:stop` events
+- Prevents cross-window message leakage
+
+**Version events:**
+- `version:shared` broadcasts to all clients
+- Vendors filter by their permissions
+- Editors see all updates
+
+**✅ Implemented:** Chat isolation and version event broadcasting
+
+**Tests:** 18 version sharing tests (see `features/version-sharing.md`)
+
+---
+
+## 8. Network Operations Hardening
 
 ### Retry Logic
 
@@ -274,7 +368,7 @@ Write to .tmp → Verify content → Atomic rename → Delete temp on failure
 
 ---
 
-## 8. Client-Side Hardening
+## 9. Client-Side Hardening
 
 ### React Error Boundaries
 
@@ -319,10 +413,13 @@ Write to .tmp → Verify content → Atomic rename → Delete temp on failure
 4. **State Management (15)** - Validation, corruption, atomic updates
 5. **File Operations (20)** - Size limits, atomic writes, cleanup
 6. **Session Management (12)** - Timeouts, cleanup
-7. **Network Operations (12)** - Retries, circuit breakers
-8. **Client-Side (18)** - Error boundaries, API calls, offline
-9. **Integration (30)** - End-to-end flows, error recovery
-10. **Chaos (10)** - Failure injection, stress testing
+7. **Version Sharing (18)** - Permission validation, auto-share, auto-switch
+8. **Network Operations (12)** - Retries, circuit breakers
+9. **Client-Side (18)** - Error boundaries, API calls, offline
+10. **Integration (30)** - End-to-end flows, error recovery
+11. **Chaos (10)** - Failure injection, stress testing
+
+**Current Status:** 138 tests implemented (133 passing, 5 pre-existing failures)
 
 ### Automated Test Execution
 
@@ -340,13 +437,38 @@ Chaos tests → Performance tests → Report
 
 ## Implementation Roadmap
 
+### ✅ Completed (bugs-and-bye-ollama branch → main)
+
+**Developer Tools:**
+- ✅ Uninstaller hardening (registry fixes, locked file handling)
+- ✅ run-local.bat improvements (proper process restart)
+
+**Version Sharing & Permissions:**
+- ✅ Role-based version filtering (editors vs vendors)
+- ✅ Vendor-saved versions auto-share
+- ✅ Share/unshare with auto-switch for vendors
+- ✅ Permission-aware UI (banner, list, buttons)
+- ✅ Version 1 always shared (demo document)
+
+**SSE & Real-time:**
+- ✅ Chat message isolation (per-user, per-platform)
+- ✅ AI chat immediate response delivery
+- ✅ Version event broadcasting with permission filtering
+
+**AI Simplification:**
+- ✅ Removed Ollama dependency
+- ✅ Simplified to always use demo mode
+
+**Tests:**
+- ✅ 138 tests implemented (133 passing)
+- ✅ Version sharing test coverage
+
 ### Week 1: Installation (3 days) + Server (2 days)
-- Windows/macOS installers hardening
-- Uninstallers
-- Dev environment switchers
+- Windows/macOS installers hardening (partial: uninstaller done)
+- Dev environment switchers (partial: run-local.bat done)
 - Server startup checks
 - Graceful shutdown
-- Health checks
+- Health checks (partial: demo mode implemented)
 
 ### Week 2: API Layer (5 days)
 - Input validation framework
@@ -438,9 +560,3 @@ Chaos tests → Performance tests → Report
 - `server/tests/api-endpoints.test.js` - 45 tests
 - `server/tests/integration.test.js` - 30 tests
 - `server/tests/chaos.test.js` - 10 tests
-
----
-
-**Estimated Implementation Time:** 5 weeks
-**Test Implementation Time:** 3.5 weeks (parallel)
-**Total Tests:** 225 (see `test-inventory.md`)
