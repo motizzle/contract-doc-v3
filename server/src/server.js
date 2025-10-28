@@ -2267,7 +2267,7 @@ app.get('/api/v1/messages', (req, res) => {
 });
 
 // POST /api/v1/messages - Create new Message
-app.post('/api/v1/messages', (req, res) => {
+app.post('/api/v1/messages', writeLimiter, validate('sendMessage'), (req, res) => {
   try {
     const { title, recipients, internal, external, privileged, text, userId } = req.body;
     
@@ -2696,7 +2696,7 @@ app.get('/api/v1/variables', (req, res) => {
   }
 });
 
-app.post('/api/v1/variables', (req, res) => {
+app.post('/api/v1/variables', writeLimiter, validate('createVariable'), (req, res) => {
   try {
     const { varId, displayLabel, type, category, value, email, userId } = req.body;
     
@@ -2763,7 +2763,7 @@ app.post('/api/v1/variables', (req, res) => {
   }
 });
 
-app.put('/api/v1/variables/:varId', (req, res) => {
+app.put('/api/v1/variables/:varId', writeLimiter, validateVarIdParam, validate('updateVariable'), (req, res) => {
   try {
     const { varId } = req.params;
     const { displayLabel, type, category, value, email, docusignRole, userId } = req.body;
@@ -2882,7 +2882,7 @@ app.delete('/api/v1/variables/:varId', (req, res) => {
 });
 
 // Endpoint specifically for updating just the value
-app.put('/api/v1/variables/:varId/value', (req, res) => {
+app.put('/api/v1/variables/:varId/value', writeLimiter, validateVarIdParam, validate('updateVariableValue'), (req, res) => {
   try {
     const { varId } = req.params;
     const { value, userId } = req.body;
@@ -3076,9 +3076,9 @@ app.get('/api/v1/approvals/state', (req, res) => {
 
 
 // Update document title
-app.post('/api/v1/title', (req, res) => {
+app.post('/api/v1/title', writeLimiter, validate('updateTitle'), (req, res) => {
   try {
-    const title = String(req.body?.title || '').trim();
+    const title = req.body.title.trim();
     if (!title) return res.status(400).json({ error: 'invalid_title' });
     serverState.title = title.slice(0, 256);
     // Record who updated the title
@@ -3205,12 +3205,12 @@ app.post('/api/v1/document/revert', (req, res) => {
 });
 
 // Save progress: write working copy bytes without releasing checkout
-app.post('/api/v1/save-progress', (req, res) => {
+app.post('/api/v1/save-progress', writeLimiter, validate('saveProgress'), (req, res) => {
   try {
     const paths = getSessionPaths(req.sessionId);
-    const userId = req.body?.userId || 'user1';
-    const platform = (req.body?.platform || req.query?.platform || '').toLowerCase();
-    const base64 = req.body?.base64 || '';
+    const userId = req.body.userId;
+    const platform = (req.body.platform || req.query?.platform || '').toLowerCase();
+    const base64 = req.body.base64;
     
     // Load session-specific state
     const state = loadSessionState(req.sessionId);
@@ -3423,9 +3423,9 @@ app.get('/api/v1/versions/:n', (req, res) => {
 });
 
 // Broadcast-only view selection
-app.post('/api/v1/versions/view', (req, res) => {
+app.post('/api/v1/versions/view', writeLimiter, validate('versionView'), (req, res) => {
   try {
-    const n = Number(req.body?.version);
+    const n = req.body.version;
     if (!Number.isFinite(n) || n < 1) return res.status(400).json({ error: 'invalid_version' });
     const originPlatform = String(req.body?.platform || req.query?.platform || 'web');
     const actorUserId = req.body?.userId || 'user1';
@@ -3486,10 +3486,10 @@ app.post('/api/v1/versions/view', (req, res) => {
 });
 
 // Share/Unshare version with vendors
-app.post('/api/v1/versions/:n/share', (req, res) => {
+app.post('/api/v1/versions/:n/share', writeLimiter, validateVersionParam, validate('versionShare'), (req, res) => {
   try {
-    const versionNumber = Number(req.params.n);
-    const userId = req.body?.userId || 'user1';
+    const versionNumber = req.versionNumber; // Set by validateVersionParam
+    const userId = req.body.userId;
     const shared = !!req.body?.shared;
     
     if (!Number.isFinite(versionNumber) || versionNumber < 1) {
@@ -3659,10 +3659,10 @@ app.get('/api/v1/approvals', (req, res) => {
   res.json({ approvers, summary, revision });
 });
 
-app.post('/api/v1/approvals/set', (req, res) => {
+app.post('/api/v1/approvals/set', writeLimiter, validate('setApproval'), (req, res) => {
   try {
     const documentId = req.body?.documentId || DOCUMENT_ID;
-    const actorUserId = req.body?.actorUserId || 'user1';
+    const actorUserId = req.body.userId;
     const targetUserId = req.body?.targetUserId || '';
     const approved = !!req.body?.approved;
     const notes = (req.body?.notes !== undefined) ? String(req.body.notes) : undefined;
@@ -4103,9 +4103,9 @@ function generateSlug(name) {
 }
 
 // POST /api/v1/scenarios/save - Save current state as a named scenario
-app.post('/api/v1/scenarios/save', (req, res) => {
+app.post('/api/v1/scenarios/save', writeLimiter, validate('saveScenario'), (req, res) => {
   try {
-    const { name, description = '', userId = 'user1' } = req.body || {};
+    const { name, description = '', userId = 'user1' } = req.body;
     
     // Validation
     if (!name || typeof name !== 'string' || name.trim().length < 3) {
@@ -5030,9 +5030,9 @@ app.delete('/api/v1/exhibits/:filename', (req, res) => {
 });
 
 // Compile: convert current DOCX to PDF (LibreOffice), then merge selected exhibits (PDF)
-app.post('/api/v1/compile', async (req, res) => {
+app.post('/api/v1/compile', strictLimiter, extendedTimeout, validate('compile'), async (req, res) => {
   try {
-    const userId = req.body?.userId || 'user1';
+    const userId = req.body.userId || 'user1';
     const platform = req.query?.platform || req.body?.platform || 'web';
     const names = Array.isArray(req.body?.exhibits) ? req.body.exhibits.filter(Boolean) : [];
     const paths = getSessionPaths(req.sessionId);
