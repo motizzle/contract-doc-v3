@@ -3,25 +3,27 @@ REM Test Version Update Detection Feature
 
 echo.
 echo ========================================
-echo Test Version Update Detection
+echo Test Version Update Detection + Release Notes
 echo ========================================
 echo.
 echo This script will:
 echo   1. Start both servers (4000 and 4001)
-echo   2. Set version to 1.0.0
+echo   2. Set version to 1.0.0 (no release notes)
 echo   3. Wait for you to open web + Word
-echo   4. Change version to 1.0.1
+echo   4. Add release notes and change version to 1.0.1
 echo   5. Restart backend
-echo   6. You should see purple banner in BOTH
+echo   6. You should see purple banner WITH release notes in BOTH
 echo.
 
 REM Navigate to project root
 cd /d "%~dp0..\.."
 
-echo Step 1: Set version to 1.0.0
+echo Step 1: Set version to 1.0.0 and clear release notes
 cd server
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$json = Get-Content package.json -Raw | ConvertFrom-Json; $json.version = '1.0.0'; $json | ConvertTo-Json -Depth 10 | Set-Content package.json"
+if exist RELEASE_NOTES.txt del RELEASE_NOTES.txt
 echo Version set to 1.0.0
+echo Release notes cleared (testing empty state)
 echo.
 
 echo Step 2: Kill any existing servers and start fresh...
@@ -63,9 +65,16 @@ echo Press any key when BOTH are loaded...
 pause >nul
 echo.
 
-echo Step 4: Changing version to 1.0.1 (simulating deploy)
+echo Step 4: Adding release notes and changing version to 1.0.1
+echo Fixed critical bug where vendors couldn't access version 1 after being unshared. > RELEASE_NOTES.txt
+echo. >> RELEASE_NOTES.txt
+echo Improvements: >> RELEASE_NOTES.txt
+echo - Version sharing now correctly handles vendor permissions >> RELEASE_NOTES.txt
+echo - Auto-switch to accessible version when unshared >> RELEASE_NOTES.txt
+echo - Updated app branding to "OpenGov Contracting" >> RELEASE_NOTES.txt
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$json = Get-Content package.json -Raw | ConvertFrom-Json; $json.version = '1.0.1'; $json | ConvertTo-Json -Depth 10 | Set-Content package.json"
 echo Version changed to 1.0.1
+echo Release notes added
 echo.
 
 echo Step 5: Restarting both servers...
@@ -89,12 +98,21 @@ echo ========================================
 echo CHECK BOTH BROWSER AND WORD NOW
 echo ========================================
 echo.
-echo You should see a PURPLE BANNER in BOTH:
+echo You should see a PURPLE BANNER in BOTH with RELEASE NOTES:
+echo.
 echo   "App Update Available"
 echo   "Version 1.0.0 -^> 1.0.1. Refresh to update."
+echo.
+echo   "Fixed critical bug where vendors couldn't access..."
+echo   "Improvements:"
+echo   "- Version sharing now correctly handles..."
+echo   "- Auto-switch to accessible version..."
+echo   "- Updated app branding..."
+echo.
 echo   [Refresh Now] [X]
 echo.
 echo The banner appears at the TOP of the sidebar.
+echo The release notes should make the banner TALLER.
 echo.
 echo Test these actions:
 echo   1. Click "Refresh Now" - page reloads, banner gone
@@ -106,9 +124,10 @@ echo Press any key to clean up...
 pause >nul
 echo.
 
-echo Cleanup: Restoring version 1.0.0...
+echo Cleanup: Restoring version 1.0.0 and removing test release notes...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$json = Get-Content package.json -Raw | ConvertFrom-Json; $json.version = '1.0.0'; $json | ConvertTo-Json -Depth 10 | Set-Content package.json"
-echo Version restored
+if exist RELEASE_NOTES.txt del RELEASE_NOTES.txt
+echo Version restored, release notes removed
 echo.
 
 echo Cleanup: Stopping server...
