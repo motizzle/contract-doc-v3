@@ -1,1 +1,317 @@
-[]
+[
+  {
+    "id": "act_1761611845963_cnezzc9lt",
+    "timestamp": 1761611845963,
+    "type": "message:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1761611845961-e9txhyjsl",
+      "title": "User 2",
+      "recipients": 1,
+      "recipientsList": [
+        {
+          "label": "User 2",
+          "email": "user2@test.com",
+          "userId": "user2"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "Saved scenario message",
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"User 2\" with 1 person"
+  },
+  {
+    "id": "act_1761611846158_qdj9bviid",
+    "timestamp": 1761611846158,
+    "type": "workflow:request-review",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "requested review",
+    "target": "workflow",
+    "details": {},
+    "message": "Warren Peace requested review from approvers"
+  },
+  {
+    "id": "act_1761611846335_e35suj0q8",
+    "timestamp": 1761611846335,
+    "type": "message:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1761611846332-7522hwum8",
+      "title": "User 2",
+      "recipients": 1,
+      "recipientsList": [
+        {
+          "label": "User 2",
+          "email": "user2@test.com",
+          "userId": "user2"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "Contract terms discussion",
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"User 2\" with 1 person"
+  },
+  {
+    "id": "act_1761611846392_a83tsnhcc",
+    "timestamp": 1761611846392,
+    "type": "message:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1761611846383-bjydk2yvx",
+      "title": "User 3",
+      "recipients": 1,
+      "recipientsList": [
+        {
+          "label": "User 3",
+          "email": "user3@test.com",
+          "userId": "user3"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "Budget planning meeting",
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"User 3\" with 1 person"
+  },
+  {
+    "id": "act_1761611846512_p4z1whc1c",
+    "timestamp": 1761611846512,
+    "type": "message:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1761611846509-s17836o83",
+      "title": "User 2",
+      "recipients": 1,
+      "recipientsList": [
+        {
+          "label": "User 2",
+          "email": "user2@test.com",
+          "userId": "user2"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "First message",
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"User 2\" with 1 person"
+  },
+  {
+    "id": "act_1761611846545_zafhpqmws",
+    "timestamp": 1761611846545,
+    "type": "message:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1761611846542-myhxg4bs6",
+      "title": "User 2",
+      "recipients": 1,
+      "recipientsList": [
+        {
+          "label": "User 2",
+          "email": "user2@test.com",
+          "userId": "user2"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "Duplicate attempt",
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"User 2\" with 1 person"
+  },
+  {
+    "id": "act_1761611846585_yyev7kld8",
+    "timestamp": 1761611846585,
+    "type": "message:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1761611846582-if9ha1t9s",
+      "title": "Alice Smith, Bob Jones",
+      "recipients": 2,
+      "recipientsList": [
+        {
+          "label": "Alice Smith",
+          "email": "alice@test.com",
+          "userId": "user2"
+        },
+        {
+          "label": "Bob Jones",
+          "email": "bob@test.com",
+          "userId": "user3"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "Group discussion",
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"Alice Smith, Bob Jones\" with 2 people"
+  },
+  {
+    "id": "act_1761611846615_iddtqb7v2",
+    "timestamp": 1761611846615,
+    "type": "message:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1761611846611-zz83r5uel",
+      "title": "User 2",
+      "recipients": 1,
+      "recipientsList": [
+        {
+          "label": "User 2",
+          "email": "user2@test.com",
+          "userId": "user2"
+        }
+      ],
+      "internal": true,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "Internal message",
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"User 2\" with 1 person"
+  },
+  {
+    "id": "act_1761611846646_t7x4jbh7j",
+    "timestamp": 1761611846646,
+    "type": "message:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1761611846643-g8w3cyhcq",
+      "title": "User 3",
+      "recipients": 1,
+      "recipientsList": [
+        {
+          "label": "User 3",
+          "email": "user3@test.com",
+          "userId": "user3"
+        }
+      ],
+      "internal": false,
+      "external": true,
+      "privileged": false,
+      "initialMessage": "External message",
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"User 3\" with 1 person"
+  },
+  {
+    "id": "act_1761611846694_aggcufuv5",
+    "timestamp": 1761611846694,
+    "type": "message:exported",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "exported messages",
+    "target": "message",
+    "details": {
+      "scope": "all",
+      "filters": "scope:all, internal, privileged",
+      "messageCount": 8,
+      "includePosts": false,
+      "platform": "web"
+    },
+    "message": "system exported 8 conversations to CSV"
+  },
+  {
+    "id": "act_1761625812070_6zb87gh23",
+    "timestamp": 1761625812070,
+    "type": "document:checkout",
+    "user": {
+      "id": "user2",
+      "label": "Kent Uckey",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 1,
+      "status": "draft"
+    },
+    "message": "Kent Uckey checked out \"Redlined & Signed\" (v1)"
+  },
+  {
+    "id": "act_1761625813024_k4d0vokkt",
+    "timestamp": 1761625813024,
+    "type": "document:save",
+    "user": {
+      "id": "user2",
+      "label": "Kent Uckey",
+      "platform": "word"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 2,
+      "documentTitle": "Redlined & Signed"
+    },
+    "message": "Kent Uckey saved \"Redlined & Signed\" (v2)"
+  }
+]

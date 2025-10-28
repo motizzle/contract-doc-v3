@@ -1,0 +1,10 @@
+{
+  "user1": [],
+  "user2": [],
+  "user3": [],
+  "user4": [],
+  "user5": [],
+  "[bot] Okay, here’s the answer to your question, based solely on the provided document:\n\nThe document outlines a plan for the development and deployment of a new contract system, aiming to eliminate confusion and streamline procurement processes. It includes phases for:\n\n1.  **Access:** Optional access for private previews.\n2.  **Prototype:** A basic redline experience within OpenGov.\n3.  **Testable Application:** A testing environment with feedback gathering.\n4.  **Internal & ~10 Customers:**  A pilot program for internal and 10 customers.\n5.  **Public Preview:** A broader public demonstration.\n6.  **MVP:** A full redlining experience with basic AI integration.\n7.  **Transition:**  Complete replacement of the existing experience.\n8.  **Core Infra:**  Ensuring all key functionality is migrated.\n\nThe document also details various features, including AI integration, vendor experience, and the ability to manage variables and AI negotiator functionality.": [
+    null
+  ]
+}

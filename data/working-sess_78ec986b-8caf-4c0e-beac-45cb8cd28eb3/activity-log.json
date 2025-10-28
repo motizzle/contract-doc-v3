@@ -1,0 +1,37 @@
+[
+  {
+    "id": "act_1761332732525_hja4impey",
+    "timestamp": 1761332732525,
+    "type": "document:checkout",
+    "user": {
+      "id": "user2",
+      "label": "Kent Uckey",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 1,
+      "status": "draft"
+    },
+    "message": "Kent Uckey checked out \"Redlined & Signed\" (v1)"
+  },
+  {
+    "id": "act_1761332737407_qj0uorlpf",
+    "timestamp": 1761332737407,
+    "type": "document:checkout:cancel",
+    "user": {
+      "id": "user2",
+      "label": "Kent Uckey",
+      "platform": "web"
+    },
+    "action": "cancelled checkout",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 1
+    },
+    "message": "Kent Uckey cancelled checkout of \"Redlined & Signed\""
+  }
+]

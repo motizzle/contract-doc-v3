@@ -54,10 +54,7 @@ echo.
 
 REM Set up environment
 echo [4/8] Setting up environment...
-set LLM_PROVIDER=ollama
-set OLLAMA_MODEL=gemma3:1b
-set OLLAMA_BASE_URL=http://localhost:11434
-echo   - Environment configured
+echo   - Environment configured (AI uses demo mode with jokes)
 echo.
 
 REM Check if main server is already running

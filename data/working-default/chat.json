@@ -1,1 +1,19 @@
-{"user1":[],"user2":[],"user3":[],"user4":[],"user5":[]}
+{
+  "user1": [
+    "[bot] Shall we...contract?",
+    "[user1] sup"
+  ],
+  "user2": [
+    "[bot] Shall we...contract?",
+    "[user2] sup"
+  ],
+  "user3": [
+    "[bot] Shall we...contract?"
+  ],
+  "user4": [
+    "[bot] Shall we...contract?"
+  ],
+  "user5": [
+    "[bot] Shall we...contract?"
+  ]
+}

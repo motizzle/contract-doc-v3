@@ -1,0 +1,72 @@
+[
+  {
+    "id": "act_1761336876533_9gmq8hn5n",
+    "timestamp": 1761336876533,
+    "type": "document:checkout",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 1,
+      "status": "draft"
+    },
+    "message": "Warren Peace checked out \"Redlined & Signed\" (v1)"
+  },
+  {
+    "id": "act_1761336878265_957dg7oye",
+    "timestamp": 1761336878265,
+    "type": "document:checkout:cancel",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "cancelled checkout",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 1
+    },
+    "message": "Warren Peace cancelled checkout of \"Redlined & Signed\""
+  },
+  {
+    "id": "act_1761336932325_yyutoze8r",
+    "timestamp": 1761336932325,
+    "type": "document:checkout",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 1,
+      "status": "draft"
+    },
+    "message": "Warren Peace checked out \"Redlined & Signed\" (v1)"
+  },
+  {
+    "id": "act_1761336934002_310jy3yx3",
+    "timestamp": 1761336934002,
+    "type": "document:checkout:cancel",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "cancelled checkout",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 1
+    },
+    "message": "Warren Peace cancelled checkout of \"Redlined & Signed\""
+  }
+]
