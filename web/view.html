@@ -15,12 +15,9 @@
   <!-- SuperDoc 0.14.19 requires this global for track changes to work -->
   <script>
     window.__IS_DEBUG__ = false;
-    // Fetch client version from server (for version update detection)
-    window.APP_VERSION = '1.0.0'; // Fallback
-    fetch('/api/v1/health', { cache: 'no-store' })
-      .then(r => r.json())
-      .then(h => { if (h.version) window.APP_VERSION = h.version; })
-      .catch(() => {});
+    // Client version (static - set at page load time for version update detection)
+    // This should NOT be updated dynamically - it represents the version of the loaded client code
+    window.APP_VERSION = '1.0.0';
   </script>
   <!-- React UMD (local) and React entry (shared) -->
   <script defer src="/vendor/react/react.production.min.js"></script>

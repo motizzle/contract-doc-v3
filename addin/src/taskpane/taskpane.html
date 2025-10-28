@@ -75,15 +75,12 @@
       })();
     </script>
     
-    <!-- Version detection for update banner -->
-    <script>
-      // Fetch client version from server (for version update detection)
-      window.APP_VERSION = '1.0.0'; // Fallback
-      fetch('/api/v1/health', { cache: 'no-store' })
-        .then(r => r.json())
-        .then(h => { if (h.version) window.APP_VERSION = h.version; })
-        .catch(() => {});
-    </script>
+  <!-- Version detection for update banner -->
+  <script>
+    // Client version (static - set at page load time for version update detection)
+    // This should NOT be updated dynamically - it represents the version of the loaded client code
+    window.APP_VERSION = '1.0.0';
+  </script>
     
     <!-- Preload and load React UMD locally via backend proxy -->
     <link rel="preload" as="script" href="/vendor/react/react.production.min.js" />
