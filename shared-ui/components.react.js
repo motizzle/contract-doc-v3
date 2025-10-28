@@ -371,6 +371,7 @@
       const [serverVersion, setServerVersion] = React.useState(null);
       const [updateAvailable, setUpdateAvailable] = React.useState(false);
       const [updateDismissed, setUpdateDismissed] = React.useState(false);
+      const [releaseNotes, setReleaseNotes] = React.useState(null);
       
       const API_BASE = getApiBase();
 
@@ -444,6 +445,7 @@
           if (newServerVersion && newServerVersion !== CLIENT_VERSION) {
             console.log(`🔄 [Version] Update available: ${CLIENT_VERSION} → ${newServerVersion}`);
             setServerVersion(newServerVersion);
+            setReleaseNotes(health.releaseNotes || null);
             setUpdateAvailable(true);
           } else if (newServerVersion) {
             setServerVersion(newServerVersion);
@@ -793,6 +795,7 @@
                 if (p.serverVersion !== CLIENT_VERSION) {
                   console.log(`🔄 [Version] Update detected via SSE: ${CLIENT_VERSION} → ${p.serverVersion}`);
                   setServerVersion(p.serverVersion);
+                  setReleaseNotes(p.releaseNotes || null);
                   setUpdateAvailable(true);
                 } else {
                   setServerVersion(p.serverVersion);
@@ -1431,7 +1434,7 @@
         },
       }), [API_BASE, refresh, userId, addLog, viewingVersion]);
 
-      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, activities, lastSeenActivityId, markActivitiesSeen, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, messagingUnreadCount, setmessagingUnreadCount, renderNotification, formatNotification, viewingVersion, setViewingVersion, refresh, updateAvailable, updateDismissed, setUpdateDismissed, serverVersion } }, React.createElement(App, { config }));
+      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, activities, lastSeenActivityId, markActivitiesSeen, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, messagingUnreadCount, setmessagingUnreadCount, renderNotification, formatNotification, viewingVersion, setViewingVersion, refresh, updateAvailable, updateDismissed, setUpdateDismissed, serverVersion, releaseNotes } }, React.createElement(App, { config }));
     }
 
     function BannerStack(props) {
@@ -1969,7 +1972,9 @@
                 React.createElement('div', { key: 'text', style: { color: 'inherit', textAlign: 'left' } }, [
                   React.createElement('div', { key: 't', style: { fontWeight: 700 } }, 'App Update Available'),
                   React.createElement('div', { key: 'm', style: { fontSize: 13, opacity: 0.95 } }, `Version ${CLIENT_VERSION} → ${serverVersion}. Refresh to update.`),
-                ]),
+                  // Release notes (if available)
+                  releaseNotes ? React.createElement('div', { key: 'rn', style: { fontSize: 13, opacity: 0.9, marginTop: 8, whiteSpace: 'pre-wrap', lineHeight: '1.4' } }, releaseNotes) : null,
+                ].filter(Boolean)),
                 // Refresh button
                 React.createElement('button', {
                   key: 'refresh-btn',

@@ -1,0 +1,7 @@
+Fixed critical bug where vendors couldn't access version 1 after being unshared from other versions.
+
+Improvements:
+- Version sharing now correctly handles vendor permissions
+- Auto-switch to accessible version when unshared
+- Updated app branding to "OpenGov Contracting"
+

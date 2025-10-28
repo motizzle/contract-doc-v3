@@ -2112,11 +2112,23 @@ app.get('/api/v1/health', (req, res) => {
     console.warn('Could not read package.json version:', err.message);
   }
   
+  // Read release notes from file
+  let releaseNotes = null;
+  try {
+    const notesPath = path.join(__dirname, '../RELEASE_NOTES.txt');
+    if (fs.existsSync(notesPath)) {
+      releaseNotes = fs.readFileSync(notesPath, 'utf8').trim();
+    }
+  } catch (err) {
+    console.warn('Could not read RELEASE_NOTES.txt:', err.message);
+  }
+  
   const health = {
     ok: !degraded,
     status: degraded ? 'degraded' : 'healthy',
     version: version,
     buildTime: process.env.BUILD_TIME || null,
+    releaseNotes: releaseNotes,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     memory: {
@@ -5329,12 +5341,21 @@ app.get('/api/v1/events', (req, res) => {
       serverVersion = require('../package.json').version;
     } catch {}
     
+    let releaseNotes = null;
+    try {
+      const notesPath = path.join(__dirname, '../RELEASE_NOTES.txt');
+      if (fs.existsSync(notesPath)) {
+        releaseNotes = fs.readFileSync(notesPath, 'utf8').trim();
+      }
+    } catch {}
+    
     const initial = {
       documentId: DOCUMENT_ID,
       revision: serverState.revision,
       type: 'hello',
       serverVersion: serverVersion,
       buildTime: process.env.BUILD_TIME || null,
+      releaseNotes: releaseNotes,
       state: { checkedOutBy: serverState.checkedOutBy },
       ts: Date.now(),
     };

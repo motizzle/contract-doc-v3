@@ -1,102 +1,24 @@
 {
   "messages": [
     {
-      "messageId": "msg-1761669641599-7x5x7goj5",
-      "title": "User 2",
+      "messageId": "msg-1761006622861-uujyv0efl",
+      "title": "Kent Uckey",
       "createdBy": {
-        "userId": "user1",
-        "label": "Warren Peace"
+        "userId": "user3",
+        "label": "Yuri Lee Laffed"
       },
-      "createdAt": 1761669641599,
-      "participants": [
-        {
-          "userId": "user2",
-          "label": "User 2",
-          "email": "user2@test.com",
-          "internal": true
-        }
-      ],
-      "internal": false,
-      "external": false,
-      "privileged": false,
-      "state": "open",
-      "lastPostAt": 1761669641599,
-      "unreadBy": [
-        "user2"
-      ],
-      "archivedBy": [],
-      "deletedBy": [],
-      "deletedAt": null
-    },
-    {
-      "messageId": "msg-1761669641932-mq8h9ibhd",
-      "title": "User 2",
-      "createdBy": {
-        "userId": "user1",
-        "label": "Warren Peace"
-      },
-      "createdAt": 1761669641932,
-      "participants": [
-        {
-          "userId": "user2",
-          "label": "User 2",
-          "email": "user2@test.com",
-          "internal": true
-        }
-      ],
-      "internal": false,
-      "external": false,
-      "privileged": false,
-      "state": "open",
-      "lastPostAt": 1761669641932,
-      "unreadBy": [
-        "user2"
-      ],
-      "archivedBy": [],
-      "deletedBy": [],
-      "deletedAt": null
-    },
-    {
-      "messageId": "msg-1761669642060-3d4xylrfl",
-      "title": "User 3",
-      "createdBy": {
-        "userId": "user1",
-        "label": "Warren Peace"
-      },
-      "createdAt": 1761669642060,
+      "createdAt": 1761006622861,
       "participants": [
         {
           "userId": "user3",
-          "label": "User 3",
-          "email": "user3@test.com",
+          "label": "Yuri Lee Laffed",
+          "email": "",
           "internal": true
-        }
-      ],
-      "internal": false,
-      "external": false,
-      "privileged": false,
-      "state": "open",
-      "lastPostAt": 1761669642060,
-      "unreadBy": [
-        "user3"
-      ],
-      "archivedBy": [],
-      "deletedBy": [],
-      "deletedAt": null
-    },
-    {
-      "messageId": "msg-1761669642259-1ris47puv",
-      "title": "User 2",
-      "createdBy": {
-        "userId": "user1",
-        "label": "Warren Peace"
-      },
-      "createdAt": 1761669642259,
-      "participants": [
+        },
         {
           "userId": "user2",
-          "label": "User 2",
-          "email": "user2@test.com",
+          "label": "Kent Uckey",
+          "email": "",
           "internal": true
         }
       ],
@@ -104,7 +26,7 @@
       "external": false,
       "privileged": false,
       "state": "open",
-      "lastPostAt": 1761669642259,
+      "lastPostAt": 1761006622861,
       "unreadBy": [
         "user2"
       ],
@@ -113,18 +35,24 @@
       "deletedAt": null
     },
     {
-      "messageId": "msg-1761669642288-mzgzdec6x",
-      "title": "User 2",
+      "messageId": "msg-1761006753263-r96rhp7oy",
+      "title": "Kent Uckey",
       "createdBy": {
-        "userId": "user1",
-        "label": "Warren Peace"
+        "userId": "user5",
+        "label": "Gettysburger King"
       },
-      "createdAt": 1761669642288,
+      "createdAt": 1761006753263,
       "participants": [
         {
+          "userId": "user5",
+          "label": "Gettysburger King",
+          "email": "",
+          "internal": true
+        },
+        {
           "userId": "user2",
-          "label": "User 2",
-          "email": "user2@test.com",
+          "label": "Kent Uckey",
+          "email": "",
           "internal": true
         }
       ],
@@ -132,7 +60,7 @@
       "external": false,
       "privileged": false,
       "state": "open",
-      "lastPostAt": 1761669642288,
+      "lastPostAt": 1761006753263,
       "unreadBy": [
         "user2"
       ],
@@ -141,91 +69,82 @@
       "deletedAt": null
     },
     {
-      "messageId": "msg-1761669642385-0ybzghdgr",
-      "title": "Alice Smith, Bob Jones",
+      "messageId": "msg-1761006833979-vni3l5ew6",
+      "title": "Warren Peace, Yuri Lee Laffed",
       "createdBy": {
-        "userId": "user1",
-        "label": "Warren Peace"
+        "userId": "user2",
+        "label": "Kent Uckey"
       },
-      "createdAt": 1761669642385,
+      "createdAt": 1761006833979,
       "participants": [
         {
           "userId": "user2",
-          "label": "Alice Smith",
-          "email": "alice@test.com",
+          "label": "Kent Uckey",
+          "email": "",
+          "internal": true
+        },
+        {
+          "userId": "user1",
+          "label": "Warren Peace",
+          "email": "",
           "internal": true
         },
         {
           "userId": "user3",
-          "label": "Bob Jones",
-          "email": "bob@test.com",
-          "internal": true
-        }
-      ],
-      "internal": false,
-      "external": false,
-      "privileged": false,
-      "state": "open",
-      "lastPostAt": 1761669642385,
-      "unreadBy": [
-        "user2",
-        "user3"
-      ],
-      "archivedBy": [],
-      "deletedBy": [],
-      "deletedAt": null
-    },
-    {
-      "messageId": "msg-1761669642476-5aikutnml",
-      "title": "User 2",
-      "createdBy": {
-        "userId": "user1",
-        "label": "Warren Peace"
-      },
-      "createdAt": 1761669642476,
-      "participants": [
-        {
-          "userId": "user2",
-          "label": "User 2",
-          "email": "user2@test.com",
+          "label": "Yuri Lee Laffed",
+          "email": "",
           "internal": true
         }
       ],
       "internal": true,
       "external": false,
-      "privileged": false,
+      "privileged": true,
       "state": "open",
-      "lastPostAt": 1761669642476,
+      "lastPostAt": 1761006833979,
       "unreadBy": [
-        "user2"
+        "user1",
+        "user3"
       ],
       "archivedBy": [],
       "deletedBy": [],
       "deletedAt": null
     },
     {
-      "messageId": "msg-1761669642496-nhkj521sm",
-      "title": "User 3",
+      "messageId": "msg-1761006870409-n37qpybcz",
+      "title": "Hugh R Ewe, Hugh Am Eye",
       "createdBy": {
-        "userId": "user1",
-        "label": "Warren Peace"
+        "userId": "user2",
+        "label": "Kent Uckey"
       },
-      "createdAt": 1761669642496,
+      "createdAt": 1761006870409,
       "participants": [
         {
-          "userId": "user3",
-          "label": "User 3",
-          "email": "user3@test.com",
+          "userId": "user2",
+          "label": "Kent Uckey",
+          "email": "",
           "internal": true
+        },
+        {
+          "userId": "user4",
+          "label": "Hugh R Ewe",
+          "email": "",
+          "internal": true
+        },
+        {
+          "userId": null,
+          "label": "Hugh Am Eye",
+          "email": "hugh@m.eye",
+          "internal": false
         }
       ],
       "internal": false,
       "external": true,
       "privileged": false,
       "state": "open",
-      "lastPostAt": 1761669642496,
+      "lastPostAt": 1761006870409,
       "unreadBy": [
-        "user3"
+        "user4",
+        null
       ],
       "archivedBy": [],
       "deletedBy": [],
@@ -234,91 +153,47 @@
   ],
   "posts": [
     {
-      "postId": "post-1761669641599-i5ajv430h",
-      "messageId": "msg-1761669641599-7x5x7goj5",
+      "postId": "post-1761006622861-7vv7f0p32",
+      "messageId": "msg-1761006622861-uujyv0efl",
       "author": {
-        "userId": "user1",
-        "label": "Warren Peace"
+        "userId": "user3",
+        "label": "Yuri Lee Laffed"
       },
-      "createdAt": 1761669641599,
-      "text": "Saved scenario message",
+      "createdAt": 1761006622861,
+      "text": "Changed the timeline, can you please review?",
       "privileged": false
     },
     {
-      "postId": "post-1761669641932-o1edbimu1",
-      "messageId": "msg-1761669641932-mq8h9ibhd",
+      "postId": "post-1761006753263-en3gc9srd",
+      "messageId": "msg-1761006753263-r96rhp7oy",
       "author": {
-        "userId": "user1",
-        "label": "Warren Peace"
+        "userId": "user5",
+        "label": "Gettysburger King"
       },
-      "createdAt": 1761669641932,
-      "text": "Contract terms discussion",
+      "createdAt": 1761006753263,
+      "text": "I will approve soon",
       "privileged": false
     },
     {
-      "postId": "post-1761669642060-fqc05c9o7",
-      "messageId": "msg-1761669642060-3d4xylrfl",
+      "postId": "post-1761006833979-erhbsp6b0",
+      "messageId": "msg-1761006833979-vni3l5ew6",
       "author": {
-        "userId": "user1",
-        "label": "Warren Peace"
+        "userId": "user2",
+        "label": "Kent Uckey"
       },
-      "createdAt": 1761669642060,
-      "text": "Budget planning meeting",
-      "privileged": false
+      "createdAt": 1761006833979,
+      "text": "Hugh has agreed, should we cancel change order 2.3A?",
+      "privileged": true
     },
     {
-      "postId": "post-1761669642259-vft35qx6a",
-      "messageId": "msg-1761669642259-1ris47puv",
+      "postId": "post-1761006870409-jmjojs7mo",
+      "messageId": "msg-1761006870409-n37qpybcz",
       "author": {
-        "userId": "user1",
-        "label": "Warren Peace"
+        "userId": "user2",
+        "label": "Kent Uckey"
       },
-      "createdAt": 1761669642259,
-      "text": "First message",
-      "privileged": false
-    },
-    {
-      "postId": "post-1761669642288-zlm8yikiq",
-      "messageId": "msg-1761669642288-mzgzdec6x",
-      "author": {
-        "userId": "user1",
-        "label": "Warren Peace"
-      },
-      "createdAt": 1761669642288,
-      "text": "Duplicate attempt",
-      "privileged": false
-    },
-    {
-      "postId": "post-1761669642385-f5ub99iof",
-      "messageId": "msg-1761669642385-0ybzghdgr",
-      "author": {
-        "userId": "user1",
-        "label": "Warren Peace"
-      },
-      "createdAt": 1761669642385,
-      "text": "Group discussion",
-      "privileged": false
-    },
-    {
-      "postId": "post-1761669642476-ei387ueo7",
-      "messageId": "msg-1761669642476-5aikutnml",
-      "author": {
-        "userId": "user1",
-        "label": "Warren Peace"
-      },
-      "createdAt": 1761669642476,
-      "text": "Internal message",
-      "privileged": false
-    },
-    {
-      "postId": "post-1761669642496-bwsvkg6ww",
-      "messageId": "msg-1761669642496-nhkj521sm",
-      "author": {
-        "userId": "user1",
-        "label": "Warren Peace"
-      },
-      "createdAt": 1761669642496,
-      "text": "External message",
+      "createdAt": 1761006870409,
+      "text": "We're reviewing internally and will get back to you.",
       "privileged": false
     }
   ]
