@@ -4214,6 +4214,7 @@
       
       // Use a ref to always get the latest currentUser without causing refresh to recreate
       const currentUserRef = React.useRef(stateContext.currentUser);
+      const itemsRef = React.useRef(items);
       
       const refresh = React.useCallback(async () => {
         try {
@@ -4239,9 +4240,14 @@
         }
       }, [API_BASE]);
       
-      // Refresh when user changes
+      // Keep refs updated and refresh when user changes
       React.useEffect(() => {
         currentUserRef.current = stateContext.currentUser;
+        itemsRef.current = items;
+      }, [stateContext.currentUser, items]);
+      
+      // Refresh when user changes
+      React.useEffect(() => {
         refresh();
       }, [stateContext.currentUser, refresh]);
       
@@ -4290,8 +4296,23 @@
                 
                 // Remove from list
                 setItems(prev => prev.filter(item => item.version !== versionNum));
+              } else if (isVendor && sharedWithVendor === true) {
+                // For vendors: if version is shared, check if it's already in their list
+                const versionExists = itemsRef.current.some(item => item.version === versionNum);
+                if (!versionExists) {
+                  console.log(`🔄 [VersionsPanel] Vendor ${currentUserId}: new version ${versionNum} shared, refreshing list`);
+                  // Refresh the entire list to get the newly shared version
+                  refresh();
+                } else {
+                  // Update existing version metadata
+                  setItems(prev => prev.map(item => 
+                    item.version === versionNum 
+                      ? { ...item, sharedWithVendor, sharedBy, sharedAt }
+                      : item
+                  ));
+                }
               } else {
-                // For editors or when sharing: update the metadata
+                // For editors: always update the metadata
                 setItems(prev => prev.map(item => 
                   item.version === versionNum 
                     ? { ...item, sharedWithVendor, sharedBy, sharedAt }
@@ -4341,7 +4362,7 @@
           try { window.removeEventListener('version:shared', onVersionShared); } catch {}
           try { window.removeEventListener('version:view', onVersionView); } catch {}
         };
-      }, [API_BASE, addLog, setDocumentSource, setViewingVersion, users, viewingVersion]);
+      }, [API_BASE, addLog, setDocumentSource, setViewingVersion, users, viewingVersion, refresh]);
       const isCurrent = (v) => { try { const cur = Number(config?.documentVersion || 1); return Number(v) === cur; } catch { return false; } };
       const isViewing = (v) => { try { return Number(v) === Number(viewingVersion || 0); } catch { return false; } };
         const onClickView = (v) => {

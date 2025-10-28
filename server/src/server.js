@@ -3165,16 +3165,34 @@ app.post('/api/v1/save-progress', (req, res) => {
       const ver = newVersion;
       const vDoc = path.join(paths.versionsDir, `v${ver}.docx`);
       fs.writeFileSync(vDoc, bytes);
+      
+      // Check if user is a vendor - if so, auto-share the version with them
+      const userRole = getUserRole(userId);
+      const isVendor = userRole === 'vendor';
+      
       const meta = { 
         version: ver, 
         savedBy: updatedState.updatedBy || { userId, label: userId }, 
         savedAt: new Date().toISOString(),
-        sharedWithVendor: false,  // DEFAULT: not shared with vendors
-        sharedBy: null,
-        sharedAt: null
+        sharedWithVendor: isVendor,  // Auto-share if saved by vendor
+        sharedBy: isVendor ? { userId, label: getUserLabel(userId) } : null,
+        sharedAt: isVendor ? new Date().toISOString() : null
       };
       fs.writeFileSync(path.join(paths.versionsDir, `v${ver}.json`), JSON.stringify(meta, null, 2));
       broadcast({ type: 'versions:update', sessionId: req.sessionId });
+      
+      // If vendor saved, also broadcast sharing event
+      if (isVendor) {
+        broadcast({ 
+          type: 'version:shared',
+          sessionId: req.sessionId,
+          version: ver,
+          sharedWithVendor: true,
+          sharedBy: { userId, label: getUserLabel(userId) },
+          sharedAt: meta.sharedAt,
+          timestamp: Date.now()
+        });
+      }
     } catch {}
 
     // Log activity (skip in test mode)
