@@ -15,10 +15,6 @@ const { runStartupChecks } = require('./startup-checks');
 // Import LLM module
 const { generateReply } = require('./lib/llm');
 
-// Run pre-flight checks before initialization
-const rootDir = path.join(__dirname, '..', '..');
-runStartupChecks(rootDir);
-
 // LLM Configuration - Support for Ollama (local) and OpenAI (remote)
 const LLM_PROVIDER = process.env.LLM_PROVIDER || 'ollama'; // 'ollama' or 'openai'
 const LLM_USE_OPENAI = String(process.env.LLM_USE_OPENAI || '').toLowerCase() === 'true';
@@ -149,6 +145,10 @@ const SSE_RETRY_MS = (() => {
 
 // Paths
 const rootDir = path.resolve(__dirname, '..', '..');
+
+// Run pre-flight checks before continuing initialization
+runStartupChecks(rootDir);
+
 const publicDir = path.join(rootDir, 'server', 'public');
 const sharedUiDir = path.join(rootDir, 'shared-ui');
 const webDir = path.join(rootDir, 'web');

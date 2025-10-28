@@ -181,6 +181,14 @@ function checkMemory() {
  * Run all startup checks
  */
 function runStartupChecks(rootDir) {
+  // Skip startup checks in test mode
+  const isTestMode = process.env.NODE_ENV === 'test';
+  
+  if (isTestMode) {
+    console.log('🧪 Test mode detected - skipping startup checks');
+    return;
+  }
+  
   console.log('');
   console.log('🔍 Running startup checks...');
   console.log('');
