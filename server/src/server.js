@@ -2025,38 +2025,14 @@ const upload = multer({ storage });
 
 // API v1
 app.get('/api/v1/health', (req, res) => {
-  // Check if in demo mode first
-  if (AI_DEMO_MODE) {
-    return res.json({
-      ok: true,
-      superdoc: SUPERDOC_BASE_URL,
-      llmEnabled: false,
-      llmProvider: 'demo',
-      llmModel: null,
-      aiDemoMode: true
-    });
-  }
-  
-  const llmEnabled = (LLM_PROVIDER === 'ollama') ||
-                       (LLM_PROVIDER === 'openai' && !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'mock');
-
-  const llmInfo = llmEnabled ? {
-    enabled: true,
-    provider: LLM_PROVIDER,
-    model: LLM_PROVIDER === 'ollama' ? OLLAMA_MODEL : OPENAI_MODEL
-  } : {
-    enabled: false,
-    provider: null,
-    usingMock: LLM_USE_OPENAI && process.env.OPENAI_API_KEY === 'mock'
-  };
-
+  // Always in demo mode - simplified
   res.json({
     ok: true,
     superdoc: SUPERDOC_BASE_URL,
-    llmEnabled: llmInfo.enabled,
-    llmProvider: llmInfo.provider,
-    llmModel: llmInfo.enabled ? llmInfo.model : null,
-    aiDemoMode: false
+    llmEnabled: false,
+    llmProvider: 'demo',
+    llmModel: null,
+    aiDemoMode: true
   });
 });
 
@@ -4594,64 +4570,21 @@ app.post('/api/v1/events/client', async (req, res) => {
     }
 
     if (type === 'chat' && text) {
-      // Check if we're in demo mode (no AI available)
-      if (AI_DEMO_MODE) {
-        const demoResponse = getDemoAIResponse();
-        broadcast({
-          type: 'chat',
-          payload: { text: demoResponse, MessagePlatform: originPlatform },
-          userId: 'bot',
-          role: 'assistant',
-          platform: 'server'
-        });
-      } else {
-        // Try to use real AI (Ollama or OpenAI)
-        try {
-          const systemPrompt = await getSystemPrompt(req.sessionId);
-          const result = await generateReply({ messages: [{ role: 'user', content: text }], systemPrompt });
-          if (result && result.ok && result.content) {
-            const replyText = String(result.content).trim();
-              broadcast({
-                type: 'chat',
-              payload: { text: replyText, MessagePlatform: originPlatform },
-                userId: 'bot',
-                role: 'assistant',
-                platform: 'server'
-              });
-              // Save bot reply to chat history
-              try {
-                const botMessage = `[bot] ${replyText}`;
-                saveChatMessage(userId, botMessage);
-              } catch {}
-          } else {
-            // LLM failed - send demo fallback response with joke
-            const msg = `LLM error: ${result && result.error ? result.error : 'Unknown error'}`;
-            logActivity(req.sessionId, 'system:error', 'system', { error: msg, source: 'llm' });
-            
-            const demoResponse = getDemoAIResponse();
-            broadcast({
-              type: 'chat',
-              payload: { text: demoResponse, MessagePlatform: originPlatform },
-              userId: 'bot',
-              role: 'assistant',
-              platform: 'server'
-            });
-          }
-        } catch (e) {
-          // LLM exception - send demo fallback response with joke
-          const msg = `LLM error: ${e && e.message ? e.message : 'Unknown error'}`;
-          logActivity(req.sessionId, 'system:error', 'system', { error: msg, source: 'llm' });
-          
-          const demoResponse = getDemoAIResponse();
-          broadcast({
-            type: 'chat',
-            payload: { text: demoResponse, MessagePlatform: originPlatform },
-            userId: 'bot',
-            role: 'assistant',
-            platform: 'server'
-          });
-        }
-      }
+      // Always use demo mode - simplified, no Ollama
+      const demoResponse = getDemoAIResponse();
+      broadcast({
+        type: 'chat',
+        payload: { text: demoResponse, MessagePlatform: originPlatform },
+        userId: 'bot',
+        role: 'assistant',
+        platform: 'server'
+      });
+      
+      // Save bot reply to chat history
+      try {
+        const botMessage = `[bot] ${demoResponse}`;
+        saveChatMessage(req.sessionId, userId, botMessage);
+      } catch {}
     } else if (type === 'chat:stop') {
       try { broadcast({ type: 'chat:reset', payload: { reason: 'user_stop', MessagePlatform: originPlatform }, userId, role: 'assistant', platform: 'server' }); } catch {}
     }
