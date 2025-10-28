@@ -17,9 +17,10 @@ echo Version set to 1.0.0
 echo.
 
 echo Step 2: Kill any existing servers and start fresh...
-powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 4001 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }"
-timeout /t 2 /nobreak >nul
-echo Old servers stopped
+echo Killing all node processes...
+taskkill /F /IM node.exe >nul 2>&1
+timeout /t 3 /nobreak >nul
+echo All servers stopped
 echo.
 
 echo Starting server on https://localhost:4001...
@@ -43,12 +44,13 @@ echo Version changed to 1.0.1
 echo.
 
 echo Step 5: Restarting server...
-taskkill /F /FI "WindowTitle eq Administrator:*npm start*" /T >nul 2>&1
-powershell -NoProfile -Command "Get-Process node -ErrorAction SilentlyContinue | Where-Object {$_.Path -like '*wordFTW*'} | Stop-Process -Force"
-timeout /t 2 /nobreak >nul
+echo Killing server...
+taskkill /F /IM node.exe >nul 2>&1
+timeout /t 3 /nobreak >nul
+echo Starting server with version 1.0.1...
 start /B cmd /c "npm start"
 timeout /t 5 /nobreak >nul
-echo Server restarted with version 1.0.1
+echo Server restarted
 echo.
 
 echo ========================================
@@ -76,8 +78,8 @@ echo Version restored
 echo.
 
 echo Cleanup: Stopping server...
-taskkill /F /FI "WindowTitle eq Administrator:*npm start*" /T >nul 2>&1
-powershell -NoProfile -Command "Get-Process node -ErrorAction SilentlyContinue | Where-Object {$_.Path -like '*wordFTW*'} | Stop-Process -Force"
+taskkill /F /IM node.exe >nul 2>&1
+timeout /t 1 /nobreak >nul
 echo Server stopped
 echo.
 
