@@ -4556,7 +4556,11 @@ app.post('/api/v1/events/client', async (req, res) => {
       }
       return p;
     })();
-    broadcast({ type, payload, userId, role, platform: originPlatform });
+    
+    // Don't broadcast chat messages - they're per-user private conversations
+    if (type !== 'chat' && type !== 'chat:stop') {
+      broadcast({ type, payload, userId, role, platform: originPlatform });
+    }
 
     // Extract text early for saving
     const text = String(payload?.text || '').trim();
@@ -4567,18 +4571,10 @@ app.post('/api/v1/events/client', async (req, res) => {
         const message = `[${userId}] ${text}`;
         saveChatMessage(req.sessionId, userId, message);
       } catch {}
-    }
-
-    if (type === 'chat' && text) {
+      
       // Always use demo mode - simplified, no Ollama
+      // Note: AI chat is per-user, not broadcast to other users
       const demoResponse = getDemoAIResponse();
-      broadcast({
-        type: 'chat',
-        payload: { text: demoResponse, MessagePlatform: originPlatform },
-        userId: 'bot',
-        role: 'assistant',
-        platform: 'server'
-      });
       
       // Save bot reply to chat history
       try {
@@ -4586,7 +4582,7 @@ app.post('/api/v1/events/client', async (req, res) => {
         saveChatMessage(req.sessionId, userId, botMessage);
       } catch {}
     } else if (type === 'chat:stop') {
-      try { broadcast({ type: 'chat:reset', payload: { reason: 'user_stop', MessagePlatform: originPlatform }, userId, role: 'assistant', platform: 'server' }); } catch {}
+      // Chat stop is also per-user, no broadcast needed
     }
 
     return res.json({ ok: true });
