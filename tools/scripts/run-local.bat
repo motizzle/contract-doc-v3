@@ -45,8 +45,11 @@ echo.
 
 REM Stop any existing sideloads
 echo [3/8] Stopping any existing local sideloads...
-npx office-addin-debugging stop addin/manifest.xml >nul 2>&1
-echo   - Cleanup complete
+set ROOT_DIR=%~dp0..\..
+cd /d "%ROOT_DIR%"
+REM Skipping office-addin-debugging stop as it can hang
+REM Word was already closed in step 1, which stops sideloads
+echo   - Skipped (Word already closed in step 1)
 echo.
 
 REM Set up environment
@@ -98,7 +101,6 @@ echo.
 
 REM Sideload local add-in
 echo [8/8] Sideloading local add-in...
-set ROOT_DIR=%SCRIPT_DIR%..\..
 cd /d "%ROOT_DIR%\addin"
 echo   - Working directory: %CD%
 echo   - Running: npx office-addin-debugging start manifest.xml
