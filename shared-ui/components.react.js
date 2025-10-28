@@ -1455,6 +1455,39 @@
       const [confirm, setConfirm] = React.useState(null);
       const { tokens } = React.useContext(ThemeContext);
       const rootRef = React.useRef(null);
+      const [latestAccessibleVersion, setLatestAccessibleVersion] = React.useState(null);
+
+      // Fetch latest accessible version for current user (respects vendor permissions)
+      React.useEffect(() => {
+        const API_BASE = getApiBase();
+        const fetchLatestVersion = async () => {
+          try {
+            const url = `${API_BASE}/api/v1/versions?userId=${currentUser}&rev=${Date.now()}`;
+            const r = await fetch(url, { cache: 'no-store' });
+            if (r.ok) {
+              const j = await r.json();
+              const versions = Array.isArray(j.items) ? j.items : [];
+              if (versions.length > 0) {
+                // Versions are sorted newest first, so first item is latest accessible
+                setLatestAccessibleVersion(versions[0].version);
+              }
+            }
+          } catch (err) {
+            console.error('Error fetching latest accessible version:', err);
+          }
+        };
+        fetchLatestVersion();
+        
+        // Refresh when versions are updated or shared
+        const onVersionsUpdate = () => fetchLatestVersion();
+        const onVersionShared = () => fetchLatestVersion();
+        try { window.addEventListener('versions:update', onVersionsUpdate); } catch {}
+        try { window.addEventListener('version:shared', onVersionShared); } catch {}
+        return () => {
+          try { window.removeEventListener('versions:update', onVersionsUpdate); } catch {}
+          try { window.removeEventListener('version:shared', onVersionShared); } catch {}
+        };
+      }, [currentUser]);
 
       // Listen for open-new-document event from header button
       React.useEffect(() => {
@@ -1823,12 +1856,16 @@
         ]);
       })();
 
-      // Show banner if viewing old version
+      // Show banner if viewing old version (respects vendor permissions)
       const isViewingOldVersion = (() => {
         try {
-          const currentVersion = Number(config?.documentVersion || 1);
+          // Use latestAccessibleVersion if available (respects vendor filtering), 
+          // otherwise fall back to config.documentVersion
+          const latestVersion = latestAccessibleVersion !== null 
+            ? Number(latestAccessibleVersion) 
+            : Number(config?.documentVersion || 1);
           const viewing = Number(viewingVersion || 1);
-          return viewing < currentVersion;
+          return viewing < latestVersion;
         } catch {
           return false;
         }
@@ -1838,10 +1875,12 @@
       const updateBannerParts = (function(){
         try {
           if (isViewingOldVersion) {
-            const currentVersion = Number(config?.documentVersion || 1);
+            const latestVersion = latestAccessibleVersion !== null 
+              ? Number(latestAccessibleVersion) 
+              : Number(config?.documentVersion || 1);
           return {
               title: 'New Version Available',
-              message: `You're viewing version ${viewingVersion}, the latest is ${currentVersion}.`
+              message: `You're viewing version ${viewingVersion}, the latest is ${latestVersion}.`
           };
           }
           return { title: '', message: '' };
