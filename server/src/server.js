@@ -1495,11 +1495,13 @@ function initializeSession(sessionId) {
   const versionsDir = path.join(sessionDir, 'versions');
   const exhibitsDir = path.join(sessionDir, 'exhibits');
   const compiledDir = path.join(sessionDir, 'compiled');
+  const snapshotsDir = path.join(sessionDir, 'snapshots');
   
   fs.mkdirSync(documentsDir, { recursive: true });
   fs.mkdirSync(versionsDir, { recursive: true });
   fs.mkdirSync(exhibitsDir, { recursive: true });
   fs.mkdirSync(compiledDir, { recursive: true });
+  fs.mkdirSync(snapshotsDir, { recursive: true });
   
   // Copy seed data - default document
   const canonicalDoc = path.join(canonicalDir, 'documents', 'default.docx');
@@ -1609,6 +1611,7 @@ function getSessionPaths(sessionId) {
     workingExhibitsDir: path.join(sessionDir, 'exhibits'),
     compiledDir: path.join(sessionDir, 'compiled'),
     versionsDir: path.join(sessionDir, 'versions'),
+    snapshotsDir: path.join(sessionDir, 'snapshots'),
     
     // State files
     stateFilePath: path.join(sessionDir, 'state.json'),
@@ -3597,8 +3600,9 @@ app.post('/api/v1/approvals/notify', (req, res) => {
 app.post('/api/v1/document/snapshot', (req, res) => {
   const src = resolveDefaultDocPath(req.sessionId);
   if (!fs.existsSync(src)) return res.status(404).json({ error: 'default.docx not found' });
+  const paths = getSessionPaths(req.sessionId);
   const ts = new Date().toISOString().replace(/[:.]/g, '-');
-  const snapDir = path.join(dataWorkingDir, 'snapshots');
+  const snapDir = paths.snapshotsDir;
   if (!fs.existsSync(snapDir)) fs.mkdirSync(snapDir, { recursive: true });
   const dest = path.join(snapDir, `default-${ts}.docx`);
   try {
@@ -3625,7 +3629,8 @@ app.post('/api/v1/document/snapshot', (req, res) => {
     broadcast({ type: 'snapshot', name: path.basename(dest) });
     res.json({ ok: true, path: dest });
   } catch (e) {
-    res.status(500).json({ error: 'Snapshot failed' });
+    console.error('[SNAPSHOT] Error:', e);
+    res.status(500).json({ error: 'Snapshot failed', detail: e.message });
   }
 });
 
