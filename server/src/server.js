@@ -2104,10 +2104,18 @@ app.get('/api/v1/health', (req, res) => {
   const degraded = memWarning || !filesystemOk;
   const status = degraded ? 503 : 200;
   
+  // Read version safely
+  let version = '1.0.0';
+  try {
+    version = require('../package.json').version;
+  } catch (err) {
+    console.warn('Could not read package.json version:', err.message);
+  }
+  
   const health = {
     ok: !degraded,
     status: degraded ? 'degraded' : 'healthy',
-    version: require('../../package.json').version,
+    version: version,
     buildTime: process.env.BUILD_TIME || null,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
@@ -5311,11 +5319,16 @@ app.get('/api/v1/events', (req, res) => {
   res.flush?.();
   // Send an initial hello event so clients see activity immediately after connect
   try {
+    let serverVersion = '1.0.0';
+    try {
+      serverVersion = require('../package.json').version;
+    } catch {}
+    
     const initial = {
       documentId: DOCUMENT_ID,
       revision: serverState.revision,
       type: 'hello',
-      serverVersion: require('../../package.json').version,
+      serverVersion: serverVersion,
       buildTime: process.env.BUILD_TIME || null,
       state: { checkedOutBy: serverState.checkedOutBy },
       ts: Date.now(),
