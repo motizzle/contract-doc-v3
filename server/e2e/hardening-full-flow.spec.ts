@@ -15,8 +15,8 @@ import { test, expect, Page } from '@playwright/test';
  */
 
 // Configure test execution
-test.describe.configure({ mode: 'parallel' });
-test.setTimeout(15000); // 15s per test (down from 30s default)
+// Sequential mode (not parallel) to avoid server overload (503 errors)
+test.setTimeout(20000); // 20s per test
 
 // Helper: Wait for element and check it's visible and enabled
 async function waitFor(page: Page, selector: string, timeout = 10000) {
