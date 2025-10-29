@@ -54,20 +54,37 @@ async function waitForApi(page: Page, urlPattern: string | RegExp) {
 // Helper: Factory reset
 async function factoryReset(page: Page) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(500); // Brief wait for hydration
+  // Wait for critical elements
+  await page.waitForSelector('select', { state: 'visible', timeout: 10000 });
+  await page.waitForTimeout(1000); // Let page fully load
   
   const resetButton = page.locator('button:has-text("Factory Reset")');
-  if (await resetButton.count() > 0) {
-    await resetButton.click();
-    await page.waitForTimeout(1000); // Wait for reset to complete
-  }
+  await resetButton.waitFor({ state: 'visible', timeout: 10000 });
+  await resetButton.click();
+  await page.waitForTimeout(1500); // Wait for reset to complete
 }
 
 // Helper: Select user from dropdown
 async function selectUser(page: Page, userName: string) {
   const userDropdown = page.locator('select').first();
-  await userDropdown.selectOption({ label: userName });
-  await page.waitForTimeout(500); // Wait for state to update
+  await userDropdown.waitFor({ state: 'visible', timeout: 10000 });
+  
+  // Wait for options to populate
+  await page.waitForTimeout(500);
+  
+  // Try to select - if option doesn't exist, wait and retry
+  let attempts = 0;
+  while (attempts < 3) {
+    try {
+      await userDropdown.selectOption({ label: userName }, { timeout: 5000 });
+      await page.waitForTimeout(1000); // Wait for state to update
+      return;
+    } catch (e) {
+      attempts++;
+      if (attempts >= 3) throw e;
+      await page.waitForTimeout(1000);
+    }
+  }
 }
 
 test.describe('HARDENING: Full Application Flow', () => {
