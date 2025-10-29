@@ -203,10 +203,20 @@ test.describe('HARDENING: Full Application Flow', () => {
   test('1.2 Save Progress works', async ({ page }) => {
     const errors = setupConsoleMonitoring(page);
     
-    // Wait for save button to be ready
+    // Start fresh
+    await factoryReset(page);
+    await selectUser(page, 'Warren Peace');
+    await page.waitForTimeout(1000);
+    
+    // FIRST: Checkout (Save Progress only appears after checkout)
+    const checkoutBtn = page.locator('button:has-text("Checkout")').first();
+    await checkoutBtn.waitFor({ state: 'visible', timeout: 10000 });
+    await checkoutBtn.click();
+    await page.waitForTimeout(1500);
+    
+    // NOW: Save Progress button should be visible
     const saveButton = page.locator('button:has-text("Save Progress"), button:has-text("Save")').first();
     await saveButton.waitFor({ state: 'visible', timeout: 10000 });
-    await page.waitForTimeout(500); // Ensure fully interactive
     
     // Listen for API call
     const apiPromise = waitForApi(page, '/api/v1/save-progress');
@@ -218,11 +228,8 @@ test.describe('HARDENING: Full Application Flow', () => {
     const response = await apiPromise;
     expect(response.status()).toBe(200);
     
-    // Wait for operation to complete
-    await page.waitForTimeout(1000);
-    
     // Verify no console errors
-    expect(errors).toHaveLength(0);
+    expect(errors.filter(e => !e.includes('favicon'))).toHaveLength(0);
   });
 
   test('1.3 Save Progress works', async ({ page }) => {
@@ -441,10 +448,13 @@ test.describe('HARDENING: Full Application Flow', () => {
   test('3.1 Checkout document', async ({ page }) => {
     const errors = setupConsoleMonitoring(page);
     
+    // Start fresh to ensure document is not already checked out
+    await factoryReset(page);
     await selectUser(page, 'Warren Peace');
+    await page.waitForTimeout(1000);
     
-    // Find checkout button
-    const checkoutButton = await waitFor(page, 'button:has-text("Checkout"), button:has-text("Check Out")');
+    // Find checkout button (should be visible after reset)
+    const checkoutButton = await waitFor(page, 'button:has-text("Checkout")');
     
     // Listen for API call
     const apiPromise = waitForApi(page, '/api/v1/checkout');
@@ -457,14 +467,14 @@ test.describe('HARDENING: Full Application Flow', () => {
     expect(response.status()).toBe(200);
     
     // Wait for UI update
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
     
     // Verify button changed to "Check-in and Save"
     const checkinButton = page.locator('button:has-text("Check-in and Save")');
     await expect(checkinButton).toBeVisible();
     
     // Verify no console errors
-    expect(errors).toHaveLength(0);
+    expect(errors.filter(e => !e.includes('favicon'))).toHaveLength(0);
   });
 
   test('3.2 Other user sees lock', async ({ page }) => {
@@ -491,11 +501,15 @@ test.describe('HARDENING: Full Application Flow', () => {
   test('3.3 Checkin document', async ({ page }) => {
     const errors = setupConsoleMonitoring(page);
     
-    // Checkout first
+    // Start fresh
+    await factoryReset(page);
     await selectUser(page, 'Warren Peace');
-    const checkoutButton = await waitFor(page, 'button:has-text("Checkout"), button:has-text("Check Out")');
-    await checkoutButton.click();
     await page.waitForTimeout(1000);
+    
+    // Checkout first
+    const checkoutButton = await waitFor(page, 'button:has-text("Checkout")');
+    await checkoutButton.click();
+    await page.waitForTimeout(1500);
     
     // Now checkin (button text is "Check-in and Save")
     const checkinButton = await waitFor(page, 'button:has-text("Check-in and Save")');
@@ -507,11 +521,11 @@ test.describe('HARDENING: Full Application Flow', () => {
     expect(response.status()).toBe(200);
     
     // Verify button changed back to "Checkout"
-    await page.waitForTimeout(1000);
-    await expect(page.locator('button:has-text("Checkout"), button:has-text("Check Out")')).toBeVisible();
+    await page.waitForTimeout(1500);
+    await expect(page.locator('button:has-text("Checkout")')).toBeVisible();
     
     // Verify no console errors
-    expect(errors).toHaveLength(0);
+    expect(errors.filter(e => !e.includes('favicon'))).toHaveLength(0);
   });
 
   // ========================================
