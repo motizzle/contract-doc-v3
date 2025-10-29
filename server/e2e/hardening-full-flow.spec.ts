@@ -1198,7 +1198,8 @@ test.describe('HARDENING: Full Application Flow', () => {
     
     // Open second window
     const page2 = await context.newPage();
-    await page2.goto('https://localhost:4001', { waitUntil: 'networkidle' });
+    await page2.goto('https://localhost:4001', { waitUntil: 'domcontentloaded' });
+    await page2.waitForTimeout(500); // Brief settle time
     await page2.waitForTimeout(2000);
     
     // Page 1: Create version
@@ -1231,7 +1232,8 @@ test.describe('HARDENING: Full Application Flow', () => {
     
     // Open second window as vendor
     const page2 = await context.newPage();
-    await page2.goto('https://localhost:4001', { waitUntil: 'networkidle' });
+    await page2.goto('https://localhost:4001', { waitUntil: 'domcontentloaded' });
+    await page2.waitForTimeout(500); // Brief settle time
     await page2.waitForTimeout(1000);
     
     // Select vendor in page 2
@@ -1263,7 +1265,8 @@ test.describe('HARDENING: Full Application Flow', () => {
     
     // Open second window
     const page2 = await context.newPage();
-    await page2.goto('https://localhost:4001', { waitUntil: 'networkidle' });
+    await page2.goto('https://localhost:4001', { waitUntil: 'domcontentloaded' });
+    await page2.waitForTimeout(500); // Brief settle time
     await page2.waitForTimeout(1000);
     
     // Page 1: Perform action (save progress)
@@ -1294,7 +1297,8 @@ test.describe('HARDENING: Full Application Flow', () => {
     
     // Open second window
     const page2 = await context.newPage();
-    await page2.goto('https://localhost:4001', { waitUntil: 'networkidle' });
+    await page2.goto('https://localhost:4001', { waitUntil: 'domcontentloaded' });
+    await page2.waitForTimeout(500); // Brief settle time
     await page2.waitForTimeout(1000);
     
     // Page 1: Checkout
@@ -1318,7 +1322,8 @@ test.describe('HARDENING: Full Application Flow', () => {
     
     // Open second window
     const page2 = await context.newPage();
-    await page2.goto('https://localhost:4001', { waitUntil: 'networkidle' });
+    await page2.goto('https://localhost:4001', { waitUntil: 'domcontentloaded' });
+    await page2.waitForTimeout(500); // Brief settle time
     await page2.waitForTimeout(1000);
     
     // Open variables tab in page 2
