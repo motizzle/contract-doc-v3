@@ -8,6 +8,18 @@ clients/web/dist/
 addin/dist/
 *.log
 
+# Working session directories (temp files that get locked)
+data/working-*/
+data/working-default/documents/
+data/working-default/exhibits/
+data/working-default/compiled/
+data/working-default/temp/
+data/working-default/uploads/
+data/working-default/versions/
+
+# Temporary scenario files (often locked by app)
+data/app/scenarios/*/
+
 node_modules/
 server/node_modules/
 data/working/

@@ -2112,11 +2112,23 @@ app.get('/api/v1/health', (req, res) => {
     console.warn('Could not read package.json version:', err.message);
   }
   
+  // Read release notes from file
+  let releaseNotes = null;
+  try {
+    const notesPath = path.join(__dirname, '../RELEASE_NOTES.txt');
+    if (fs.existsSync(notesPath)) {
+      releaseNotes = fs.readFileSync(notesPath, 'utf8').trim();
+    }
+  } catch (err) {
+    console.warn('Could not read RELEASE_NOTES.txt:', err.message);
+  }
+  
   const health = {
     ok: !degraded,
     status: degraded ? 'degraded' : 'healthy',
     version: version,
     buildTime: process.env.BUILD_TIME || null,
+    releaseNotes: releaseNotes,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     memory: {
@@ -2978,9 +2990,46 @@ app.get('/api/v1/state-matrix', (req, res) => {
   const banner = buildBanner({ isCheckedOut, isOwner, checkedOutBy: checkedOutLabel });
   const approvals = loadApprovals(req.sessionId);
   const approvalsSummary = computeApprovalsSummary(approvals.approvers);
+  
+  // Calculate latest accessible version for vendors
+  const currentVersion = state.documentVersion || 1;
+  let latestAccessibleVersion = currentVersion;
+  
+  if (derivedRole === 'vendor') {
+    const paths = getSessionPaths(req.sessionId);
+    const versionsDir = paths.versionsDir;
+    
+    if (fs.existsSync(versionsDir)) {
+      const files = fs.readdirSync(versionsDir);
+      const versionFiles = files.filter(f => f.match(/^v(\d+)\.json$/));
+      
+      const accessibleVersions = versionFiles
+        .map(f => {
+          const num = parseInt(f.match(/^v(\d+)\.json$/)[1], 10);
+          const metaPath = path.join(versionsDir, f);
+          try {
+            const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+            const isAccessible = num === 1 || meta.sharedWithVendor === true;
+            return { version: num, accessible: isAccessible };
+          } catch {
+            return { version: num, accessible: num === 1 };
+          }
+        })
+        .filter(v => v.accessible)
+        .map(v => v.version);
+      
+      if (accessibleVersions.length > 0) {
+        latestAccessibleVersion = Math.max(...accessibleVersions);
+      } else {
+        latestAccessibleVersion = 1;
+      }
+    }
+  }
+  
   const config = {
     documentId: DOCUMENT_ID,
     documentVersion: state.documentVersion,
+    latestAccessibleVersion: latestAccessibleVersion, // Add this for vendors
     title: state.title,
     status: state.status,
     lastUpdated: state.lastUpdated,
@@ -3613,6 +3662,11 @@ app.post('/api/v1/versions/:n/share', writeLimiter, validateVersionParam, valida
 
 // Version Sharing Helper Functions
 function canAccessVersion(userId, versionNumber, versionData) {
+  // Version 1 (canonical demo document) is always accessible to everyone
+  if (versionNumber === 1) {
+    return true;
+  }
+  
   // Get user role
   const user = loadUsers().find(u => u.id === userId);
   const role = user?.role || 'viewer';
@@ -4394,6 +4448,8 @@ app.post('/api/v1/checkout', writeLimiter, validate('checkout'), (req, res) => {
   const userRole = getUserRole(userId);
   const isVendor = userRole === 'vendor';
   
+  console.log(`[Checkout] userId: ${userId}, role: ${userRole}, isVendor: ${isVendor}, currentVersion: ${currentVersion}`);
+  
   let latestAccessibleVersion = currentVersion;
   
   if (isVendor) {
@@ -4423,11 +4479,15 @@ app.post('/api/v1/checkout', writeLimiter, validate('checkout'), (req, res) => {
       
       if (accessibleVersions.length > 0) {
         latestAccessibleVersion = Math.max(...accessibleVersions);
+        console.log(`[Checkout] Vendor accessible versions: [${accessibleVersions.join(', ')}], latest: ${latestAccessibleVersion}`);
       } else {
         latestAccessibleVersion = 1; // Fallback to v1 which is always accessible
+        console.log(`[Checkout] Vendor has no accessible versions, defaulting to v1`);
       }
     }
   }
+  
+  console.log(`[Checkout] clientVersion: ${clientVersion}, latestAccessibleVersion: ${latestAccessibleVersion}, isOutdated: ${clientVersion < latestAccessibleVersion}`);
   
   const isOutdated = clientVersion < latestAccessibleVersion;
   
@@ -5324,12 +5384,21 @@ app.get('/api/v1/events', (req, res) => {
       serverVersion = require('../package.json').version;
     } catch {}
     
+    let releaseNotes = null;
+    try {
+      const notesPath = path.join(__dirname, '../RELEASE_NOTES.txt');
+      if (fs.existsSync(notesPath)) {
+        releaseNotes = fs.readFileSync(notesPath, 'utf8').trim();
+      }
+    } catch {}
+    
     const initial = {
       documentId: DOCUMENT_ID,
       revision: serverState.revision,
       type: 'hello',
       serverVersion: serverVersion,
       buildTime: process.env.BUILD_TIME || null,
+      releaseNotes: releaseNotes,
       state: { checkedOutBy: serverState.checkedOutBy },
       ts: Date.now(),
     };

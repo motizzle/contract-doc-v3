@@ -371,6 +371,7 @@
       const [serverVersion, setServerVersion] = React.useState(null);
       const [updateAvailable, setUpdateAvailable] = React.useState(false);
       const [updateDismissed, setUpdateDismissed] = React.useState(false);
+      const [releaseNotes, setReleaseNotes] = React.useState(null);
       
       const API_BASE = getApiBase();
 
@@ -444,6 +445,7 @@
           if (newServerVersion && newServerVersion !== CLIENT_VERSION) {
             console.log(`🔄 [Version] Update available: ${CLIENT_VERSION} → ${newServerVersion}`);
             setServerVersion(newServerVersion);
+            setReleaseNotes(health.releaseNotes || null);
             setUpdateAvailable(true);
           } else if (newServerVersion) {
             setServerVersion(newServerVersion);
@@ -793,6 +795,7 @@
                 if (p.serverVersion !== CLIENT_VERSION) {
                   console.log(`🔄 [Version] Update detected via SSE: ${CLIENT_VERSION} → ${p.serverVersion}`);
                   setServerVersion(p.serverVersion);
+                  setReleaseNotes(p.releaseNotes || null);
                   setUpdateAvailable(true);
                 } else {
                   setServerVersion(p.serverVersion);
@@ -1386,11 +1389,12 @@
                    
                   setConfig(j.config || null);
                   if (typeof j.revision === 'number') setRevision(j.revision);
-                  // Update both viewingVersion and loadedVersion to the newest version for this user
+                  // Update both viewingVersion and loadedVersion to the newest ACCESSIBLE version for this user
                   try {
-                    const v = Number(j?.config?.documentVersion || 0);
+                    // Use latestAccessibleVersion for vendors, documentVersion for others
+                    const v = Number(j?.config?.latestAccessibleVersion || j?.config?.documentVersion || 0);
                     if (Number.isFinite(v) && v > 0) {
-                      console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: userSwitch`);
+                      console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: userSwitch (latestAccessible)`);
                       setViewingVersion(v);
                       setLoadedVersion(v); // Reset loadedVersion to current document version for new user
                       try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { messagePlatform: plat } } })); } catch {}
@@ -1431,7 +1435,7 @@
         },
       }), [API_BASE, refresh, userId, addLog, viewingVersion]);
 
-      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, activities, lastSeenActivityId, markActivitiesSeen, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, messagingUnreadCount, setmessagingUnreadCount, renderNotification, formatNotification, viewingVersion, setViewingVersion, refresh, updateAvailable, updateDismissed, setUpdateDismissed, serverVersion } }, React.createElement(App, { config }));
+      return React.createElement(StateContext.Provider, { value: { config, revision, actions, isConnected, lastTs, currentUser: userId, currentRole: role, users, activities, lastSeenActivityId, markActivitiesSeen, logs, addLog, lastSeenLogCount, markNotificationsSeen, documentSource, setDocumentSource, lastError, setLastError: addError, loadedVersion, setLoadedVersion, dismissedVersion, setDismissedVersion, approvalsSummary, approvalsRevision, messagingUnreadCount, setmessagingUnreadCount, renderNotification, formatNotification, viewingVersion, setViewingVersion, refresh, updateAvailable, updateDismissed, setUpdateDismissed, serverVersion, releaseNotes } }, React.createElement(App, { config }));
     }
 
     function BannerStack(props) {
@@ -1500,7 +1504,7 @@
     }
 
     function ActionButtons() {
-      const { config, actions, revision, setDocumentSource, addLog, setLoadedVersion, users, currentUser, viewingVersion, updateAvailable, updateDismissed, setUpdateDismissed, serverVersion } = React.useContext(StateContext);
+      const { config, actions, revision, setDocumentSource, addLog, setLoadedVersion, users, currentUser, viewingVersion, updateAvailable, updateDismissed, setUpdateDismissed, serverVersion, releaseNotes } = React.useContext(StateContext);
       const [confirm, setConfirm] = React.useState(null);
       const { tokens } = React.useContext(ThemeContext);
       const rootRef = React.useRef(null);
@@ -1949,64 +1953,123 @@
 
       return React.createElement('div', { ref: rootRef, className: 'd-flex flex-column gap-6' },
         topLayout,
-        // App update banner (shown when server version != client version)
+        // App update modal (shown when server version != client version)
         (updateAvailable && !updateDismissed ? (
-          React.createElement('div', { 
-            className: 'update-banner',
+          React.createElement('div', {
             style: {
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              borderRadius: 12,
-              padding: 16,
-              color: '#fff',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10000,
+              padding: 20
             }
           },
-            React.createElement('div', { style: { position: 'relative', width: '100%' } }, [
-              React.createElement('div', { key: 'row', style: { display: 'grid', gridTemplateColumns: '24px 1fr auto auto', alignItems: 'center', columnGap: 12 } }, [
-                // Icon
-                React.createElement('div', { key: 'icon', style: { width: 24, height: 24, borderRadius: '50%', border: '2px solid currentColor', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14 } }, '🔄'),
-                // Text
-                React.createElement('div', { key: 'text', style: { color: 'inherit', textAlign: 'left' } }, [
-                  React.createElement('div', { key: 't', style: { fontWeight: 700 } }, 'App Update Available'),
-                  React.createElement('div', { key: 'm', style: { fontSize: 13, opacity: 0.95 } }, `Version ${CLIENT_VERSION} → ${serverVersion}. Refresh to update.`),
-                ]),
-                // Refresh button
-                React.createElement('button', {
-                  key: 'refresh-btn',
-                  onClick: handleRefreshNow,
+            React.createElement('div', {
+              style: {
+                background: '#fff',
+                borderRadius: 12,
+                maxWidth: 500,
+                width: '100%',
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+                overflow: 'hidden'
+              }
+            }, [
+              // Header
+              React.createElement('div', {
+                key: 'header',
+                style: {
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  padding: 24,
+                  color: '#fff',
+                  textAlign: 'center'
+                }
+              }, [
+                React.createElement('div', { key: 'icon', style: { fontSize: 48, marginBottom: 12 } }, '🔄'),
+                React.createElement('h2', { key: 'title', style: { margin: 0, fontSize: 24, fontWeight: 700 } }, 'App Update Available'),
+                React.createElement('p', { key: 'version', style: { margin: '8px 0 0', fontSize: 16, opacity: 0.9 } }, `Version ${CLIENT_VERSION} → ${serverVersion}`)
+              ]),
+              // Body
+              React.createElement('div', {
+                key: 'body',
+                style: {
+                  padding: 24
+                }
+              }, [
+                releaseNotes ? React.createElement('div', {
+                  key: 'notes',
                   style: {
-                    background: 'rgba(255, 255, 255, 0.2)',
-                    border: '1px solid rgba(255, 255, 255, 0.3)',
-                    borderRadius: 6,
-                    padding: '6px 12px',
-                    color: '#fff',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    fontSize: 13,
-                    transition: 'all 0.2s',
-                    whiteSpace: 'nowrap'
-                  },
-                  onMouseOver: (e) => { e.target.style.background = 'rgba(255, 255, 255, 0.3)'; },
-                  onMouseOut: (e) => { e.target.style.background = 'rgba(255, 255, 255, 0.2)'; }
-                }, 'Refresh Now'),
-                // Dismiss button (X)
+                    background: '#f8f9fa',
+                    border: '1px solid #e9ecef',
+                    borderRadius: 8,
+                    padding: 16,
+                    marginBottom: 24,
+                    fontSize: 14,
+                    lineHeight: '1.6',
+                    whiteSpace: 'pre-wrap',
+                    color: '#495057'
+                  }
+                }, releaseNotes) : null,
+                React.createElement('p', {
+                  key: 'message',
+                  style: {
+                    margin: 0,
+                    fontSize: 14,
+                    color: '#6c757d',
+                    textAlign: 'center'
+                  }
+                }, 'Please refresh to get the latest features and fixes.')
+              ]),
+              // Footer
+              React.createElement('div', {
+                key: 'footer',
+                style: {
+                  padding: '0 24px 24px',
+                  display: 'flex',
+                  gap: 12,
+                  justifyContent: 'flex-end'
+                }
+              }, [
                 React.createElement('button', {
-                  key: 'dismiss-btn',
+                  key: 'dismiss',
                   onClick: handleDismissUpdate,
-                  title: 'Dismiss (will remind in 5 minutes)',
                   style: {
                     background: 'transparent',
+                    border: '1px solid #dee2e6',
+                    borderRadius: 8,
+                    padding: '10px 20px',
+                    color: '#6c757d',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: 14,
+                    transition: 'all 0.2s'
+                  },
+                  onMouseOver: (e) => { e.target.style.background = '#f8f9fa'; },
+                  onMouseOut: (e) => { e.target.style.background = 'transparent'; }
+                }, 'Later'),
+                React.createElement('button', {
+                  key: 'refresh',
+                  onClick: handleRefreshNow,
+                  style: {
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                     border: 'none',
+                    borderRadius: 8,
+                    padding: '10px 24px',
                     color: '#fff',
                     cursor: 'pointer',
-                    fontSize: 18,
-                    padding: '0 4px',
-                    opacity: 0.7,
-                    transition: 'opacity 0.2s'
+                    fontWeight: 700,
+                    fontSize: 14,
+                    transition: 'all 0.2s',
+                    boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
                   },
-                  onMouseOver: (e) => { e.target.style.opacity = 1; },
-                  onMouseOut: (e) => { e.target.style.opacity = 0.7; }
-                }, '×')
+                  onMouseOver: (e) => { e.target.style.transform = 'translateY(-1px)'; e.target.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)'; },
+                  onMouseOut: (e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.3)'; }
+                }, 'Refresh Now')
               ])
             ])
           )

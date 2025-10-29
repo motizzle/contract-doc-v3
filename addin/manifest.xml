@@ -2,15 +2,15 @@
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="TaskPaneApp">
   <Id>7a514d73-03c9-4a9f-a5f3-c246ac785751</Id>
   <Version>1.0.1.0</Version>
-  <ProviderName>Contoso</ProviderName>
+  <ProviderName>OpenGov</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="OG CLM"/>
-  <Description DefaultValue="A template to get started."/>
+  <DisplayName DefaultValue="OpenGov Contracting"/>
+  <Description DefaultValue="Contract lifecycle management for government organizations"/>
   <IconUrl DefaultValue="https://localhost:4000/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://localhost:4000/assets/icon-64.png"/>
-  <SupportUrl DefaultValue="https://www.contoso.com/help"/>
+  <SupportUrl DefaultValue="https://opengov.my.site.com/support/s/"/>
   <AppDomains>
-    <AppDomain>https://www.contoso.com</AppDomain>
+    <AppDomain>https://localhost:4000</AppDomain>
   </AppDomains>
   <Hosts>
     <Host Name="Document"/>
@@ -72,13 +72,13 @@
         <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:4000/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="GetStarted.Title" DefaultValue="Get started with your sample add-in!"/>
-        <bt:String id="CommandsGroup.Label" DefaultValue="Commands Group"/>
-        <bt:String id="TaskpaneButton.Label" DefaultValue="Show Task Pane"/>
+        <bt:String id="GetStarted.Title" DefaultValue="Welcome to OpenGov Contracting"/>
+        <bt:String id="CommandsGroup.Label" DefaultValue="OpenGov Contracting"/>
+        <bt:String id="TaskpaneButton.Label" DefaultValue="OpenGov Contracting"/>
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="GetStarted.Description" DefaultValue="Your sample add-in loaded successfully. Go to the HOME tab and click the 'Show Task Pane' button to get started."/>
-        <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Click to Show a Taskpane"/>
+        <bt:String id="GetStarted.Description" DefaultValue="OpenGov Contracting is ready. Click the 'OpenGov Contracting' button in the HOME tab to manage your contracts."/>
+        <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Open contract management panel"/>
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>

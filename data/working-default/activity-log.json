@@ -1,7 +1,37 @@
 [
   {
-    "id": "act_1761634646202_ytvel5ct4",
-    "timestamp": 1761634646202,
+    "id": "act_1761715141903_hd6tf4vbr",
+    "timestamp": 1761715141903,
+    "type": "message:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1761715141900-si8wjsiqk",
+      "title": "User 2",
+      "recipients": 1,
+      "recipientsList": [
+        {
+          "label": "User 2",
+          "email": "user2@test.com",
+          "userId": "user2"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "Saved scenario message",
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"User 2\" with 1 person"
+  },
+  {
+    "id": "act_1761715142350_gmnc3c33s",
+    "timestamp": 1761715142350,
     "type": "workflow:request-review",
     "user": {
       "id": "user1",
@@ -14,8 +44,8 @@
     "message": "Warren Peace requested review from approvers"
   },
   {
-    "id": "act_1761634646226_285ff2dkf",
-    "timestamp": 1761634646226,
+    "id": "act_1761715142449_1ea6b1s39",
+    "timestamp": 1761715142449,
     "type": "message:created",
     "user": {
       "id": "user1",
@@ -25,7 +55,7 @@
     "action": "started conversation",
     "target": "message",
     "details": {
-      "messageId": "msg-1761634646223-nudevawgt",
+      "messageId": "msg-1761715142414-efdso1p6d",
       "title": "User 2",
       "recipients": 1,
       "recipientsList": [
@@ -44,8 +74,8 @@
     "message": "Warren Peace started a conversation \"User 2\" with 1 person"
   },
   {
-    "id": "act_1761634646244_4kibz1euj",
-    "timestamp": 1761634646244,
+    "id": "act_1761715142551_x0xf7ox7z",
+    "timestamp": 1761715142551,
     "type": "message:created",
     "user": {
       "id": "user1",
@@ -55,7 +85,7 @@
     "action": "started conversation",
     "target": "message",
     "details": {
-      "messageId": "msg-1761634646241-z4qxxjnmp",
+      "messageId": "msg-1761715142542-qhvkmss7y",
       "title": "User 3",
       "recipients": 1,
       "recipientsList": [
@@ -74,8 +104,8 @@
     "message": "Warren Peace started a conversation \"User 3\" with 1 person"
   },
   {
-    "id": "act_1761634646303_io4ecot0q",
-    "timestamp": 1761634646303,
+    "id": "act_1761715142748_glyojzwpa",
+    "timestamp": 1761715142748,
     "type": "message:created",
     "user": {
       "id": "user1",
@@ -85,7 +115,7 @@
     "action": "started conversation",
     "target": "message",
     "details": {
-      "messageId": "msg-1761634646301-uu7wsjvld",
+      "messageId": "msg-1761715142742-xwl1h4em5",
       "title": "User 2",
       "recipients": 1,
       "recipientsList": [
@@ -104,8 +134,8 @@
     "message": "Warren Peace started a conversation \"User 2\" with 1 person"
   },
   {
-    "id": "act_1761634646316_t1u7829bt",
-    "timestamp": 1761634646316,
+    "id": "act_1761715142844_rpcneufgl",
+    "timestamp": 1761715142844,
     "type": "message:created",
     "user": {
       "id": "user1",
@@ -115,7 +145,7 @@
     "action": "started conversation",
     "target": "message",
     "details": {
-      "messageId": "msg-1761634646313-mzrt9grsy",
+      "messageId": "msg-1761715142840-rrtxpoglv",
       "title": "User 2",
       "recipients": 1,
       "recipientsList": [
@@ -134,8 +164,8 @@
     "message": "Warren Peace started a conversation \"User 2\" with 1 person"
   },
   {
-    "id": "act_1761634646350_5uzxvwjap",
-    "timestamp": 1761634646350,
+    "id": "act_1761715142907_tmni1z3cq",
+    "timestamp": 1761715142907,
     "type": "message:created",
     "user": {
       "id": "user1",
@@ -145,7 +175,7 @@
     "action": "started conversation",
     "target": "message",
     "details": {
-      "messageId": "msg-1761634646347-j732hqk45",
+      "messageId": "msg-1761715142905-ma7vs20bb",
       "title": "Alice Smith, Bob Jones",
       "recipients": 2,
       "recipientsList": [
@@ -169,8 +199,8 @@
     "message": "Warren Peace started a conversation \"Alice Smith, Bob Jones\" with 2 people"
   },
   {
-    "id": "act_1761634646379_ku2anljcw",
-    "timestamp": 1761634646379,
+    "id": "act_1761715142947_5s9tv82bc",
+    "timestamp": 1761715142947,
     "type": "message:created",
     "user": {
       "id": "user1",
@@ -180,7 +210,7 @@
     "action": "started conversation",
     "target": "message",
     "details": {
-      "messageId": "msg-1761634646376-p6dr72bxq",
+      "messageId": "msg-1761715142944-vis1bteor",
       "title": "User 2",
       "recipients": 1,
       "recipientsList": [
@@ -199,8 +229,8 @@
     "message": "Warren Peace started a conversation \"User 2\" with 1 person"
   },
   {
-    "id": "act_1761634646398_h9dippyhr",
-    "timestamp": 1761634646398,
+    "id": "act_1761715142971_6o6qa5foj",
+    "timestamp": 1761715142971,
     "type": "message:created",
     "user": {
       "id": "user1",
@@ -210,7 +240,7 @@
     "action": "started conversation",
     "target": "message",
     "details": {
-      "messageId": "msg-1761634646394-0sybvyhst",
+      "messageId": "msg-1761715142969-4zm17c21z",
       "title": "User 3",
       "recipients": 1,
       "recipientsList": [
@@ -229,8 +259,8 @@
     "message": "Warren Peace started a conversation \"User 3\" with 1 person"
   },
   {
-    "id": "act_1761634646435_bvblin2uj",
-    "timestamp": 1761634646435,
+    "id": "act_1761715143028_clt7bng9w",
+    "timestamp": 1761715143028,
     "type": "message:exported",
     "user": {
       "id": "system",
@@ -242,10 +272,10 @@
     "details": {
       "scope": "all",
       "filters": "scope:all, internal, privileged",
-      "messageCount": 7,
+      "messageCount": 8,
       "includePosts": false,
       "platform": "web"
     },
-    "message": "system exported 7 conversations to CSV"
+    "message": "system exported 8 conversations to CSV"
   }
 ]

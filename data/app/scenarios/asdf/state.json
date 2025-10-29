@@ -1,14 +1,14 @@
 {
   "checkedOutBy": null,
-  "lastUpdated": "2025-10-28T06:24:06.130Z",
-  "revision": 4489,
+  "lastUpdated": "2025-10-29T04:48:32.295Z",
+  "revision": 4526,
   "documentVersion": 1,
   "title": "Test Scenario Document",
-  "status": "draft",
+  "status": "final",
   "updatedBy": {
     "userId": "user1",
     "label": "Warren Peace"
   },
-  "updatedPlatform": null,
-  "approvalsRevision": 4822
+  "updatedPlatform": "word",
+  "approvalsRevision": 5164
 }

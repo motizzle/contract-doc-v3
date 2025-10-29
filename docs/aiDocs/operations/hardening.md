@@ -1,563 +1,595 @@
-# WordFTW Hardening
+# WordFTW Prototype Hardening
 
-Complete hardening strategy for the entire application stack.
+**Goal:** Make sure every button works, every API call succeeds, and the UI doesn't break.
 
-**Related:** `test-inventory.md` (225 tests), `features/version-sharing.md`
+**NOT:** Enterprise features (rate limiting, circuit breakers, retry logic). Just make the prototype stable.
+
+**Related:** `test-inventory.md`, `features/version-sharing.md`
 
 ---
 
 ## Core Principles
 
-1. **Pre-flight checks** - Validate before executing
-2. **Clear error messages** - Every error has actionable resolution
-3. **Graceful degradation** - Partial functionality > total failure
-4. **Rollback capability** - Undo failed operations
-5. **Self-healing** - Detect and fix common issues automatically
-6. **Comprehensive testing** - Automated coverage of all failure modes
-7. **Observability** - Clear logging and diagnostics
+1. **Every button works** - Click any button → it does what it says
+2. **No console errors** - Clean console = working app
+3. **API calls succeed** - Or show clear error message
+4. **UI updates correctly** - Changes reflect immediately
+5. **Data stays consistent** - State matches reality
 
 ---
 
-## 1. Installation Hardening
+## Hardening Checklist
 
-### Windows & macOS Installers
+### ✅ Server Startup & Health
+- [x] Server starts without errors
+- [x] Health endpoint returns 200
+- [x] Startup checks validate dependencies
+- [x] Graceful shutdown on SIGTERM/SIGINT
 
-**Pre-flight checks:**
-- Node.js version (18+)
-- npx availability
-- Office 2016+ installed
-- PowerShell available (Windows)
-- Server reachable
-- Existing installation detection
-
-**Installation process:**
-- Download manifest with validation
-- Backup before modification (registry/defaults)
-- Atomic registry/defaults update
-- Close Word if running (with user consent)
-- Clear Office cache
-- Verify installation success
-
-**Error handling:**
-- Every error has resolution steps
-- Rollback on failure
-- Self-diagnostic mode (`--diagnose` flag)
-
-**Platform-specific:**
-- Windows: Registry (`HKCU\...\WEF\Developer`), PowerShell cache clearing
-- macOS: `defaults` command (plist), bash cache clearing, `xmllint` validation
-
-### Uninstallers
-
-**Complete removal:**
-- Remove registry/defaults entry with correct GUID
-- Kill Edge processes before cache clearing
-- Clear Office cache (gracefully handle locked files)
-- Delete manifest files
-- Verify clean uninstall
-
-**✅ Implemented:** Registry key fixes, locked file handling, error messages
-
-### Developer Environment Switchers
-
-**One-click scripts:**
-- `use-local.bat` / `.command` - Switch to localhost:4000
-- `use-deployed.bat` / `.command` - Switch to production
-- `run-local.bat` - Start local dev environment
-  - Closes Word cleanly
-  - Removes deployed add-in if present
-  - **Kills and restarts server processes** (ports 4000/4001)
-  - Starts add-in dev server
-  - Sideloads local manifest
-- Automatic stop/start of manifests
-- Clear feedback on active environment
-
-**✅ Implemented:** run-local.bat now properly restarts servers to pick up code changes
-
-**Tests:** 37 installation tests (see `test-inventory.md`)
+**Status:** DONE (Week 1 hardening)
 
 ---
 
-## 2. Server Infrastructure Hardening
+### 🔄 Document Operations
 
-### Startup Checks
+#### Upload Document
+- [ ] Click upload → file picker opens
+- [ ] Select .docx → uploads successfully
+- [ ] Progress indicator shows
+- [ ] Document loads in editor
+- [ ] Activity log shows upload
+- [ ] No console errors
 
-**Validate before starting:**
-- Node.js version (18+)
-- Required modules installed
-- Data directories exist
-- Disk space available (>1GB)
-- Environment variables set
+#### Save Progress
+- [ ] Click save → document saves
+- [ ] Toast shows "Saved"
+- [ ] Activity log updated
+- [ ] No console errors
 
-**Startup flow:**
-```
-Check dependencies → Validate state → Create dirs → Health check → Accept requests
-```
+#### Take Snapshot
+- [ ] Click snapshot → creates version
+- [ ] Version appears in list
+- [ ] Activity log updated
+- [ ] No console errors
 
-**Exit on failure** with clear resolution steps.
+#### Compile Document
+- [ ] Click compile → starts compilation
+- [ ] Progress indicator shows
+- [ ] Compiled PDF appears in exhibits
+- [ ] Activity log updated
+- [ ] No console errors
 
-### Graceful Shutdown
-
-**On SIGTERM/SIGINT:**
-- Stop accepting new requests (return 503)
-- Wait for active requests (30 second timeout)
-- Log pending requests
-- Exit cleanly
-
-**Force shutdown on double signal.**
-
-### Health Check Endpoint
-
-**GET /api/v1/health:**
-- Memory usage (warn if >90%)
-- Filesystem access
-- AI status (always reports demo mode)
-- Return 200 (ok) or 503 (degraded)
-
-**✅ Implemented:** Simplified AI to always use demo mode (no external LLM dependencies)
-
-**Tests:** 25 server infrastructure tests
+**Tests Needed:**
+- Upload small file (1KB)
+- Upload medium file (1MB)
+- Upload near-limit file (9MB)
+- Save document with changes
+- Take snapshot
+- Compile document
+- Each action should: succeed, update UI, log activity, no errors
 
 ---
 
-## 3. API Endpoint Hardening
+### 🔄 Version Management
 
-### Input Validation
+#### View Version
+- [ ] Click version → loads in editor
+- [ ] "Viewing Version N" banner shows
+- [ ] "Return to Latest" button works
+- [ ] Activity log shows view event
+- [ ] No console errors
 
-**Framework:** Joi schemas for all endpoints
+#### Share/Unshare Version (Editor)
+- [ ] Click share toggle → version shares
+- [ ] Green border appears
+- [ ] Vendor sees new version immediately
+- [ ] Activity log updated
+- [ ] No console errors
 
-**Validate:**
-- Required fields present
-- Correct data types
-- String length limits
-- Enum values
-- Sanitize input
+- [ ] Click unshare toggle → version unshares
+- [ ] Border turns normal
+- [ ] Vendor loses access immediately
+- [ ] Vendor auto-switches to fallback version
+- [ ] Activity log updated
+- [ ] No console errors
 
-**Return 400 with:**
-- Field name
-- Validation error
-- Resolution steps
+#### Version 1 (Demo Document)
+- [ ] Version 1 always visible to everyone
+- [ ] Cannot unshare version 1
+- [ ] "DEMO" badge shows
+- [ ] No share toggle for version 1
+- [ ] No console errors
 
-### Standardized Error Handling
-
-**Every error includes:**
-- Error code (e.g., `CHECKOUT_CONFLICT`)
-- Human-readable message
-- Resolution steps
-- Context (in dev mode)
-
-**HTTP status codes:**
-- 400: Validation failed
-- 401: Invalid session
-- 403: Permission denied
-- 404: Not found
-- 408: Timeout
-- 409: Conflict (checkout)
-- 413: File too large
-- 429: Rate limit exceeded
-- 440: Session expired
-- 500: Internal error
-- 503: Service unavailable
-- 507: Disk full
-
-### Rate Limiting
-
-**General API:** 100 requests / 15 minutes
-**Write operations:** 10 requests / minute
-
-**Return 429** with retry-after time.
-
-### Timeout Handling
-
-**Default:** 30 seconds
-**Long operations:** 120 seconds (document compilation)
-
-**Return 408** on timeout.
-
-**Tests:** 45 API endpoint tests
+**Tests Needed:**
+- Editor views any version
+- Editor shares version with vendor
+- Vendor sees shared version
+- Editor unshares version
+- Vendor auto-switches to v1
+- Version 1 always accessible
+- Each action should: work, update UI, no errors
 
 ---
 
-## 4. State Management Hardening
+### 🔄 Checkout/Checkin
 
-### Consistency Validation
+#### Checkout
+- [ ] Click checkout → document checks out
+- [ ] "Checked out by You" badge shows
+- [ ] Other users see "Checked out by X"
+- [ ] Activity log updated
+- [ ] No console errors
 
-**Validate before persist:**
-- Required fields present (revision, documentVersion, lastUpdated)
-- Correct types (numbers, strings)
-- Valid checkout state (null or string)
-- Valid status (draft/review/approved/signed)
+#### Checkout Conflict
+- [ ] Try to checkout when locked → shows error
+- [ ] Error message names who has it checked out
+- [ ] Offers "View anyway" option
+- [ ] No console errors
 
-### Corruption Detection
+#### Checkin
+- [ ] Click checkin → document checks in
+- [ ] Badge disappears
+- [ ] Activity log updated
+- [ ] No console errors
 
-**On load:**
-- Parse and validate state.json
-- If corrupt: backup to `.corrupted.{timestamp}`, use defaults
-- Log recovery
-
-### Atomic Updates
-
-**Transaction pattern:**
-```
-Snapshot state → Apply updates → Validate → Commit or rollback
-```
-
-**No partial state updates.**
-
-**Tests:** 15 state management tests
-
----
-
-## 5. File Operations Hardening
-
-### File Size Limits
-
-**Max upload:** 10MB
-**Allowed types:** .docx, .doc, .pdf
-
-**Return 413** for oversized files.
-
-### Disk Space Checking
-
-**Before writes:**
-- Check available space (need 2x file size)
-- Return 507 if insufficient
-
-### Atomic Operations
-
-**Write pattern:**
-```
-Write to .tmp → Verify content → Atomic rename → Delete temp on failure
-```
-
-**No partial file writes.**
-
-### Orphaned File Cleanup
-
-**Scheduled cleanup (every hour):**
-- Find .tmp files older than 24 hours
-- Delete abandoned temp files
-- Log cleanup count
-
-**Tests:** 20 file operation tests
+**Tests Needed:**
+- User A checks out
+- User B sees lock message
+- User A checks in
+- User B can now check out
+- Each action should: work, update UI, no errors
 
 ---
 
-## 6. Session Management Hardening
+### 🔄 Variables Panel
 
-### Timeout Handling
+#### View Variables
+- [ ] Panel loads all variables
+- [ ] Variables grouped by category
+- [ ] Values display correctly
+- [ ] No console errors
 
-**4-hour inactivity timeout:**
-- Track last activity per session
-- Return 440 on expired session
-- Clear message: "Refresh to start new session"
+#### Edit Variable
+- [ ] Click edit → input appears
+- [ ] Type new value → saves on blur
+- [ ] Variable updates in all places
+- [ ] Activity log updated
+- [ ] No console errors
 
-### Abandoned Session Cleanup
+#### Add Variable
+- [ ] Click add → modal opens
+- [ ] Fill form → creates variable
+- [ ] Variable appears in list
+- [ ] Activity log updated
+- [ ] No console errors
 
-**Every 30 minutes:**
-- Find sessions with no activity >8 hours
-- Delete old session directories
-- Preserve active sessions
+#### Delete Variable
+- [ ] Click delete → confirms
+- [ ] Variable removed from list
+- [ ] Activity log updated
+- [ ] No console errors
 
-**Tests:** 12 session management tests
-
----
-
-## 7. Version Sharing & Permission Hardening
-
-### Version Access Control
-
-**Role-based filtering:**
-- Editors: See all versions
-- Vendors: Only see shared versions
-- Version 1 always shared (demo document, cannot be unshared)
-
-**Server-side enforcement:**
-- `GET /api/v1/versions` filters by userId and role
-- `GET /api/v1/versions/:n` validates access before returning document
-- `POST /api/v1/versions/:n/share` validates editor permission
-
-### Vendor-Saved Versions
-
-**Auto-share behavior:**
-- When vendor saves document → version auto-shared with vendor
-- `sharedWithVendor: true` set automatically
-- Broadcast `version:shared` event
-- Vendor sees their own version immediately
-
-**✅ Implemented:** Vendors can now see and access their own saved versions
-
-### Share/Unshare Operations
-
-**Sharing workflow:**
-- Editor clicks share → API validates permissions
-- Server updates version metadata atomically
-- Broadcasts `version:shared` event
-- Vendors' UI refreshes with newly shared version
-
-**Unsharing workflow:**
-- Editor clicks unshare → API validates permissions
-- Server calculates fallback version (most recent shared version or v1)
-- Broadcasts `version:shared` with `fallbackVersion`
-- Vendors viewing unshared version auto-switch to fallback
-- Unshared version removed from vendors' list
-
-**Error handling:**
-- 403: Non-editors cannot share/unshare
-- 400: Version 1 cannot be unshared
-- 404: Version doesn't exist
-
-**✅ Implemented:** Share/unshare with auto-switch and permission validation
-
-### UI Permission Awareness
-
-**Version banner:**
-- Respects vendor permissions
-- Only shows "New Version Available" for accessible versions
-- Fetches latest accessible version per user
-- Falls back gracefully if fetch fails
-
-**Version list:**
-- Real-time updates via SSE events
-- Share/unshare buttons only visible to editors
-- Green styling for shared versions
-- DEMO badge for Version 1
-
-**✅ Implemented:** Banner, list, and share buttons all respect permissions
-
-### SSE Event Isolation
-
-**Chat messages:**
-- Per-user, per-platform isolation
-- AI chat responses sent only to requesting user
-- Broadcast explicitly skips `chat` and `chat:stop` events
-- Prevents cross-window message leakage
-
-**Version events:**
-- `version:shared` broadcasts to all clients
-- Vendors filter by their permissions
-- Editors see all updates
-
-**✅ Implemented:** Chat isolation and version event broadcasting
-
-**Tests:** 18 version sharing tests (see `features/version-sharing.md`)
+**Tests Needed:**
+- Load variables panel
+- Edit text variable
+- Edit email variable
+- Add new variable
+- Delete variable
+- Each action should: work, update UI, no errors
 
 ---
 
-## 8. Network Operations Hardening
+### 🔄 Messaging
 
-### Retry Logic
+#### View Messages
+- [ ] Panel loads all messages
+- [ ] Unread count correct
+- [ ] Messages grouped correctly
+- [ ] No console errors
 
-**Exponential backoff:**
-- Retry on 5xx errors and network failures
-- Delays: 1s, 2s, 4s (max 10s)
-- Max 3 retries
-- No retry on 4xx errors
+#### Send Message
+- [ ] Click send → message posts
+- [ ] Message appears in list
+- [ ] Other users see message
+- [ ] Activity log updated
+- [ ] No console errors
 
-### Circuit Breaker Pattern
+#### Mark Read/Unread
+- [ ] Click mark read → updates status
+- [ ] Unread count decreases
+- [ ] UI updates immediately
+- [ ] No console errors
 
-**Per external service:**
-- Open circuit after 5 failures
-- Reject requests for 60 seconds
-- Half-open: try one request
-- Close after 2 successes
-
-**Prevents cascade failures.**
-
-**Tests:** 12 network operation tests
-
----
-
-## 9. Client-Side Hardening
-
-### React Error Boundaries
-
-**Wrap components:**
-- Catch render errors
-- Show fallback UI
-- Offer reload/continue
-- Log to server
-
-**One component error ≠ total failure.**
-
-### Standardized API Calls
-
-**All API calls:**
-- 30-second timeout
-- Retry 3 times on failure
-- Exponential backoff
-- Parse error responses
-- Show user-friendly messages
-
-### Offline Detection
-
-**Monitor connection:**
-- Check health endpoint every 30 seconds
-- Listen to browser online/offline events
-- Show toast on status change
-- Disable write operations when offline
-
-**Tests:** 18 client-side tests
+**Tests Needed:**
+- User A sends message
+- User B sees message
+- User B marks read
+- User A sees read status
+- Each action should: work, update UI, no errors
 
 ---
 
-## Testing Strategy
+### 🔄 Approvals
 
-**See `test-inventory.md` for complete catalog (225 tests)**
+#### Request Approval
+- [ ] Click request → approval created
+- [ ] Approver sees notification
+- [ ] Activity log updated
+- [ ] No console errors
 
-### Test Categories
+#### Approve/Reject
+- [ ] Click approve → updates status
+- [ ] Requester sees approval
+- [ ] Activity log updated
+- [ ] No console errors
 
-1. **Installation (37)** - Install/uninstall flows, Windows & macOS
-2. **Server Infrastructure (25)** - Startup, shutdown, health checks
-3. **API Endpoints (45)** - Validation, errors, rate limiting
-4. **State Management (15)** - Validation, corruption, atomic updates
-5. **File Operations (20)** - Size limits, atomic writes, cleanup
-6. **Session Management (12)** - Timeouts, cleanup
-7. **Version Sharing (18)** - Permission validation, auto-share, auto-switch
-8. **Network Operations (12)** - Retries, circuit breakers
-9. **Client-Side (18)** - Error boundaries, API calls, offline
-10. **Integration (30)** - End-to-end flows, error recovery
-11. **Chaos (10)** - Failure injection, stress testing
-
-**Current Status:** 138 tests implemented (133 passing, 5 pre-existing failures)
-
-### Automated Test Execution
-
-**CI/CD pipeline:**
-```
-Commit → Linting → Unit tests → Integration tests → Deploy
-```
-
-**Nightly:**
-```
-Chaos tests → Performance tests → Report
-```
+**Tests Needed:**
+- User A requests approval from B
+- User B sees approval request
+- User B approves
+- User A sees approval
+- Each action should: work, update UI, no errors
 
 ---
 
-## Implementation Roadmap
+### 🔄 AI Chat (Demo Mode)
 
-### ✅ Completed (bugs-and-bye-ollama branch → main)
+#### Send Chat Message
+- [ ] Type message → send
+- [ ] User message appears
+- [ ] AI demo response appears
+- [ ] Random joke included
+- [ ] No console errors
 
-**Developer Tools:**
-- ✅ Uninstaller hardening (registry fixes, locked file handling)
-- ✅ run-local.bat improvements (proper process restart)
+#### Chat Isolation
+- [ ] User A's chat doesn't appear in User B's window
+- [ ] Each user has their own chat history
+- [ ] No cross-window leakage
+- [ ] No console errors
 
-**Version Sharing & Permissions:**
-- ✅ Role-based version filtering (editors vs vendors)
-- ✅ Vendor-saved versions auto-share
-- ✅ Share/unshare with auto-switch for vendors
-- ✅ Permission-aware UI (banner, list, buttons)
-- ✅ Version 1 always shared (demo document)
+**Tests Needed:**
+- User A sends chat message
+- AI responds with demo message + joke
+- User B doesn't see User A's messages
+- Each action should: work, update UI, no errors
 
-**SSE & Real-time:**
-- ✅ Chat message isolation (per-user, per-platform)
-- ✅ AI chat immediate response delivery
-- ✅ Version event broadcasting with permission filtering
+---
 
-**AI Simplification:**
-- ✅ Removed Ollama dependency
-- ✅ Simplified to always use demo mode
+### 🔄 Scenarios
 
-**Tests:**
-- ✅ 138 tests implemented (133 passing)
-- ✅ Version sharing test coverage
+#### Load Scenario
+- [ ] Click load → modal opens
+- [ ] Select scenario → loads data
+- [ ] Document, variables, messages, chat all load
+- [ ] Activity log resets
+- [ ] No console errors
 
-### ✅ Week 1: Server Infrastructure (COMPLETED)
-- ✅ Server startup checks
+#### Save Scenario
+- [ ] Click save → modal opens
+- [ ] Enter name → saves scenario
+- [ ] Scenario appears in list
+- [ ] No console errors
+
+**Tests Needed:**
+- Save current state as scenario
+- Load existing scenario
+- All data loads correctly
+- UI updates completely
+- Each action should: work, update UI, no errors
+
+---
+
+### 🔄 Factory Reset
+
+#### Reset
+- [ ] Click factory reset → confirms
+- [ ] All data resets to defaults
+- [ ] Document reloads to v1
+- [ ] Variables reset
+- [ ] Messages clear
+- [ ] Chat clears
+- [ ] Activity log clears
+- [ ] No console errors
+
+**Tests Needed:**
+- Make changes to everything
+- Factory reset
+- Everything returns to defaults
+- No orphaned data
+- No console errors
+
+---
+
+### 🔄 User Switching
+
+#### Switch User
+- [ ] Select different user in dropdown
+- [ ] Role changes (editor/vendor)
+- [ ] Permissions update
+- [ ] UI updates (show/hide buttons)
+- [ ] Version list filters
+- [ ] Activity log shows user's actions
+- [ ] No console errors
+
+**Tests Needed:**
+- Switch from editor to vendor
+- Vendor sees only shared versions
+- Vendor can't see share buttons
+- Switch back to editor
+- Editor sees all versions
+- Each action should: work, update UI, no errors
+
+---
+
+### 🔄 Real-Time Updates (SSE)
+
+#### SSE Connection
+- [ ] Page loads → SSE connects
+- [ ] Health check shows connection
+- [ ] Events received in real-time
+- [ ] No console errors
+
+#### Version Updates
+- [ ] User A shares version → User B sees immediately
+- [ ] User A creates version → User B sees immediately
+- [ ] No polling required
+- [ ] No console errors
+
+#### Activity Log Updates
+- [ ] User A does action → User B sees in log immediately
+- [ ] Timestamps accurate
+- [ ] No duplicates
+- [ ] No console errors
+
+**Tests Needed:**
+- Open two windows (User A and User B)
+- User A shares version
+- User B sees update within 1 second
+- User A saves document
+- User B sees activity log update
+- Each update should: be immediate, no errors
+
+---
+
+### 🔄 Error Handling
+
+#### API Errors
+- [ ] Checkout conflict → shows clear message
+- [ ] Permission denied → shows clear message
+- [ ] File too large → shows clear message
+- [ ] Network error → shows clear message
+- [ ] Each error has action to resolve
+- [ ] No console errors
+
+#### Client Errors
+- [ ] Invalid state → reloads gracefully
+- [ ] Corrupt data → falls back to defaults
+- [ ] Missing data → shows placeholder
+- [ ] No white screen of death
+- [ ] No console errors
+
+**Tests Needed:**
+- Trigger each error condition
+- Verify clear error message
+- Verify recovery action works
+- No console errors
+
+---
+
+### 🔄 Link Code (Web → Word)
+
+#### Generate Link Code
+- [ ] Click "Link with Word" → generates code
+- [ ] 6-character code displays
+- [ ] Banner shows with code
+- [ ] No console errors
+
+#### Use Link Code
+- [ ] Enter code in Word → links
+- [ ] Both windows sync
+- [ ] Same document visible
+- [ ] Same user selected
+- [ ] No console errors
+
+#### Dismiss Banner
+- [ ] Click X on banner → dismisses
+- [ ] Banner gone from both windows
+- [ ] Link still active
+- [ ] No console errors
+
+**Tests Needed:**
+- Open web
+- Generate link code
+- Open Word
+- Enter code
+- Both windows linked
+- Actions in web appear in Word
+- Actions in Word appear in web
+- Each action should: work, sync, no errors
+
+---
+
+## Test Execution Plan
+
+### Manual Testing (30 minutes)
+
+**Round 1: Core Document Flow**
+1. Upload document
+2. Edit variables
+3. Save progress
+4. Take snapshot
+5. Compile document
+6. Verify: all actions work, UI updates, no errors
+
+**Round 2: Multi-User Flow**
+1. Open as User A (editor)
+2. Create version 2
+3. Share with vendor
+4. Switch to User B (vendor)
+5. View version 2
+6. Save changes (creates version 3)
+7. Verify: version 3 auto-shared, User B sees it
+8. Switch back to User A
+9. Unshare version 3
+10. Verify: User B auto-switches to version 2 or 1
+
+**Round 3: Real-Time Updates**
+1. Open two windows (A and B)
+2. User A: share version
+3. User B: see update within 1 second
+4. User A: send message
+5. User B: see message immediately
+6. User A: checkout document
+7. User B: see lock immediately
+
+**Round 4: Error Conditions**
+1. Try to upload 100MB file → clear error
+2. Try to checkout locked document → clear error
+3. Try to unshare version 1 → prevented
+4. Disconnect network → offline message
+
+### Automated Testing (via `npm test`)
+
+**Run:** `cd server && npm test`
+
+**Current Status:** 138 tests (133 passing, 5 pre-existing failures)
+
+**Coverage:**
+- Infrastructure: health, startup, routes
+- Document operations: upload, save, snapshot, compile
+- Version management: list, view, share, unshare
+- Checkout/checkin: lock, unlock, conflicts
+- Variables: CRUD operations
+- Messages: send, read, delete
+- Approvals: request, approve, reject
+- Scenarios: save, load
+- Factory reset
+- Multi-user scenarios
+- Real-time updates
+
+**Failures (Pre-existing, NOT blockers):**
+1. Test 60: Compile without variables
+2. Test 61: Compile without state
+3. Test 71: Vendor cannot unshare
+4. Test 91: Non-editor cannot checkout
+5. Test 104: Finalized document prevents changes
+
+---
+
+## Success Criteria
+
+### Every Button Works
+- ✅ All buttons clickable
+- ✅ All buttons do what they say
+- ✅ No "dead" buttons
+- ✅ Disabled buttons have clear reason
+
+### No Console Errors
+- ✅ Clean console on page load
+- ✅ No errors during normal operations
+- ✅ Warnings are acceptable (e.g., deprecated APIs)
+- ✅ Errors only on expected failures
+
+### API Calls Succeed
+- ✅ All GET requests return 200 or expected status
+- ✅ All POST requests succeed or show clear error
+- ✅ No silent failures
+- ✅ No "network error" without retry
+
+### UI Updates Correctly
+- ✅ Changes reflect immediately
+- ✅ SSE updates appear within 1 second
+- ✅ No stale data
+- ✅ No "flashing" or double-renders
+
+### Data Stays Consistent
+- ✅ State matches server
+- ✅ Activity log matches actions
+- ✅ Version list accurate
+- ✅ No orphaned data
+
+---
+
+## Implementation Progress
+
+### ✅ Completed
+
+**Server Infrastructure:**
+- ✅ Startup checks
 - ✅ Graceful shutdown
-- ✅ Enhanced health check
-- ⚠️  Windows/macOS installers hardening (partial: uninstaller done)
-- ⚠️  Dev environment switchers (partial: run-local.bat done)
+- ✅ Health endpoint with version info
+- ✅ Enhanced logging
 
-### ✅ Week 2: API Layer (COMPLETED)
-- ✅ Input validation framework (Joi schemas for 13 endpoints)
-- ✅ Standardized error handling (26 error codes with resolutions)
-- ✅ Rate limiting (3 limiters: general, write, strict)
-- ✅ Timeout handling (standard, extended, short)
-- ✅ Applied to all critical write endpoints (13 total)
-- 📊 Test Results: 133/138 passing (96%)
+**Version Sharing:**
+- ✅ Role-based filtering
+- ✅ Share/unshare with auto-switch
+- ✅ Vendor-saved versions auto-share
+- ✅ Version 1 always accessible
+- ✅ Permission-aware UI
+- ✅ Real-time SSE updates
 
-### Week 3: State & Files (3 days) + Sessions & Network (2 days)
-- State validation
-- Atomic state updates
-- File size limits
-- Atomic file operations
-- Cleanup schedulers
-- Session timeout
-- Retry logic
-- Circuit breakers
+**AI Chat:**
+- ✅ Demo mode (no external LLM)
+- ✅ Random jokes
+- ✅ Chat isolation (per-user, per-platform)
+- ✅ Immediate response delivery
 
-### Week 4: Client & Integration (5 days)
-- Error boundaries
-- Standardized API calls
-- Offline detection
-- Integration tests
-- Error recovery tests
+**Bug Fixes:**
+- ✅ Compile functionality
+- ✅ Scenario loading
+- ✅ Uninstaller hardening
+- ✅ Validation middleware
+- ✅ Version 1 access for vendors
 
-### Week 5: Testing & Polish (5 days)
-- Complete test suite
-- Chaos testing
-- Performance testing
-- Load testing
-- Documentation updates
+**Version Detection:**
+- ✅ Server version in health endpoint
+- ✅ Client version detection
+- ✅ Update banner on version mismatch
+- ✅ Works on both web and Word
 
----
+### 🔄 In Progress (hardening-v3 branch)
 
-## Success Metrics
+**Prototype Stability Tests:**
+- [ ] Document operations checklist
+- [ ] Version management checklist
+- [ ] Checkout/checkin checklist
+- [ ] Variables panel checklist
+- [ ] Messaging checklist
+- [ ] Approvals checklist
+- [ ] AI chat checklist
+- [ ] Scenarios checklist
+- [ ] Factory reset checklist
+- [ ] User switching checklist
+- [ ] Real-time updates checklist
+- [ ] Error handling checklist
+- [ ] Link code checklist
 
-### Reliability
-- **99.9% uptime** - Server stays running
-- **0% data corruption** - All operations atomic
-- **95%+ operation success** - Operations complete or rollback
-- **<1s error recovery** - Quick recovery from transient errors
-
-### Error Handling
-- **100% errors have resolutions** - Every error actionable
-- **<5s user feedback** - Fast error display
-- **90%+ self-service** - Users resolve issues without support
-- **0 silent failures** - All failures logged
-
-### Testing
-- **90%+ error path coverage** - All failure modes tested
-- **225 automated tests** - Complete test inventory
-- **CI/CD integration** - Tests run on every commit
-- **Nightly chaos testing** - Failure injection testing
-
-### Performance
-- **<100ms p95 response** - Most requests fast
-- **<1% memory growth/hour** - No memory leaks
-- **<10GB disk growth/day** - Cleanup working
-- **<5% idle CPU** - Efficient background tasks
+**Goal:** Complete manual testing of all UI interactions, verify no console errors, fix any broken buttons or API calls.
 
 ---
 
-## Key Files
+## Next Steps
 
-### Production (End Users)
-- `server/public/install-addin.bat` - Windows installer
-- `server/public/install-addin.command` - macOS installer
+1. **Run Manual Test Rounds** (30 minutes)
+   - Follow test execution plan above
+   - Note any failures
+   - Check console for errors
 
-### Developer Tools
-- `tools/scripts/uninstall-addin.bat|.command` - Uninstallers
-- `tools/scripts/use-local.bat|.command` - Switch to local env
-- `tools/scripts/use-deployed.bat|.command` - Switch to production
-- `tools/scripts/run-local.bat` - Start local dev environment
+2. **Fix Any Broken Interactions**
+   - Every button must work
+   - Every API call must succeed
+   - Every UI update must happen
 
-### Server
-- `server/src/server.js` - Main server
-- `server/src/startup-checks.js` - Pre-flight validation
-- `server/src/middleware/validation.js` - Input validation
-- `server/src/middleware/error-handler.js` - Error handling
-- `server/src/middleware/rate-limit.js` - Rate limiting
+3. **Run Automated Tests** (`npm test`)
+   - Verify 133+ tests still passing
+   - Address any new failures
 
-### Client
-- `shared-ui/components.react.js` - React components with error boundaries
-- `shared-ui/utils/api.js` - Standardized API calls
-- `shared-ui/utils/offline-detector.js` - Connection monitoring
+4. **Final Verification**
+   - Open two windows
+   - Go through entire workflow
+   - No errors, everything works
 
-### Tests
-- `server/tests/addin-installation.test.js` - 37 tests
-- `server/tests/api-endpoints.test.js` - 45 tests
-- `server/tests/integration.test.js` - 30 tests
-- `server/tests/chaos.test.js` - 10 tests
+5. **Document Known Issues**
+   - List any remaining quirks
+   - Note workarounds
+   - Plan future fixes
