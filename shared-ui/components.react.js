@@ -1539,6 +1539,9 @@
       const { tokens } = React.useContext(ThemeContext);
       const rootRef = React.useRef(null);
       const [latestAccessibleVersion, setLatestAccessibleVersion] = React.useState(null);
+      
+      // Check if internal mode is enabled (for feature flags)
+      const isInternalMode = new URLSearchParams(window.location.search).get('internal') === 'true';
 
       // Fetch latest accessible version for current user (respects vendor permissions)
       React.useEffect(() => {
