@@ -1389,11 +1389,12 @@
                    
                   setConfig(j.config || null);
                   if (typeof j.revision === 'number') setRevision(j.revision);
-                  // Update both viewingVersion and loadedVersion to the newest version for this user
+                  // Update both viewingVersion and loadedVersion to the newest ACCESSIBLE version for this user
                   try {
-                    const v = Number(j?.config?.documentVersion || 0);
+                    // Use latestAccessibleVersion for vendors, documentVersion for others
+                    const v = Number(j?.config?.latestAccessibleVersion || j?.config?.documentVersion || 0);
                     if (Number.isFinite(v) && v > 0) {
-                      console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: userSwitch`);
+                      console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: userSwitch (latestAccessible)`);
                       setViewingVersion(v);
                       setLoadedVersion(v); // Reset loadedVersion to current document version for new user
                       try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { messagePlatform: plat } } })); } catch {}

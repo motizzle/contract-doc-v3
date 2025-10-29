@@ -2990,9 +2990,46 @@ app.get('/api/v1/state-matrix', (req, res) => {
   const banner = buildBanner({ isCheckedOut, isOwner, checkedOutBy: checkedOutLabel });
   const approvals = loadApprovals(req.sessionId);
   const approvalsSummary = computeApprovalsSummary(approvals.approvers);
+  
+  // Calculate latest accessible version for vendors
+  const currentVersion = state.documentVersion || 1;
+  let latestAccessibleVersion = currentVersion;
+  
+  if (derivedRole === 'vendor') {
+    const paths = getSessionPaths(req.sessionId);
+    const versionsDir = paths.versionsDir;
+    
+    if (fs.existsSync(versionsDir)) {
+      const files = fs.readdirSync(versionsDir);
+      const versionFiles = files.filter(f => f.match(/^v(\d+)\.json$/));
+      
+      const accessibleVersions = versionFiles
+        .map(f => {
+          const num = parseInt(f.match(/^v(\d+)\.json$/)[1], 10);
+          const metaPath = path.join(versionsDir, f);
+          try {
+            const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+            const isAccessible = num === 1 || meta.sharedWithVendor === true;
+            return { version: num, accessible: isAccessible };
+          } catch {
+            return { version: num, accessible: num === 1 };
+          }
+        })
+        .filter(v => v.accessible)
+        .map(v => v.version);
+      
+      if (accessibleVersions.length > 0) {
+        latestAccessibleVersion = Math.max(...accessibleVersions);
+      } else {
+        latestAccessibleVersion = 1;
+      }
+    }
+  }
+  
   const config = {
     documentId: DOCUMENT_ID,
     documentVersion: state.documentVersion,
+    latestAccessibleVersion: latestAccessibleVersion, // Add this for vendors
     title: state.title,
     status: state.status,
     lastUpdated: state.lastUpdated,

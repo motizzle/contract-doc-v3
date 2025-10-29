@@ -1,1 +1,127 @@
-[]
+[
+  {
+    "id": "act_1761703508727_852j6h9vj",
+    "timestamp": 1761703508727,
+    "type": "document:checkout",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 1,
+      "status": "draft"
+    },
+    "message": "Warren Peace checked out \"Redlined & Signed\" (v1)"
+  },
+  {
+    "id": "act_1761703509888_1evy3wp23",
+    "timestamp": 1761703509888,
+    "type": "document:save",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 2,
+      "documentTitle": "Redlined & Signed"
+    },
+    "message": "Warren Peace saved \"Redlined & Signed\" (v2)"
+  },
+  {
+    "id": "act_1761703511064_0bkfib9bc",
+    "timestamp": 1761703511064,
+    "type": "document:save",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 3,
+      "documentTitle": "Redlined & Signed"
+    },
+    "message": "Warren Peace saved \"Redlined & Signed\" (v3)"
+  },
+  {
+    "id": "act_1761703518913_9f1o54sbd",
+    "timestamp": 1761703518913,
+    "type": "document:save",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 4,
+      "documentTitle": "Redlined & Signed"
+    },
+    "message": "Warren Peace saved \"Redlined & Signed\" (v4)"
+  },
+  {
+    "id": "act_1761703519140_q4vzycab7",
+    "timestamp": 1761703519140,
+    "type": "document:checkin",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "checked in",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 4,
+      "checkoutDuration": null
+    },
+    "message": "Warren Peace checked in \"Redlined & Signed\" (v4)"
+  },
+  {
+    "id": "act_1761703520982_ml8wk9qcz",
+    "timestamp": 1761703520982,
+    "type": "document:checkout",
+    "user": {
+      "id": "user4",
+      "label": "Hugh R Ewe",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 4,
+      "status": "draft"
+    },
+    "message": "Hugh R Ewe checked out \"Redlined & Signed\" (v4)"
+  },
+  {
+    "id": "act_1761703526971_mt5gefjsc",
+    "timestamp": 1761703526971,
+    "type": "version:shared",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "shared version with vendor",
+    "target": "version",
+    "details": {
+      "version": 4,
+      "sharedWithVendor": true
+    },
+    "message": "Warren Peace shared Version 4 with vendor"
+  }
+]
