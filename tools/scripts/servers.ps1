@@ -43,7 +43,9 @@ function Start-Backend() {
   $root = Split-Path -Parent $PSCommandPath | Split-Path -Parent | Split-Path -Parent
   $pfx = "$root\server\config\dev-cert.pfx"
   Ensure-NpmInstall "$root\server"
-  Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","$env:SUPERDOC_BASE_URL='http://localhost:4002'; if (Test-Path '$pfx') { $env:SSL_PFX_PATH='$pfx'; $env:SSL_PFX_PASS='password' }; cd '$root'; node server/src/server.js" -WindowStyle Minimized -PassThru
+  Write-Host "Starting backend server on https://localhost:4001..." -ForegroundColor Cyan
+  $proc = Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","cd '$root\server'; Write-Host 'WordFTW Backend Server' -ForegroundColor Green; Write-Host 'Starting on https://localhost:4001...' -ForegroundColor Yellow; Write-Host ''; $env:SUPERDOC_BASE_URL='http://localhost:4002'; if (Test-Path '$pfx') { $env:SSL_PFX_PATH='$pfx'; $env:SSL_PFX_PASS='password' }; node src/server.js; if (`$LASTEXITCODE -ne 0) { Write-Host ''; Write-Host 'SERVER FAILED' -ForegroundColor Red; Write-Host 'Press any key to close...'; `$null = `$host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown') }" -PassThru
+  return $proc
 }
 
 function Start-Dev() {
@@ -60,7 +62,9 @@ function Start-Dev() {
       Pop-Location
     }
   } catch {}
-  Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","cd '$root\addin'; npm run dev-server" -WindowStyle Minimized -PassThru
+  Write-Host "Starting add-in dev server on https://localhost:4000..." -ForegroundColor Cyan
+  $proc = Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","cd '$root\addin'; Write-Host 'WordFTW Add-in Dev Server' -ForegroundColor Green; Write-Host 'Starting on https://localhost:4000...' -ForegroundColor Yellow; Write-Host ''; npm run dev-server; if (`$LASTEXITCODE -ne 0) { Write-Host ''; Write-Host 'DEV SERVER FAILED' -ForegroundColor Red; Write-Host 'Press any key to close...'; `$null = `$host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown') }" -PassThru
+  return $proc
 }
 
 function Start-Collab() {
@@ -101,13 +105,48 @@ switch ($Action) {
     Show-Status
   }
   'start'    {
+    Write-Host "Stopping existing servers..." -ForegroundColor Cyan
     Stop-Port 4000; Stop-Port 4001; Stop-Port 4002; Stop-Port 11434;
-    $c=Start-Collab; if (-not (Wait-Port -Port 4002 -TimeoutSeconds 60)) { Write-Host "WARN: 4002 not listening" -ForegroundColor Yellow }
-    $b=Start-Backend; if (-not (Wait-Port -Port 4001 -TimeoutSeconds 60)) { Write-Host "WARN: 4001 not listening" -ForegroundColor Yellow }
-    $d=Start-Dev; if (-not (Wait-Port -Port 4000 -TimeoutSeconds 60)) { Write-Host "WARN: 4000 not listening" -ForegroundColor Yellow }
+    Write-Host ""
+    
+    $c=Start-Collab
+    if (-not (Wait-Port -Port 4002 -TimeoutSeconds 60)) { 
+      Write-Host "ERROR: Port 4002 (SuperDoc) failed to start" -ForegroundColor Red
+      Write-Host "Check if SuperDoc dependencies are installed" -ForegroundColor Yellow
+      exit 1
+    }
+    
+    $b=Start-Backend
+    if (-not (Wait-Port -Port 4001 -TimeoutSeconds 60)) { 
+      Write-Host "ERROR: Port 4001 (Backend) failed to start" -ForegroundColor Red
+      Write-Host "Check the 'WordFTW Backend Server' window for errors" -ForegroundColor Yellow
+      Write-Host "Common issues:" -ForegroundColor Yellow
+      Write-Host "  - Missing node_modules (run: cd server && npm install)" -ForegroundColor Yellow
+      Write-Host "  - Port already in use" -ForegroundColor Yellow
+      Write-Host "  - Environment variable issues" -ForegroundColor Yellow
+      exit 1
+    }
+    Write-Host "✓ Backend server started on https://localhost:4001" -ForegroundColor Green
+    
+    $d=Start-Dev
+    if (-not (Wait-Port -Port 4000 -TimeoutSeconds 60)) { 
+      Write-Host "ERROR: Port 4000 (Add-in Dev Server) failed to start" -ForegroundColor Red
+      Write-Host "Check the 'WordFTW Add-in Dev Server' window for errors" -ForegroundColor Yellow
+      Write-Host "Common issues:" -ForegroundColor Yellow
+      Write-Host "  - Missing node_modules (run: cd addin && npm install)" -ForegroundColor Yellow
+      Write-Host "  - Webpack configuration issues" -ForegroundColor Yellow
+      exit 1
+    }
+    Write-Host "✓ Add-in dev server started on https://localhost:4000" -ForegroundColor Green
+    
     $a=Start-AddinSideload; Start-Sleep -Seconds 1;
-    Write-Host "Collab PID: $($c.Id)  Backend PID: $($b.Id)  Dev PID: $($d.Id)  Addin PID: $($a.Id)";
+    Write-Host ""
+    Write-Host "Server PIDs:" -ForegroundColor Cyan
+    Write-Host "  Collab: $($c.Id)  Backend: $($b.Id)  Dev: $($d.Id)  Addin: $($a.Id)"
+    Write-Host ""
     Show-Status
+    Write-Host ""
+    Write-Host "✅ All servers started successfully!" -ForegroundColor Green
   }
   'restart'  {
     Stop-Port 4000; Stop-Port 4001; Stop-Port 4002; Stop-Port 11434;
