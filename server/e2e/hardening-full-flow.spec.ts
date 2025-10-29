@@ -73,9 +73,9 @@ test.describe('HARDENING: Full Application Flow', () => {
   
   test.beforeEach(async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    // Wait for React to hydrate
-    await page.waitForSelector('body', { state: 'visible', timeout: 5000 });
-    await page.waitForTimeout(500); // Brief settle time for SSE connection
+    // Wait for React to hydrate and critical elements to load
+    await page.waitForSelector('select', { state: 'visible', timeout: 10000 }); // User dropdown
+    await page.waitForTimeout(1000); // Let SSE connect and initial data load
   });
 
   // ========================================
