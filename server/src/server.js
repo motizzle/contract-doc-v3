@@ -4411,6 +4411,8 @@ app.post('/api/v1/checkout', writeLimiter, validate('checkout'), (req, res) => {
   const userRole = getUserRole(userId);
   const isVendor = userRole === 'vendor';
   
+  console.log(`[Checkout] userId: ${userId}, role: ${userRole}, isVendor: ${isVendor}, currentVersion: ${currentVersion}`);
+  
   let latestAccessibleVersion = currentVersion;
   
   if (isVendor) {
@@ -4440,11 +4442,15 @@ app.post('/api/v1/checkout', writeLimiter, validate('checkout'), (req, res) => {
       
       if (accessibleVersions.length > 0) {
         latestAccessibleVersion = Math.max(...accessibleVersions);
+        console.log(`[Checkout] Vendor accessible versions: [${accessibleVersions.join(', ')}], latest: ${latestAccessibleVersion}`);
       } else {
         latestAccessibleVersion = 1; // Fallback to v1 which is always accessible
+        console.log(`[Checkout] Vendor has no accessible versions, defaulting to v1`);
       }
     }
   }
+  
+  console.log(`[Checkout] clientVersion: ${clientVersion}, latestAccessibleVersion: ${latestAccessibleVersion}, isOutdated: ${clientVersion < latestAccessibleVersion}`);
   
   const isOutdated = clientVersion < latestAccessibleVersion;
   
