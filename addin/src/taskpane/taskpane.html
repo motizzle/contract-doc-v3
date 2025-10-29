@@ -10,8 +10,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>OG CLM Task Pane</title>
 
-    <!-- Office JavaScript API -->
-    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    <!-- Office JavaScript API with timeout handling -->
+    <script>
+      // Track if office.js loads successfully
+      window.__officeJsLoaded = false;
+      window.__officeJsTimeout = setTimeout(function() {
+        if (!window.__officeJsLoaded && !window.Office) {
+          console.error('⏱️ office.js failed to load within 10 seconds - proceeding without Office API');
+        }
+      }, 10000);
+    </script>
+    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js" 
+            onerror="console.error('❌ Failed to load office.js from CDN')"
+            onload="window.__officeJsLoaded = true; clearTimeout(window.__officeJsTimeout); console.log('✅ office.js loaded successfully');"></script>
 
     <!-- For more information on Fluent UI, visit https://developer.microsoft.com/fluentui#/. -->
     <link rel="stylesheet" href="https://res-1.cdn.office.net/files/fabric-cdn-prod_20230815.002/office-ui-fabric-core/11.1.0/css/fabric.min.css"/>
@@ -42,6 +53,11 @@
         </div>
         <div id="app-root" class="w-full"></div>
     </main>
+    
+    <!-- SuperDoc 0.14.19 requires this global for track changes to work -->
+    <script>
+      window.__IS_DEBUG__ = false;
+    </script>
     
     <!-- SuperDoc initialization for field annotations -->
     <link href="/vendor/superdoc/style.css" rel="stylesheet" />
