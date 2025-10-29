@@ -128,7 +128,7 @@ describe('Deployment Configuration', () => {
       expect(prodManifest).toMatch(/<\/OfficeApp>/);
       
       // Check metadata preserved
-      expect(prodManifest).toMatch(/<DisplayName DefaultValue="OG CLM"\/>/);
+      expect(prodManifest).toMatch(/<DisplayName DefaultValue="OpenGov Contracting"\/>/);
       expect(prodManifest).toMatch(/<Version>1\.0\.1\.0<\/Version>/);
     });
 
