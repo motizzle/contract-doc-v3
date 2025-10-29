@@ -1136,19 +1136,49 @@
             // Load document into Word or Web
             if (typeof Office !== 'undefined') {
               // Word add-in: Load document into Word
-              console.log(`📄 Loading initial document into Word: version ${initialVersion}`);
-              const res = await fetch(finalUrl, { cache: 'no-store' });
-              if (res && res.ok) {
-                const buf = await res.arrayBuffer();
-                const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
-                await Word.run(async (context) => { 
-                  context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); 
-                  await context.sync(); 
-                });
-                addLog(`Document loaded (version ${initialVersion})`, 'document');
+              console.log(`📄 [INITIAL LOAD] Starting document load for Word add-in`);
+              console.log(`📄 [INITIAL LOAD] Version: ${initialVersion}`);
+              console.log(`📄 [INITIAL LOAD] URL: ${finalUrl}`);
+              console.log(`📄 [INITIAL LOAD] Office available:`, typeof Office !== 'undefined');
+              console.log(`📄 [INITIAL LOAD] Word available:`, typeof Word !== 'undefined');
+              
+              try {
+                console.log(`📄 [INITIAL LOAD] Fetching document...`);
+                const res = await fetch(finalUrl, { cache: 'no-store' });
+                console.log(`📄 [INITIAL LOAD] Fetch response:`, { ok: res.ok, status: res.status, statusText: res.statusText });
+                
+                if (res && res.ok) {
+                  console.log(`📄 [INITIAL LOAD] Converting to ArrayBuffer...`);
+                  const buf = await res.arrayBuffer();
+                  console.log(`📄 [INITIAL LOAD] ArrayBuffer size: ${buf.byteLength} bytes`);
+                  
+                  console.log(`📄 [INITIAL LOAD] Converting to base64...`);
+                  const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
+                  console.log(`📄 [INITIAL LOAD] Base64 length: ${b64.length} chars`);
+                  
+                  console.log(`📄 [INITIAL LOAD] Calling Word.run()...`);
+                  await Word.run(async (context) => { 
+                    console.log(`📄 [INITIAL LOAD] Inside Word.run, calling insertFileFromBase64...`);
+                    context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); 
+                    console.log(`📄 [INITIAL LOAD] Calling context.sync()...`);
+                    await context.sync(); 
+                    console.log(`📄 [INITIAL LOAD] context.sync() completed`);
+                  });
+                  
+                  console.log(`✅ [INITIAL LOAD] Document loaded successfully into Word`);
+                  addLog(`Document loaded (version ${initialVersion})`, 'document');
+                } else {
+                  console.error(`❌ [INITIAL LOAD] Fetch failed:`, res.status, res.statusText);
+                  addLog(`Failed to load document: ${res.status}`, 'error');
+                }
+              } catch (err) {
+                console.error(`❌ [INITIAL LOAD] Error loading document:`, err);
+                console.error(`❌ [INITIAL LOAD] Error details:`, err.message, err.stack);
+                addLog(`Failed to load document: ${err.message}`, 'error');
               }
             } else {
               // Web: Load document into SuperDoc
+              console.log(`📄 [INITIAL LOAD] Loading document in web (SuperDoc)`);
               setDocumentSource(finalUrl);
               addLog(`Document source updated`, 'document');
             }
