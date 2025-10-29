@@ -1,14 +1,14 @@
 {
   "checkedOutBy": null,
-  "lastUpdated": "2025-10-29T04:29:38.929Z",
-  "revision": 4514,
+  "lastUpdated": "2025-10-29T06:14:36.164Z",
+  "revision": 4536,
   "documentVersion": 1,
-  "title": "Redlined & Signed",
+  "title": "Propagation Test Value",
   "status": "draft",
   "updatedBy": {
-    "userId": "user4",
-    "label": "Hugh R Ewe"
+    "userId": "user1",
+    "label": "Warren Peace"
   },
-  "updatedPlatform": "word",
-  "approvalsRevision": 5038
+  "updatedPlatform": "web",
+  "approvalsRevision": 5227
 }

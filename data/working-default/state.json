@@ -1,14 +1,11 @@
 {
   "checkedOutBy": null,
-  "documentVersion": 4,
+  "documentVersion": 1,
   "title": "Redlined & Signed",
   "status": "draft",
-  "lastUpdated": "2025-10-29T04:30:43.768Z",
-  "revision": 6,
-  "checkedOutByAt": null,
-  "updatedBy": {
-    "userId": "user1",
-    "label": "Warren Peace"
-  },
-  "updatedPlatform": "web"
+  "lastUpdated": "2025-10-29T05:19:01.348Z",
+  "revision": 54,
+  "updatedBy": null,
+  "updatedPlatform": null,
+  "checkedOutByAt": 1761715137665
 }

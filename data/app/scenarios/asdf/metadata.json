@@ -1,0 +1,19 @@
+{
+  "id": "asdf",
+  "name": "asdf",
+  "description": "",
+  "slug": "asdf",
+  "created": "2025-10-29T05:03:44.344Z",
+  "createdBy": {
+    "userId": "user1",
+    "label": "Warren Peace"
+  },
+  "lastUsed": null,
+  "stats": {
+    "activities": 0,
+    "messages": 0,
+    "variables": 20,
+    "approvals": 0,
+    "versions": 0
+  }
+}

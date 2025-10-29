@@ -1,181 +1,281 @@
 [
   {
-    "id": "act_1761703508727_852j6h9vj",
-    "timestamp": 1761703508727,
-    "type": "document:checkout",
+    "id": "act_1761715141903_hd6tf4vbr",
+    "timestamp": 1761715141903,
+    "type": "message:created",
     "user": {
       "id": "user1",
       "label": "Warren Peace",
       "platform": "web"
     },
-    "action": "checked out",
-    "target": "document",
+    "action": "started conversation",
+    "target": "message",
     "details": {
-      "documentTitle": "Redlined & Signed",
-      "version": 1,
-      "status": "draft"
+      "messageId": "msg-1761715141900-si8wjsiqk",
+      "title": "User 2",
+      "recipients": 1,
+      "recipientsList": [
+        {
+          "label": "User 2",
+          "email": "user2@test.com",
+          "userId": "user2"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "Saved scenario message",
+      "platform": "web"
     },
-    "message": "Warren Peace checked out \"Redlined & Signed\" (v1)"
+    "message": "Warren Peace started a conversation \"User 2\" with 1 person"
   },
   {
-    "id": "act_1761703509888_1evy3wp23",
-    "timestamp": 1761703509888,
-    "type": "document:save",
+    "id": "act_1761715142350_gmnc3c33s",
+    "timestamp": 1761715142350,
+    "type": "workflow:request-review",
     "user": {
       "id": "user1",
       "label": "Warren Peace",
       "platform": "web"
     },
-    "action": "saved progress",
-    "target": "document",
-    "details": {
-      "autoSave": false,
-      "version": 2,
-      "documentTitle": "Redlined & Signed"
-    },
-    "message": "Warren Peace saved \"Redlined & Signed\" (v2)"
+    "action": "requested review",
+    "target": "workflow",
+    "details": {},
+    "message": "Warren Peace requested review from approvers"
   },
   {
-    "id": "act_1761703511064_0bkfib9bc",
-    "timestamp": 1761703511064,
-    "type": "document:save",
+    "id": "act_1761715142449_1ea6b1s39",
+    "timestamp": 1761715142449,
+    "type": "message:created",
     "user": {
       "id": "user1",
       "label": "Warren Peace",
       "platform": "web"
     },
-    "action": "saved progress",
-    "target": "document",
+    "action": "started conversation",
+    "target": "message",
     "details": {
-      "autoSave": false,
-      "version": 3,
-      "documentTitle": "Redlined & Signed"
+      "messageId": "msg-1761715142414-efdso1p6d",
+      "title": "User 2",
+      "recipients": 1,
+      "recipientsList": [
+        {
+          "label": "User 2",
+          "email": "user2@test.com",
+          "userId": "user2"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "Contract terms discussion",
+      "platform": "web"
     },
-    "message": "Warren Peace saved \"Redlined & Signed\" (v3)"
+    "message": "Warren Peace started a conversation \"User 2\" with 1 person"
   },
   {
-    "id": "act_1761703518913_9f1o54sbd",
-    "timestamp": 1761703518913,
-    "type": "document:save",
+    "id": "act_1761715142551_x0xf7ox7z",
+    "timestamp": 1761715142551,
+    "type": "message:created",
     "user": {
       "id": "user1",
       "label": "Warren Peace",
       "platform": "web"
     },
-    "action": "saved progress",
-    "target": "document",
+    "action": "started conversation",
+    "target": "message",
     "details": {
-      "autoSave": false,
-      "version": 4,
-      "documentTitle": "Redlined & Signed"
+      "messageId": "msg-1761715142542-qhvkmss7y",
+      "title": "User 3",
+      "recipients": 1,
+      "recipientsList": [
+        {
+          "label": "User 3",
+          "email": "user3@test.com",
+          "userId": "user3"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "Budget planning meeting",
+      "platform": "web"
     },
-    "message": "Warren Peace saved \"Redlined & Signed\" (v4)"
+    "message": "Warren Peace started a conversation \"User 3\" with 1 person"
   },
   {
-    "id": "act_1761703519140_q4vzycab7",
-    "timestamp": 1761703519140,
-    "type": "document:checkin",
+    "id": "act_1761715142748_glyojzwpa",
+    "timestamp": 1761715142748,
+    "type": "message:created",
     "user": {
       "id": "user1",
       "label": "Warren Peace",
       "platform": "web"
     },
-    "action": "checked in",
-    "target": "document",
+    "action": "started conversation",
+    "target": "message",
     "details": {
-      "documentTitle": "Redlined & Signed",
-      "version": 4,
-      "checkoutDuration": null
-    },
-    "message": "Warren Peace checked in \"Redlined & Signed\" (v4)"
-  },
-  {
-    "id": "act_1761703520982_ml8wk9qcz",
-    "timestamp": 1761703520982,
-    "type": "document:checkout",
-    "user": {
-      "id": "user4",
-      "label": "Hugh R Ewe",
+      "messageId": "msg-1761715142742-xwl1h4em5",
+      "title": "User 2",
+      "recipients": 1,
+      "recipientsList": [
+        {
+          "label": "User 2",
+          "email": "user2@test.com",
+          "userId": "user2"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "First message",
       "platform": "web"
     },
-    "action": "checked out",
-    "target": "document",
-    "details": {
-      "documentTitle": "Redlined & Signed",
-      "version": 4,
-      "status": "draft"
-    },
-    "message": "Hugh R Ewe checked out \"Redlined & Signed\" (v4)"
+    "message": "Warren Peace started a conversation \"User 2\" with 1 person"
   },
   {
-    "id": "act_1761703526971_mt5gefjsc",
-    "timestamp": 1761703526971,
-    "type": "version:shared",
+    "id": "act_1761715142844_rpcneufgl",
+    "timestamp": 1761715142844,
+    "type": "message:created",
     "user": {
       "id": "user1",
       "label": "Warren Peace",
       "platform": "web"
     },
-    "action": "shared version with vendor",
-    "target": "version",
+    "action": "started conversation",
+    "target": "message",
     "details": {
-      "version": 4,
-      "sharedWithVendor": true
+      "messageId": "msg-1761715142840-rrtxpoglv",
+      "title": "User 2",
+      "recipients": 1,
+      "recipientsList": [
+        {
+          "label": "User 2",
+          "email": "user2@test.com",
+          "userId": "user2"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "Duplicate attempt",
+      "platform": "web"
     },
-    "message": "Warren Peace shared Version 4 with vendor"
+    "message": "Warren Peace started a conversation \"User 2\" with 1 person"
   },
   {
-    "id": "act_1761712200609_b5s1jiutc",
-    "timestamp": 1761712200609,
-    "type": "version:view",
-    "user": {
-      "id": "user4",
-      "label": "Hugh R Ewe",
-      "platform": "word"
-    },
-    "action": "viewed version",
-    "target": "version",
-    "details": {
-      "version": 1,
-      "platform": "word",
-      "documentTitle": "Redlined & Signed",
-      "currentVersion": 4
-    },
-    "message": "Hugh R Ewe viewed \"Redlined & Signed\" v1 (current: v4)"
-  },
-  {
-    "id": "act_1761712233465_2u3feerth",
-    "timestamp": 1761712233465,
-    "type": "version:unshared",
+    "id": "act_1761715142907_tmni1z3cq",
+    "timestamp": 1761715142907,
+    "type": "message:created",
     "user": {
       "id": "user1",
       "label": "Warren Peace",
       "platform": "web"
     },
-    "action": "removed vendor access",
-    "target": "version",
+    "action": "started conversation",
+    "target": "message",
     "details": {
-      "version": 4,
-      "sharedWithVendor": false
+      "messageId": "msg-1761715142905-ma7vs20bb",
+      "title": "Alice Smith, Bob Jones",
+      "recipients": 2,
+      "recipientsList": [
+        {
+          "label": "Alice Smith",
+          "email": "alice@test.com",
+          "userId": "user2"
+        },
+        {
+          "label": "Bob Jones",
+          "email": "bob@test.com",
+          "userId": "user3"
+        }
+      ],
+      "internal": false,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "Group discussion",
+      "platform": "web"
     },
-    "message": "Warren Peace removed vendor access to Version 4"
+    "message": "Warren Peace started a conversation \"Alice Smith, Bob Jones\" with 2 people"
   },
   {
-    "id": "act_1761712243772_526c339q0",
-    "timestamp": 1761712243772,
-    "type": "document:checkout:override",
+    "id": "act_1761715142947_5s9tv82bc",
+    "timestamp": 1761715142947,
+    "type": "message:created",
     "user": {
       "id": "user1",
       "label": "Warren Peace",
       "platform": "web"
     },
-    "action": "overrode checkout",
-    "target": "document",
+    "action": "started conversation",
+    "target": "message",
     "details": {
-      "previousUserId": "user4",
-      "documentTitle": "Redlined & Signed",
-      "version": 4
+      "messageId": "msg-1761715142944-vis1bteor",
+      "title": "User 2",
+      "recipients": 1,
+      "recipientsList": [
+        {
+          "label": "User 2",
+          "email": "user2@test.com",
+          "userId": "user2"
+        }
+      ],
+      "internal": true,
+      "external": false,
+      "privileged": false,
+      "initialMessage": "Internal message",
+      "platform": "web"
     },
-    "message": "Warren Peace overrode Hugh R Ewe's checkout of \"Redlined & Signed\""
+    "message": "Warren Peace started a conversation \"User 2\" with 1 person"
+  },
+  {
+    "id": "act_1761715142971_6o6qa5foj",
+    "timestamp": 1761715142971,
+    "type": "message:created",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "started conversation",
+    "target": "message",
+    "details": {
+      "messageId": "msg-1761715142969-4zm17c21z",
+      "title": "User 3",
+      "recipients": 1,
+      "recipientsList": [
+        {
+          "label": "User 3",
+          "email": "user3@test.com",
+          "userId": "user3"
+        }
+      ],
+      "internal": false,
+      "external": true,
+      "privileged": false,
+      "initialMessage": "External message",
+      "platform": "web"
+    },
+    "message": "Warren Peace started a conversation \"User 3\" with 1 person"
+  },
+  {
+    "id": "act_1761715143028_clt7bng9w",
+    "timestamp": 1761715143028,
+    "type": "message:exported",
+    "user": {
+      "id": "system",
+      "label": "system",
+      "platform": "web"
+    },
+    "action": "exported messages",
+    "target": "message",
+    "details": {
+      "scope": "all",
+      "filters": "scope:all, internal, privileged",
+      "messageCount": 8,
+      "includePosts": false,
+      "platform": "web"
+    },
+    "message": "system exported 8 conversations to CSV"
   }
 ]
