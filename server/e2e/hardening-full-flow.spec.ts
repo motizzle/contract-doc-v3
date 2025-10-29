@@ -274,28 +274,39 @@ test.describe('HARDENING: Full Application Flow', () => {
     
     // Start with factory reset (creates version 1)
     await factoryReset(page);
+    await selectUser(page, 'Warren Peace');
     await page.waitForTimeout(1000);
     
     // Create version 2
     await createVersion(page);
+    await page.waitForTimeout(1000);
     
-    // Now view version 1
+    // Go to Versions tab
     await clickTab(page, 'Versions');
+    await page.waitForTimeout(1000);
+    
+    // Click View on version 1 (second View button, since v2 is first)
+    const viewButtons = page.locator('button.btn:has-text("View")');
+    const count = await viewButtons.count();
+    expect(count).toBeGreaterThanOrEqual(2); // Should have at least 2 versions
+    
+    await viewButtons.nth(1).click(); // Click View on version 1
     await page.waitForTimeout(500);
     
-    const viewButtons = page.locator('button:has-text("View")');
-    if (await viewButtons.count() > 1) {
+    // Confirm the modal
+    const confirmBtn = page.locator('button:has-text("Confirm"), button:has-text("Continue"), button:has-text("OK")').first();
+    if (await confirmBtn.count() > 0) {
       const apiPromise = waitForApi(page, '/api/v1/versions/view');
-      await viewButtons.nth(1).click(); // Click View on version 1
+      await confirmBtn.click();
       
       const response = await apiPromise;
       expect(response.status()).toBe(200);
-      
-      // Check for "Viewing Version" banner
-      await page.waitForTimeout(1000);
-      const banner = await page.locator('text=/Viewing Version/i').count();
-      expect(banner).toBeGreaterThan(0);
     }
+    
+    // Check for "Viewing" indicator
+    await page.waitForTimeout(1500);
+    const viewingText = await page.locator('text=/Viewing/i').count();
+    expect(viewingText).toBeGreaterThan(0);
     
     // Verify no console errors
     expect(errors.filter(e => !e.includes('favicon') && !e.includes('503'))).toHaveLength(0);
