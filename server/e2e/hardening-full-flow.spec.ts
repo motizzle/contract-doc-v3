@@ -121,14 +121,14 @@ async function createVersion(page: Page) {
   const checkoutBtn = page.locator('button:has-text("Checkout")').first();
   if (await checkoutBtn.count() > 0) {
     await checkoutBtn.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
   }
   
-  // Check-in to create the version
-  const checkinBtn = page.locator('button:has-text("Check-in")').first();
+  // Check-in to create the version (button text is "Check-in and Save")
+  const checkinBtn = page.locator('button:has-text("Check-in and Save")').first();
   if (await checkinBtn.count() > 0) {
     await checkinBtn.click();
-    await page.waitForTimeout(2000); // Wait for version creation
+    await page.waitForTimeout(2500); // Wait for version creation and API call
     return true;
   }
   
@@ -459,8 +459,8 @@ test.describe('HARDENING: Full Application Flow', () => {
     // Wait for UI update
     await page.waitForTimeout(1000);
     
-    // Verify button changed to "Checkin"
-    const checkinButton = page.locator('button:has-text("Checkin"), button:has-text("Check In")');
+    // Verify button changed to "Check-in and Save"
+    const checkinButton = page.locator('button:has-text("Check-in and Save")');
     await expect(checkinButton).toBeVisible();
     
     // Verify no console errors
@@ -497,8 +497,8 @@ test.describe('HARDENING: Full Application Flow', () => {
     await checkoutButton.click();
     await page.waitForTimeout(1000);
     
-    // Now checkin
-    const checkinButton = await waitFor(page, 'button:has-text("Checkin"), button:has-text("Check In")');
+    // Now checkin (button text is "Check-in and Save")
+    const checkinButton = await waitFor(page, 'button:has-text("Check-in and Save")');
     
     const apiPromise = waitForApi(page, '/api/v1/checkin');
     await checkinButton.click();
@@ -675,11 +675,11 @@ test.describe('HARDENING: Full Application Flow', () => {
       await page.waitForTimeout(1000);
     }
     
-    // Checkin
-    const checkinBtn = page.locator('button:has-text("Checkin"), button:has-text("Check In")');
+    // Checkin (button text is "Check-in and Save")
+    const checkinBtn = page.locator('button:has-text("Check-in and Save")');
     if (await checkinBtn.count() > 0) {
       await checkinBtn.click();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(2000);
     }
     
     // Verify no console errors
