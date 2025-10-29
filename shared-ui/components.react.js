@@ -1952,70 +1952,123 @@
 
       return React.createElement('div', { ref: rootRef, className: 'd-flex flex-column gap-6' },
         topLayout,
-        // App update banner (shown when server version != client version)
+        // App update modal (shown when server version != client version)
         (updateAvailable && !updateDismissed ? (
-          React.createElement('div', { 
-            className: 'update-banner',
+          React.createElement('div', {
             style: {
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              borderRadius: 8,
-              padding: '16px 20px',
-              color: '#fff',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-              marginBottom: 16,
-              position: 'relative'
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10000,
+              padding: 20
             }
           },
-            React.createElement('div', { style: { position: 'relative', width: '100%' } }, [
-              React.createElement('div', { key: 'row', style: { display: 'grid', gridTemplateColumns: '28px 1fr auto auto', alignItems: 'flex-start', columnGap: 12 } }, [
-                // Icon
-                React.createElement('div', { key: 'icon', style: { width: 28, height: 28, borderRadius: '50%', background: 'rgba(255, 255, 255, 0.15)', border: '2px solid rgba(255, 255, 255, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 } }, '🔄'),
-                // Text
-                React.createElement('div', { key: 'text', style: { color: 'inherit', textAlign: 'left', flex: 1 } }, [
-                  React.createElement('div', { key: 't', style: { fontWeight: 700, fontSize: 14, marginBottom: 2 } }, 'App Update Available'),
-                  React.createElement('div', { key: 'm', style: { fontSize: 13, opacity: 0.95 } }, `Version ${CLIENT_VERSION} → ${serverVersion}. Refresh to update.`),
-                  // Release notes (if available)
-                  releaseNotes ? React.createElement('div', { key: 'rn', style: { fontSize: 13, opacity: 0.9, marginTop: 10, whiteSpace: 'pre-wrap', lineHeight: '1.4', background: 'rgba(255, 255, 255, 0.1)', padding: 10, borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.2)' } }, releaseNotes) : null,
-                ].filter(Boolean)),
-                // Refresh button
-                React.createElement('button', {
-                  key: 'refresh-btn',
-                  onClick: handleRefreshNow,
+            React.createElement('div', {
+              style: {
+                background: '#fff',
+                borderRadius: 12,
+                maxWidth: 500,
+                width: '100%',
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+                overflow: 'hidden'
+              }
+            }, [
+              // Header
+              React.createElement('div', {
+                key: 'header',
+                style: {
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  padding: 24,
+                  color: '#fff',
+                  textAlign: 'center'
+                }
+              }, [
+                React.createElement('div', { key: 'icon', style: { fontSize: 48, marginBottom: 12 } }, '🔄'),
+                React.createElement('h2', { key: 'title', style: { margin: 0, fontSize: 24, fontWeight: 700 } }, 'App Update Available'),
+                React.createElement('p', { key: 'version', style: { margin: '8px 0 0', fontSize: 16, opacity: 0.9 } }, `Version ${CLIENT_VERSION} → ${serverVersion}`)
+              ]),
+              // Body
+              React.createElement('div', {
+                key: 'body',
+                style: {
+                  padding: 24
+                }
+              }, [
+                releaseNotes ? React.createElement('div', {
+                  key: 'notes',
                   style: {
-                    background: '#fff',
-                    border: 'none',
-                    borderRadius: 6,
-                    padding: '8px 16px',
-                    color: '#667eea',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    fontSize: 13,
-                    transition: 'all 0.2s',
-                    whiteSpace: 'nowrap',
-                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-                  },
-                  onMouseOver: (e) => { e.target.style.background = '#f8f9fa'; },
-                  onMouseOut: (e) => { e.target.style.background = '#fff'; }
-                }, 'Refresh Now'),
-                // Dismiss button (X)
+                    background: '#f8f9fa',
+                    border: '1px solid #e9ecef',
+                    borderRadius: 8,
+                    padding: 16,
+                    marginBottom: 24,
+                    fontSize: 14,
+                    lineHeight: '1.6',
+                    whiteSpace: 'pre-wrap',
+                    color: '#495057'
+                  }
+                }, releaseNotes) : null,
+                React.createElement('p', {
+                  key: 'message',
+                  style: {
+                    margin: 0,
+                    fontSize: 14,
+                    color: '#6c757d',
+                    textAlign: 'center'
+                  }
+                }, 'Please refresh to get the latest features and fixes.')
+              ]),
+              // Footer
+              React.createElement('div', {
+                key: 'footer',
+                style: {
+                  padding: '0 24px 24px',
+                  display: 'flex',
+                  gap: 12,
+                  justifyContent: 'flex-end'
+                }
+              }, [
                 React.createElement('button', {
-                  key: 'dismiss-btn',
+                  key: 'dismiss',
                   onClick: handleDismissUpdate,
-                  title: 'Dismiss',
                   style: {
                     background: 'transparent',
+                    border: '1px solid #dee2e6',
+                    borderRadius: 8,
+                    padding: '10px 20px',
+                    color: '#6c757d',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: 14,
+                    transition: 'all 0.2s'
+                  },
+                  onMouseOver: (e) => { e.target.style.background = '#f8f9fa'; },
+                  onMouseOut: (e) => { e.target.style.background = 'transparent'; }
+                }, 'Later'),
+                React.createElement('button', {
+                  key: 'refresh',
+                  onClick: handleRefreshNow,
+                  style: {
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                     border: 'none',
+                    borderRadius: 8,
+                    padding: '10px 24px',
                     color: '#fff',
                     cursor: 'pointer',
-                    fontSize: 18,
-                    padding: '4px 8px',
-                    opacity: 0.7,
-                    transition: 'opacity 0.2s',
-                    lineHeight: 1
+                    fontWeight: 700,
+                    fontSize: 14,
+                    transition: 'all 0.2s',
+                    boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
                   },
-                  onMouseOver: (e) => { e.target.style.opacity = 1; },
-                  onMouseOut: (e) => { e.target.style.opacity = 0.7; }
-                }, '×')
+                  onMouseOver: (e) => { e.target.style.transform = 'translateY(-1px)'; e.target.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)'; },
+                  onMouseOut: (e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.3)'; }
+                }, 'Refresh Now')
               ])
             ])
           )
