@@ -10,18 +10,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>OG CLM Task Pane</title>
 
-    <!-- Office JavaScript API with timeout handling -->
+    <!-- Office JavaScript API with extended timeout and retry -->
     <script>
-      // Track if office.js loads successfully
+      // Track office.js loading with extended timeout (30s)
       window.__officeJsLoaded = false;
+      window.__officeJsAttempts = 0;
+      
+      // Extended timeout for slow connections
       window.__officeJsTimeout = setTimeout(function() {
         if (!window.__officeJsLoaded && !window.Office) {
-          console.error('⏱️ office.js failed to load within 10 seconds - proceeding without Office API');
+          console.error('⏱️ office.js failed to load within 30 seconds');
+          console.error('⚠️ Add-in may not function correctly - link code pairing will fail');
         }
-      }, 10000);
+      }, 30000); // 30 seconds instead of 10
+      
+      // Retry mechanism if loading fails
+      window.__retryOfficeJs = function() {
+        if (window.__officeJsAttempts < 3 && !window.Office) {
+          window.__officeJsAttempts++;
+          console.log(`🔄 Retrying office.js load (attempt ${window.__officeJsAttempts}/3)...`);
+          var script = document.createElement('script');
+          script.src = 'https://appsforoffice.microsoft.com/lib/1/hosted/office.js';
+          script.onload = function() {
+            window.__officeJsLoaded = true;
+            clearTimeout(window.__officeJsTimeout);
+            console.log('✅ office.js loaded successfully on retry');
+          };
+          script.onerror = function() {
+            console.error('❌ Retry failed');
+            setTimeout(window.__retryOfficeJs, 2000); // Wait 2s before next retry
+          };
+          document.head.appendChild(script);
+        }
+      };
     </script>
     <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js" 
-            onerror="console.error('❌ Failed to load office.js from CDN')"
+            onerror="console.error('❌ Failed to load office.js from CDN - will retry'); setTimeout(window.__retryOfficeJs, 2000);"
             onload="window.__officeJsLoaded = true; clearTimeout(window.__officeJsTimeout); console.log('✅ office.js loaded successfully');"></script>
 
     <!-- For more information on Fluent UI, visit https://developer.microsoft.com/fluentui#/. -->
