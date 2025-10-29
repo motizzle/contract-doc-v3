@@ -165,11 +165,14 @@ function checkMemory() {
   const freeMem = os.freemem();
   const totalMem = os.totalmem();
   const freePercent = (freeMem / totalMem) * 100;
+  const freeGB = freeMem / (1024 * 1024 * 1024);
   
-  if (freePercent < 10) {
+  // Check absolute memory, not percentage (more reliable)
+  // Node.js typically needs ~500MB to run comfortably
+  if (freeGB < 0.5) {
     return {
       pass: false,
-      message: `Only ${freePercent.toFixed(1)}% memory available`,
+      message: `Only ${freeGB.toFixed(2)}GB memory available`,
       resolution: 'Free up system memory or increase available RAM'
     };
   }

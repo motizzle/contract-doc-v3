@@ -44,7 +44,7 @@ function Start-Backend() {
   $pfx = "$root\server\config\dev-cert.pfx"
   Ensure-NpmInstall "$root\server"
   Write-Host "Starting backend server on https://localhost:4001..." -ForegroundColor Cyan
-  $proc = Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","cd '$root\server'; Write-Host 'WordFTW Backend Server' -ForegroundColor Green; Write-Host 'Starting on https://localhost:4001...' -ForegroundColor Yellow; Write-Host ''; $env:SUPERDOC_BASE_URL='http://localhost:4002'; if (Test-Path '$pfx') { $env:SSL_PFX_PATH='$pfx'; $env:SSL_PFX_PASS='password' }; node src/server.js; if (`$LASTEXITCODE -ne 0) { Write-Host ''; Write-Host 'SERVER FAILED' -ForegroundColor Red; Write-Host 'Press any key to close...'; `$null = `$host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown') }" -PassThru
+  $proc = Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","Set-Location -LiteralPath '$root\server'; Write-Host 'WordFTW Backend Server' -ForegroundColor Green; Write-Host 'Starting on https://localhost:4001...' -ForegroundColor Yellow; Write-Host ''; `$env:SUPERDOC_BASE_URL='http://localhost:4002'; if (Test-Path '$pfx') { `$env:SSL_PFX_PATH='$pfx'; `$env:SSL_PFX_PASS='password' }; node src/server.js; if (`$LASTEXITCODE -ne 0) { Write-Host ''; Write-Host 'SERVER FAILED' -ForegroundColor Red; Write-Host 'Press any key to close...'; `$null = `$host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown') }" -PassThru
   return $proc
 }
 
@@ -63,7 +63,7 @@ function Start-Dev() {
     }
   } catch {}
   Write-Host "Starting add-in dev server on https://localhost:4000..." -ForegroundColor Cyan
-  $proc = Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","cd '$root\addin'; Write-Host 'WordFTW Add-in Dev Server' -ForegroundColor Green; Write-Host 'Starting on https://localhost:4000...' -ForegroundColor Yellow; Write-Host ''; npm run dev-server; if (`$LASTEXITCODE -ne 0) { Write-Host ''; Write-Host 'DEV SERVER FAILED' -ForegroundColor Red; Write-Host 'Press any key to close...'; `$null = `$host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown') }" -PassThru
+  $proc = Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","Set-Location -LiteralPath '$root\addin'; Write-Host 'WordFTW Add-in Dev Server' -ForegroundColor Green; Write-Host 'Starting on https://localhost:4000...' -ForegroundColor Yellow; Write-Host ''; npm run dev-server; if (`$LASTEXITCODE -ne 0) { Write-Host ''; Write-Host 'DEV SERVER FAILED' -ForegroundColor Red; Write-Host 'Press any key to close...'; `$null = `$host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown') }" -PassThru
   return $proc
 }
 
