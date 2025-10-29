@@ -1958,25 +1958,24 @@
             className: 'update-banner',
             style: {
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              borderRadius: 0,
-              padding: '20px 24px',
+              borderRadius: 8,
+              padding: '16px 20px',
               color: '#fff',
-              boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.1)',
-              margin: '-16px -16px 16px -16px',
-              position: 'relative',
-              zIndex: 1000
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+              marginBottom: 16,
+              position: 'relative'
             }
           },
             React.createElement('div', { style: { position: 'relative', width: '100%' } }, [
-              React.createElement('div', { key: 'row', style: { display: 'grid', gridTemplateColumns: '32px 1fr auto auto', alignItems: 'flex-start', columnGap: 16 } }, [
+              React.createElement('div', { key: 'row', style: { display: 'grid', gridTemplateColumns: '28px 1fr auto auto', alignItems: 'flex-start', columnGap: 12 } }, [
                 // Icon
-                React.createElement('div', { key: 'icon', style: { width: 32, height: 32, borderRadius: '50%', background: 'rgba(255, 255, 255, 0.15)', border: '2px solid rgba(255, 255, 255, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18 } }, '🔄'),
+                React.createElement('div', { key: 'icon', style: { width: 28, height: 28, borderRadius: '50%', background: 'rgba(255, 255, 255, 0.15)', border: '2px solid rgba(255, 255, 255, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 } }, '🔄'),
                 // Text
                 React.createElement('div', { key: 'text', style: { color: 'inherit', textAlign: 'left', flex: 1 } }, [
-                  React.createElement('div', { key: 't', style: { fontWeight: 700, fontSize: 16, marginBottom: 4 } }, 'App Update Available'),
-                  React.createElement('div', { key: 'm', style: { fontSize: 14, opacity: 0.95 } }, `Version ${CLIENT_VERSION} → ${serverVersion}. Refresh to update.`),
+                  React.createElement('div', { key: 't', style: { fontWeight: 700, fontSize: 14, marginBottom: 2 } }, 'App Update Available'),
+                  React.createElement('div', { key: 'm', style: { fontSize: 13, opacity: 0.95 } }, `Version ${CLIENT_VERSION} → ${serverVersion}. Refresh to update.`),
                   // Release notes (if available)
-                  releaseNotes ? React.createElement('div', { key: 'rn', style: { fontSize: 14, opacity: 0.9, marginTop: 12, whiteSpace: 'pre-wrap', lineHeight: '1.5', background: 'rgba(255, 255, 255, 0.1)', padding: 12, borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.2)' } }, releaseNotes) : null,
+                  releaseNotes ? React.createElement('div', { key: 'rn', style: { fontSize: 13, opacity: 0.9, marginTop: 10, whiteSpace: 'pre-wrap', lineHeight: '1.4', background: 'rgba(255, 255, 255, 0.1)', padding: 10, borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.2)' } }, releaseNotes) : null,
                 ].filter(Boolean)),
                 // Refresh button
                 React.createElement('button', {
@@ -1985,19 +1984,18 @@
                   style: {
                     background: '#fff',
                     border: 'none',
-                    borderRadius: 8,
-                    padding: '10px 20px',
+                    borderRadius: 6,
+                    padding: '8px 16px',
                     color: '#667eea',
                     cursor: 'pointer',
-                    fontWeight: 700,
-                    fontSize: 14,
+                    fontWeight: 600,
+                    fontSize: 13,
                     transition: 'all 0.2s',
                     whiteSpace: 'nowrap',
-                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                    marginTop: 4
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
                   },
-                  onMouseOver: (e) => { e.target.style.transform = 'translateY(-1px)'; e.target.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)'; },
-                  onMouseOut: (e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)'; }
+                  onMouseOver: (e) => { e.target.style.background = '#f8f9fa'; },
+                  onMouseOut: (e) => { e.target.style.background = '#fff'; }
                 }, 'Refresh Now'),
                 // Dismiss button (X)
                 React.createElement('button', {
@@ -2005,20 +2003,18 @@
                   onClick: handleDismissUpdate,
                   title: 'Dismiss',
                   style: {
-                    background: 'rgba(255, 255, 255, 0.2)',
+                    background: 'transparent',
                     border: 'none',
-                    borderRadius: 6,
                     color: '#fff',
                     cursor: 'pointer',
-                    fontSize: 20,
-                    padding: '6px 10px',
-                    opacity: 0.8,
-                    transition: 'all 0.2s',
-                    marginTop: 4,
+                    fontSize: 18,
+                    padding: '4px 8px',
+                    opacity: 0.7,
+                    transition: 'opacity 0.2s',
                     lineHeight: 1
                   },
-                  onMouseOver: (e) => { e.target.style.opacity = 1; e.target.style.background = 'rgba(255, 255, 255, 0.3)'; },
-                  onMouseOut: (e) => { e.target.style.opacity = 0.8; e.target.style.background = 'rgba(255, 255, 255, 0.2)'; }
+                  onMouseOver: (e) => { e.target.style.opacity = 1; },
+                  onMouseOut: (e) => { e.target.style.opacity = 0.7; }
                 }, '×')
               ])
             ])
