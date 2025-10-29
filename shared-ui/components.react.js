@@ -7654,6 +7654,10 @@
       ]);
 
       // Bottom section: two tabs - AI and Workflow
+      // Feature flags: Check if internal mode is enabled via query parameter
+      const isInternalMode = new URLSearchParams(window.location.search).get('internal') === 'true';
+      const ENABLE_MESSAGES_TAB = isInternalMode; // Only show Messages tab for internal use
+      
       const [activeTab, setActiveTab] = React.useState('AI');
       const [underline, setUnderline] = React.useState({ left: 0, width: 0 });
       const tabbarRef = React.useRef(null);
@@ -7746,7 +7750,7 @@
               : null),
             React.createElement('span', { key: 'label', ref: wfLabelRef, style: { display: 'inline-block' } }, 'Workflow')
           ]),
-          React.createElement('button', {
+          ENABLE_MESSAGES_TAB ? React.createElement('button', {
             key: 'tab-messaging',
             className: activeTab === 'Messages' ? 'tab tab--active' : 'tab',
             onClick: () => setActiveTab('Messages'),
@@ -7754,7 +7758,7 @@
           }, [
             messagingUnreadCount > 0 ? React.createElement('span', { key: 'count', style: { fontSize: '11px', lineHeight: '1' } }, `(${messagingUnreadCount})`) : null,
             React.createElement('span', { key: 'label', ref: msgLabelRef, style: { display: 'inline-block' } }, 'Messages')
-          ]),
+          ]) : null,
           React.createElement('button', {
             key: 'tab-versions',
             className: activeTab === 'Versions' ? 'tab tab--active' : 'tab',
