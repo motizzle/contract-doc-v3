@@ -67,9 +67,16 @@ async function factoryReset(page: Page) {
   await page.locator('.ui-menu').locator('text=Scenario Loader').click();
   await page.waitForTimeout(1000);
   
-  // Click on first preset scenario card (not a button, it's a clickable div)
-  const presetCard = page.locator('.modal-panel').locator('div').filter({ hasText: /Demo|Nearly Done|Initial/ }).first();
+  // Wait for modal to fully appear
+  await page.waitForSelector('.modal-panel', { state: 'visible', timeout: 5000 });
+  
+  // Click on first preset scenario card (look for any with "Demo" or "Nearly" in the text)
+  // Need to be more specific - look for the clickable div inside the modal
+  const presetCard = page.locator('.modal-panel div[style*="cursor"]').first();
   await presetCard.click();
+  
+  // Wait for modal to close and reset to complete
+  await page.waitForSelector('.modal-overlay', { state: 'hidden', timeout: 5000 }).catch(() => {});
   await page.waitForTimeout(2000); // Wait for reset to complete
 }
 
@@ -82,11 +89,30 @@ async function clickMenuItem(page: Page, itemText: string) {
   await page.waitForTimeout(500);
 }
 
-// Helper: Click tab
+// Helper: Click tab (with modal handling)
 async function clickTab(page: Page, tabName: string) {
+  // Check if modal is open and close it first
+  const modalOverlay = page.locator('.modal-overlay');
+  if (await modalOverlay.count() > 0) {
+    const closeBtn = page.locator('.ui-modal__close, button:has-text("✕"), button:has-text("Close")').first();
+    if (await closeBtn.count() > 0) {
+      await closeBtn.click();
+      await page.waitForTimeout(300);
+    }
+  }
+  
   const tab = page.locator('button.tab').filter({ hasText: tabName }).first();
   await tab.click();
   await page.waitForTimeout(500);
+}
+
+// Helper: Close any open modals
+async function closeModal(page: Page) {
+  const closeBtn = page.locator('.ui-modal__close, button:has-text("✕"), button:has-text("Close")').first();
+  if (await closeBtn.count() > 0) {
+    await closeBtn.click();
+    await page.waitForTimeout(300);
+  }
 }
 
 // Helper: Select user from dropdown
@@ -1165,6 +1191,9 @@ test.describe('HARDENING: Full Application Flow', () => {
       }
     }
     
+    // Close modal if still open
+    await closeModal(page);
+    
     // Verify no console errors
     expect(errors.filter(e => !e.includes('favicon'))).toHaveLength(0);
   });
@@ -1511,6 +1540,9 @@ test.describe('HARDENING: Full Application Flow', () => {
     if (await compileModalBtn.count() > 0) {
       await compileModalBtn.click();
       await page.waitForTimeout(3000); // Wait for compilation
+      
+      // Close modal after compile
+      await closeModal(page);
       
       // Check activity log
       await clickTab(page, 'Activity');
