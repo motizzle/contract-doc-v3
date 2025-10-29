@@ -123,5 +123,59 @@
       "sharedWithVendor": true
     },
     "message": "Warren Peace shared Version 4 with vendor"
+  },
+  {
+    "id": "act_1761712200609_b5s1jiutc",
+    "timestamp": 1761712200609,
+    "type": "version:view",
+    "user": {
+      "id": "user4",
+      "label": "Hugh R Ewe",
+      "platform": "word"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 1,
+      "platform": "word",
+      "documentTitle": "Redlined & Signed",
+      "currentVersion": 4
+    },
+    "message": "Hugh R Ewe viewed \"Redlined & Signed\" v1 (current: v4)"
+  },
+  {
+    "id": "act_1761712233465_2u3feerth",
+    "timestamp": 1761712233465,
+    "type": "version:unshared",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "removed vendor access",
+    "target": "version",
+    "details": {
+      "version": 4,
+      "sharedWithVendor": false
+    },
+    "message": "Warren Peace removed vendor access to Version 4"
+  },
+  {
+    "id": "act_1761712243772_526c339q0",
+    "timestamp": 1761712243772,
+    "type": "document:checkout:override",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "overrode checkout",
+    "target": "document",
+    "details": {
+      "previousUserId": "user4",
+      "documentTitle": "Redlined & Signed",
+      "version": 4
+    },
+    "message": "Warren Peace overrode Hugh R Ewe's checkout of \"Redlined & Signed\""
   }
 ]

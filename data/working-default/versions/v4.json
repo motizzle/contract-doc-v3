@@ -5,10 +5,7 @@
     "label": "Warren Peace"
   },
   "savedAt": "2025-10-29T02:05:18.910Z",
-  "sharedWithVendor": true,
-  "sharedBy": {
-    "userId": "user1",
-    "label": "Warren Peace"
-  },
-  "sharedAt": "2025-10-29T02:05:26.969Z"
+  "sharedWithVendor": false,
+  "sharedBy": null,
+  "sharedAt": null
 }
