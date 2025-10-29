@@ -7,7 +7,16 @@ import { test, expect, Page } from '@playwright/test';
  * Checks API responses, UI updates, and console errors.
  * 
  * Run with: cd server && npm run e2e
+ * 
+ * Performance optimizations:
+ * - Parallel execution (up to 3 workers)
+ * - Fast page loads (domcontentloaded instead of networkidle)
+ * - Reduced wait times where safe
  */
+
+// Configure test execution
+test.describe.configure({ mode: 'parallel' });
+test.setTimeout(15000); // 15s per test (down from 30s default)
 
 // Helper: Wait for element and check it's visible
 async function waitFor(page: Page, selector: string, timeout = 10000) {
@@ -43,13 +52,13 @@ async function waitForApi(page: Page, urlPattern: string | RegExp) {
 
 // Helper: Factory reset
 async function factoryReset(page: Page) {
-  await page.goto('/');
-  await page.waitForTimeout(2000); // Wait for page to load
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(500); // Brief wait for hydration
   
   const resetButton = page.locator('button:has-text("Factory Reset")');
   if (await resetButton.count() > 0) {
     await resetButton.click();
-    await page.waitForTimeout(2000); // Wait for reset to complete
+    await page.waitForTimeout(1000); // Wait for reset to complete
   }
 }
 
@@ -57,14 +66,16 @@ async function factoryReset(page: Page) {
 async function selectUser(page: Page, userName: string) {
   const userDropdown = page.locator('select').first();
   await userDropdown.selectOption({ label: userName });
-  await page.waitForTimeout(1000); // Wait for state to update
+  await page.waitForTimeout(500); // Wait for state to update
 }
 
 test.describe('HARDENING: Full Application Flow', () => {
   
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    // Wait for React to hydrate
+    await page.waitForSelector('body', { state: 'visible', timeout: 5000 });
+    await page.waitForTimeout(500); // Brief settle time for SSE connection
   });
 
   // ========================================
