@@ -7654,9 +7654,24 @@
       ]);
 
       // Bottom section: two tabs - AI and Workflow
-      // Feature flags: Check if internal mode is enabled via query parameter
+      
+      // ============================================================
+      // SALES DEMO CONFIGURATION
+      // Toggle features on/off for sales vs internal use
+      // Add ?internal=true to URL to enable all features
+      // ============================================================
       const isInternalMode = new URLSearchParams(window.location.search).get('internal') === 'true';
-      const ENABLE_MESSAGES_TAB = isInternalMode; // Only show Messages tab for internal use
+      
+      const SALES_CONFIG = {
+        showMessagesTab: false,        // Hide Messages tab for sales demo
+        // Add more features here as needed:
+        // showScenarioLoader: false,
+        // showFactoryReset: false,
+        // showDebugInfo: false,
+      };
+      
+      // Apply config (internal mode enables everything)
+      const ENABLE_MESSAGES_TAB = isInternalMode || SALES_CONFIG.showMessagesTab;
       
       const [activeTab, setActiveTab] = React.useState('AI');
       const [underline, setUnderline] = React.useState({ left: 0, width: 0 });
