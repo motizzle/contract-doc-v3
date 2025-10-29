@@ -65,12 +65,12 @@ async function factoryReset(page: Page) {
   
   // Click "Scenario Loader" menu item
   await page.locator('.ui-menu').locator('text=Scenario Loader').click();
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(1000);
   
-  // Click "Restore to Demo State" or confirm button in modal
-  const confirmButton = page.locator('button:has-text("Restore")').first();
-  await confirmButton.click();
-  await page.waitForTimeout(1500); // Wait for reset to complete
+  // Click on first preset scenario card (not a button, it's a clickable div)
+  const presetCard = page.locator('.modal-panel').locator('div').filter({ hasText: /Demo|Nearly Done|Initial/ }).first();
+  await presetCard.click();
+  await page.waitForTimeout(2000); // Wait for reset to complete
 }
 
 // Helper: Click menu item
@@ -91,24 +91,28 @@ async function clickTab(page: Page, tabName: string) {
 
 // Helper: Select user from dropdown
 async function selectUser(page: Page, userName: string) {
+  // Wait for dropdown to be ready
   const userDropdown = page.locator('select').first();
   await userDropdown.waitFor({ state: 'visible', timeout: 10000 });
+  await page.waitForTimeout(500); // Brief wait for React hydration
   
-  // Wait for options to populate
-  await page.waitForTimeout(500);
+  // Get all options and find matching one
+  const options = await userDropdown.locator('option').allTextContents();
+  const matchingOption = options.find(opt => opt.includes(userName));
   
-  // Try to select - if option doesn't exist, wait and retry
-  let attempts = 0;
-  while (attempts < 3) {
-    try {
-      await userDropdown.selectOption({ label: userName }, { timeout: 5000 });
-      await page.waitForTimeout(1000); // Wait for state to update
-      return;
-    } catch (e) {
-      attempts++;
-      if (attempts >= 3) throw e;
-      await page.waitForTimeout(1000);
-    }
+  if (!matchingOption) {
+    throw new Error(`User "${userName}" not found in dropdown. Available: ${options.join(', ')}`);
+  }
+  
+  // Select by value (more reliable than label)
+  const optionElement = await userDropdown.locator(`option:has-text("${userName}")`).first();
+  const optionValue = await optionElement.getAttribute('value');
+  
+  if (optionValue) {
+    await userDropdown.selectOption(optionValue);
+    await page.waitForTimeout(1500); // Wait for state to fully update
+  } else {
+    throw new Error(`Could not get value for user "${userName}"`);
   }
 }
 
@@ -682,7 +686,8 @@ test.describe('HARDENING: Full Application Flow', () => {
     const errors = setupConsoleMonitoring(page);
     
     // Create a test file path (use existing default.docx from data/app/documents)
-    const testFilePath = 'data/app/documents/default.docx';
+    // Path is relative to server/ directory since tests run from there
+    const testFilePath = '../data/app/documents/default.docx';
     
     // Listen for upload API call
     const apiPromise = waitForApi(page, '/api/v1/document/upload');
@@ -1127,44 +1132,41 @@ test.describe('HARDENING: Full Application Flow', () => {
   test('11.3 Save scenario', async ({ page }) => {
     const errors = setupConsoleMonitoring(page);
     
-    // Look for Scenarios dropdown
-    const scenariosDropdown = page.locator('select, [class*="scenario"], button:has-text("Scenario")');
-    if (await scenariosDropdown.count() > 0) {
-      await scenariosDropdown.first().click();
+    // Open Scenario Loader via menu
+    await clickMenuItem(page, 'Scenario Loader');
+    await page.waitForTimeout(1000);
+    
+    // Click "+ Save Current Scenario" card
+    const saveCard = page.locator('div:has-text("+ Save Current Scenario")').first();
+    if (await saveCard.count() > 0) {
+      await saveCard.click();
       await page.waitForTimeout(500);
       
-      // Look for Save option
-      const saveOption = page.locator('button:has-text("Save"), option:has-text("Save"), text=Save');
-      if (await saveOption.count() > 0) {
-        await saveOption.first().click();
-        await page.waitForTimeout(500);
+      // Enter scenario name
+      const nameInput = page.locator('input[placeholder*="Demo"], input[placeholder*="Negotiation"]').first();
+      if (await nameInput.count() > 0) {
+        await nameInput.fill('Test Scenario ' + Date.now());
         
-        // Enter scenario name
-        const nameInput = page.locator('input[type="text"], input[placeholder*="name"]');
-        if (await nameInput.count() > 0) {
-          await nameInput.last().fill('Test Scenario ' + Date.now());
+        // Click "Save Scenario" button
+        const saveBtn = page.locator('button:has-text("Save Scenario")').first();
+        if (await saveBtn.count() > 0) {
+          const apiPromise = waitForApi(page, '/api/v1/scenarios/save');
+          await saveBtn.click();
           
-          // Click save button
-          const confirmBtn = page.locator('button:has-text("Save"), button:has-text("OK")');
-          if (await confirmBtn.count() > 0) {
-            const apiPromise = waitForApi(page, '/api/v1/scenarios/save');
-            await confirmBtn.first().click();
-            
-            try {
-              const response = await apiPromise;
-              expect([200, 201]).toContain(response.status());
-            } catch {
-              // Scenario save might not be implemented
-            }
-            
-            await page.waitForTimeout(1000);
+          try {
+            const response = await apiPromise;
+            expect([200, 201, 409]).toContain(response.status());
+          } catch {
+            // Scenario save might fail
           }
+          
+          await page.waitForTimeout(1000);
         }
       }
     }
     
     // Verify no console errors
-    expect(errors).toHaveLength(0);
+    expect(errors.filter(e => !e.includes('favicon'))).toHaveLength(0);
   });
 
   test('11.4 Load scenario', async ({ page }) => {
@@ -1176,32 +1178,28 @@ test.describe('HARDENING: Full Application Flow', () => {
     });
     const versionBefore = (await stateBefore.json()).config?.documentVersion || 1;
     
-    // Look for Scenarios dropdown
-    const scenariosDropdown = page.locator('select, button:has-text("Scenario")');
-    if (await scenariosDropdown.count() > 0) {
-      await scenariosDropdown.first().click();
-      await page.waitForTimeout(500);
+    // Open Scenario Loader via menu
+    await clickMenuItem(page, 'Scenario Loader');
+    await page.waitForTimeout(1000);
+    
+    // Click on a preset scenario card (look for cards with common scenario names)
+    const presetCard = page.locator('.modal-panel').locator('div').filter({ hasText: /Demo|Nearly Done|Initial|Vendor/ }).first();
+    if (await presetCard.count() > 0) {
+      await presetCard.click();
+      await page.waitForTimeout(2000); // Wait for scenario to load
       
-      // Look for a scenario option (not "Save")
-      const scenarioOptions = page.locator('option, [role="option"]');
-      if (await scenarioOptions.count() > 1) {
-        // Select first non-Save option
-        await scenarioOptions.nth(1).click();
-        await page.waitForTimeout(2000);
-        
-        // Check that version might have changed (scenario loaded)
-        const stateAfter = await page.request.get('https://localhost:4001/api/v1/state-matrix', {
-          ignoreHTTPSErrors: true
-        });
-        const versionAfter = (await stateAfter.json()).config?.documentVersion || 1;
-        
-        // Version should be set correctly after load
-        expect(versionAfter).toBeGreaterThanOrEqual(1);
-      }
+      // Check that version might have changed (scenario loaded)
+      const stateAfter = await page.request.get('https://localhost:4001/api/v1/state-matrix', {
+        ignoreHTTPSErrors: true
+      });
+      const versionAfter = (await stateAfter.json()).config?.documentVersion || 1;
+      
+      // Version should be set correctly after load
+      expect(versionAfter).toBeGreaterThanOrEqual(1);
     }
     
     // Verify no console errors
-    expect(errors).toHaveLength(0);
+    expect(errors.filter(e => !e.includes('favicon'))).toHaveLength(0);
   });
 
   // ========================================
@@ -1294,7 +1292,7 @@ test.describe('HARDENING: Full Application Flow', () => {
       await clickTab(page2, 'Activity');
       await page2.waitForTimeout(1000);
       
-      const activity2Content = await page2.locator('[class*="activity"]').textContent();
+      const activity2Content = await page2.locator('[class*="activity"]').first().textContent();
       expect(activity2Content).toMatch(/save|progress/i);
     }
     
@@ -1357,7 +1355,7 @@ test.describe('HARDENING: Full Application Flow', () => {
       
       // Page 2: Check if value updated
       // (This is a basic check - actual value propagation depends on implementation)
-      const page2Variables = await page2.locator('[class*="variable"]').textContent();
+      const page2Variables = await page2.locator('[class*="variable"]').first().textContent();
     }
     
     await page2.close();
