@@ -614,5 +614,164 @@ test.describe('HARDENING: Full Application Flow', () => {
     // Verify no console errors
     expect(errors).toHaveLength(0);
   });
+
+  // ========================================
+  // ROUND 8: DOCUMENT OPERATIONS (Additional)
+  // ========================================
+  
+  test.skip('8.1 Upload document', async ({ page }) => {
+    // TODO: Implement file upload test
+    // Need to test programmatic file upload via Playwright
+  });
+
+  test.skip('8.2 Compile document', async ({ page }) => {
+    // TODO: Implement compile test
+    // Click compile button, wait for PDF, check exhibits panel
+  });
+
+  test.skip('8.3 Title updates correctly', async ({ page }) => {
+    // TODO: Implement title update test
+    // Verify title in state matches displayed title
+  });
+
+  // ========================================
+  // ROUND 9: VERSION MANAGEMENT (Additional)
+  // ========================================
+  
+  test('9.1 Version 1 always accessible to vendors', async ({ page }) => {
+    const errors = setupConsoleMonitoring(page);
+    
+    // Switch to vendor
+    await selectUser(page, 'Hugh R Ewe');
+    await page.waitForTimeout(1000);
+    
+    // Try to view version 1
+    const viewButtons = page.locator('button:has-text("View")');
+    if (await viewButtons.count() > 0) {
+      const apiPromise = waitForApi(page, '/api/v1/versions/view');
+      await viewButtons.first().click();
+      
+      const response = await apiPromise;
+      expect(response.status()).toBe(200);
+      
+      // Check for DEMO badge or v1 indicator
+      await page.waitForTimeout(1000);
+      const pageText = await page.textContent('body');
+      expect(pageText).toMatch(/demo|version 1/i);
+    }
+    
+    // Verify no console errors
+    expect(errors).toHaveLength(0);
+  });
+
+  test.skip('9.2 Version 1 cannot be shared', async ({ page }) => {
+    // TODO: Implement test to verify v1 has no share toggle
+  });
+
+  test.skip('9.3 Checkout prompt vendor-aware', async ({ page }) => {
+    // TODO: Implement test for vendor-aware checkout prompt
+    // Verify prompt shows latest ACCESSIBLE version, not absolute latest
+  });
+
+  // ========================================
+  // ROUND 10: MESSAGING & APPROVALS
+  // ========================================
+  
+  test.skip('10.1 Send message', async ({ page }) => {
+    // TODO: Implement message sending test
+  });
+
+  test.skip('10.2 Receive message', async ({ page }) => {
+    // TODO: Implement message receiving test
+  });
+
+  test.skip('10.3 Message isolation', async ({ page }) => {
+    // TODO: Implement cross-user message isolation test
+  });
+
+  test.skip('10.4 Request approval', async ({ page }) => {
+    // TODO: Implement approval request test
+  });
+
+  test.skip('10.5 Approve request', async ({ page }) => {
+    // TODO: Implement approval test
+  });
+
+  // ========================================
+  // ROUND 11: AI CHAT & SCENARIOS
+  // ========================================
+  
+  test.skip('11.1 AI chat demo response', async ({ page }) => {
+    // TODO: Implement AI chat test
+    // Send message, verify demo response with joke
+  });
+
+  test.skip('11.2 AI chat isolation', async ({ page }) => {
+    // TODO: Implement AI chat isolation test
+  });
+
+  test.skip('11.3 Save scenario', async ({ page }) => {
+    // TODO: Implement scenario save test
+  });
+
+  test.skip('11.4 Load scenario', async ({ page }) => {
+    // TODO: Implement scenario load test
+    // Verify document version updates correctly
+  });
+
+  // ========================================
+  // ROUND 12: SSE EVENT PROPAGATION
+  // ========================================
+  
+  test.skip('12.1 Version creation propagates', async ({ page, context }) => {
+    // TODO: Implement multi-window SSE test
+    // Open two windows, create version in one, verify it appears in other
+  });
+
+  test.skip('12.2 Version sharing propagates', async ({ page, context }) => {
+    // TODO: Implement multi-window share propagation test
+  });
+
+  test.skip('12.3 Activity log propagates', async ({ page, context }) => {
+    // TODO: Implement activity log propagation test
+  });
+
+  test.skip('12.4 Checkout/checkin propagates', async ({ page, context }) => {
+    // TODO: Implement checkout propagation test
+  });
+
+  test.skip('12.5 Variable changes propagate', async ({ page, context }) => {
+    // TODO: Implement variable change propagation test
+  });
+
+  // ========================================
+  // ROUND 13: ERROR HANDLING (Additional)
+  // ========================================
+  
+  test.skip('13.1 Permission denied (vendor)', async ({ page }) => {
+    // TODO: Implement vendor permission denied test
+    // Verify unshared versions are filtered from list
+  });
+
+  test.skip('13.2 Upload invalid file type', async ({ page }) => {
+    // TODO: Implement invalid file upload test
+  });
+
+  test.skip('13.3 API failures show errors', async ({ page }) => {
+    // TODO: Implement API failure handling test
+  });
+
+  // ========================================
+  // ROUND 14: EXHIBITS
+  // ========================================
+  
+  test.skip('14.1 Exhibits panel loads', async ({ page }) => {
+    // TODO: Implement exhibits panel test
+  });
+
+  test.skip('14.2 Compiled PDF appears', async ({ page }) => {
+    // TODO: Implement PDF exhibit test
+    // After compile, verify exhibit appears in exhibits panel
+  });
 });
 
