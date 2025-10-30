@@ -7677,7 +7677,27 @@
       // Toggle features on/off for sales vs internal use
       // Add ?internal=true to URL to enable all features
       // ============================================================
-      const isInternalMode = new URLSearchParams(window.location.search).get('internal') === 'true';
+      const [internalMode, setInternalMode] = React.useState(false);
+      
+      // Sync URL param to session state on mount
+      React.useEffect(() => {
+        const urlParam = new URLSearchParams(window.location.search).get('internal');
+        if (urlParam === 'true') {
+          // Update session state so Word add-in syncs via SSE
+          fetch(`${getApiBase()}/api/v1/internal-mode`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: true })
+          }).catch(err => console.warn('Failed to set internal mode:', err));
+        }
+      }, []);
+      
+      // Read internal mode from session state (synced via SSE)
+      React.useEffect(() => {
+        if (config?.internalMode !== undefined) {
+          setInternalMode(config.internalMode);
+        }
+      }, [config?.internalMode]);
       
       const SALES_CONFIG = {
         showMessagesTab: false,        // Hide Messages tab for sales demo
@@ -7688,7 +7708,7 @@
       };
       
       // Apply config (internal mode enables everything)
-      const ENABLE_MESSAGES_TAB = isInternalMode || SALES_CONFIG.showMessagesTab;
+      const ENABLE_MESSAGES_TAB = internalMode || SALES_CONFIG.showMessagesTab;
       
       const [activeTab, setActiveTab] = React.useState('AI');
       const [underline, setUnderline] = React.useState({ left: 0, width: 0 });

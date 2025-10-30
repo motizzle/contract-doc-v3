@@ -1271,6 +1271,7 @@ const serverState = {
   updatedBy: null, // { userId, label }
   updatedPlatform: null, // 'web' | 'word' | null
   approvalsRevision: 1,
+  internalMode: false, // Sales vs internal feature toggle
 };
 
 // Load persisted state if available
@@ -1287,12 +1288,13 @@ try {
     if (saved.updatedBy && typeof saved.updatedBy === 'object') serverState.updatedBy = saved.updatedBy;
     if (typeof saved.updatedPlatform === 'string') serverState.updatedPlatform = saved.updatedPlatform;
     if (typeof saved.approvalsRevision === 'number') serverState.approvalsRevision = saved.approvalsRevision;
+    if (typeof saved.internalMode === 'boolean') serverState.internalMode = saved.internalMode;
   }
 } catch {}
 
 function persistState() {
   try {
-    fs.writeFileSync(stateFilePath, JSON.stringify({ checkedOutBy: serverState.checkedOutBy, lastUpdated: serverState.lastUpdated, revision: serverState.revision, documentVersion: serverState.documentVersion, title: serverState.title, status: serverState.status, updatedBy: serverState.updatedBy, updatedPlatform: serverState.updatedPlatform, approvalsRevision: serverState.approvalsRevision }, null, 2));
+    fs.writeFileSync(stateFilePath, JSON.stringify({ checkedOutBy: serverState.checkedOutBy, lastUpdated: serverState.lastUpdated, revision: serverState.revision, documentVersion: serverState.documentVersion, title: serverState.title, status: serverState.status, updatedBy: serverState.updatedBy, updatedPlatform: serverState.updatedPlatform, approvalsRevision: serverState.approvalsRevision, internalMode: serverState.internalMode }, null, 2));
   } catch {}
 }
 
@@ -1704,7 +1706,8 @@ function loadSessionState(sessionId) {
     revision: 0,
     approvalsRevision: 1,
     updatedBy: null,
-    updatedPlatform: null
+    updatedPlatform: null,
+    internalMode: false
   };
 }
 
@@ -3154,6 +3157,31 @@ app.post('/api/v1/title', writeLimiter, validate('updateTitle'), (req, res) => {
     res.json({ ok: true, title: serverState.title });
   } catch (e) {
     res.status(500).json({ error: 'title_update_failed' });
+  }
+});
+
+// Toggle internal mode (sales vs internal features)
+app.post('/api/v1/internal-mode', (req, res) => {
+  try {
+    const { enabled } = req.body;
+    const sessionId = req.sessionId;
+    
+    if (!sessionId) {
+      return res.status(401).json({ error: 'no_session' });
+    }
+    
+    // Update session state
+    const state = loadSessionState(sessionId);
+    state.internalMode = !!enabled;
+    saveSessionState(sessionId, state);
+    
+    // Broadcast to all clients in this session
+    broadcastSSE({ type: 'internal-mode-changed', internalMode: state.internalMode, sessionId });
+    
+    res.json({ ok: true, internalMode: state.internalMode });
+  } catch (e) {
+    console.error('Error toggling internal mode:', e);
+    res.status(500).json({ error: 'internal_mode_toggle_failed' });
   }
 });
 
