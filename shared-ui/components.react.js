@@ -863,11 +863,17 @@
               // Handle internal mode changes (sales vs internal features)
               if (p && p.type === 'internal-mode-changed') {
                 console.log('🔧 Internal mode changed:', p.internalMode);
-                // Use functional update to avoid stale closure
-                setInternalMode(() => {
-                  console.log(`🔧 [SSE] Setting internalMode to ${p.internalMode}`);
-                  return p.internalMode;
-                });
+                console.log('🔧 [SSE] About to call setInternalMode...');
+                try {
+                  // Use functional update to avoid stale closure
+                  setInternalMode(() => {
+                    console.log(`🔧 [SSE] Inside setInternalMode callback, returning: ${p.internalMode}`);
+                    return p.internalMode;
+                  });
+                  console.log('🔧 [SSE] setInternalMode called successfully');
+                } catch (err) {
+                  console.error('🔧 [SSE] ERROR calling setInternalMode:', err);
+                }
               }
               // Only log user-relevant events as notifications
               if (p && p.type) {
