@@ -57,8 +57,8 @@ echo [4/8] Setting up environment...
 echo   - Environment configured (AI uses demo mode with jokes)
 echo.
 
-REM Kill and restart main server (ensure code changes take effect)
-echo [5/8] Restarting main server...
+REM Kill all Node processes and start main server fresh
+echo [5/8] Starting main server...
 set SCRIPT_DIR=%~dp0
 
 REM Kill ALL node.exe processes (nuclear option to ensure clean slate)
@@ -105,8 +105,8 @@ if %ERRORLEVEL% NEQ 0 (
 )
 echo.
 
-REM Kill and restart add-in dev server (ensure code changes take effect)
-echo [6/8] Restarting add-in dev server...
+REM Start add-in dev server (kill only port 4000 to preserve main server)
+echo [6/8] Starting add-in dev server...
 
 REM Check and kill only port 4000 (don't kill main server on 4001!)
 echo   - Stopping any existing server on port 4000...
