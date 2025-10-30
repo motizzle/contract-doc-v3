@@ -10,6 +10,16 @@ addin/dist/
 
 # Working session directories (temp files that get locked)
 data/working-*/
+
+# State files that change during runtime (frequently locked by Windows/OneDrive)
+data/app/state.json
+data/working-default/state.json
+data/working-default/activity-log.json
+data/working-default/approvals.json
+data/working-default/chat.json
+data/working-default/fields.json
+data/working-default/messages.json
+data/working-default/variables.json
 data/working-default/documents/
 data/working-default/exhibits/
 data/working-default/compiled/
