@@ -863,7 +863,11 @@
               // Handle internal mode changes (sales vs internal features)
               if (p && p.type === 'internal-mode-changed') {
                 console.log('🔧 Internal mode changed:', p.internalMode);
-                setInternalMode(p.internalMode);
+                // Use functional update to avoid stale closure
+                setInternalMode(() => {
+                  console.log(`🔧 [SSE] Setting internalMode to ${p.internalMode}`);
+                  return p.internalMode;
+                });
               }
               // Only log user-relevant events as notifications
               if (p && p.type) {
@@ -7683,6 +7687,11 @@
       // Add ?internal=true to URL to enable all features
       // ============================================================
       const [internalMode, setInternalMode] = React.useState(false);
+      
+      // Debug: Log every time internalMode state changes
+      React.useEffect(() => {
+        console.log(`🔧 [State] internalMode state is now: ${internalMode}`);
+      }, [internalMode]);
       
       // Sync URL param to session state on mount (browser only - Word just listens via SSE)
       React.useEffect(() => {
