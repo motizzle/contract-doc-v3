@@ -83,32 +83,30 @@ echo   - Waiting for server to start...
 timeout /t 5 /nobreak >nul
 
 echo   - Verifying server is running...
-powershell -NoProfile -Command "for ($i = 0; $i -lt 30; $i++) { $conn = Get-NetTCPConnection -LocalPort 4001 -State Listen -ErrorAction SilentlyContinue; if ($conn) { Write-Host '     Server is listening on port 4001' -ForegroundColor Green; exit 0 } else { Write-Host '     Waiting for server... ($($i+1)/30)'; Start-Sleep -Seconds 1 } } Write-Host '     ERROR: Server did not start on port 4001' -ForegroundColor Red; exit 1" && (
-  echo   - Server check passed!
-  set SERVER_CHECK_RESULT=0
-) || (
-  echo   - Server check FAILED!
-  set SERVER_CHECK_RESULT=1
-)
+powershell -NoProfile -Command "for ($i = 0; $i -lt 30; $i++) { $conn = Get-NetTCPConnection -LocalPort 4001 -State Listen -ErrorAction SilentlyContinue; if ($conn) { Write-Host '     Server is listening on port 4001' -ForegroundColor Green; exit 0 } else { Write-Host '     Waiting for server... ($($i+1)/30)'; Start-Sleep -Seconds 1 } } Write-Host '     ERROR: Server did not start on port 4001' -ForegroundColor Red; exit 1"
+if errorlevel 1 goto server_failed
+echo   - Server check passed!
+goto server_ok
 
-if %SERVER_CHECK_RESULT% NEQ 0 (
-  echo.
-  echo ========================================
-  echo  Server Failed to Start
-  echo ========================================
-  echo.
-  echo The main server on port 4001 is not responding.
-  echo Check the "WordFTW Server" window for error messages.
-  echo.
-  echo Common issues:
-  echo   1. Port 4001 already in use by another process
-  echo   2. Missing node_modules (run: cd server ^&^& npm install)
-  echo   3. Environment issues (check server/.env)
-  echo.
-  echo Press any key to exit...
-  pause >nul
-  exit /b 1
-)
+:server_failed
+echo.
+echo ========================================
+echo  Server Failed to Start
+echo ========================================
+echo.
+echo The main server on port 4001 is not responding.
+echo Check the "WordFTW Server" window for error messages.
+echo.
+echo Common issues:
+echo   1. Port 4001 already in use by another process
+echo   2. Missing node_modules (run: cd server ^&^& npm install)
+echo   3. Environment issues (check server/.env)
+echo.
+echo Press any key to exit...
+pause >nul
+exit /b 1
+
+:server_ok
 echo.
 
 REM Start add-in dev server (kill only port 4000 to preserve main server)
@@ -127,32 +125,30 @@ echo   - Waiting for dev server to start...
 timeout /t 5 /nobreak >nul
 
 echo   - Verifying dev server is running...
-powershell -NoProfile -Command "for ($i = 0; $i -lt 30; $i++) { $conn = Get-NetTCPConnection -LocalPort 4000 -State Listen -ErrorAction SilentlyContinue; if ($conn) { Write-Host '     Dev server is listening on port 4000' -ForegroundColor Green; exit 0 } else { Write-Host '     Waiting for dev server... ($($i+1)/30)'; Start-Sleep -Seconds 1 } } Write-Host '     ERROR: Dev server did not start on port 4000' -ForegroundColor Red; exit 1" && (
-  echo   - Dev server check passed!
-  set DEV_SERVER_CHECK_RESULT=0
-) || (
-  echo   - Dev server check FAILED!
-  set DEV_SERVER_CHECK_RESULT=1
-)
+powershell -NoProfile -Command "for ($i = 0; $i -lt 30; $i++) { $conn = Get-NetTCPConnection -LocalPort 4000 -State Listen -ErrorAction SilentlyContinue; if ($conn) { Write-Host '     Dev server is listening on port 4000' -ForegroundColor Green; exit 0 } else { Write-Host '     Waiting for dev server... ($($i+1)/30)'; Start-Sleep -Seconds 1 } } Write-Host '     ERROR: Dev server did not start on port 4000' -ForegroundColor Red; exit 1"
+if errorlevel 1 goto devserver_failed
+echo   - Dev server check passed!
+goto devserver_ok
 
-if %DEV_SERVER_CHECK_RESULT% NEQ 0 (
-  echo.
-  echo ========================================
-  echo  Dev Server Failed to Start
-  echo ========================================
-  echo.
-  echo The add-in dev server on port 4000 is not responding.
-  echo Check the "WordFTW Add-in Dev Server" window for error messages.
-  echo.
-  echo Common issues:
-  echo   1. Port 4000 already in use by another process
-  echo   2. Missing node_modules (run: cd addin ^&^& npm install)
-  echo   3. Webpack configuration issues
-  echo.
-  echo Press any key to exit...
-  pause >nul
-  exit /b 1
-)
+:devserver_failed
+echo.
+echo ========================================
+echo  Dev Server Failed to Start
+echo ========================================
+echo.
+echo The add-in dev server on port 4000 is not responding.
+echo Check the "WordFTW Add-in Dev Server" window for error messages.
+echo.
+echo Common issues:
+echo   1. Port 4000 already in use by another process
+echo   2. Missing node_modules (run: cd addin ^&^& npm install)
+echo   3. Webpack configuration issues
+echo.
+echo Press any key to exit...
+pause >nul
+exit /b 1
+
+:devserver_ok
 echo.
 
 REM Clear browser session data automatically
