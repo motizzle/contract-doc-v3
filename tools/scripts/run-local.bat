@@ -83,7 +83,7 @@ echo   - Waiting for server to start...
 timeout /t 5 /nobreak >nul
 
 echo   - Verifying server is running...
-powershell -NoProfile -Command "Add-Type @'using System.Net; using System.Security.Cryptography.X509Certificates; public class TrustAllCertsPolicy : ICertificatePolicy { public bool CheckValidationResult(ServicePoint srvPoint, X509Certificate certificate, WebRequest request, int certificateProblem) { return true; } }'@; [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; for ($i = 0; $i -lt 15; $i++) { try { $response = Invoke-WebRequest -Uri 'https://localhost:4001/api/v1/health' -Method GET -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop; if ($response.StatusCode -eq 200) { Write-Host '     Server is responding on https://localhost:4001' -ForegroundColor Green; exit 0 } } catch { Write-Host \"     Attempt $($i+1)/15 failed, retrying...\"; Start-Sleep -Seconds 2 } } Write-Host '     ERROR: Server did not start on port 4001' -ForegroundColor Red; Write-Host '     Check the WordFTW Server window for errors'; exit 1"
+powershell -NoProfile -Command "for ($i = 0; $i -lt 30; $i++) { $conn = Get-NetTCPConnection -LocalPort 4001 -State Listen -ErrorAction SilentlyContinue; if ($conn) { Write-Host '     Server is listening on port 4001' -ForegroundColor Green; exit 0 } else { Write-Host '     Waiting for server... ($($i+1)/30)'; Start-Sleep -Seconds 1 } } Write-Host '     ERROR: Server did not start on port 4001' -ForegroundColor Red; exit 1"
 
 if %ERRORLEVEL% NEQ 0 (
   echo.
@@ -121,7 +121,7 @@ echo   - Waiting for dev server to start...
 timeout /t 5 /nobreak >nul
 
 echo   - Verifying dev server is running...
-powershell -NoProfile -Command "Add-Type @'using System.Net; using System.Security.Cryptography.X509Certificates; public class TrustAllCertsPolicy : ICertificatePolicy { public bool CheckValidationResult(ServicePoint srvPoint, X509Certificate certificate, WebRequest request, int certificateProblem) { return true; } }'@; [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; for ($i = 0; $i -lt 15; $i++) { try { $response = Invoke-WebRequest -Uri 'https://localhost:4000/taskpane.html' -Method GET -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop; if ($response.StatusCode -eq 200) { Write-Host '     Dev server is responding on https://localhost:4000' -ForegroundColor Green; exit 0 } } catch { Write-Host \"     Attempt $($i+1)/15 failed, retrying...\"; Start-Sleep -Seconds 2 } } Write-Host '     ERROR: Dev server did not start on port 4000' -ForegroundColor Red; Write-Host '     Check the WordFTW Add-in Dev Server window for errors'; exit 1"
+powershell -NoProfile -Command "for ($i = 0; $i -lt 30; $i++) { $conn = Get-NetTCPConnection -LocalPort 4000 -State Listen -ErrorAction SilentlyContinue; if ($conn) { Write-Host '     Dev server is listening on port 4000' -ForegroundColor Green; exit 0 } else { Write-Host '     Waiting for dev server... ($($i+1)/30)'; Start-Sleep -Seconds 1 } } Write-Host '     ERROR: Dev server did not start on port 4000' -ForegroundColor Red; exit 1"
 
 if %ERRORLEVEL% NEQ 0 (
   echo.
