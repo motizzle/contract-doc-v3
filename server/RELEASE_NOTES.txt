@@ -1,0 +1,13 @@
+If you actually read this let me know. This might be a wasted feature lol
+
+In this version we fixed sum bugs and made sum stuff.
+
+Bugs:
+- Version comparison didn't work if you were using v1
+- Fixed broken automated tests so I don't have to click for evaaaa
+
+Improvements:
+- Better automated sideloading scripts (Windows should be solid and mac is...fingers crossed)
+- Internal mode toggle via URL params (ask if you think you need it)
+- Moaaaaarrrrr tests
+
