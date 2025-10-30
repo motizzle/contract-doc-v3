@@ -4734,10 +4734,9 @@ app.post('/api/v1/versions/compare', async (req, res) => {
     const mammoth = require('mammoth');
 
     async function getDocxPath(v) {
-      const p = (v === 1)
-        ? path.join(sessionPaths.workingDocumentsDir, 'default.docx')
-        : path.join(sessionPaths.versionsDir, `v${v}.docx`);
-      return p;
+      // All versions (including v1) should load from versions directory
+      // The working document is the CURRENT version being edited, not v1
+      return path.join(sessionPaths.versionsDir, `v${v}.docx`);
     }
 
     async function extractPlainText(filePath) {
