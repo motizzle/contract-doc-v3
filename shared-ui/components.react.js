@@ -454,7 +454,7 @@
           console.warn('Failed to check for updates:', err);
         }
       }, [API_BASE]);
-      
+
       const addLog = React.useCallback((m, type = 'info') => {
         try {
           if (typeof m === 'string' && !m.includes('[Formatted]')) {
@@ -1149,29 +1149,29 @@
               
               try {
                 console.log(`📄 [INITIAL LOAD] Fetching document...`);
-                const res = await fetch(finalUrl, { cache: 'no-store' });
+              const res = await fetch(finalUrl, { cache: 'no-store' });
                 console.log(`📄 [INITIAL LOAD] Fetch response:`, { ok: res.ok, status: res.status, statusText: res.statusText });
                 
-                if (res && res.ok) {
+              if (res && res.ok) {
                   console.log(`📄 [INITIAL LOAD] Converting to ArrayBuffer...`);
-                  const buf = await res.arrayBuffer();
+                const buf = await res.arrayBuffer();
                   console.log(`📄 [INITIAL LOAD] ArrayBuffer size: ${buf.byteLength} bytes`);
                   
                   console.log(`📄 [INITIAL LOAD] Converting to base64...`);
-                  const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
+                const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
                   console.log(`📄 [INITIAL LOAD] Base64 length: ${b64.length} chars`);
                   
                   console.log(`📄 [INITIAL LOAD] Calling Word.run()...`);
-                  await Word.run(async (context) => { 
+                await Word.run(async (context) => { 
                     console.log(`📄 [INITIAL LOAD] Inside Word.run, calling insertFileFromBase64...`);
-                    context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); 
+                  context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); 
                     console.log(`📄 [INITIAL LOAD] Calling context.sync()...`);
-                    await context.sync(); 
+                  await context.sync(); 
                     console.log(`📄 [INITIAL LOAD] context.sync() completed`);
-                  });
+                });
                   
                   console.log(`✅ [INITIAL LOAD] Document loaded successfully into Word`);
-                  addLog(`Document loaded (version ${initialVersion})`, 'document');
+                addLog(`Document loaded (version ${initialVersion})`, 'document');
                 } else {
                   console.error(`❌ [INITIAL LOAD] Fetch failed:`, res.status, res.statusText);
                   addLog(`Failed to load document: ${res.status}`, 'error');
@@ -4582,11 +4582,11 @@
                   refresh();
                 } else {
                   // Update existing version metadata
-                  setItems(prev => prev.map(item => 
-                    item.version === versionNum 
-                      ? { ...item, sharedWithVendor, sharedBy, sharedAt }
-                      : item
-                  ));
+              setItems(prev => prev.map(item => 
+                item.version === versionNum 
+                  ? { ...item, sharedWithVendor, sharedBy, sharedAt }
+                  : item
+              ));
                 }
               } else {
                 // For editors: always update the metadata
@@ -4734,7 +4734,7 @@
           borderColor = '#059669';  // Green to match sharing indicator
           backgroundColor = isView ? '#D1FAE5' : '#F0FDF4';  // Light green tint
         }
-        
+
         const baseCardStyle = {
           border: `${borderWidth} solid ${borderColor}`,
           borderRadius: 12,
@@ -7684,36 +7684,14 @@
       // ============================================================
       const [internalMode, setInternalMode] = React.useState(false);
       
-      // Track URL changes for internal mode toggle
-      const [currentUrl, setCurrentUrl] = React.useState(window.location.search);
-      
-      // Listen for URL changes (popstate, hashchange, manual navigation)
+      // Sync URL param to session state on mount (manual URL changes require page reload)
       React.useEffect(() => {
-        const handleUrlChange = () => {
-          setCurrentUrl(window.location.search);
-        };
-        
-        window.addEventListener('popstate', handleUrlChange);
-        window.addEventListener('hashchange', handleUrlChange);
-        
-        // Also check periodically in case of manual URL changes
-        const interval = setInterval(handleUrlChange, 500);
-        
-        return () => {
-          window.removeEventListener('popstate', handleUrlChange);
-          window.removeEventListener('hashchange', handleUrlChange);
-          clearInterval(interval);
-        };
-      }, []);
-      
-      // Sync URL param to session state whenever URL changes
-      React.useEffect(() => {
-        const urlParam = new URLSearchParams(currentUrl).get('internal');
+        const urlParam = new URLSearchParams(window.location.search).get('internal');
         const shouldEnableInternal = urlParam === 'true';
         
         console.log(`🔧 [URL Param] Detected: ${urlParam}, shouldEnable: ${shouldEnableInternal}`);
         
-        // Always update session state to match URL param (enable OR disable)
+        // Update session state - server will broadcast SSE to all clients (browser + Word)
         fetch(`${getApiBase()}/api/v1/internal-mode`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -7722,7 +7700,7 @@
           .then(res => res.json())
           .then(data => console.log(`🔧 [URL Param] API response:`, data))
           .catch(err => console.warn('Failed to set internal mode:', err));
-      }, [currentUrl]); // Watch for URL changes
+      }, []); // Only on mount - URL changes require page reload
       
       // Read internal mode from session state (synced via SSE)
       React.useEffect(() => {
