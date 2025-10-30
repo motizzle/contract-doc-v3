@@ -1016,7 +1016,7 @@
           try { sse && sse.close(); } catch {} 
           clearInterval(versionCheckInterval);
         };
-      }, [API_BASE, refresh, addLog, loadActivities, checkForUpdates]);
+      }, [API_BASE, refresh, addLog, loadActivities, checkForUpdates, setInternalMode]);
 
       // Global listener for version:view events (handles loading documents in Word/Web)
       React.useEffect(() => {
