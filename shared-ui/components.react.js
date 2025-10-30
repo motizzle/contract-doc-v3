@@ -7806,7 +7806,7 @@
         return () => window.removeEventListener('resize', onResize);
       }, [recalcUnderline]);
 
-      const Tabs = React.createElement('div', { className: 'mt-3 pt-2', style: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } }, [
+      const Tabs = React.createElement('div', { key: `tabs-${ENABLE_MESSAGES_TAB}`, className: 'mt-3 pt-2', style: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } }, [
         React.createElement('div', { key: 'tabbar', ref: tabbarRef, className: 'd-flex gap-8 border-b border-gray-200', style: { position: 'relative', padding: '0 8px', alignItems: 'flex-end' } }, [
           React.createElement('button', {
             key: 'tab-ai',
