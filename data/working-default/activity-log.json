@@ -16,5 +16,23 @@
       "status": "draft"
     },
     "message": "Kent Uckey checked out \"Redlined & Signed\" (v1)"
+  },
+  {
+    "id": "act_1761799536044_t4219ugxt",
+    "timestamp": 1761799536044,
+    "type": "document:checkout:override",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "overrode checkout",
+    "target": "document",
+    "details": {
+      "previousUserId": "user2",
+      "documentTitle": "Redlined & Signed",
+      "version": 1
+    },
+    "message": "Warren Peace overrode Kent Uckey's checkout of \"Redlined & Signed\""
   }
 ]

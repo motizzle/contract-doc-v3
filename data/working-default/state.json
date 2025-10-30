@@ -1,10 +1,10 @@
 {
-  "checkedOutBy": "user2",
+  "checkedOutBy": null,
   "documentVersion": 1,
   "title": "Redlined & Signed",
   "status": "draft",
-  "lastUpdated": "2025-10-30T04:41:25.290Z",
+  "lastUpdated": "2025-10-30T04:45:36.042Z",
   "revision": 0,
-  "internalMode": true,
-  "checkedOutByAt": 1761799285290
+  "internalMode": false,
+  "checkedOutByAt": null
 }
