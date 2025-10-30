@@ -7638,11 +7638,14 @@
       };
 
       const isWordHost = (typeof Office !== 'undefined');
-      const topRowStyle = { gap: 5, paddingTop: (isWordHost ? 0 : 8) };
+      const topRowStyle = { gap: 8, paddingTop: (isWordHost ? 0 : 8), width: '100%' };
       const topPanel = React.createElement('div', { className: 'panel panel--top' }, [
         React.createElement('div', { className: 'd-flex items-center', style: topRowStyle }, [
           React.createElement(StatusBadge, { key: 'status' }),
-          (isWordHost ? React.createElement(UIButton, { key: 'open-og', label: 'Open in OpenGov ↗', onClick: () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'open-gov' } })); } catch {} }, variant: 'tertiary', style: { marginLeft: 'auto' } }) : null),
+          (isWordHost ? React.createElement(UIButton, { key: 'open-og', label: 'Open in OpenGov ↗', onClick: () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'open-gov' } })); } catch {} }, variant: 'tertiary', style: { marginLeft: '8px', minWidth: '160px' } }) : null),
+          React.createElement('div', { key: 'user-wrapper', style: { marginLeft: 'auto' } }, 
+            React.createElement(UserCard, { key: 'user' })
+          ),
         ]),
         React.createElement(InlineTitleEditor, { key: 'title' }),
         React.createElement(LinkCodeBanner, null),
@@ -7653,7 +7656,6 @@
         React.createElement('div', { className: '', style: { marginTop: 8 } }, [
           React.createElement('div', { className: 'd-flex items-center gap-8 flex-wrap' }, [
             React.createElement(LastUpdatedPrefix, { key: 'last' }),
-            React.createElement(UserCard, { key: 'user' }),
           ]),
         ]),
         React.createElement('div', { className: 'pt-2', style: { paddingTop: 8, marginTop: 0 } }, [
