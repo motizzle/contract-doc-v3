@@ -7687,14 +7687,14 @@
       // Sync URL param to session state on mount
       React.useEffect(() => {
         const urlParam = new URLSearchParams(window.location.search).get('internal');
-        if (urlParam === 'true') {
-          // Update session state so Word add-in syncs via SSE
-          fetch(`${getApiBase()}/api/v1/internal-mode`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ enabled: true })
-          }).catch(err => console.warn('Failed to set internal mode:', err));
-        }
+        const shouldEnableInternal = urlParam === 'true';
+        
+        // Always update session state to match URL param (enable OR disable)
+        fetch(`${getApiBase()}/api/v1/internal-mode`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: shouldEnableInternal })
+        }).catch(err => console.warn('Failed to set internal mode:', err));
       }, []);
       
       // Read internal mode from session state (synced via SSE)

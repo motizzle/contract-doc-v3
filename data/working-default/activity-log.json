@@ -1,11 +1,11 @@
 [
   {
-    "id": "act_1761792742333_jov0lrnlw",
-    "timestamp": 1761792742333,
+    "id": "act_1761793071374_9b1b47g3u",
+    "timestamp": 1761793071374,
     "type": "document:checkout",
     "user": {
-      "id": "user1",
-      "label": "Warren Peace",
+      "id": "user2",
+      "label": "Kent Uckey",
       "platform": "web"
     },
     "action": "checked out",
@@ -15,6 +15,23 @@
       "version": 1,
       "status": "draft"
     },
-    "message": "Warren Peace checked out \"Redlined & Signed\" (v1)"
+    "message": "Kent Uckey checked out \"Redlined & Signed\" (v1)"
+  },
+  {
+    "id": "act_1761793073636_awo1vxxsf",
+    "timestamp": 1761793073636,
+    "type": "document:checkout:cancel",
+    "user": {
+      "id": "user2",
+      "label": "Kent Uckey",
+      "platform": "web"
+    },
+    "action": "cancelled checkout",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 1
+    },
+    "message": "Kent Uckey cancelled checkout of \"Redlined & Signed\""
   }
 ]
