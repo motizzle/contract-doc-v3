@@ -861,19 +861,9 @@
                 }, 500); // Small delay to ensure server state is synced
               }
               // Handle internal mode changes (sales vs internal features)
+              // Note: State is updated via config.internalMode useEffect, not directly here
               if (p && p.type === 'internal-mode-changed') {
-                console.log('🔧 Internal mode changed:', p.internalMode);
-                console.log('🔧 [SSE] About to call setInternalMode...');
-                try {
-                  // Use functional update to avoid stale closure
-                  setInternalMode(() => {
-                    console.log(`🔧 [SSE] Inside setInternalMode callback, returning: ${p.internalMode}`);
-                    return p.internalMode;
-                  });
-                  console.log('🔧 [SSE] setInternalMode called successfully');
-                } catch (err) {
-                  console.error('🔧 [SSE] ERROR calling setInternalMode:', err);
-                }
+                console.log('🔧 Internal mode changed via SSE:', p.internalMode, '(will update via config.internalMode)');
               }
               // Only log user-relevant events as notifications
               if (p && p.type) {
@@ -7694,35 +7684,22 @@
       // ============================================================
       const [internalMode, setInternalMode] = React.useState(false);
       
-      // Debug: Log every time internalMode state changes
-      React.useEffect(() => {
-        console.log(`🔧 [State] internalMode state is now: ${internalMode}`);
-      }, [internalMode]);
-      
       // Sync URL param to session state on mount (browser only - Word just listens via SSE)
       React.useEffect(() => {
         // Only the browser should control internal mode via URL params
         // Word add-in should only listen via SSE to stay in sync
         const isWordHost = (typeof Office !== 'undefined');
-        if (isWordHost) {
-          console.log(`🔧 [URL Param] Skipping URL check in Word add-in (will sync via SSE)`);
-          return;
-        }
+        if (isWordHost) return;
         
         const urlParam = new URLSearchParams(window.location.search).get('internal');
         const shouldEnableInternal = urlParam === 'true';
-        
-        console.log(`🔧 [URL Param] Detected in browser: ${urlParam}, shouldEnable: ${shouldEnableInternal}`);
         
         // Update session state - server will broadcast SSE to all clients (browser + Word)
         fetch(`${getApiBase()}/api/v1/internal-mode`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ enabled: shouldEnableInternal })
-        })
-          .then(res => res.json())
-          .then(data => console.log(`🔧 [URL Param] API response:`, data))
-          .catch(err => console.warn('Failed to set internal mode:', err));
+        }).catch(err => console.warn('Failed to set internal mode:', err));
       }, []); // Only on mount - URL changes require page reload
       
       // Read internal mode from session state (synced via SSE)
@@ -7743,15 +7720,12 @@
       // Apply config (internal mode enables everything)
       // Use React.useMemo to recalculate when internalMode changes
       const ENABLE_MESSAGES_TAB = React.useMemo(() => {
-        const enabled = internalMode || SALES_CONFIG.showMessagesTab;
-        console.log(`🔧 [ENABLE_MESSAGES_TAB] Recalculated: ${enabled} (internalMode: ${internalMode})`);
-        return enabled;
+        return internalMode || SALES_CONFIG.showMessagesTab;
       }, [internalMode]);
       
       // Force re-render counter when Messages tab visibility changes
       const [tabRenderKey, setTabRenderKey] = React.useState(0);
       React.useEffect(() => {
-        console.log(`🔧 [Tab Re-render] Forcing tab bar update (Messages visible: ${ENABLE_MESSAGES_TAB})`);
         setTabRenderKey(prev => prev + 1);
       }, [ENABLE_MESSAGES_TAB]);
       
