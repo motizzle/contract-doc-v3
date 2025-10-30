@@ -1811,20 +1811,6 @@
         menuItem('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true),
         menuItem('Override Checkout', actions.override, !!btns.overrideBtn),
         menuItem('Scenario Loader', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'factory-reset' } })); } catch {} }, 130); } catch {} }, true, { danger: true }),
-        // Internal mode toggle (only visible when ?internal=true)
-        menuItem(
-          isInternalMode ? '🔒 Preview Sales View' : '🔓 Switch to Internal',
-          () => {
-            const url = new URL(window.location);
-            if (isInternalMode) {
-              url.searchParams.delete('internal');
-            } else {
-              url.searchParams.set('internal', 'true');
-            }
-            window.location.href = url.toString();
-          },
-          isInternalMode // Only show when already in internal mode
-        ),
       ].filter(Boolean);
 
       // Compute special case: only checkout is available (plus menu)
