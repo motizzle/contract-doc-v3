@@ -83,12 +83,12 @@ echo   - Waiting for server to start...
 timeout /t 5 /nobreak >nul
 
 echo   - Verifying server is running...
-powershell -NoProfile -Command "for ($i = 0; $i -lt 30; $i++) { $conn = Get-NetTCPConnection -LocalPort 4001 -State Listen -ErrorAction SilentlyContinue; if ($conn) { Write-Host '     Server is listening on port 4001' -ForegroundColor Green; exit 0 } else { Write-Host '     Waiting for server... ($($i+1)/30)'; Start-Sleep -Seconds 1 } } Write-Host '     ERROR: Server did not start on port 4001' -ForegroundColor Red; exit 1"
-set SERVER_CHECK_RESULT=%ERRORLEVEL%
-if %SERVER_CHECK_RESULT% EQU 0 (
+powershell -NoProfile -Command "for ($i = 0; $i -lt 30; $i++) { $conn = Get-NetTCPConnection -LocalPort 4001 -State Listen -ErrorAction SilentlyContinue; if ($conn) { Write-Host '     Server is listening on port 4001' -ForegroundColor Green; exit 0 } else { Write-Host '     Waiting for server... ($($i+1)/30)'; Start-Sleep -Seconds 1 } } Write-Host '     ERROR: Server did not start on port 4001' -ForegroundColor Red; exit 1" && (
   echo   - Server check passed!
-) else (
-  echo   - Server check failed with exit code: %SERVER_CHECK_RESULT%
+  set SERVER_CHECK_RESULT=0
+) || (
+  echo   - Server check FAILED!
+  set SERVER_CHECK_RESULT=1
 )
 
 if %SERVER_CHECK_RESULT% NEQ 0 (
@@ -127,12 +127,12 @@ echo   - Waiting for dev server to start...
 timeout /t 5 /nobreak >nul
 
 echo   - Verifying dev server is running...
-powershell -NoProfile -Command "for ($i = 0; $i -lt 30; $i++) { $conn = Get-NetTCPConnection -LocalPort 4000 -State Listen -ErrorAction SilentlyContinue; if ($conn) { Write-Host '     Dev server is listening on port 4000' -ForegroundColor Green; exit 0 } else { Write-Host '     Waiting for dev server... ($($i+1)/30)'; Start-Sleep -Seconds 1 } } Write-Host '     ERROR: Dev server did not start on port 4000' -ForegroundColor Red; exit 1"
-set DEV_SERVER_CHECK_RESULT=%ERRORLEVEL%
-if %DEV_SERVER_CHECK_RESULT% EQU 0 (
+powershell -NoProfile -Command "for ($i = 0; $i -lt 30; $i++) { $conn = Get-NetTCPConnection -LocalPort 4000 -State Listen -ErrorAction SilentlyContinue; if ($conn) { Write-Host '     Dev server is listening on port 4000' -ForegroundColor Green; exit 0 } else { Write-Host '     Waiting for dev server... ($($i+1)/30)'; Start-Sleep -Seconds 1 } } Write-Host '     ERROR: Dev server did not start on port 4000' -ForegroundColor Red; exit 1" && (
   echo   - Dev server check passed!
-) else (
-  echo   - Dev server check failed with exit code: %DEV_SERVER_CHECK_RESULT%
+  set DEV_SERVER_CHECK_RESULT=0
+) || (
+  echo   - Dev server check FAILED!
+  set DEV_SERVER_CHECK_RESULT=1
 )
 
 if %DEV_SERVER_CHECK_RESULT% NEQ 0 (
