@@ -860,6 +860,11 @@
                   window.location.reload();
                 }, 500); // Small delay to ensure server state is synced
               }
+              // Handle internal mode changes (sales vs internal features)
+              if (p && p.type === 'internal-mode-changed') {
+                console.log('🔧 Internal mode changed:', p.internalMode);
+                setInternalMode(p.internalMode);
+              }
               // Only log user-relevant events as notifications
               if (p && p.type) {
                 switch (p.type) {

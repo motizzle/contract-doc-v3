@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "id": "act_1761792742333_jov0lrnlw",
+    "timestamp": 1761792742333,
+    "type": "document:checkout",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 1,
+      "status": "draft"
+    },
+    "message": "Warren Peace checked out \"Redlined & Signed\" (v1)"
+  }
+]

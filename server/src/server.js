@@ -3091,6 +3091,7 @@ app.get('/api/v1/state-matrix', (req, res) => {
       ? { type: isOwner ? 'info' : 'warning', text: isOwner ? `Checked out by you` : `Checked out by ${checkedOutLabel}` }
       : { type: 'success', text: 'Available for editing' },
     approvals: { enabled: true, summary: approvalsSummary },
+    internalMode: state.internalMode || false, // Sales vs internal feature toggle
   };
   res.json({ config, revision: serverState.revision });
 });
@@ -3176,7 +3177,7 @@ app.post('/api/v1/internal-mode', (req, res) => {
     saveSessionState(sessionId, state);
     
     // Broadcast to all clients in this session
-    broadcastSSE({ type: 'internal-mode-changed', internalMode: state.internalMode, sessionId });
+    broadcast({ type: 'internal-mode-changed', internalMode: state.internalMode, sessionId });
     
     res.json({ ok: true, internalMode: state.internalMode });
   } catch (e) {
