@@ -1,7 +1,7 @@
 [
   {
-    "id": "act_1761793071374_9b1b47g3u",
-    "timestamp": 1761793071374,
+    "id": "act_1761799285294_tuixfnl59",
+    "timestamp": 1761799285294,
     "type": "document:checkout",
     "user": {
       "id": "user2",
@@ -16,22 +16,5 @@
       "status": "draft"
     },
     "message": "Kent Uckey checked out \"Redlined & Signed\" (v1)"
-  },
-  {
-    "id": "act_1761793073636_awo1vxxsf",
-    "timestamp": 1761793073636,
-    "type": "document:checkout:cancel",
-    "user": {
-      "id": "user2",
-      "label": "Kent Uckey",
-      "platform": "web"
-    },
-    "action": "cancelled checkout",
-    "target": "document",
-    "details": {
-      "documentTitle": "Redlined & Signed",
-      "version": 1
-    },
-    "message": "Kent Uckey cancelled checkout of \"Redlined & Signed\""
   }
 ]
