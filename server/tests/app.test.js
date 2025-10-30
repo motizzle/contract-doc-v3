@@ -1764,14 +1764,16 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
   test('factory reset resets document title', async () => {
     // Factory reset first to ensure clean state
     await request('POST', '/api/v1/factory-reset', { userId: 'test' });
-    await sleep(500);
+    await sleep(1000);
     
     // Set a custom title
-    await request('POST', '/api/v1/title', {
+    const titleRes = await request('POST', '/api/v1/title', {
       userId: 'user1',
       title: 'Custom Document Title'
     });
-    await sleep(200); // Wait for state to persist
+    expect(titleRes.status).toBe(200);
+    expect(titleRes.body.title).toBe('Custom Document Title');
+    await sleep(500); // Wait for state to persist
 
     // Verify title was set (API returns {config, revision} not {state})
     const beforeReset = await request('GET', '/api/v1/state-matrix?userId=user1');
