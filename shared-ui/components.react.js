@@ -7684,12 +7684,19 @@
       // ============================================================
       const [internalMode, setInternalMode] = React.useState(false);
       
-      // Sync URL param to session state on mount (manual URL changes require page reload)
+      // Sync URL param to session state on mount (browser only - Word just listens via SSE)
       React.useEffect(() => {
+        // Only the browser should control internal mode via URL params
+        // Word add-in should only listen via SSE to stay in sync
+        if (isWordAddin()) {
+          console.log(`🔧 [URL Param] Skipping URL check in Word add-in (will sync via SSE)`);
+          return;
+        }
+        
         const urlParam = new URLSearchParams(window.location.search).get('internal');
         const shouldEnableInternal = urlParam === 'true';
         
-        console.log(`🔧 [URL Param] Detected: ${urlParam}, shouldEnable: ${shouldEnableInternal}`);
+        console.log(`🔧 [URL Param] Detected in browser: ${urlParam}, shouldEnable: ${shouldEnableInternal}`);
         
         // Update session state - server will broadcast SSE to all clients (browser + Word)
         fetch(`${getApiBase()}/api/v1/internal-mode`, {
