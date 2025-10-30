@@ -4734,8 +4734,17 @@ app.post('/api/v1/versions/compare', async (req, res) => {
     const mammoth = require('mammoth');
 
     async function getDocxPath(v) {
-      // All versions (including v1) should load from versions directory
-      // The working document is the CURRENT version being edited, not v1
+      if (v === 1) {
+        // Version 1 is the canonical/original document (never saved as a version file)
+        // Try canonical document first, then fall back to working document
+        const canonicalPath = path.join(rootDir, 'data', 'app', 'documents', 'default.docx');
+        if (fs.existsSync(canonicalPath)) {
+          return canonicalPath;
+        }
+        // Fallback to working document if canonical doesn't exist
+        return path.join(sessionPaths.workingDocumentsDir, 'default.docx');
+      }
+      // All other versions load from saved version files
       return path.join(sessionPaths.versionsDir, `v${v}.docx`);
     }
 
@@ -4751,6 +4760,10 @@ app.post('/api/v1/versions/compare', async (req, res) => {
 
     const pathA = await getDocxPath(versionA);
     const pathB = await getDocxPath(versionB);
+    
+    console.log(`[COMPARE] Version ${versionA} path: ${pathA} (exists: ${fs.existsSync(pathA)})`);
+    console.log(`[COMPARE] Version ${versionB} path: ${pathB} (exists: ${fs.existsSync(pathB)})`);
+    
     const [textA, textB] = await Promise.all([
       extractPlainText(pathA),
       extractPlainText(pathB)
