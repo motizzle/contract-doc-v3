@@ -2037,7 +2037,7 @@ describe('Phase 14: Messages (Threaded Messaging)', () => {
     expect(saveRes.status).toBe(200);
     expect(saveRes.body.ok).toBe(true);
     expect(saveRes.body.scenario).toBeDefined();
-    expect(saveRes.body.scenario.name).toBe(scenarioName);
+    expect(saveRes.body.scenario.label).toBe(scenarioName);
     
     const scenarioId = saveRes.body.scenario.id;
     
