@@ -61,13 +61,22 @@ REM Kill and restart main server (ensure code changes take effect)
 echo [5/8] Restarting main server...
 set SCRIPT_DIR=%~dp0
 
-REM Kill any existing server on port 4001
-echo   - Stopping any existing server on port 4001...
-powershell -NoProfile -Command "$proc = Get-NetTCPConnection -LocalPort 4001 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty OwningProcess; if ($proc) { Stop-Process -Id $proc -Force -ErrorAction SilentlyContinue; Write-Host '     Killed process' $proc; Start-Sleep -Seconds 2 } else { Write-Host '     No process found on port 4001' }"
+REM Kill ALL node.exe processes (nuclear option to ensure clean slate)
+echo   - Stopping all Node.js processes...
+taskkill /F /IM node.exe >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+  echo     Killed all node.exe processes
+) else (
+  echo     No node.exe processes found
+)
+timeout /t 3 /nobreak >nul
+
+REM Double-check port 4001 is free
+powershell -NoProfile -Command "$proc = Get-NetTCPConnection -LocalPort 4001 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty OwningProcess; if ($proc) { Write-Host '     WARNING: Port 4001 still in use by process' $proc -ForegroundColor Yellow; Stop-Process -Id $proc -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2 }"
 
 REM Start server and keep window open on error
 echo   - Starting main server...
-start "WordFTW Server" powershell -NoProfile -ExecutionPolicy Bypass -Command "cd '%SCRIPT_DIR%..\..\server'; Write-Host 'Starting server on https://localhost:4001...'; npm start; if ($LASTEXITCODE -ne 0) { Write-Host ''; Write-Host 'SERVER FAILED TO START' -ForegroundColor Red; Write-Host 'Press any key to close...'; $null = $host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown') }"
+start "WordFTW Server" powershell -NoProfile -ExecutionPolicy Bypass -Command "cd '%SCRIPT_DIR%..\..\server'; Write-Host 'Starting server on https://localhost:4001...'; Write-Host ''; npm start; if ($LASTEXITCODE -ne 0) { Write-Host ''; Write-Host 'SERVER FAILED TO START' -ForegroundColor Red; Write-Host 'Check error messages above'; Write-Host ''; Write-Host 'Press any key to close...'; $null = $host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown') } else { Write-Host 'Server exited unexpectedly'; Read-Host 'Press Enter to close' }"
 
 REM Wait and verify server started
 echo   - Waiting for server to start...
@@ -99,13 +108,13 @@ echo.
 REM Kill and restart add-in dev server (ensure code changes take effect)
 echo [6/8] Restarting add-in dev server...
 
-REM Kill any existing server on port 4000
+REM Check and kill only port 4000 (don't kill main server on 4001!)
 echo   - Stopping any existing server on port 4000...
-powershell -NoProfile -Command "$proc = Get-NetTCPConnection -LocalPort 4000 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty OwningProcess; if ($proc) { Stop-Process -Id $proc -Force -ErrorAction SilentlyContinue; Write-Host '     Killed process' $proc; Start-Sleep -Seconds 2 } else { Write-Host '     No process found on port 4000' }"
+powershell -NoProfile -Command "$proc = Get-NetTCPConnection -LocalPort 4000 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty OwningProcess; if ($proc) { Write-Host '     Killed process' $proc; Stop-Process -Id $proc -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2 } else { Write-Host '     No process found on port 4000' }"
 
 REM Start add-in dev server and keep window open on error
 echo   - Starting add-in dev server...
-start "WordFTW Add-in Dev Server" powershell -NoProfile -ExecutionPolicy Bypass -Command "cd '%SCRIPT_DIR%..\..\addin'; Write-Host 'Starting add-in dev server on https://localhost:4000...'; npm run dev-server; if ($LASTEXITCODE -ne 0) { Write-Host ''; Write-Host 'DEV SERVER FAILED TO START' -ForegroundColor Red; Write-Host 'Press any key to close...'; $null = $host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown') }"
+start "WordFTW Add-in Dev Server" powershell -NoProfile -ExecutionPolicy Bypass -Command "cd '%SCRIPT_DIR%..\..\addin'; Write-Host 'Starting add-in dev server on https://localhost:4000...'; Write-Host ''; npm run dev-server; if ($LASTEXITCODE -ne 0) { Write-Host ''; Write-Host 'DEV SERVER FAILED TO START' -ForegroundColor Red; Write-Host 'Check error messages above'; Write-Host ''; Write-Host 'Press any key to close...'; $null = $host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown') } else { Write-Host 'Dev server exited unexpectedly'; Read-Host 'Press Enter to close' }"
 
 REM Wait and verify dev server started
 echo   - Waiting for dev server to start...
