@@ -7688,7 +7688,8 @@
       React.useEffect(() => {
         // Only the browser should control internal mode via URL params
         // Word add-in should only listen via SSE to stay in sync
-        if (isWordAddin()) {
+        const isWordHost = (typeof Office !== 'undefined');
+        if (isWordHost) {
           console.log(`🔧 [URL Param] Skipping URL check in Word add-in (will sync via SSE)`);
           return;
         }
