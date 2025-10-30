@@ -3143,19 +3143,24 @@ app.post('/api/v1/title', writeLimiter, validate('updateTitle'), (req, res) => {
   try {
     const title = req.body.title.trim();
     if (!title) return res.status(400).json({ error: 'invalid_title' });
-    serverState.title = title.slice(0, 256);
-    // Record who updated the title
+    
+    const sessionId = req.sessionId;
     const userId = req.body?.userId || 'user1';
     const platform = (req.body?.platform || req.query?.platform || '').toLowerCase();
     const label = resolveUserLabel(userId) || userId;
-    serverState.updatedBy = { userId, label };
-    serverState.updatedPlatform = (platform === 'word' || platform === 'web') ? platform : serverState.updatedPlatform;
-    serverState.lastUpdated = new Date().toISOString();
-    persistState();
+    
+    // Update session-specific state
+    const state = loadSessionState(sessionId);
+    state.title = title.slice(0, 256);
+    state.updatedBy = { userId, label };
+    state.updatedPlatform = (platform === 'word' || platform === 'web') ? platform : state.updatedPlatform;
+    state.lastUpdated = new Date().toISOString();
+    saveSessionState(sessionId, state);
+    
     // Bump revision so clients pick up latest state via SSE-driven refresh
-    bumpRevision();
-    broadcast({ type: 'title', title: serverState.title, userId });
-    res.json({ ok: true, title: serverState.title });
+    bumpSessionRevision(sessionId);
+    broadcast({ type: 'title', title: state.title, userId, sessionId });
+    res.json({ ok: true, title: state.title });
   } catch (e) {
     res.status(500).json({ error: 'title_update_failed' });
   }
@@ -4238,7 +4243,10 @@ app.post('/api/v1/scenarios/save', writeLimiter, validate('saveScenario'), (req,
     // Create scenario directory
     fs.mkdirSync(scenarioDir, { recursive: true });
     
-    // Copy all state files from data/app
+    // Get session-specific paths
+    const paths = getSessionPaths(req.sessionId);
+    
+    // Copy all state files from session-specific directory
     const filesToCopy = [
       'state.json',
       'activity-log.json',
@@ -4250,7 +4258,7 @@ app.post('/api/v1/scenarios/save', writeLimiter, validate('saveScenario'), (req,
     ];
     
     for (const file of filesToCopy) {
-      const srcPath = path.join(dataAppDir, file);
+      const srcPath = path.join(paths.sessionDir, file);
       const destPath = path.join(scenarioDir, file);
       if (fs.existsSync(srcPath)) {
         fs.copyFileSync(srcPath, destPath);
@@ -4258,7 +4266,6 @@ app.post('/api/v1/scenarios/save', writeLimiter, validate('saveScenario'), (req,
     }
     
     // Copy working document
-    const paths = getSessionPaths(req.sessionId);
     const workingDoc = path.join(paths.workingDocumentsDir, 'default.docx');
     const destDoc = path.join(scenarioDir, 'default.docx');
     if (fs.existsSync(workingDoc)) {
