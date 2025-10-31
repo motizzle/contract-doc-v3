@@ -54,10 +54,12 @@
         const documentMode = getModeForRole(userRole);
         
         // Mount SuperDoc editor with comments enabled
+        // Add cache-busting parameter to prevent browser from showing stale document
+        const docUrl = `/documents/working/default.docx?_=${Date.now()}`;
         mountSuperdoc({
           selector: '#superdoc',
           toolbar: '#superdoc-toolbar',
-          document: '/documents/working/default.docx',
+          document: docUrl,
           role: userRole,
           documentMode: documentMode,
           user: {
