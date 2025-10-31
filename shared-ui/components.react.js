@@ -1806,7 +1806,6 @@
 
       const nestedItems = [
         menuItem('Open New Document', handleOpenNewDocument, !isWord), // Hide in add-in (already has button)
-        menuItem('Install Word Add-in', () => { window.dispatchEvent(new CustomEvent('show-install-modal')); }, !isWord), // Show in browser only
         menuItem('Enter Link Code', () => { window.dispatchEvent(new CustomEvent('show-link-code-modal')); }, isWord), // Show in Word add-in only
         menuItem('Compile', () => { try { setTimeout(() => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'compile' } })); } catch {} }, 130); } catch {} }, true),
         menuItem('Override Checkout', actions.override, !!btns.overrideBtn),
