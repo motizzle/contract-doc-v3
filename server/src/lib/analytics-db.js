@@ -203,75 +203,215 @@ function trackVisitJson(page) {
 }
 
 /**
- * Get analytics stats
- * @returns {Promise<{totalVisits: number, pages: Object, sessions: Object, locations: Array, devices: Array}>}
+ * Get analytics stats with time-series data
+ * @param {Object} options - Query options
+ * @param {number} options.days - Number of days to look back (default: 30)
+ * @returns {Promise<Object>}
  */
-async function getStats() {
+async function getStats(options = {}) {
+  const days = options.days || 30;
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  
   if (useDatabase && isMongoConnected) {
     try {
-      // Get page visit counts
-      const pages = await analyticsCollection.find({}).toArray();
+      const eventsCollection = mongoClient.db('wordftw_analytics').collection('visit_events');
+      const sessionsCollection = mongoClient.db('wordftw_analytics').collection('sessions');
       
       const stats = {
         totalVisits: 0,
-        pages: {},
         uniqueSessions: 0,
+        pages: {},
         topLocations: [],
         topDevices: [],
+        topBrowsers: [],
         topReferrers: [],
-        recentVisits: []
+        recentVisits: [],
+        timeSeriesData: [],
+        sessionAnalysis: [],
+        engagementMetrics: {}
       };
       
-      // Calculate page stats
-      for (const page of pages) {
-        stats.pages[page.page] = page.count;
-        stats.totalVisits += page.count;
+      // Get time-series data (visits per day)
+      const timeSeriesAgg = await eventsCollection.aggregate([
+        { $match: { timestamp: { $gte: startDate } } },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: '%Y-%m-%d', date: '$timestamp' }
+            },
+            visits: { $sum: 1 },
+            uniqueSessions: { $addToSet: '$sessionId' }
+          }
+        },
+        { $sort: { _id: 1 } },
+        {
+          $project: {
+            date: '$_id',
+            visits: 1,
+            uniqueSessions: { $size: '$uniqueSessions' }
+          }
+        }
+      ]).toArray();
+      
+      stats.timeSeriesData = timeSeriesAgg.map(d => ({
+        date: d.date,
+        visits: d.visits,
+        uniqueSessions: d.uniqueSessions
+      }));
+      
+      // Get total stats for time period
+      const totalStats = await eventsCollection.aggregate([
+        { $match: { timestamp: { $gte: startDate } } },
+        {
+          $group: {
+            _id: null,
+            totalVisits: { $sum: 1 },
+            uniqueSessions: { $addToSet: '$sessionId' }
+          }
+        }
+      ]).toArray();
+      
+      if (totalStats.length > 0) {
+        stats.totalVisits = totalStats[0].totalVisits;
+        stats.uniqueSessions = totalStats[0].uniqueSessions.length;
       }
       
-      // Get session stats
-      const sessionsCollection = mongoClient.db('wordftw_analytics').collection('sessions');
-      stats.uniqueSessions = await sessionsCollection.countDocuments();
+      // Get page breakdown
+      const pageAgg = await eventsCollection.aggregate([
+        { $match: { timestamp: { $gte: startDate } } },
+        { $group: { _id: '$page', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 }
+      ]).toArray();
+      
+      pageAgg.forEach(p => {
+        stats.pages[p._id] = p.count;
+      });
       
       // Get top locations
       const locationAgg = await sessionsCollection.aggregate([
-        { $match: { 'location.country': { $exists: true, $ne: null } } },
-        { $group: { 
-          _id: { 
-            country: '$location.country',
-            city: '$location.city'
-          },
-          count: { $sum: 1 }
-        }},
-        { $sort: { count: -1 } },
+        { $match: { 'location.country': { $exists: true, $ne: null }, lastSeen: { $gte: startDate } } },
+        {
+          $group: {
+            _id: {
+              country: '$location.country',
+              city: '$location.city'
+            },
+            sessions: { $sum: 1 },
+            pageViews: { $sum: '$pageViews' }
+          }
+        },
+        { $sort: { sessions: -1 } },
         { $limit: 10 }
       ]).toArray();
       
       stats.topLocations = locationAgg.map(loc => ({
         country: loc._id.country,
         city: loc._id.city,
-        count: loc.count
+        sessions: loc.sessions,
+        pageViews: loc.pageViews
       }));
       
       // Get device breakdown
       const deviceAgg = await sessionsCollection.aggregate([
-        { $match: { 'device.type': { $exists: true } } },
-        { $group: { 
-          _id: '$device.type',
-          count: { $sum: 1 }
-        }},
+        { $match: { lastSeen: { $gte: startDate } } },
+        {
+          $group: {
+            _id: '$device.type',
+            count: { $sum: 1 }
+          }
+        },
         { $sort: { count: -1 } }
       ]).toArray();
       
       stats.topDevices = deviceAgg.map(d => ({
-        type: d._id,
+        type: d._id || 'unknown',
         count: d.count
       }));
       
-      // Get recent visits (last 20)
-      const eventsCollection = mongoClient.db('wordftw_analytics').collection('visit_events');
-      const recent = await eventsCollection.find({})
-        .sort({ timestamp: -1 })
+      // Get browser breakdown
+      const browserAgg = await sessionsCollection.aggregate([
+        { $match: { lastSeen: { $gte: startDate }, 'device.browser': { $exists: true } } },
+        {
+          $group: {
+            _id: '$device.browser',
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { count: -1 } },
+        { $limit: 10 }
+      ]).toArray();
+      
+      stats.topBrowsers = browserAgg.map(b => ({
+        browser: b._id,
+        count: b.count
+      }));
+      
+      // Get top referrers
+      const referrerAgg = await eventsCollection.aggregate([
+        { $match: { timestamp: { $gte: startDate }, referrer: { $ne: 'direct' } } },
+        {
+          $group: {
+            _id: '$referrer',
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { count: -1 } },
+        { $limit: 10 }
+      ]).toArray();
+      
+      stats.topReferrers = referrerAgg.map(r => ({
+        referrer: r._id,
+        count: r.count
+      }));
+      
+      // Get session analysis (engagement metrics)
+      const sessionStats = await sessionsCollection.aggregate([
+        { $match: { lastSeen: { $gte: startDate } } },
+        {
+          $group: {
+            _id: null,
+            avgPageViews: { $avg: '$pageViews' },
+            totalSessions: { $sum: 1 },
+            singlePageSessions: {
+              $sum: { $cond: [{ $eq: ['$pageViews', 1] }, 1, 0] }
+            }
+          }
+        }
+      ]).toArray();
+      
+      if (sessionStats.length > 0) {
+        const s = sessionStats[0];
+        stats.engagementMetrics = {
+          avgPageViews: Math.round(s.avgPageViews * 10) / 10,
+          bounceRate: Math.round((s.singlePageSessions / s.totalSessions) * 100),
+          totalSessions: s.totalSessions
+        };
+      }
+      
+      // Get user session details (top sessions by activity)
+      const topSessions = await sessionsCollection.find({
+        lastSeen: { $gte: startDate }
+      })
+        .sort({ pageViews: -1 })
         .limit(20)
+        .toArray();
+      
+      stats.sessionAnalysis = topSessions.map(s => ({
+        sessionId: s.sessionId,
+        pageViews: s.pageViews,
+        firstSeen: s.firstSeen,
+        lastSeen: s.lastSeen,
+        duration: s.lastSeen - s.firstSeen,
+        location: s.location,
+        device: s.device
+      }));
+      
+      // Get recent visits (last 50)
+      const recent = await eventsCollection.find({ timestamp: { $gte: startDate } })
+        .sort({ timestamp: -1 })
+        .limit(50)
         .toArray();
       
       stats.recentVisits = recent.map(v => ({
@@ -279,7 +419,8 @@ async function getStats() {
         timestamp: v.timestamp,
         location: v.location,
         device: v.device,
-        referrer: v.referrer
+        referrer: v.referrer,
+        sessionId: v.sessionId
       }));
       
       return stats;
