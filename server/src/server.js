@@ -172,14 +172,14 @@ function getDocumentContext(sessionId) {
     const state = loadSessionState(sessionId);
     return {
       title: (state && state.title) || 'Untitled Document',
-      status: (state && state.status) || 'draft',
+      status: (state && state.status) || 'working draft',
       version: (state && state.documentVersion) || 1
     };
   } catch (e) {
     // Fallback if session state can't be loaded
     return {
       title: 'Untitled Document',
-      status: 'draft',
+      status: 'working draft',
       version: 1
     };
   }
@@ -1267,7 +1267,7 @@ const serverState = {
   // Document update tracking (prototype)
   documentVersion: 1,
   title: 'Redlined & Signed',
-  status: 'draft',
+  status: 'working draft',
   updatedBy: null, // { userId, label }
   updatedPlatform: null, // 'web' | 'word' | null
   approvalsRevision: 1,
@@ -1611,7 +1611,7 @@ function initializeSession(sessionId) {
       checkedOutBy: null,
       documentVersion: 1,
       title: 'Redlined & Signed',
-      status: 'draft',
+      status: 'working draft',
       lastUpdated: new Date().toISOString(),
       revision: 0
     }, null, 2)
@@ -1701,7 +1701,7 @@ function loadSessionState(sessionId) {
     checkedOutBy: null,
     documentVersion: 1,
     title: 'Redlined & Signed',
-    status: 'draft',
+    status: 'working draft',
     lastUpdated: new Date().toISOString(),
     revision: 0,
     approvalsRevision: 1,
@@ -4037,7 +4037,7 @@ app.post('/api/v1/factory-reset', (req, res) => {
       sessionState.checkedOutBy = presetState.checkedOutBy || null;
       sessionState.documentVersion = presetState.documentVersion || 1;
       sessionState.title = presetState.title || 'Redlined & Signed';
-      sessionState.status = presetState.status || 'draft';
+      sessionState.status = presetState.status || 'working draft';
       sessionState.updatedBy = presetState.updatedBy || null;
       sessionState.updatedPlatform = presetState.updatedPlatform || null;
       sessionState.lastUpdated = new Date().toISOString();
@@ -4049,7 +4049,7 @@ app.post('/api/v1/factory-reset', (req, res) => {
       sessionState.checkedOutBy = null;
       sessionState.documentVersion = 1;
       sessionState.title = 'Redlined & Signed';
-      sessionState.status = 'draft';
+      sessionState.status = 'working draft';
       sessionState.updatedBy = null;
       sessionState.updatedPlatform = null;
       sessionState.lastUpdated = new Date().toISOString();
