@@ -2006,11 +2006,182 @@ app.use('/collab', collabProxy);
 // Quiet favicon 404s
 app.get('/favicon.ico', (_req, res) => res.status(204).end());
 
-// Debug and view pages
-app.get('/debug', (req, res) => {
+// ====================================================================
+// ENHANCED ANALYTICS TRACKING (MongoDB + JSON fallback)
+// ====================================================================
+
+const analyticsDb = require('./lib/analytics-db');
+const geoip = require('geoip-lite');
+
+// Initialize analytics storage (MongoDB or JSON fallback)
+const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
+analyticsDb.initialize(MONGODB_URI, dataAppDir)
+  .then(() => {
+    if (analyticsDb.isUsingDatabase()) {
+      console.log('📊 Analytics: Using MongoDB (persistent)');
+    } else {
+      console.log('📊 Analytics: Using JSON file (resets on restart)');
+    }
+  })
+  .catch(err => {
+    console.error('❌ Analytics initialization error:', err.message);
+  });
+
+// Helper: Get client IP address (works with proxies/load balancers)
+function getClientIp(req) {
+  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+         req.headers['x-real-ip'] ||
+         req.connection?.remoteAddress ||
+         req.socket?.remoteAddress ||
+         'unknown';
+}
+
+// Helper: Parse user agent for device info
+function parseUserAgent(userAgent) {
+  if (!userAgent) return { type: 'unknown', browser: 'unknown', os: 'unknown' };
+  
+  const ua = userAgent.toLowerCase();
+  
+  // Device type
+  let type = 'desktop';
+  if (/(tablet|ipad|playbook|silk)|(android(?!.*mobile))/i.test(ua)) {
+    type = 'tablet';
+  } else if (/mobile|iphone|ipod|android|blackberry|opera mini|windows phone/i.test(ua)) {
+    type = 'mobile';
+  }
+  
+  // Browser
+  let browser = 'unknown';
+  if (ua.includes('edge')) browser = 'Edge';
+  else if (ua.includes('chrome')) browser = 'Chrome';
+  else if (ua.includes('firefox')) browser = 'Firefox';
+  else if (ua.includes('safari')) browser = 'Safari';
+  else if (ua.includes('opera') || ua.includes('opr')) browser = 'Opera';
+  
+  // OS
+  let os = 'unknown';
+  if (ua.includes('windows')) os = 'Windows';
+  else if (ua.includes('mac')) os = 'macOS';
+  else if (ua.includes('linux')) os = 'Linux';
+  else if (ua.includes('android')) os = 'Android';
+  else if (ua.includes('ios') || ua.includes('iphone') || ua.includes('ipad')) os = 'iOS';
+  
+  return { type, browser, os };
+}
+
+// Helper: Generate session fingerprint (cookie-free, privacy-friendly)
+function generateSessionFingerprint(req) {
+  const crypto = require('crypto');
+  
+  // Combine IP + User-Agent + Accept-Language for fingerprint
+  const ip = getClientIp(req);
+  const userAgent = req.headers['user-agent'] || '';
+  const language = req.headers['accept-language'] || '';
+  
+  // Hash it to create anonymous identifier
+  const hash = crypto
+    .createHash('sha256')
+    .update(`${ip}|${userAgent}|${language}`)
+    .digest('hex');
+  
+  // Use first 16 chars as session ID (sufficient uniqueness)
+  return `fp_${hash.substring(0, 16)}`;
+}
+
+// Track page visit middleware with rich analytics (cookie-free!)
+function trackPageVisit(req, res, next) {
+  const page = req.path;
+  
+  // Only track in production (skip localhost/development)
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  if (isProduction) {
+    // Generate session fingerprint (NO COOKIES!)
+    // This is a server-side hash that doesn't store anything on client
+    const sessionId = generateSessionFingerprint(req);
+    
+    // Get client IP and location
+    const ip = getClientIp(req);
+    const geo = geoip.lookup(ip);
+    const location = geo ? {
+      country: geo.country,
+      region: geo.region,
+      city: geo.city,
+      timezone: geo.timezone,
+      lat: geo.ll?.[0],
+      lon: geo.ll?.[1]
+    } : {};
+    
+    // Parse user agent
+    const userAgent = req.headers['user-agent'] || '';
+    const device = parseUserAgent(userAgent);
+    
+    // Get referrer
+    const referrer = req.headers['referer'] || req.headers['referrer'] || 'direct';
+    
+    // Build visit data object
+    const visitData = {
+      page,
+      sessionId,
+      ip: ip === '::1' || ip.startsWith('127.') ? 'localhost' : ip,
+      location,
+      userAgent,
+      referrer,
+      device
+    };
+    
+    // Track asynchronously (don't block the request)
+    analyticsDb.trackVisit(visitData).catch(err => {
+      console.error('❌ Track visit error:', err.message);
+    });
+  }
+  
+  next();
+}
+
+// Analytics API endpoints
+app.get('/api/analytics/stats', async (req, res) => {
+  try {
+    const stats = await analyticsDb.getStats();
+    res.json(stats);
+  } catch (error) {
+    console.error('❌ Get stats error:', error.message);
+    res.status(500).json({ error: 'Failed to retrieve analytics' });
+  }
+});
+
+// Click tracking endpoint (optional feature)
+app.post('/api/analytics/click', express.json(), (req, res) => {
+  // Only track in production
+  if (process.env.NODE_ENV !== 'production') {
+    return res.json({ tracked: false, reason: 'development mode' });
+  }
+  
+  const clickData = req.body;
+  
+  // Track asynchronously
+  analyticsDb.trackClick(clickData).catch(err => {
+    console.error('❌ Track click error:', err.message);
+  });
+  
+  res.json({ tracked: true });
+});
+
+// Analytics dashboard pages
+app.get('/analytics', (req, res) => {
+  res.sendFile(path.join(webDir, 'analytics-enhanced.html'));
+});
+
+// Simple analytics dashboard (legacy)
+app.get('/analytics/simple', (req, res) => {
+  res.sendFile(path.join(webDir, 'analytics.html'));
+});
+
+// Debug and view pages (with tracking)
+app.get('/debug', trackPageVisit, (req, res) => {
   res.sendFile(path.join(webDir, 'debug.html'));
 });
-app.get(['/view', '/'], (req, res) => {
+app.get(['/view', '/'], trackPageVisit, (req, res) => {
   res.sendFile(path.join(webDir, 'view.html'));
 });
 
@@ -5686,15 +5857,23 @@ function gracefulShutdown(signal) {
       if (activeRequests === 0) {
         clearInterval(checkInterval);
         console.log('✅ All requests completed');
-        console.log('👋 Server shut down gracefully');
-        process.exit(0);
+        // Close analytics database connection
+        analyticsDb.close().finally(() => {
+          console.log('👋 Server shut down gracefully');
+          process.exit(0);
+        });
+        return;
       }
       
       if (elapsed > 30000) {
         clearInterval(checkInterval);
         console.warn(`⚠️  Timeout reached with ${activeRequests} pending requests`);
-        console.log('👋 Server shut down with pending requests');
-        process.exit(0);
+        // Close analytics database connection
+        analyticsDb.close().finally(() => {
+          console.log('👋 Server shut down with pending requests');
+          process.exit(0);
+        });
+        return;
       }
       
       // Log progress every 5 seconds

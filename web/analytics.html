@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Analytics Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .dashboard {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .stat-label {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        
+        .stat-value {
+            color: white;
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-subtext {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 12px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            flex: 1;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button.secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        button.secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        .info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #666;
+            border-left: 4px solid #667eea;
+        }
+        
+        .info strong {
+            color: #333;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
+        
+        .error {
+            background: #fee;
+            border-left: 4px solid #e33;
+            color: #c33;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .timestamp {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <h1>📊 Analytics Dashboard</h1>
+        <p class="subtitle" id="env-subtitle">Track your website visitors</p>
+        
+        <div id="error-message" class="error" style="display: none;"></div>
+        
+        <div id="stats-container">
+            <div class="loading">Loading stats...</div>
+        </div>
+        
+        <div class="controls">
+            <button onclick="loadStats()">🔄 Refresh</button>
+            <button class="secondary" onclick="toggleAutoRefresh()">⏱️ Auto-refresh: <span id="auto-status">OFF</span></button>
+        </div>
+        
+        <div class="info">
+            <strong>How it works:</strong><br>
+            Every time someone visits your website, we count it. Click <strong>Refresh</strong> to see the latest numbers. 
+            Enable auto-refresh to update every 30 seconds automatically.
+        </div>
+        
+        <div class="timestamp" id="last-update"></div>
+    </div>
+    
+    <script>
+        let autoRefreshInterval = null;
+        let isProduction = false;
+        
+        // Check environment on load
+        async function checkEnvironment() {
+            try {
+                const response = await fetch('/api/v1/health');
+                const data = await response.json();
+                isProduction = data.environment === 'production';
+                
+                const subtitle = document.getElementById('env-subtitle');
+                if (!isProduction) {
+                    subtitle.innerHTML = 'Track your website visitors <span style="color: #ff9800; font-weight: bold;">(Production data only - local visits not tracked)</span>';
+                }
+            } catch (e) {
+                // Ignore error, assume production
+            }
+        }
+        
+        async function loadStats() {
+            const container = document.getElementById('stats-container');
+            const errorDiv = document.getElementById('error-message');
+            
+            errorDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/analytics/stats');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                // Build the stats display
+                let html = '';
+                
+                // Total visits
+                html += `
+                    <div class="stat-card">
+                        <div class="stat-label">Total Visits</div>
+                        <div class="stat-value">${data.totalVisits.toLocaleString()}</div>
+                        <div class="stat-subtext">All-time page views</div>
+                    </div>
+                `;
+                
+                // Top pages
+                if (data.pages && Object.keys(data.pages).length > 0) {
+                    html += '<div style="margin-top: 20px;">';
+                    html += '<h3 style="color: #333; margin-bottom: 15px; font-size: 18px;">📄 Popular Pages</h3>';
+                    
+                    const sortedPages = Object.entries(data.pages)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 5);
+                    
+                    sortedPages.forEach(([page, count]) => {
+                        const pageName = page === '/' ? 'Home' : page;
+                        html += `
+                            <div style="display: flex; justify-content: space-between; padding: 12px; background: #f8f9fa; 
+                                        border-radius: 8px; margin-bottom: 8px;">
+                                <span style="color: #333; font-weight: 500;">${pageName}</span>
+                                <span style="color: #667eea; font-weight: bold;">${count.toLocaleString()}</span>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                }
+                
+                container.innerHTML = html;
+                
+                // Update timestamp
+                const now = new Date().toLocaleString();
+                document.getElementById('last-update').textContent = `Last updated: ${now}`;
+                
+            } catch (error) {
+                console.error('Error loading stats:', error);
+                errorDiv.textContent = `Error loading stats: ${error.message}`;
+                errorDiv.style.display = 'block';
+                container.innerHTML = '<div class="loading">Failed to load stats</div>';
+            }
+        }
+        
+        function toggleAutoRefresh() {
+            const statusSpan = document.getElementById('auto-status');
+            
+            if (autoRefreshInterval) {
+                // Turn off
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                statusSpan.textContent = 'OFF';
+            } else {
+                // Turn on
+                autoRefreshInterval = setInterval(loadStats, 30000); // 30 seconds
+                statusSpan.textContent = 'ON';
+                loadStats(); // Load immediately
+            }
+        }
+        
+        // Load stats on page load
+        checkEnvironment();
+        loadStats();
+    </script>
+</body>
+</html>
+
