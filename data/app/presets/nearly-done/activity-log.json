@@ -548,5 +548,116 @@
       }
     },
     "message": "Warren Peace approved (4/5)"
+  },
+  {
+    "id": "act_1761869227836_7dy2v2sfk",
+    "timestamp": 1761869227836,
+    "type": "version:view",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "viewed version",
+    "target": "version",
+    "details": {
+      "version": 1,
+      "platform": "web",
+      "documentTitle": "Redlined & Signed",
+      "currentVersion": 7
+    },
+    "message": "Warren Peace viewed \"Redlined & Signed\" v1 (current: v7)"
+  },
+  {
+    "id": "act_1761869232687_duwj4qhrj",
+    "timestamp": 1761869232687,
+    "type": "document:checkout",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "checked out",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 7,
+      "status": "fully executed"
+    },
+    "message": "Warren Peace checked out \"Redlined & Signed\" (v7)"
+  },
+  {
+    "id": "act_1761869254783_1yiyjk0no",
+    "timestamp": 1761869254783,
+    "type": "document:save",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "saved progress",
+    "target": "document",
+    "details": {
+      "autoSave": false,
+      "version": 8,
+      "documentTitle": "Redlined & Signed"
+    },
+    "message": "Warren Peace saved \"Redlined & Signed\" (v8)"
+  },
+  {
+    "id": "act_1761869255101_g2smumym6",
+    "timestamp": 1761869255101,
+    "type": "document:checkin",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "checked in",
+    "target": "document",
+    "details": {
+      "documentTitle": "Redlined & Signed",
+      "version": 8,
+      "checkoutDuration": null
+    },
+    "message": "Warren Peace checked in \"Redlined & Signed\" (v8)"
+  },
+  {
+    "id": "act_1761869439483_a8f9q7trh",
+    "timestamp": 1761869439483,
+    "type": "document:status-change",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "changed status",
+    "target": "document",
+    "details": {
+      "from": "fully executed",
+      "to": "final approval",
+      "documentTitle": "Redlined & Signed",
+      "version": 8
+    },
+    "message": "Warren Peace changed \"Redlined & Signed\" status from fully executed to final approval"
+  },
+  {
+    "id": "act_1761869449171_ltflabm8f",
+    "timestamp": 1761869449171,
+    "type": "document:status-change",
+    "user": {
+      "id": "user1",
+      "label": "Warren Peace",
+      "platform": "web"
+    },
+    "action": "changed status",
+    "target": "document",
+    "details": {
+      "from": "final approval",
+      "to": "external review",
+      "documentTitle": "Redlined & Signed",
+      "version": 8
+    },
+    "message": "Warren Peace changed \"Redlined & Signed\" status from final approval to external review"
   }
 ]
