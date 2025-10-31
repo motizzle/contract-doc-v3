@@ -7757,17 +7757,30 @@
         const urlParam = new URLSearchParams(window.location.search).get('internal');
         const shouldEnableInternal = urlParam === 'true';
         
+        console.log(`🔧 [Internal Mode] Setting internal mode from URL: ${shouldEnableInternal}`);
+        
         // Update session state - server will broadcast SSE to all clients (browser + Word)
         fetch(`${getApiBase()}/api/v1/internal-mode`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ enabled: shouldEnableInternal })
-        }).catch(err => console.warn('Failed to set internal mode:', err));
+        })
+          .then(res => {
+            if (!res.ok) {
+              console.error('❌ [Internal Mode] Server returned error:', res.status);
+              return res.json().then(err => console.error('Error details:', err));
+            }
+            return res.json().then(data => {
+              console.log('✅ [Internal Mode] Server confirmed:', data.internalMode);
+            });
+          })
+          .catch(err => console.error('❌ [Internal Mode] Request failed:', err));
       }, []); // Only on mount - URL changes require page reload
       
       // Read internal mode from session state (synced via SSE)
       React.useEffect(() => {
         if (config?.internalMode !== undefined) {
+          console.log(`🔧 [Internal Mode] State updated from config: ${config.internalMode}`);
           setInternalMode(config.internalMode);
         }
       }, [config?.internalMode]);
