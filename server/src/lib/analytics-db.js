@@ -121,28 +121,69 @@ function saveJsonFallback() {
 }
 
 /**
- * Track a page visit
- * @param {string} page - Page path (e.g., '/', '/view')
+ * Track a page visit with rich analytics data
+ * @param {Object} visitData - Visit information
+ * @param {string} visitData.page - Page path
+ * @param {string} visitData.sessionId - Unique session identifier
+ * @param {string} visitData.ip - IP address
+ * @param {Object} visitData.location - Geo data {country, city, region}
+ * @param {string} visitData.userAgent - Browser user agent
+ * @param {string} visitData.referrer - Referrer URL
+ * @param {Object} visitData.device - Device info {type, browser, os}
  */
-async function trackVisit(page) {
+async function trackVisit(visitData) {
   if (useDatabase && isMongoConnected) {
     try {
-      // Increment page visit count in MongoDB
+      const now = new Date();
+      
+      // 1. Track page visit counts (summary)
       await analyticsCollection.updateOne(
-        { page },
+        { page: visitData.page },
         { 
           $inc: { count: 1 },
-          $set: { lastVisit: new Date() }
+          $set: { lastVisit: now }
         },
         { upsert: true }
       );
+      
+      // 2. Track individual visit event (detailed)
+      const eventsCollection = mongoClient.db('wordftw_analytics').collection('visit_events');
+      await eventsCollection.insertOne({
+        page: visitData.page,
+        sessionId: visitData.sessionId,
+        ip: visitData.ip,
+        location: visitData.location || {},
+        userAgent: visitData.userAgent,
+        referrer: visitData.referrer,
+        device: visitData.device || {},
+        timestamp: now
+      });
+      
+      // 3. Track session info
+      const sessionsCollection = mongoClient.db('wordftw_analytics').collection('sessions');
+      await sessionsCollection.updateOne(
+        { sessionId: visitData.sessionId },
+        {
+          $set: {
+            lastSeen: now,
+            lastPage: visitData.page,
+            location: visitData.location || {},
+            device: visitData.device || {},
+            ip: visitData.ip
+          },
+          $inc: { pageViews: 1 },
+          $setOnInsert: { firstSeen: now }
+        },
+        { upsert: true }
+      );
+      
     } catch (error) {
       console.error('❌ MongoDB track visit error:', error.message);
       // Fall back to JSON for this request
-      trackVisitJson(page);
+      trackVisitJson(visitData.page);
     }
   } else {
-    trackVisitJson(page);
+    trackVisitJson(visitData.page);
   }
 }
 
@@ -163,23 +204,83 @@ function trackVisitJson(page) {
 
 /**
  * Get analytics stats
- * @returns {Promise<{totalVisits: number, pages: Object}>}
+ * @returns {Promise<{totalVisits: number, pages: Object, sessions: Object, locations: Array, devices: Array}>}
  */
 async function getStats() {
   if (useDatabase && isMongoConnected) {
     try {
-      // Get all page visit counts from MongoDB
+      // Get page visit counts
       const pages = await analyticsCollection.find({}).toArray();
       
       const stats = {
         totalVisits: 0,
-        pages: {}
+        pages: {},
+        uniqueSessions: 0,
+        topLocations: [],
+        topDevices: [],
+        topReferrers: [],
+        recentVisits: []
       };
       
+      // Calculate page stats
       for (const page of pages) {
         stats.pages[page.page] = page.count;
         stats.totalVisits += page.count;
       }
+      
+      // Get session stats
+      const sessionsCollection = mongoClient.db('wordftw_analytics').collection('sessions');
+      stats.uniqueSessions = await sessionsCollection.countDocuments();
+      
+      // Get top locations
+      const locationAgg = await sessionsCollection.aggregate([
+        { $match: { 'location.country': { $exists: true, $ne: null } } },
+        { $group: { 
+          _id: { 
+            country: '$location.country',
+            city: '$location.city'
+          },
+          count: { $sum: 1 }
+        }},
+        { $sort: { count: -1 } },
+        { $limit: 10 }
+      ]).toArray();
+      
+      stats.topLocations = locationAgg.map(loc => ({
+        country: loc._id.country,
+        city: loc._id.city,
+        count: loc.count
+      }));
+      
+      // Get device breakdown
+      const deviceAgg = await sessionsCollection.aggregate([
+        { $match: { 'device.type': { $exists: true } } },
+        { $group: { 
+          _id: '$device.type',
+          count: { $sum: 1 }
+        }},
+        { $sort: { count: -1 } }
+      ]).toArray();
+      
+      stats.topDevices = deviceAgg.map(d => ({
+        type: d._id,
+        count: d.count
+      }));
+      
+      // Get recent visits (last 20)
+      const eventsCollection = mongoClient.db('wordftw_analytics').collection('visit_events');
+      const recent = await eventsCollection.find({})
+        .sort({ timestamp: -1 })
+        .limit(20)
+        .toArray();
+      
+      stats.recentVisits = recent.map(v => ({
+        page: v.page,
+        timestamp: v.timestamp,
+        location: v.location,
+        device: v.device,
+        referrer: v.referrer
+      }));
       
       return stats;
     } catch (error) {
@@ -222,9 +323,29 @@ function isUsingDatabase() {
   return useDatabase && isMongoConnected;
 }
 
+/**
+ * Track a click event
+ * @param {Object} clickData - Click event data
+ */
+async function trackClick(clickData) {
+  if (useDatabase && isMongoConnected) {
+    try {
+      const clicksCollection = mongoClient.db('wordftw_analytics').collection('click_events');
+      await clicksCollection.insertOne({
+        ...clickData,
+        timestamp: new Date(clickData.timestamp || Date.now())
+      });
+    } catch (error) {
+      console.error('❌ MongoDB track click error:', error.message);
+    }
+  }
+  // No JSON fallback for clicks - too much data
+}
+
 module.exports = {
   initialize,
   trackVisit,
+  trackClick,
   getStats,
   close,
   isUsingDatabase

@@ -23,9 +23,11 @@
     "license": "ISC",
     "dependencies": {
         "compression": "^1.8.1",
+        "cookie-parser": "^1.4.7",
         "diff-match-patch": "^1.0.5",
         "express": "^5.1.0",
         "express-rate-limit": "^8.1.0",
+        "geoip-lite": "^1.4.10",
         "http-proxy-middleware": "^2.0.6",
         "joi": "^18.0.1",
         "jsonwebtoken": "^9.0.2",
@@ -33,7 +35,8 @@
         "mongodb": "^6.20.0",
         "multer": "^2.0.2",
         "office-addin-dev-certs": "^2.0.3",
-        "pdf-lib": "^1.17.1"
+        "pdf-lib": "^1.17.1",
+        "uuid": "^13.0.0"
     },
     "devDependencies": {
         "@playwright/test": "^1.46.1",

@@ -6,6 +6,7 @@ const https = require('https');
 const express = require('express');
 const compression = require('compression');
 const multer = require('multer');
+const cookieParser = require('cookie-parser');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const jwt = require('jsonwebtoken');
 
@@ -1468,6 +1469,7 @@ function sendToUser(userId, platform, event) {
 // Express app
 const app = express();
 app.use(compression());
+app.use(cookieParser()); // Parse cookies for session tracking
 // JSON body limit must accommodate DOCX base64 payloads for save-progress
 app.use(express.json({ limit: '50mb' }));
 
@@ -2007,10 +2009,12 @@ app.use('/collab', collabProxy);
 app.get('/favicon.ico', (_req, res) => res.status(204).end());
 
 // ====================================================================
-// SIMPLE ANALYTICS TRACKING (MongoDB + JSON fallback)
+// ENHANCED ANALYTICS TRACKING (MongoDB + JSON fallback)
 // ====================================================================
 
 const analyticsDb = require('./lib/analytics-db');
+const geoip = require('geoip-lite');
+const { v4: uuidv4 } = require('uuid');
 
 // Initialize analytics storage (MongoDB or JSON fallback)
 const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
@@ -2026,7 +2030,49 @@ analyticsDb.initialize(MONGODB_URI, dataAppDir)
     console.error('❌ Analytics initialization error:', err.message);
   });
 
-// Track page visit middleware
+// Helper: Get client IP address (works with proxies/load balancers)
+function getClientIp(req) {
+  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+         req.headers['x-real-ip'] ||
+         req.connection?.remoteAddress ||
+         req.socket?.remoteAddress ||
+         'unknown';
+}
+
+// Helper: Parse user agent for device info
+function parseUserAgent(userAgent) {
+  if (!userAgent) return { type: 'unknown', browser: 'unknown', os: 'unknown' };
+  
+  const ua = userAgent.toLowerCase();
+  
+  // Device type
+  let type = 'desktop';
+  if (/(tablet|ipad|playbook|silk)|(android(?!.*mobile))/i.test(ua)) {
+    type = 'tablet';
+  } else if (/mobile|iphone|ipod|android|blackberry|opera mini|windows phone/i.test(ua)) {
+    type = 'mobile';
+  }
+  
+  // Browser
+  let browser = 'unknown';
+  if (ua.includes('edge')) browser = 'Edge';
+  else if (ua.includes('chrome')) browser = 'Chrome';
+  else if (ua.includes('firefox')) browser = 'Firefox';
+  else if (ua.includes('safari')) browser = 'Safari';
+  else if (ua.includes('opera') || ua.includes('opr')) browser = 'Opera';
+  
+  // OS
+  let os = 'unknown';
+  if (ua.includes('windows')) os = 'Windows';
+  else if (ua.includes('mac')) os = 'macOS';
+  else if (ua.includes('linux')) os = 'Linux';
+  else if (ua.includes('android')) os = 'Android';
+  else if (ua.includes('ios') || ua.includes('iphone') || ua.includes('ipad')) os = 'iOS';
+  
+  return { type, browser, os };
+}
+
+// Track page visit middleware with rich analytics
 function trackPageVisit(req, res, next) {
   const page = req.path;
   
@@ -2034,8 +2080,50 @@ function trackPageVisit(req, res, next) {
   const isProduction = process.env.NODE_ENV === 'production';
   
   if (isProduction) {
+    // Get or create session ID from cookie
+    let sessionId = req.cookies?.analytics_session;
+    if (!sessionId) {
+      sessionId = uuidv4();
+      res.cookie('analytics_session', sessionId, {
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+      });
+    }
+    
+    // Get client IP and location
+    const ip = getClientIp(req);
+    const geo = geoip.lookup(ip);
+    const location = geo ? {
+      country: geo.country,
+      region: geo.region,
+      city: geo.city,
+      timezone: geo.timezone,
+      lat: geo.ll?.[0],
+      lon: geo.ll?.[1]
+    } : {};
+    
+    // Parse user agent
+    const userAgent = req.headers['user-agent'] || '';
+    const device = parseUserAgent(userAgent);
+    
+    // Get referrer
+    const referrer = req.headers['referer'] || req.headers['referrer'] || 'direct';
+    
+    // Build visit data object
+    const visitData = {
+      page,
+      sessionId,
+      ip: ip === '::1' || ip.startsWith('127.') ? 'localhost' : ip,
+      location,
+      userAgent,
+      referrer,
+      device
+    };
+    
     // Track asynchronously (don't block the request)
-    analyticsDb.trackVisit(page).catch(err => {
+    analyticsDb.trackVisit(visitData).catch(err => {
       console.error('❌ Track visit error:', err.message);
     });
   }
@@ -2043,7 +2131,7 @@ function trackPageVisit(req, res, next) {
   next();
 }
 
-// Analytics API endpoint
+// Analytics API endpoints
 app.get('/api/analytics/stats', async (req, res) => {
   try {
     const stats = await analyticsDb.getStats();
@@ -2054,8 +2142,30 @@ app.get('/api/analytics/stats', async (req, res) => {
   }
 });
 
-// Analytics dashboard page
+// Click tracking endpoint (optional feature)
+app.post('/api/analytics/click', express.json(), (req, res) => {
+  // Only track in production
+  if (process.env.NODE_ENV !== 'production') {
+    return res.json({ tracked: false, reason: 'development mode' });
+  }
+  
+  const clickData = req.body;
+  
+  // Track asynchronously
+  analyticsDb.trackClick(clickData).catch(err => {
+    console.error('❌ Track click error:', err.message);
+  });
+  
+  res.json({ tracked: true });
+});
+
+// Analytics dashboard pages
 app.get('/analytics', (req, res) => {
+  res.sendFile(path.join(webDir, 'analytics-enhanced.html'));
+});
+
+// Simple analytics dashboard (legacy)
+app.get('/analytics/simple', (req, res) => {
   res.sendFile(path.join(webDir, 'analytics.html'));
 });
 
