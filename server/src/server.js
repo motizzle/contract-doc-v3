@@ -6,7 +6,6 @@ const https = require('https');
 const express = require('express');
 const compression = require('compression');
 const multer = require('multer');
-const cookieParser = require('cookie-parser');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const jwt = require('jsonwebtoken');
 
@@ -1469,7 +1468,6 @@ function sendToUser(userId, platform, event) {
 // Express app
 const app = express();
 app.use(compression());
-app.use(cookieParser()); // Parse cookies for session tracking
 // JSON body limit must accommodate DOCX base64 payloads for save-progress
 app.use(express.json({ limit: '50mb' }));
 
@@ -2014,7 +2012,6 @@ app.get('/favicon.ico', (_req, res) => res.status(204).end());
 
 const analyticsDb = require('./lib/analytics-db');
 const geoip = require('geoip-lite');
-const { v4: uuidv4 } = require('uuid');
 
 // Initialize analytics storage (MongoDB or JSON fallback)
 const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
@@ -2072,7 +2069,26 @@ function parseUserAgent(userAgent) {
   return { type, browser, os };
 }
 
-// Track page visit middleware with rich analytics
+// Helper: Generate session fingerprint (cookie-free, privacy-friendly)
+function generateSessionFingerprint(req) {
+  const crypto = require('crypto');
+  
+  // Combine IP + User-Agent + Accept-Language for fingerprint
+  const ip = getClientIp(req);
+  const userAgent = req.headers['user-agent'] || '';
+  const language = req.headers['accept-language'] || '';
+  
+  // Hash it to create anonymous identifier
+  const hash = crypto
+    .createHash('sha256')
+    .update(`${ip}|${userAgent}|${language}`)
+    .digest('hex');
+  
+  // Use first 16 chars as session ID (sufficient uniqueness)
+  return `fp_${hash.substring(0, 16)}`;
+}
+
+// Track page visit middleware with rich analytics (cookie-free!)
 function trackPageVisit(req, res, next) {
   const page = req.path;
   
@@ -2080,17 +2096,9 @@ function trackPageVisit(req, res, next) {
   const isProduction = process.env.NODE_ENV === 'production';
   
   if (isProduction) {
-    // Get or create session ID from cookie
-    let sessionId = req.cookies?.analytics_session;
-    if (!sessionId) {
-      sessionId = uuidv4();
-      res.cookie('analytics_session', sessionId, {
-        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax'
-      });
-    }
+    // Generate session fingerprint (NO COOKIES!)
+    // This is a server-side hash that doesn't store anything on client
+    const sessionId = generateSessionFingerprint(req);
     
     // Get client IP and location
     const ip = getClientIp(req);
