@@ -3098,7 +3098,7 @@ app.get('/api/v1/state-matrix', (req, res) => {
     approvals: { enabled: true, summary: approvalsSummary },
     internalMode: state.internalMode || false, // Sales vs internal feature toggle
   };
-  res.json({ config, revision: serverState.revision });
+  res.json({ config, revision: state.revision });
 });
 
 // Theme endpoint: returns style tokens for clients (banner colors, etc.)
