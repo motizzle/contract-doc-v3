@@ -2155,20 +2155,19 @@
     }
 
     function FinalizeCelebration() {
-      // Listen for status change to 'final' and trigger confetti
+      // Listen for status change to 'fully executed' and trigger confetti
       React.useEffect(() => {
         const handleStatusChange = (event) => {
           try {
             const data = event.detail || {};
-            console.log('🎉 Finalize: Status change event received:', data);
-            // Check if status changed to 'final'
-            if (data.status === 'final') {
-              console.log('🎉 Finalize: Triggering confetti celebration!');
+            console.log('🎉 Status change event received:', data);
+            // Check if status changed to 'fully executed' (final status)
+            if (data.status === 'fully executed') {
+              console.log('🎉 Document Fully Executed: Triggering confetti celebration!');
               
-              // Trigger confetti.js celebration
+              // Trigger confetti.js celebration (optimized for better performance)
               if (window.confetti) {
-                // Multiple bursts for epic celebration
-                const duration = 5000;
+                const duration = 3000; // Reduced from 5000ms
                 const animationEnd = Date.now() + duration;
                 
                 const randomInRange = (min, max) => Math.random() * (max - min) + min;
@@ -2181,36 +2180,37 @@
                     return;
                   }
                   
-                  // Random confetti bursts
-                  const particleCount = randomInRange(50, 200);
-                  const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3', '#54a0ff', '#ff4757', '#2ed573', '#ffa502'];
+                  // Optimized confetti bursts - reduced particle count
+                  const particleCount = randomInRange(30, 60); // Reduced from 50-200
+                  const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3', '#54a0ff'];
                   
                   window.confetti({
                     particleCount: particleCount,
-                    angle: randomInRange(45, 135),
-                    spread: randomInRange(50, 120),
-                    origin: { x: randomInRange(0.1, 0.9), y: randomInRange(0.1, 0.3) },
+                    angle: randomInRange(60, 120),
+                    spread: randomInRange(50, 80), // Reduced spread
+                    origin: { x: randomInRange(0.2, 0.8), y: randomInRange(0.1, 0.3) },
                     colors: colors,
-                    ticks: randomInRange(200, 400),
-                    scalar: randomInRange(0.5, 2)
+                    ticks: randomInRange(150, 250), // Reduced from 200-400
+                    scalar: randomInRange(0.7, 1.3), // Reduced range
+                    startVelocity: 30 // Added to control speed
                   });
                   
-                  // Side bursts
-                  if (Math.random() > 0.7) {
+                  // Fewer side bursts for better performance
+                  if (Math.random() > 0.8) { // Changed from 0.7
                     window.confetti({
-                      particleCount: randomInRange(30, 100),
+                      particleCount: randomInRange(20, 40), // Reduced from 30-100
                       angle: randomInRange(60, 120),
-                      spread: randomInRange(30, 80),
+                      spread: randomInRange(30, 60), // Reduced spread
                       origin: { x: Math.random() > 0.5 ? 0 : 1, y: randomInRange(0.3, 0.7) },
                       colors: colors,
-                      ticks: randomInRange(100, 200)
+                      ticks: randomInRange(100, 150) // Reduced from 100-200
                     });
                   }
-                }, 250);
+                }, 300); // Increased interval from 250ms for better performance
               }
             }
           } catch (err) {
-            console.error('❌ Finalize celebration error:', err);
+            console.error('❌ Celebration error:', err);
           }
         };
 
@@ -4450,21 +4450,76 @@
     function StatusBadge() {
       const { config, addLog } = React.useContext(StateContext);
       const API_BASE = getApiBase();
-      const [status, setStatus] = React.useState((config?.status || 'draft').toLowerCase());
+      const [status, setStatus] = React.useState((config?.status || 'working draft').toLowerCase());
+      
+      const allStatuses = ['working draft', 'staff review', 'external review', 'final approval', 'pending signature', 'fully executed'];
+      
       React.useEffect(() => {
         console.log('🔄 [StatusBadge] useEffect triggered - New status from config:', config?.status);
-        setStatus((config?.status || 'draft').toLowerCase());
+        setStatus((config?.status || 'working draft').toLowerCase());
       }, [config?.status]);
-      const cycle = async () => {
-        try { const r = await fetch(`${API_BASE}/api/v1/status/cycle`, { method: 'POST' }); if (r.ok) { const j = await r.json(); setStatus((j.status || 'draft').toLowerCase()); addLog && addLog(`Status: ${j.status}`, 'system'); } } catch {}
+      
+      const handleStatusChange = async (e) => {
+        const newStatus = e.target.value;
+        try {
+          const r = await fetch(`${API_BASE}/api/v1/status/set`, { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus })
+          });
+          if (r.ok) {
+            const j = await r.json();
+            setStatus(j.status);
+            addLog && addLog(`Status: ${j.status}`, 'system');
+          }
+        } catch (e) {
+          console.error('Failed to update status:', e);
+        }
       };
-      const label = (s => s === 'final' ? 'Final' : s === 'review' ? 'Review' : 'Draft')(status);
-      const cls = (function(s){
-        if (s === 'final') return 'ui-badge gray-verydark';
-        if (s === 'review') return 'ui-badge gray-dark';
-        return 'ui-badge gray-medium';
-      })(status);
-      return React.createElement('div', { className: 'mb-2' }, React.createElement('span', { className: cls, onClick: cycle, style: { cursor: 'pointer' } }, label));
+      
+      const label = (s) => {
+        switch(s) {
+          case 'fully executed': return 'Fully Executed';
+          case 'pending signature': return 'Pending Signature';
+          case 'final approval': return 'Final Approval';
+          case 'external review': return 'External Review';
+          case 'staff review': return 'Staff Review';
+          case 'working draft': 
+          default: return 'Working Draft';
+        }
+      };
+      
+      const cls = (s) => {
+        // Descending shades of grey
+        switch(s) {
+          case 'fully executed': return 'ui-badge gray-verydark';
+          case 'pending signature': return 'ui-badge gray-verydark';
+          case 'final approval': return 'ui-badge gray-dark';
+          case 'external review': return 'ui-badge gray-dark';
+          case 'staff review': return 'ui-badge gray-medium';
+          case 'working draft':
+          default: return 'ui-badge gray-medium';
+        }
+      };
+      
+      // Style the select to look exactly like the badge
+      return React.createElement('div', { className: 'mb-2' }, 
+        React.createElement('select', { 
+          value: status,
+          onChange: handleStatusChange,
+          className: cls(status),
+          style: { 
+            cursor: 'pointer',
+            border: 'none',
+            outline: 'none',
+            appearance: 'none',
+            WebkitAppearance: 'none',
+            MozAppearance: 'none'
+          }
+        }, 
+          allStatuses.map(s => React.createElement('option', { key: s, value: s }, label(s)))
+        )
+      );
     }
 
     function VersionsPanel() {
@@ -7639,10 +7694,31 @@
 
       const isWordHost = (typeof Office !== 'undefined');
       const topRowStyle = { gap: 8, paddingTop: (isWordHost ? 0 : 8), width: '100%' };
+      const externalLinkIcon = React.createElement('img', { 
+        src: '/web/assets/external-link.png', 
+        alt: '',
+        style: { width: '14px', height: '14px', marginLeft: '6px', flexShrink: 0 }
+      });
       const topPanel = React.createElement('div', { className: 'panel panel--top' }, [
         React.createElement('div', { className: 'd-flex items-center', style: topRowStyle }, [
           React.createElement(StatusBadge, { key: 'status' }),
-          (isWordHost ? React.createElement(UIButton, { key: 'open-og', label: 'Open in OpenGov ↗', onClick: () => { try { window.dispatchEvent(new CustomEvent('react:open-modal', { detail: { id: 'open-gov' } })); } catch {} }, variant: 'tertiary', style: { marginLeft: '8px', minWidth: '160px' } }) : null),
+          (isWordHost ? React.createElement('button', { 
+            key: 'open-og', 
+            className: 'btn btn--tertiary',
+            onClick: () => { try { window.open('http://procurement.opengov.com/', '_blank', 'noopener,noreferrer'); } catch {} }, 
+            style: { marginLeft: '8px', minWidth: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0', color: '#4a5568' } 
+          }, [
+            React.createElement('span', { key: 'text' }, 'Open in OpenGov'),
+            externalLinkIcon
+          ]) : React.createElement('button', { 
+            key: 'open-word', 
+            className: 'btn btn--tertiary',
+            onClick: () => { try { window.dispatchEvent(new CustomEvent('show-install-modal')); } catch {} }, 
+            style: { marginLeft: '8px', minWidth: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0', color: '#4a5568' } 
+          }, [
+            React.createElement('span', { key: 'text' }, 'Open in Word'),
+            externalLinkIcon
+          ])),
           React.createElement('div', { key: 'user-wrapper', style: { marginLeft: 'auto' } }, 
             React.createElement(UserCard, { key: 'user' })
           ),

@@ -2,26 +2,26 @@
   "user1": [
     "[bot] Shall we...contract?",
     "[user1] When will the private preview happen?",
-    "[bot] The private preview is scheduled for Phase 2, beginning in January 2027. This phase will last approximately 3 months and involve selected OpenGov customers testing the new contract system.",
+    "[bot] The private preview is scheduled to begin in February 2026. This phase will include a small group of volunteers from OpenGov customers. Ask if you're interested!",
     "[user1] What are the key deliverables to Transition?",
     "[bot] The transition will occur ONLY when there is full feature parity with existing systems, comprehensive testing with a broader user base, performance optimization, and preparation for the full launch in Phase 4."
   ],
   "user2": [
     "[bot] Shall we...contract?",
     "[user2] What happens during the transition phase?",
-    "[bot] The Transition phase (July 2027 onwards) involves the full launch of the new contract system. All OpenGov customers will be migrated to the new platform, legacy systems will be phased out, and ongoing support and maintenance will be provided. Note that this will NOT happen until we have full feature parity, and you will not lose functionality."
+    "[bot] The Transition phase (likely in 2027) involves the full launch of the new contract system. All OpenGov customers will be migrated to the new platform, legacy systems will be phased out, and ongoing support and maintenance will be provided. Note that this will NOT happen until we have full feature parity, and you will not lose functionality."
   ],
   "user3": [
     "[bot] Shall we...contract?",
-    "[user3] Tell me about the private preview development timeline",
-    "[bot] Private preview will be available to a small set of customers in early 2026. It will have bare-bones functionality but will be helpful for testing and shaping the future of the software.",
-    "[user3] What AI features are included?",
-    "[bot] The AI-powered features will include a negotiating assistant, a tool to compare different versions, a generic AI assistant, and more!"
+    "[user3] Tell me about the public preview",
+    "[bot] Public preview will be an expansion on the private preview, as we build more robust functionality. As the system becomes more powerful, we will onboard more customers. Think of people you'd like to include, and let us know! This (hopefully and tentatively) will start happening in earnest in the middle of 2026.",
+    "[user3] What AI features will be included?",
+    "[bot] AI will be part of the system from the beginning. We'll use it to do things like provide immediate feedback on any questions related to the document, help with negotiations, compare previous versions, and more!"
   ],
   "user4": [
     "[bot] Shall we...contract?",
     "[user4] What are OpenGov's responsibilities in this agreement?",
-    "[bot] OpenGov will build something amazing and useful, and will adapt based on  feedback from customers."
+    "[bot] OpenGov will build something amazing and useful, and will adapt based on  feedback from customers. Hold us accountable to that!"
   ],
   "user5": [
     "[bot] Shall we...contract?",
