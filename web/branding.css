@@ -840,13 +840,15 @@ body {
 
 /* SuperDoc toolbar */
 #superdoc-toolbar {
-  position: relative;
+  position: sticky;
+  top: 0;
   z-index: 2; /* Higher than editor (1), lower than sidepane (5) */
   border-bottom: 1px solid #ddd;
   padding: 6px 10px;
   width: 100%;
   box-sizing: border-box;
   flex-shrink: 0; /* Don't shrink toolbar */
+  background: white; /* Ensure toolbar covers content when sticky */
   /* Let SuperDoc handle responsive button hiding via hideButtons: true */
 }
 
