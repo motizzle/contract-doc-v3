@@ -2006,11 +2006,65 @@ app.use('/collab', collabProxy);
 // Quiet favicon 404s
 app.get('/favicon.ico', (_req, res) => res.status(204).end());
 
-// Debug and view pages
-app.get('/debug', (req, res) => {
+// ====================================================================
+// SIMPLE ANALYTICS TRACKING
+// ====================================================================
+
+const analyticsFilePath = path.join(dataAppDir, 'analytics.json');
+
+// Load or initialize analytics data
+let analyticsData = { totalVisits: 0, pages: {} };
+try {
+  if (fs.existsSync(analyticsFilePath)) {
+    analyticsData = JSON.parse(fs.readFileSync(analyticsFilePath, 'utf8'));
+  }
+} catch (e) {
+  console.warn('⚠️  Could not load analytics data, starting fresh:', e.message);
+}
+
+// Save analytics data to file
+function saveAnalytics() {
+  try {
+    fs.writeFileSync(analyticsFilePath, JSON.stringify(analyticsData, null, 2));
+  } catch (e) {
+    console.error('❌ Failed to save analytics data:', e.message);
+  }
+}
+
+// Track page visit middleware
+function trackPageVisit(req, res, next) {
+  const page = req.path;
+  
+  // Increment total visits
+  analyticsData.totalVisits = (analyticsData.totalVisits || 0) + 1;
+  
+  // Increment page-specific visits
+  if (!analyticsData.pages[page]) {
+    analyticsData.pages[page] = 0;
+  }
+  analyticsData.pages[page]++;
+  
+  // Save asynchronously (don't block the request)
+  setImmediate(() => saveAnalytics());
+  
+  next();
+}
+
+// Analytics API endpoint
+app.get('/api/analytics/stats', (req, res) => {
+  res.json(analyticsData);
+});
+
+// Analytics dashboard page
+app.get('/analytics', (req, res) => {
+  res.sendFile(path.join(webDir, 'analytics.html'));
+});
+
+// Debug and view pages (with tracking)
+app.get('/debug', trackPageVisit, (req, res) => {
   res.sendFile(path.join(webDir, 'debug.html'));
 });
-app.get(['/view', '/'], (req, res) => {
+app.get(['/view', '/'], trackPageVisit, (req, res) => {
   res.sendFile(path.join(webDir, 'view.html'));
 });
 
