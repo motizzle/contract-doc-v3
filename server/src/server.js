@@ -3235,11 +3235,16 @@ app.post('/api/v1/status/cycle', (req, res) => {
 // Set status directly - allows jumping to any status
 app.post('/api/v1/status/set', (req, res) => {
   try {
-    const allowedStatuses = ['in progress', 'staff review', 'external review', 'final approval', 'pending signature', 'fully executed'];
-    const newStatus = String(req.body?.status || 'in progress').toLowerCase();
+    const allowedStatuses = ['working draft', 'in progress', 'draft', 'staff review', 'external review', 'final approval', 'pending signature', 'fully executed'];
+    let newStatus = String(req.body?.status || 'working draft').toLowerCase();
+    
+    // Normalize "draft" or "in progress" to "working draft" for consistency
+    if (newStatus === 'draft' || newStatus === 'in progress') {
+      newStatus = 'working draft';
+    }
     
     if (!allowedStatuses.includes(newStatus)) {
-      return res.status(400).json({ error: 'Invalid status' });
+      return res.status(400).json({ error: 'Invalid status', received: newStatus, allowed: allowedStatuses });
     }
     
     const oldStatus = serverState.status;
