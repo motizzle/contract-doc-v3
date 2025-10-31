@@ -1776,6 +1776,7 @@ function getLinkedSession(fingerprint) {
 app.post('/api/v1/session/start', (req, res) => {
   try {
     const { fingerprint } = req.body || {};
+    console.log(`🔍 [session/start] Request body:`, { hasBody: !!req.body, fingerprint: fingerprint ? fingerprint.substring(0, 12) + '...' : 'MISSING' });
     
     // Check for permanent link first
     if (fingerprint) {
@@ -1818,12 +1819,14 @@ app.post('/api/v1/session/start', (req, res) => {
           console.log(`🔗 Reusing valid link code: ${linkCode}`);
         }
         
-        return res.json({
+        const responseData = {
           token: existing.token,
           sessionId: existing.sessionId,
           expiresIn: JWT_EXPIRATION,
           linkCode: linkCode
-        });
+        };
+        console.log(`🔍 [session/start] Returning existing session:`, { hasToken: !!responseData.token, hasLinkCode: !!responseData.linkCode, linkCode: responseData.linkCode });
+        return res.json(responseData);
       }
     }
     
@@ -1867,12 +1870,14 @@ app.post('/api/v1/session/start', (req, res) => {
     
     console.log(`🔐 Created new session: ${sessionId}`);
     
-    res.json({ 
+    const responseData = { 
       token, 
       sessionId,
       expiresIn: JWT_EXPIRATION,
       linkCode
-    });
+    };
+    console.log(`🔍 [session/start] Sending response:`, { hasToken: !!responseData.token, hasLinkCode: !!responseData.linkCode, linkCode: responseData.linkCode });
+    res.json(responseData);
   } catch (err) {
     console.error('❌ Failed to create session:', err);
     res.status(500).json({ error: 'Failed to create session' });
