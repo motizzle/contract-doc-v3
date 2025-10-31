@@ -25,6 +25,10 @@ services:
       # Set this in Render dashboard (Environment > Environment Variables)
       - key: JWT_SECRET
         sync: false  # Secret - set manually in Render dashboard
+      # OPTIONAL: MongoDB URI for persistent analytics (free MongoDB Atlas)
+      # If not set, analytics will use JSON file (data resets on restart)
+      - key: MONGODB_URI
+        sync: false  # Secret - set manually in Render dashboard
       # Optional: LLM Configuration (defaults to Ollama)
       - key: LLM_PROVIDER
         value: ollama

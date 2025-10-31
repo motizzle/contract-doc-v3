@@ -2007,52 +2007,46 @@ app.use('/collab', collabProxy);
 app.get('/favicon.ico', (_req, res) => res.status(204).end());
 
 // ====================================================================
-// SIMPLE ANALYTICS TRACKING
+// SIMPLE ANALYTICS TRACKING (MongoDB + JSON fallback)
 // ====================================================================
 
-const analyticsFilePath = path.join(dataAppDir, 'analytics.json');
+const analyticsDb = require('./lib/analytics-db');
 
-// Load or initialize analytics data
-let analyticsData = { totalVisits: 0, pages: {} };
-try {
-  if (fs.existsSync(analyticsFilePath)) {
-    analyticsData = JSON.parse(fs.readFileSync(analyticsFilePath, 'utf8'));
-  }
-} catch (e) {
-  console.warn('⚠️  Could not load analytics data, starting fresh:', e.message);
-}
-
-// Save analytics data to file
-function saveAnalytics() {
-  try {
-    fs.writeFileSync(analyticsFilePath, JSON.stringify(analyticsData, null, 2));
-  } catch (e) {
-    console.error('❌ Failed to save analytics data:', e.message);
-  }
-}
+// Initialize analytics storage (MongoDB or JSON fallback)
+const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
+analyticsDb.initialize(MONGODB_URI, dataAppDir)
+  .then(() => {
+    if (analyticsDb.isUsingDatabase()) {
+      console.log('📊 Analytics: Using MongoDB (persistent)');
+    } else {
+      console.log('📊 Analytics: Using JSON file (resets on restart)');
+    }
+  })
+  .catch(err => {
+    console.error('❌ Analytics initialization error:', err.message);
+  });
 
 // Track page visit middleware
 function trackPageVisit(req, res, next) {
   const page = req.path;
   
-  // Increment total visits
-  analyticsData.totalVisits = (analyticsData.totalVisits || 0) + 1;
-  
-  // Increment page-specific visits
-  if (!analyticsData.pages[page]) {
-    analyticsData.pages[page] = 0;
-  }
-  analyticsData.pages[page]++;
-  
-  // Save asynchronously (don't block the request)
-  setImmediate(() => saveAnalytics());
+  // Track asynchronously (don't block the request)
+  analyticsDb.trackVisit(page).catch(err => {
+    console.error('❌ Track visit error:', err.message);
+  });
   
   next();
 }
 
 // Analytics API endpoint
-app.get('/api/analytics/stats', (req, res) => {
-  res.json(analyticsData);
+app.get('/api/analytics/stats', async (req, res) => {
+  try {
+    const stats = await analyticsDb.getStats();
+    res.json(stats);
+  } catch (error) {
+    console.error('❌ Get stats error:', error.message);
+    res.status(500).json({ error: 'Failed to retrieve analytics' });
+  }
 });
 
 // Analytics dashboard page
@@ -5740,15 +5734,23 @@ function gracefulShutdown(signal) {
       if (activeRequests === 0) {
         clearInterval(checkInterval);
         console.log('✅ All requests completed');
-        console.log('👋 Server shut down gracefully');
-        process.exit(0);
+        // Close analytics database connection
+        analyticsDb.close().finally(() => {
+          console.log('👋 Server shut down gracefully');
+          process.exit(0);
+        });
+        return;
       }
       
       if (elapsed > 30000) {
         clearInterval(checkInterval);
         console.warn(`⚠️  Timeout reached with ${activeRequests} pending requests`);
-        console.log('👋 Server shut down with pending requests');
-        process.exit(0);
+        // Close analytics database connection
+        analyticsDb.close().finally(() => {
+          console.log('👋 Server shut down with pending requests');
+          process.exit(0);
+        });
+        return;
       }
       
       // Log progress every 5 seconds
