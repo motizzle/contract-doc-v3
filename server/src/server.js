@@ -178,7 +178,7 @@ function getDocumentContext(sessionId) {
   } catch (e) {
     // Fallback if session state can't be loaded
     return {
-      title: 'Untitled Document',
+      title: 'Just Aanother Document',
       status: 'working draft',
       version: 1
     };
@@ -3185,6 +3185,9 @@ app.post('/api/v1/internal-mode', (req, res) => {
     const state = loadSessionState(sessionId);
     state.internalMode = !!enabled;
     saveSessionState(sessionId, state);
+    
+    // Bump revision so clients pick up latest state via SSE-driven refresh
+    bumpSessionRevision(sessionId);
     
     // Broadcast to all clients in this session
     broadcast({ type: 'internal-mode-changed', internalMode: state.internalMode, sessionId });
