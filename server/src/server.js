@@ -3196,11 +3196,12 @@ app.post('/api/v1/internal-mode', (req, res) => {
   }
 });
 
-// Cycle status: draft -> review -> final
+// Cycle status: working draft -> staff review -> external review -> final approval -> pending signature -> fully executed
+// NOTE: This endpoint exists for backward compatibility, but /status/set is preferred for direct selection
 app.post('/api/v1/status/cycle', (req, res) => {
   try {
-    const order = ['draft', 'review', 'final'];
-    const cur = String(serverState.status || 'draft').toLowerCase();
+    const order = ['working draft', 'staff review', 'external review', 'final approval', 'pending signature', 'fully executed'];
+    const cur = String(serverState.status || 'working draft').toLowerCase();
     const i = order.indexOf(cur);
     const next = order[(i >= 0 ? (i + 1) % order.length : 0)];
     serverState.status = next;
@@ -3211,7 +3212,7 @@ app.post('/api/v1/status/cycle', (req, res) => {
     // Log activity (skip in test mode)
     if (!testMode) {
       try {
-    const userId = req.body?.userId || 'user1';
+        const userId = req.body?.userId || 'user1';
         const docContext = getDocumentContext(req.sessionId);
         logActivity(req.sessionId, 'document:status-change', userId, { 
           from: cur, 
@@ -3228,6 +3229,45 @@ app.post('/api/v1/status/cycle', (req, res) => {
     res.json({ ok: true, status: next });
   } catch (e) {
     res.status(500).json({ error: 'status_cycle_failed' });
+  }
+});
+
+// Set status directly - allows jumping to any status
+app.post('/api/v1/status/set', (req, res) => {
+  try {
+    const allowedStatuses = ['in progress', 'staff review', 'external review', 'final approval', 'pending signature', 'fully executed'];
+    const newStatus = String(req.body?.status || 'in progress').toLowerCase();
+    
+    if (!allowedStatuses.includes(newStatus)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+    
+    const oldStatus = serverState.status;
+    serverState.status = newStatus;
+    serverState.lastUpdated = new Date().toISOString();
+    persistState();
+    broadcast({ type: 'status', status: newStatus, oldStatus });  // NOTE: Includes oldStatus for better tracking
+    
+    // Log activity (skip in test mode)
+    if (!testMode) {
+      try {
+        const userId = req.body?.userId || 'user1';
+        const docContext = getDocumentContext(req.sessionId);
+        logActivity(req.sessionId, 'document:status-change', userId, { 
+          from: oldStatus, 
+          to: newStatus,
+          documentTitle: docContext.title,
+          version: docContext.version,
+          platform: req.body?.platform || 'web'
+        });
+      } catch (err) {
+        console.error('Error logging status change activity:', err);
+      }
+    }
+    
+    res.json({ ok: true, status: newStatus });
+  } catch (e) {
+    res.status(500).json({ error: 'status_set_failed' });
   }
 });
 
