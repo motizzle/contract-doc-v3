@@ -151,7 +151,7 @@
 <body>
     <div class="dashboard">
         <h1>📊 Analytics Dashboard</h1>
-        <p class="subtitle">Track your website visitors</p>
+        <p class="subtitle" id="env-subtitle">Track your website visitors</p>
         
         <div id="error-message" class="error" style="display: none;"></div>
         
@@ -175,6 +175,23 @@
     
     <script>
         let autoRefreshInterval = null;
+        let isProduction = false;
+        
+        // Check environment on load
+        async function checkEnvironment() {
+            try {
+                const response = await fetch('/api/v1/health');
+                const data = await response.json();
+                isProduction = data.environment === 'production';
+                
+                const subtitle = document.getElementById('env-subtitle');
+                if (!isProduction) {
+                    subtitle.innerHTML = 'Track your website visitors <span style="color: #ff9800; font-weight: bold;">(Production data only - local visits not tracked)</span>';
+                }
+            } catch (e) {
+                // Ignore error, assume production
+            }
+        }
         
         async function loadStats() {
             const container = document.getElementById('stats-container');
@@ -257,6 +274,7 @@
         }
         
         // Load stats on page load
+        checkEnvironment();
         loadStats();
     </script>
 </body>

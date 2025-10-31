@@ -2030,10 +2030,15 @@ analyticsDb.initialize(MONGODB_URI, dataAppDir)
 function trackPageVisit(req, res, next) {
   const page = req.path;
   
-  // Track asynchronously (don't block the request)
-  analyticsDb.trackVisit(page).catch(err => {
-    console.error('❌ Track visit error:', err.message);
-  });
+  // Only track in production (skip localhost/development)
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  if (isProduction) {
+    // Track asynchronously (don't block the request)
+    analyticsDb.trackVisit(page).catch(err => {
+      console.error('❌ Track visit error:', err.message);
+    });
+  }
   
   next();
 }
