@@ -394,12 +394,13 @@ async function getStats(options = {}) {
       const topSessions = await sessionsCollection.find({
         lastSeen: { $gte: startDate }
       })
-        .sort({ pageViews: -1 })
-        .limit(20)
+        .sort({ lastSeen: -1 })  // Sort by most recent first
+        .limit(100)  // Show up to 100 sessions
         .toArray();
       
       stats.sessionAnalysis = topSessions.map(s => ({
         sessionId: s.sessionId,
+        ip: s.ip,
         pageViews: s.pageViews,
         firstSeen: s.firstSeen,
         lastSeen: s.lastSeen,

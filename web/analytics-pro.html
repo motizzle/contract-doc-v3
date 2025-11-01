@@ -387,21 +387,6 @@
                 </div>
             `;
             
-            // Pie chart - Device breakdown
-            html += `
-                <div class="chart-card">
-                    <div class="chart-title">📱 Device Types</div>
-                    <div class="chart-container-small">
-                        <canvas id="deviceChart"></canvas>
-                    </div>
-                </div>
-            `;
-            
-            html += '</div>';
-            
-            // Second charts row
-            html += '<div class="chart-row">';
-            
             // Bar chart - Top pages
             html += `
                 <div class="chart-card">
@@ -464,38 +449,47 @@
                 `;
             }
             
-            // Top sessions table (user analysis)
+            // User sessions table (detailed user tracking)
             if (data.sessionAnalysis && data.sessionAnalysis.length > 0) {
                 html += `
                     <div class="section">
-                        <div class="section-title">👥 Top User Sessions</div>
+                        <div class="section-title">👥 User Sessions (${data.sessionAnalysis.length} total)</div>
                         <table>
                             <thead>
                                 <tr>
+                                    <th>IP Address</th>
                                     <th>Session ID</th>
-                                    <th>Pages Viewed</th>
-                                    <th>Duration</th>
                                     <th>Location</th>
-                                    <th>Device</th>
+                                    <th>Browser</th>
+                                    <th>Pages</th>
+                                    <th>First Seen</th>
+                                    <th>Last Seen</th>
+                                    <th>Duration</th>
                                 </tr>
                             </thead>
                             <tbody>
                 `;
                 
-                data.sessionAnalysis.slice(0, 15).forEach(session => {
+                data.sessionAnalysis.forEach(session => {
                     const duration = formatDuration(session.duration);
                     const location = session.location && session.location.country 
-                        ? `${session.location.city || session.location.country}` 
+                        ? `${getCountryFlag(session.location.country)} ${session.location.city || session.location.country}` 
                         : 'Unknown';
-                    const device = session.device ? session.device.type : 'unknown';
+                    const browser = session.device?.browser || 'Unknown';
+                    const ip = session.ip || 'Unknown';
+                    const firstSeen = session.firstSeen ? new Date(session.firstSeen).toLocaleString() : 'N/A';
+                    const lastSeen = session.lastSeen ? new Date(session.lastSeen).toLocaleString() : 'N/A';
                     
                     html += `
                         <tr>
-                            <td><code>${session.sessionId.substring(0, 12)}...</code></td>
-                            <td><strong>${session.pageViews}</strong></td>
-                            <td>${duration}</td>
+                            <td><code>${ip}</code></td>
+                            <td><code title="${session.sessionId}">${session.sessionId.substring(0, 8)}...</code></td>
                             <td>${location}</td>
-                            <td><span class="badge badge-${device}">${device}</span></td>
+                            <td>${browser}</td>
+                            <td><strong>${session.pageViews}</strong></td>
+                            <td>${firstSeen}</td>
+                            <td>${lastSeen}</td>
+                            <td>${duration}</td>
                         </tr>
                     `;
                 });
@@ -511,7 +505,6 @@
             
             // Render charts (with fallbacks for empty data)
             renderVisitsChart(data.timeSeriesData || []);
-            renderDeviceChart(data.topDevices || []);
             renderPagesChart(data.pages || {});
             renderBrowserChart(data.topBrowsers || []);
         }
@@ -569,37 +562,6 @@
                             ticks: {
                                 precision: 0
                             }
-                        }
-                    }
-                }
-            });
-        }
-        
-        // Render device pie chart
-        function renderDeviceChart(devices) {
-            const ctx = document.getElementById('deviceChart');
-            if (!ctx || !devices || devices.length === 0) return;
-            
-            charts.device = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: devices.map(d => d.type.charAt(0).toUpperCase() + d.type.slice(1)),
-                    datasets: [{
-                        data: devices.map(d => d.count),
-                        backgroundColor: [
-                            '#667eea',
-                            '#764ba2',
-                            '#f093fb',
-                            '#4facfe'
-                        ]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
                         }
                     }
                 }
