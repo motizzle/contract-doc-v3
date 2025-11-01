@@ -802,6 +802,25 @@
                 }
               }
               
+              // Broadcast announcement handler
+              if (p.type === 'announcement' && p.message && p.id) {
+                try {
+                  const lastSeenId = localStorage.getItem('lastSeenAnnouncement');
+                  if (p.id !== lastSeenId) {
+                    console.log(`📢 [Announcement] Received broadcast (ID: ${p.id})`);
+                    setServerVersion('Announcement');
+                    setReleaseNotes(p.message);
+                    setUpdateAvailable(true);
+                    // Store the announcement ID so we can mark it as seen when dismissed
+                    try {
+                      localStorage.setItem('currentAnnouncementId', p.id);
+                    } catch {}
+                  }
+                } catch (err) {
+                  console.warn('Failed to process announcement:', err);
+                }
+              }
+              
               if (p && p.ts) setLastTs(p.ts);
               const nextRev = (typeof p.revision === 'number') ? p.revision : null;
               if (nextRev !== null) setRevision(nextRev);
@@ -1993,6 +2012,16 @@
       const handleDismissUpdate = () => {
         // Dismiss for this session
         if (setUpdateDismissed) setUpdateDismissed(true);
+        
+        // If this is an announcement, mark it as seen so it doesn't reappear
+        try {
+          const announcementId = localStorage.getItem('currentAnnouncementId');
+          if (announcementId) {
+            localStorage.setItem('lastSeenAnnouncement', announcementId);
+            localStorage.removeItem('currentAnnouncementId');
+            console.log(`📢 [Announcement] Marked as seen (ID: ${announcementId})`);
+          }
+        } catch {}
       };
 
       return React.createElement('div', { ref: rootRef, className: 'd-flex flex-column gap-6' },
