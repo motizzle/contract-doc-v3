@@ -439,7 +439,21 @@ async function getStats(options = {}) {
 function getStatsJson() {
   return {
     totalVisits: jsonData.totalVisits || 0,
-    pages: jsonData.pages || {}
+    uniqueSessions: 0,
+    pages: jsonData.pages || {},
+    topLocations: [],
+    topDevices: [],
+    topBrowsers: [],
+    topReferrers: [],
+    recentVisits: [],
+    timeSeriesData: [],
+    sessionAnalysis: [],
+    engagementMetrics: {
+      totalSessions: 0,
+      avgPageViews: 0,
+      avgSessionDuration: 0,
+      bounceRate: 0
+    }
   };
 }
 

@@ -340,7 +340,7 @@
             html += `
                 <div class="stat-card">
                     <div class="stat-label">Total Visits</div>
-                    <div class="stat-value">${data.totalVisits.toLocaleString()}</div>
+                    <div class="stat-value">${(data.totalVisits || 0).toLocaleString()}</div>
                     <div class="stat-change">Last ${currentDays} days</div>
                 </div>
             `;
@@ -348,25 +348,26 @@
             html += `
                 <div class="stat-card">
                     <div class="stat-label">Unique Visitors</div>
-                    <div class="stat-value">${data.uniqueSessions.toLocaleString()}</div>
-                    <div class="stat-change">${data.engagementMetrics.totalSessions || 0} sessions</div>
+                    <div class="stat-value">${(data.uniqueSessions || 0).toLocaleString()}</div>
+                    <div class="stat-change">${(data.engagementMetrics?.totalSessions || 0)} sessions</div>
                 </div>
             `;
             
             html += `
                 <div class="stat-card">
                     <div class="stat-label">Pages / Visit</div>
-                    <div class="stat-value">${data.engagementMetrics.avgPageViews || 0}</div>
+                    <div class="stat-value">${(data.engagementMetrics?.avgPageViews || 0).toFixed(1)}</div>
                     <div class="stat-change">Engagement metric</div>
                 </div>
             `;
             
+            const bounceRate = data.engagementMetrics?.bounceRate || 0;
             html += `
                 <div class="stat-card">
                     <div class="stat-label">Bounce Rate</div>
-                    <div class="stat-value">${data.engagementMetrics.bounceRate || 0}%</div>
-                    <div class="stat-change ${data.engagementMetrics.bounceRate > 50 ? 'negative' : ''}">
-                        ${data.engagementMetrics.bounceRate > 50 ? 'High' : 'Good'}
+                    <div class="stat-value">${bounceRate.toFixed(1)}%</div>
+                    <div class="stat-change ${bounceRate > 50 ? 'negative' : ''}">
+                        ${bounceRate > 50 ? 'High' : 'Good'}
                     </div>
                 </div>
             `;
@@ -508,17 +509,22 @@
             
             container.innerHTML = html;
             
-            // Render charts
-            renderVisitsChart(data.timeSeriesData);
-            renderDeviceChart(data.topDevices);
-            renderPagesChart(data.pages);
-            renderBrowserChart(data.topBrowsers);
+            // Render charts (with fallbacks for empty data)
+            renderVisitsChart(data.timeSeriesData || []);
+            renderDeviceChart(data.topDevices || []);
+            renderPagesChart(data.pages || {});
+            renderBrowserChart(data.topBrowsers || []);
         }
         
         // Render visits line chart
         function renderVisitsChart(timeSeriesData) {
             const ctx = document.getElementById('visitsChart');
             if (!ctx) return;
+            
+            // Handle empty data
+            if (!timeSeriesData || timeSeriesData.length === 0) {
+                timeSeriesData = [{ date: new Date().toISOString().split('T')[0], visits: 0, uniqueSessions: 0 }];
+            }
             
             const labels = timeSeriesData.map(d => {
                 const date = new Date(d.date);
@@ -604,6 +610,11 @@
         function renderPagesChart(pages) {
             const ctx = document.getElementById('pagesChart');
             if (!ctx) return;
+            
+            // Handle empty data
+            if (!pages || Object.keys(pages).length === 0) {
+                pages = { '/': 0 };
+            }
             
             const entries = Object.entries(pages).sort((a, b) => b[1] - a[1]).slice(0, 10);
             const labels = entries.map(([page]) => page === '/' ? 'Home' : page);
