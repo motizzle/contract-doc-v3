@@ -411,7 +411,6 @@
                                     <th>Location</th>
                                     <th>Browser</th>
                                     <th>First Seen</th>
-                                    <th>Last Seen</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -424,7 +423,6 @@
                     const browser = session.device?.browser || 'Unknown';
                     const ip = session.ip || 'Unknown';
                     const firstSeen = session.firstSeen ? new Date(session.firstSeen).toLocaleString() : 'N/A';
-                    const lastSeen = session.lastSeen ? new Date(session.lastSeen).toLocaleString() : 'N/A';
                     
                     html += `
                         <tr>
@@ -433,7 +431,6 @@
                             <td>${location}</td>
                             <td>${browser}</td>
                             <td>${firstSeen}</td>
-                            <td>${lastSeen}</td>
                         </tr>
                     `;
                 });
