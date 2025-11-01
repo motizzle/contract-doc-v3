@@ -209,9 +209,7 @@ function trackVisitJson(page) {
  * @returns {Promise<Object>}
  */
 async function getStats(options = {}) {
-  const days = options.days || 30;
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
+  // Ignore date filter - show ALL TIME stats
   
   if (useDatabase && isMongoConnected) {
     try {
@@ -232,9 +230,8 @@ async function getStats(options = {}) {
         engagementMetrics: {}
       };
       
-      // Get time-series data (visits per day)
+      // Get time-series data (visits per day) - ALL TIME
       const timeSeriesAgg = await eventsCollection.aggregate([
-        { $match: { timestamp: { $gte: startDate } } },
         {
           $group: {
             _id: {
@@ -260,9 +257,8 @@ async function getStats(options = {}) {
         uniqueSessions: d.uniqueSessions
       }));
       
-      // Get total stats for time period
+      // Get total stats - ALL TIME
       const totalStats = await eventsCollection.aggregate([
-        { $match: { timestamp: { $gte: startDate } } },
         {
           $group: {
             _id: null,
@@ -277,9 +273,8 @@ async function getStats(options = {}) {
         stats.uniqueSessions = totalStats[0].uniqueSessions.length;
       }
       
-      // Get page breakdown
+      // Get page breakdown - ALL TIME
       const pageAgg = await eventsCollection.aggregate([
-        { $match: { timestamp: { $gte: startDate } } },
         { $group: { _id: '$page', count: { $sum: 1 } } },
         { $sort: { count: -1 } },
         { $limit: 10 }
@@ -289,9 +284,9 @@ async function getStats(options = {}) {
         stats.pages[p._id] = p.count;
       });
       
-      // Get top locations
+      // Get top locations - ALL TIME
       const locationAgg = await sessionsCollection.aggregate([
-        { $match: { 'location.country': { $exists: true, $ne: null }, lastSeen: { $gte: startDate } } },
+        { $match: { 'location.country': { $exists: true, $ne: null } } },
         {
           $group: {
             _id: {
@@ -313,9 +308,8 @@ async function getStats(options = {}) {
         pageViews: loc.pageViews
       }));
       
-      // Get device breakdown
+      // Get device breakdown - ALL TIME
       const deviceAgg = await sessionsCollection.aggregate([
-        { $match: { lastSeen: { $gte: startDate } } },
         {
           $group: {
             _id: '$device.type',
@@ -330,9 +324,9 @@ async function getStats(options = {}) {
         count: d.count
       }));
       
-      // Get browser breakdown
+      // Get browser breakdown - ALL TIME
       const browserAgg = await sessionsCollection.aggregate([
-        { $match: { lastSeen: { $gte: startDate }, 'device.browser': { $exists: true } } },
+        { $match: { 'device.browser': { $exists: true } } },
         {
           $group: {
             _id: '$device.browser',
@@ -348,9 +342,9 @@ async function getStats(options = {}) {
         count: b.count
       }));
       
-      // Get top referrers
+      // Get top referrers - ALL TIME
       const referrerAgg = await eventsCollection.aggregate([
-        { $match: { timestamp: { $gte: startDate }, referrer: { $ne: 'direct' } } },
+        { $match: { referrer: { $ne: 'direct' } } },
         {
           $group: {
             _id: '$referrer',
@@ -366,9 +360,8 @@ async function getStats(options = {}) {
         count: r.count
       }));
       
-      // Get session analysis (engagement metrics)
+      // Get session analysis (engagement metrics) - ALL TIME
       const sessionStats = await sessionsCollection.aggregate([
-        { $match: { lastSeen: { $gte: startDate } } },
         {
           $group: {
             _id: null,
@@ -406,8 +399,8 @@ async function getStats(options = {}) {
         device: s.device
       }));
       
-      // Get recent visits (last 50)
-      const recent = await eventsCollection.find({ timestamp: { $gte: startDate } })
+      // Get recent visits (last 50) - ALL TIME
+      const recent = await eventsCollection.find({})
         .sort({ timestamp: -1 })
         .limit(50)
         .toArray();

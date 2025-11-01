@@ -249,13 +249,10 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📊 Analytics Pro Dashboard</h1>
-            <p id="env-subtitle" style="color: #666; margin-top: 5px;">Real-time visitor analytics with trends and insights</p>
+            <h1>📊 Analytics Dashboard</h1>
+            <p id="env-subtitle" style="color: #666; margin-top: 5px;">All-time visitor analytics</p>
             
             <div class="header-controls">
-                <button class="secondary active" data-days="7" onclick="changeDateRange(7)">Last 7 Days</button>
-                <button class="secondary" data-days="30" onclick="changeDateRange(30)">Last 30 Days</button>
-                <button class="secondary" data-days="90" onclick="changeDateRange(90)">Last 90 Days</button>
                 <button class="primary" onclick="loadStats()">🔄 Refresh</button>
                 <button class="secondary" onclick="toggleAutoRefresh()">⏱️ Auto: <span id="auto-status">OFF</span></button>
             </div>
@@ -270,22 +267,8 @@
     </div>
     
     <script>
-        let currentDays = 7;
         let autoRefreshInterval = null;
         let charts = {};
-        
-        // Change date range
-        function changeDateRange(days) {
-            currentDays = days;
-            
-            // Update button states
-            document.querySelectorAll('[data-days]').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelector(`[data-days="${days}"]`).classList.add('active');
-            
-            loadStats();
-        }
         
         // Toggle auto-refresh
         function toggleAutoRefresh() {
@@ -307,7 +290,7 @@
             const container = document.getElementById('stats-container');
             
             try {
-                const response = await fetch(`/api/analytics/stats?days=${currentDays}`);
+                const response = await fetch('/api/analytics/stats');
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 
                 const data = await response.json();
@@ -341,7 +324,7 @@
                 <div class="stat-card">
                     <div class="stat-label">Total Visits</div>
                     <div class="stat-value">${(data.totalVisits || 0).toLocaleString()}</div>
-                    <div class="stat-change">Last ${currentDays} days</div>
+                    <div class="stat-change">All time</div>
                 </div>
             `;
             
@@ -349,26 +332,7 @@
                 <div class="stat-card">
                     <div class="stat-label">Unique Visitors</div>
                     <div class="stat-value">${(data.uniqueSessions || 0).toLocaleString()}</div>
-                    <div class="stat-change">${(data.engagementMetrics?.totalSessions || 0)} sessions</div>
-                </div>
-            `;
-            
-            html += `
-                <div class="stat-card">
-                    <div class="stat-label">Pages / Visit</div>
-                    <div class="stat-value">${(data.engagementMetrics?.avgPageViews || 0).toFixed(1)}</div>
-                    <div class="stat-change">Engagement metric</div>
-                </div>
-            `;
-            
-            const bounceRate = data.engagementMetrics?.bounceRate || 0;
-            html += `
-                <div class="stat-card">
-                    <div class="stat-label">Bounce Rate</div>
-                    <div class="stat-value">${bounceRate.toFixed(1)}%</div>
-                    <div class="stat-change ${bounceRate > 50 ? 'negative' : ''}">
-                        ${bounceRate > 50 ? 'High' : 'Good'}
-                    </div>
+                    <div class="stat-change">Unique sessions</div>
                 </div>
             `;
             
@@ -383,16 +347,6 @@
                     <div class="chart-title">📈 Visits Over Time</div>
                     <div class="chart-container">
                         <canvas id="visitsChart"></canvas>
-                    </div>
-                </div>
-            `;
-            
-            // Bar chart - Top pages
-            html += `
-                <div class="chart-card">
-                    <div class="chart-title">📄 Top Pages</div>
-                    <div class="chart-container">
-                        <canvas id="pagesChart"></canvas>
                     </div>
                 </div>
             `;
@@ -505,7 +459,6 @@
             
             // Render charts (with fallbacks for empty data)
             renderVisitsChart(data.timeSeriesData || []);
-            renderPagesChart(data.pages || {});
             renderBrowserChart(data.topBrowsers || []);
         }
         
@@ -554,52 +507,6 @@
                         legend: {
                             display: true,
                             position: 'top'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                precision: 0
-                            }
-                        }
-                    }
-                }
-            });
-        }
-        
-        // Render pages bar chart
-        function renderPagesChart(pages) {
-            const ctx = document.getElementById('pagesChart');
-            if (!ctx) return;
-            
-            // Handle empty data
-            if (!pages || Object.keys(pages).length === 0) {
-                pages = { '/': 0 };
-            }
-            
-            const entries = Object.entries(pages).sort((a, b) => b[1] - a[1]).slice(0, 10);
-            const labels = entries.map(([page]) => page === '/' ? 'Home' : page);
-            const data = entries.map(([, count]) => count);
-            
-            charts.pages = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Page Views',
-                        data: data,
-                        backgroundColor: 'rgba(102, 126, 234, 0.8)',
-                        borderColor: '#667eea',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
                         }
                     },
                     scales: {
