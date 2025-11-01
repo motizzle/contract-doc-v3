@@ -926,7 +926,7 @@
                         if (res && res.ok) {
                           const buf = await res.arrayBuffer();
                           const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
-                          await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
+                          await Word.run(async (context) => { context.document.body.clear(); await context.sync(); context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
                           
                               console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: factoryReset (add-in)`);
                               setLoadedVersion(v); 
@@ -1072,7 +1072,10 @@
                 
                 console.log(`📄 [Global] Base64 length: ${b64.length}, calling Word.run...`);
                 await Word.run(async (context) => {
-                  console.log(`📄 [Global] Inside Word.run, replacing document body...`);
+                  console.log(`📄 [Global] Inside Word.run, clearing document first...`);
+                  context.document.body.clear();
+                  await context.sync();
+                  console.log(`📄 [Global] Document cleared, now replacing document body...`);
                   context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace);
                   await context.sync();
                   console.log(`📄 [Global] Word.run sync complete`);
@@ -1163,7 +1166,10 @@
                   
                   console.log(`📄 [INITIAL LOAD] Calling Word.run()...`);
                 await Word.run(async (context) => { 
-                    console.log(`📄 [INITIAL LOAD] Inside Word.run, calling insertFileFromBase64...`);
+                    console.log(`📄 [INITIAL LOAD] Inside Word.run, clearing document first...`);
+                  context.document.body.clear();
+                  await context.sync();
+                    console.log(`📄 [INITIAL LOAD] Document cleared, now calling insertFileFromBase64...`);
                   context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); 
                     console.log(`📄 [INITIAL LOAD] Calling context.sync()...`);
                   await context.sync(); 
@@ -1218,7 +1224,7 @@
               const res = await fetch(withRev, { cache: 'no-store' }); if (!res.ok) throw new Error('download');
               const buf = await res.arrayBuffer();
               const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
-              await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
+              await Word.run(async (context) => { context.document.body.clear(); await context.sync(); context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
             } else {
               setDocumentSource(withRev);
               addLog(`doc src userSwitch -> ${withRev}`, 'document');
@@ -1455,7 +1461,7 @@
                       if (res && res.ok) {
                         const buf = await res.arrayBuffer();
                         const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
-                        await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
+                        await Word.run(async (context) => { context.document.body.clear(); await context.sync(); context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
                       }
                     } else {
                       // Load latest document in Web
@@ -1501,7 +1507,7 @@
             const res = await fetch(withRev, { cache: 'no-store' }); if (!res.ok) throw new Error('download');
             const buf = await res.arrayBuffer();
             const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
-            await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
+            await Word.run(async (context) => { context.document.body.clear(); await context.sync(); context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
           } else {
             setDocumentSource(withRev);
             addLog(`doc src refreshNow -> ${withRev}`);
@@ -1603,7 +1609,7 @@
           input.onchange = async (e) => {
             const file = e.target.files && e.target.files[0]; if (!file) return;
             const buf = await file.arrayBuffer(); const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
-            try { await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); }); } catch {}
+            try { await Word.run(async (context) => { context.document.body.clear(); await context.sync(); context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); }); } catch {}
           };
           input.click();
         } else {
@@ -4892,7 +4898,7 @@
           input.onchange = async (e) => {
             const file = e.target.files && e.target.files[0]; if (!file) return;
             const buf = await file.arrayBuffer(); const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
-            try { await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); }); } catch {}
+            try { await Word.run(async (context) => { context.document.body.clear(); await context.sync(); context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); }); } catch {}
           };
           input.click();
         } else {

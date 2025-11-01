@@ -121,7 +121,7 @@ switch ($Action) {
       Write-Host "ERROR: Port 4001 (Backend) failed to start" -ForegroundColor Red
       Write-Host "Check the 'WordFTW Backend Server' window for errors" -ForegroundColor Yellow
       Write-Host "Common issues:" -ForegroundColor Yellow
-      Write-Host "  - Missing node_modules (run: cd server && npm install)" -ForegroundColor Yellow
+      Write-Host "  - Missing node_modules (run 'npm install' in server folder)" -ForegroundColor Yellow
       Write-Host "  - Port already in use" -ForegroundColor Yellow
       Write-Host "  - Environment variable issues" -ForegroundColor Yellow
       exit 1
@@ -133,7 +133,7 @@ switch ($Action) {
       Write-Host "ERROR: Port 4000 (Add-in Dev Server) failed to start" -ForegroundColor Red
       Write-Host "Check the 'WordFTW Add-in Dev Server' window for errors" -ForegroundColor Yellow
       Write-Host "Common issues:" -ForegroundColor Yellow
-      Write-Host "  - Missing node_modules (run: cd addin && npm install)" -ForegroundColor Yellow
+      Write-Host "  - Missing node_modules (run 'npm install' in addin folder)" -ForegroundColor Yellow
       Write-Host "  - Webpack configuration issues" -ForegroundColor Yellow
       exit 1
     }

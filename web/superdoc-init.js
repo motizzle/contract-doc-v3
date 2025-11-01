@@ -385,6 +385,16 @@ try {
     g.SuperDocBridge.open = function open(doc, options = {}) {
       const selector = '#superdoc';
       const toolbar = '#superdoc-toolbar';
+      
+      // Destroy old instance FIRST to prevent flashing old content
+      try {
+        if (g.superdocInstance && typeof g.superdocInstance.destroy === 'function') {
+          g.superdocInstance.destroy();
+          g.superdocInstance = null;
+        }
+      } catch {}
+      
+      // Clear and replace DOM nodes after destroying instance
       try {
         const oldToolbar = document.getElementById('superdoc-toolbar');
         const oldContainer = document.getElementById('superdoc');
