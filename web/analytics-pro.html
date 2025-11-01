@@ -373,8 +373,6 @@
                                 <tr>
                                     <th>Location</th>
                                     <th>Sessions</th>
-                                    <th>Page Views</th>
-                                    <th>Pages/Session</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -384,14 +382,11 @@
                     const locationText = loc.city && loc.city !== 'Unknown' 
                         ? `${loc.city}, ${loc.country}` 
                         : loc.country || 'Unknown';
-                    const pagesPerSession = (loc.pageViews / loc.sessions).toFixed(1);
                     
                     html += `
                         <tr>
                             <td><strong>${getCountryFlag(loc.country)} ${locationText}</strong></td>
                             <td>${loc.sessions.toLocaleString()}</td>
-                            <td>${loc.pageViews.toLocaleString()}</td>
-                            <td>${pagesPerSession}</td>
                         </tr>
                     `;
                 });
@@ -415,17 +410,14 @@
                                     <th>Session ID</th>
                                     <th>Location</th>
                                     <th>Browser</th>
-                                    <th>Pages</th>
                                     <th>First Seen</th>
                                     <th>Last Seen</th>
-                                    <th>Duration</th>
                                 </tr>
                             </thead>
                             <tbody>
                 `;
                 
                 data.sessionAnalysis.forEach(session => {
-                    const duration = formatDuration(session.duration);
                     const location = session.location && session.location.country 
                         ? `${getCountryFlag(session.location.country)} ${session.location.city || session.location.country}` 
                         : 'Unknown';
@@ -440,10 +432,8 @@
                             <td><code title="${session.sessionId}">${session.sessionId.substring(0, 8)}...</code></td>
                             <td>${location}</td>
                             <td>${browser}</td>
-                            <td><strong>${session.pageViews}</strong></td>
                             <td>${firstSeen}</td>
                             <td>${lastSeen}</td>
-                            <td>${duration}</td>
                         </tr>
                     `;
                 });
