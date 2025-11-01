@@ -132,12 +132,16 @@ function saveJsonFallback() {
  * @param {Object} visitData.device - Device info {type, browser, os}
  */
 async function trackVisit(visitData) {
+  console.log(`🔧 [trackVisit] Called with page: ${visitData.page}, useDatabase: ${useDatabase}, isMongoConnected: ${isMongoConnected}`);
+  
   if (useDatabase && isMongoConnected) {
     try {
       const now = new Date();
       
+      console.log(`🔧 [trackVisit] Writing to MongoDB for page: ${visitData.page}`);
+      
       // 1. Track page visit counts (summary)
-      await analyticsCollection.updateOne(
+      const result1 = await analyticsCollection.updateOne(
         { page: visitData.page },
         { 
           $inc: { count: 1 },
@@ -145,10 +149,11 @@ async function trackVisit(visitData) {
         },
         { upsert: true }
       );
+      console.log(`✅ [trackVisit] page_visits updated: matched=${result1.matchedCount}, modified=${result1.modifiedCount}, upserted=${result1.upsertedCount}`);
       
       // 2. Track individual visit event (detailed)
       const eventsCollection = mongoClient.db('wordftw_analytics').collection('visit_events');
-      await eventsCollection.insertOne({
+      const result2 = await eventsCollection.insertOne({
         page: visitData.page,
         sessionId: visitData.sessionId,
         ip: visitData.ip,
@@ -158,10 +163,11 @@ async function trackVisit(visitData) {
         device: visitData.device || {},
         timestamp: now
       });
+      console.log(`✅ [trackVisit] visit_events inserted: ${result2.insertedId}`);
       
       // 3. Track session info
       const sessionsCollection = mongoClient.db('wordftw_analytics').collection('sessions');
-      await sessionsCollection.updateOne(
+      const result3 = await sessionsCollection.updateOne(
         { sessionId: visitData.sessionId },
         {
           $set: {
@@ -176,13 +182,18 @@ async function trackVisit(visitData) {
         },
         { upsert: true }
       );
+      console.log(`✅ [trackVisit] sessions updated: matched=${result3.matchedCount}, modified=${result3.modifiedCount}, upserted=${result3.upsertedCount}`);
+      console.log(`✅ [trackVisit] ALL MongoDB writes completed successfully`);
       
     } catch (error) {
-      console.error('❌ MongoDB track visit error:', error.message);
+      console.error('❌ [trackVisit] MongoDB error:', error.message);
+      console.error('❌ [trackVisit] Full error:', error);
+      console.error('❌ [trackVisit] Error stack:', error.stack);
       // Fall back to JSON for this request
       trackVisitJson(visitData.page);
     }
   } else {
+    console.log(`⚠️  [trackVisit] Falling back to JSON: useDatabase=${useDatabase}, isMongoConnected=${isMongoConnected}`);
     trackVisitJson(visitData.page);
   }
 }
