@@ -38,8 +38,10 @@ async function initialize(mongoUri, dataAppDir) {
       
       // Connect to MongoDB
       mongoClient = new MongoClient(mongoUri, {
-        serverSelectionTimeoutMS: 10000, // 10 second timeout (increased)
+        serverSelectionTimeoutMS: 10000,
         connectTimeoutMS: 10000,
+        tls: true,
+        tlsAllowInvalidCertificates: true, // Allow self-signed certs (needed for some Atlas configs)
       });
       
       console.log('🔧 [initialize] MongoClient created, calling connect()...');
