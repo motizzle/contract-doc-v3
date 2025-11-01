@@ -2103,6 +2103,8 @@ function trackPageVisit(req, res, next) {
   // Only track in production (skip localhost/development)
   const isProduction = process.env.NODE_ENV === 'production';
   
+  console.log(`📊 [ANALYTICS] Visit to ${page} - Production: ${isProduction}`);
+  
   if (isProduction) {
     // Generate session fingerprint (NO COOKIES!)
     // This is a server-side hash that doesn't store anything on client
@@ -2138,10 +2140,19 @@ function trackPageVisit(req, res, next) {
       device
     };
     
+    console.log(`📊 [ANALYTICS] Tracking visit - IP: ${visitData.ip}, Session: ${sessionId.substring(0, 12)}..., Browser: ${device.browser}`);
+    
     // Track asynchronously (don't block the request)
-    analyticsDb.trackVisit(visitData).catch(err => {
-      console.error('❌ Track visit error:', err.message);
-    });
+    analyticsDb.trackVisit(visitData)
+      .then(() => {
+        console.log(`✅ [ANALYTICS] Visit tracked successfully`);
+      })
+      .catch(err => {
+        console.error('❌ [ANALYTICS] Track visit error:', err.message);
+        console.error('Full error:', err);
+      });
+  } else {
+    console.log(`⏭️  [ANALYTICS] Skipping tracking (not production)`);
   }
   
   next();
