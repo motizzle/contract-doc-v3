@@ -23,10 +23,14 @@ let useDatabase = false;
 async function initialize(mongoUri, dataAppDir) {
   jsonFilePath = path.join(dataAppDir, 'analytics.json');
   
+  console.log(`🔧 [initialize] mongoUri provided: ${!!mongoUri}`);
+  console.log(`🔧 [initialize] mongoUri length: ${mongoUri ? mongoUri.length : 0}`);
+  
   // Try MongoDB if connection string provided
   if (mongoUri) {
     try {
       console.log('📊 Connecting to MongoDB for analytics...');
+      console.log(`🔧 [initialize] Attempting connection to: ${mongoUri.substring(0, 30)}...`);
       
       // Lazy-load MongoDB driver
       const mongodb = require('mongodb');
@@ -34,36 +38,46 @@ async function initialize(mongoUri, dataAppDir) {
       
       // Connect to MongoDB
       mongoClient = new MongoClient(mongoUri, {
-        serverSelectionTimeoutMS: 5000, // 5 second timeout
-        connectTimeoutMS: 5000,
+        serverSelectionTimeoutMS: 10000, // 10 second timeout (increased)
+        connectTimeoutMS: 10000,
       });
       
+      console.log('🔧 [initialize] MongoClient created, calling connect()...');
       await mongoClient.connect();
+      console.log('🔧 [initialize] connect() completed successfully');
       
       // Get database and collection
       const db = mongoClient.db('wordftw_analytics');
       analyticsCollection = db.collection('page_visits');
       
+      console.log('🔧 [initialize] Got database and collection, creating index...');
       // Create index on page path for faster queries
       await analyticsCollection.createIndex({ page: 1 });
       
       isMongoConnected = true;
       useDatabase = true;
       
-      console.log('✅ MongoDB connected for analytics');
+      console.log(`✅ MongoDB connected for analytics - isMongoConnected=${isMongoConnected}, useDatabase=${useDatabase}`);
       
       // Migrate existing JSON data if it exists
       await migrateFromJson();
       
     } catch (error) {
-      console.warn('⚠️  MongoDB connection failed, falling back to JSON file:', error.message);
+      console.error('❌ MongoDB connection failed, falling back to JSON file:', error.message);
+      console.error('❌ Full error:', error);
+      console.error('❌ Error stack:', error.stack);
       useDatabase = false;
+      isMongoConnected = false;
       loadJsonFallback();
     }
   } else {
     console.log('📊 No MongoDB URI provided, using JSON file for analytics');
+    useDatabase = false;
+    isMongoConnected = false;
     loadJsonFallback();
   }
+  
+  console.log(`🔧 [initialize] Completed - useDatabase=${useDatabase}, isMongoConnected=${isMongoConnected}`);
 }
 
 /**
