@@ -390,15 +390,12 @@ async function getStats(options = {}) {
         };
       }
       
-      // Get user session details (top sessions by activity)
-      const topSessions = await sessionsCollection.find({
-        lastSeen: { $gte: startDate }
-      })
+      // Get ALL user sessions (no date filter, no limit)
+      const allSessions = await sessionsCollection.find({})
         .sort({ lastSeen: -1 })  // Sort by most recent first
-        .limit(100)  // Show up to 100 sessions
         .toArray();
       
-      stats.sessionAnalysis = topSessions.map(s => ({
+      stats.sessionAnalysis = allSessions.map(s => ({
         sessionId: s.sessionId,
         ip: s.ip,
         pageViews: s.pageViews,
