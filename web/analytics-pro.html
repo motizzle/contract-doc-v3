@@ -175,6 +175,66 @@
             font-size: 13px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+        
+        th:hover {
+            background: #e9ecef;
+        }
+        
+        th.sortable::after {
+            content: ' ⇅';
+            opacity: 0.3;
+            font-size: 12px;
+        }
+        
+        th.sort-asc::after {
+            content: ' ↑';
+            opacity: 1;
+            color: #667eea;
+        }
+        
+        th.sort-desc::after {
+            content: ' ↓';
+            opacity: 1;
+            color: #667eea;
+        }
+        
+        .table-filter {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .filter-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        
+        .filter-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .filter-select {
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            background: white;
+        }
+        
+        .filter-select:focus {
+            outline: none;
+            border-color: #667eea;
         }
         
         td {
@@ -368,11 +428,14 @@
                 html += `
                     <div class="section">
                         <div class="section-title">🌍 Top Locations</div>
-                        <table>
+                        <div class="table-filter">
+                            <input type="text" id="location-filter" class="filter-input" placeholder="🔍 Filter by location...">
+                        </div>
+                        <table id="locations-table">
                             <thead>
                                 <tr>
-                                    <th>Location</th>
-                                    <th>Sessions</th>
+                                    <th class="sortable" data-column="0" data-type="text">Location</th>
+                                    <th class="sortable" data-column="1" data-type="number">Sessions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -402,15 +465,21 @@
             if (data.sessionAnalysis && data.sessionAnalysis.length > 0) {
                 html += `
                     <div class="section">
-                        <div class="section-title">👥 All User Sessions (${data.sessionAnalysis.length} visitors)</div>
-                        <table>
+                        <div class="section-title">👥 All User Sessions (<span id="session-count">${data.sessionAnalysis.length}</span> visitors)</div>
+                        <div class="table-filter">
+                            <input type="text" id="session-filter" class="filter-input" placeholder="🔍 Filter by IP, location, or browser...">
+                            <select id="browser-filter" class="filter-select">
+                                <option value="">All Browsers</option>
+                            </select>
+                        </div>
+                        <table id="sessions-table">
                             <thead>
                                 <tr>
-                                    <th>IP Address</th>
-                                    <th>Session ID</th>
-                                    <th>Location</th>
-                                    <th>Browser</th>
-                                    <th>First Seen</th>
+                                    <th class="sortable" data-column="0" data-type="text">IP Address</th>
+                                    <th class="sortable" data-column="1" data-type="text">Session ID</th>
+                                    <th class="sortable" data-column="2" data-type="text">Location</th>
+                                    <th class="sortable" data-column="3" data-type="text">Browser</th>
+                                    <th class="sortable" data-column="4" data-type="date">First Seen</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -447,6 +516,10 @@
             // Render charts (with fallbacks for empty data)
             renderVisitsChart(data.timeSeriesData || []);
             renderBrowserChart(data.topBrowsers || []);
+            
+            // Set up table sorting and filtering
+            setupTableSorting();
+            setupTableFiltering(data);
         }
         
         // Render visits line chart
@@ -556,6 +629,144 @@
             if (minutes < 60) return `${minutes}m`;
             const hours = Math.floor(minutes / 60);
             return `${hours}h ${minutes % 60}m`;
+        }
+        
+        // Set up table sorting
+        function setupTableSorting() {
+            document.querySelectorAll('th.sortable').forEach(header => {
+                header.addEventListener('click', function() {
+                    const table = this.closest('table');
+                    const tbody = table.querySelector('tbody');
+                    const rows = Array.from(tbody.querySelectorAll('tr'));
+                    const columnIndex = parseInt(this.dataset.column);
+                    const dataType = this.dataset.type;
+                    
+                    // Determine sort direction
+                    const isAsc = this.classList.contains('sort-asc');
+                    const isDesc = this.classList.contains('sort-desc');
+                    
+                    // Reset all headers in this table
+                    table.querySelectorAll('th.sortable').forEach(h => {
+                        h.classList.remove('sort-asc', 'sort-desc');
+                    });
+                    
+                    // Set new sort direction
+                    if (!isAsc && !isDesc) {
+                        this.classList.add('sort-asc');
+                    } else if (isAsc) {
+                        this.classList.add('sort-desc');
+                    } else {
+                        this.classList.add('sort-asc');
+                    }
+                    
+                    const sortDirection = this.classList.contains('sort-asc') ? 1 : -1;
+                    
+                    // Sort rows
+                    rows.sort((a, b) => {
+                        let aVal = a.cells[columnIndex].textContent.trim();
+                        let bVal = b.cells[columnIndex].textContent.trim();
+                        
+                        if (dataType === 'number') {
+                            aVal = parseFloat(aVal.replace(/,/g, '')) || 0;
+                            bVal = parseFloat(bVal.replace(/,/g, '')) || 0;
+                            return (aVal - bVal) * sortDirection;
+                        } else if (dataType === 'date') {
+                            aVal = new Date(aVal).getTime() || 0;
+                            bVal = new Date(bVal).getTime() || 0;
+                            return (aVal - bVal) * sortDirection;
+                        } else {
+                            return aVal.localeCompare(bVal) * sortDirection;
+                        }
+                    });
+                    
+                    // Reorder table rows
+                    rows.forEach(row => tbody.appendChild(row));
+                });
+            });
+        }
+        
+        // Set up table filtering
+        function setupTableFiltering(data) {
+            // Location table filter
+            const locationFilter = document.getElementById('location-filter');
+            if (locationFilter) {
+                locationFilter.addEventListener('input', function() {
+                    filterTable('locations-table', this.value, [0]);
+                });
+            }
+            
+            // Session table filter
+            const sessionFilter = document.getElementById('session-filter');
+            if (sessionFilter) {
+                sessionFilter.addEventListener('input', function() {
+                    filterTable('sessions-table', this.value, [0, 2, 3]); // IP, Location, Browser
+                    updateSessionCount();
+                });
+            }
+            
+            // Browser dropdown filter
+            const browserFilter = document.getElementById('browser-filter');
+            if (browserFilter && data.sessionAnalysis) {
+                // Populate browser options
+                const browsers = [...new Set(data.sessionAnalysis.map(s => s.device?.browser || 'Unknown'))];
+                browsers.sort().forEach(browser => {
+                    const option = document.createElement('option');
+                    option.value = browser;
+                    option.textContent = browser;
+                    browserFilter.appendChild(option);
+                });
+                
+                // Handle browser filter change
+                browserFilter.addEventListener('change', function() {
+                    const table = document.getElementById('sessions-table');
+                    if (!table) return;
+                    
+                    const rows = table.querySelectorAll('tbody tr');
+                    const filterValue = this.value.toLowerCase();
+                    
+                    rows.forEach(row => {
+                        const browserCell = row.cells[3].textContent.toLowerCase();
+                        if (!filterValue || browserCell.includes(filterValue)) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                    
+                    updateSessionCount();
+                });
+            }
+        }
+        
+        // Helper: Filter table rows
+        function filterTable(tableId, searchValue, columnIndices) {
+            const table = document.getElementById(tableId);
+            if (!table) return;
+            
+            const rows = table.querySelectorAll('tbody tr');
+            const search = searchValue.toLowerCase();
+            
+            rows.forEach(row => {
+                let found = false;
+                columnIndices.forEach(index => {
+                    const cellText = row.cells[index].textContent.toLowerCase();
+                    if (cellText.includes(search)) {
+                        found = true;
+                    }
+                });
+                
+                row.style.display = found ? '' : 'none';
+            });
+        }
+        
+        // Helper: Update session count
+        function updateSessionCount() {
+            const table = document.getElementById('sessions-table');
+            const countSpan = document.getElementById('session-count');
+            if (!table || !countSpan) return;
+            
+            const visibleRows = Array.from(table.querySelectorAll('tbody tr')).filter(row => row.style.display !== 'none');
+            countSpan.textContent = visibleRows.length;
         }
         
         // Load on page load
