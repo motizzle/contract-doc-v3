@@ -811,9 +811,10 @@
                     setServerVersion('Announcement');
                     setReleaseNotes(p.message);
                     setUpdateAvailable(true);
-                    // Store the announcement ID so we can mark it as seen when dismissed
+                    // Mark as seen immediately so they don't see it again if they close/reopen
+                    // (even if they don't dismiss the modal)
                     try {
-                      localStorage.setItem('currentAnnouncementId', p.id);
+                      localStorage.setItem('lastSeenAnnouncement', p.id);
                     } catch {}
                   }
                 } catch (err) {
@@ -1131,20 +1132,6 @@
       React.useEffect(() => {
         (async () => {
           try {
-            // Get the preferred document URL
-            const w = `${API_BASE}/documents/working/default.docx`;
-            const c = `${API_BASE}/documents/canonical/default.docx`;
-            let url = c;
-            try {
-              const h = await fetch(w, { method: 'HEAD' });
-              if (h.ok) {
-                const len = Number(h.headers.get('content-length') || '0');
-                if (Number.isFinite(len) && len > MIN_DOCX_SIZE) url = w;
-              }
-            } catch {}
-            
-            const finalUrl = `${url}?rev=${Date.now()}`;
-            
             // Initialize version from state-matrix
             let initialVersion = 1;
             try {
@@ -1160,6 +1147,9 @@
                 // The documentSource will be set below, which handles the initial load
               }
             } catch {}
+            
+            // Load the specific version from the versions API, not the generic default.docx
+            const finalUrl = `${API_BASE}/api/v1/versions/${initialVersion}?rev=${Date.now()}`;
             
             // Load document into Word or Web
             if (typeof Office !== 'undefined') {
@@ -2011,17 +2001,9 @@
       
       const handleDismissUpdate = () => {
         // Dismiss for this session
+        // Note: Announcements are already marked as seen when received,
+        // so they won't reappear even if user closes without dismissing
         if (setUpdateDismissed) setUpdateDismissed(true);
-        
-        // If this is an announcement, mark it as seen so it doesn't reappear
-        try {
-          const announcementId = localStorage.getItem('currentAnnouncementId');
-          if (announcementId) {
-            localStorage.setItem('lastSeenAnnouncement', announcementId);
-            localStorage.removeItem('currentAnnouncementId');
-            console.log(`📢 [Announcement] Marked as seen (ID: ${announcementId})`);
-          }
-        } catch {}
       };
 
       return React.createElement('div', { ref: rootRef, className: 'd-flex flex-column gap-6' },
