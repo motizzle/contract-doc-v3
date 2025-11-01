@@ -47,36 +47,13 @@
     
     window.addEventListener('load', async () => {
       try {
+        // Preload SuperDoc library but don't mount yet - let React handle mounting via SuperDocHost
         await ensureSuperDocLoaded();
-        
-        // Get current user's role and mode
-        const userRole = getCurrentRole();
-        const documentMode = getModeForRole(userRole);
-        
-        // Mount SuperDoc editor with comments enabled
-        // Add cache-busting parameter to prevent browser from showing stale document
-        const docUrl = `/documents/working/default.docx?_=${Date.now()}`;
-        mountSuperdoc({
-          selector: '#superdoc',
-          toolbar: '#superdoc-toolbar',
-          document: docUrl,
-          role: userRole,
-          documentMode: documentMode,
-          user: {
-            name: getUserDisplayName(),
-            email: getUserEmail()
-          },
-          pagination: true,
-          rulers: true,
-          // No external comments container; SuperDoc renders comments inline
-          onCommentsUpdate: handleCommentEvent
-        });
-        console.log('✅ SuperDoc mounted in web viewer with comments enabled');
-        console.log('👤 User:', getUserDisplayName(), '| Role:', userRole, '| Mode:', documentMode);
+        console.log('✅ SuperDoc library loaded, waiting for React to mount editor');
       } catch (error) {
-        console.error('❌ Failed to load SuperDoc:', error);
+        console.error('❌ Failed to load SuperDoc library:', error);
       }
-      // Phase 2 will unify mount; keep single-shot call for now to preserve behavior
+      // Mount React app which will handle SuperDoc initialization via SuperDocHost
       try { if (window.mountReactApp && window.React && window.ReactDOM) window.mountReactApp({ rootSelector: '#app-root' }); } catch {}
     });
   </script>

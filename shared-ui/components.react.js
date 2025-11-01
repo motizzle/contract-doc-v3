@@ -1137,7 +1137,8 @@
                 setLoadedVersion(initialVersion);
                 
                 try { setViewingVersion(initialVersion); } catch {}
-                try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: initialVersion, payload: { messagePlatform: typeof Office !== 'undefined' ? 'word' : 'web' } } })); } catch {}
+                // Do NOT dispatch version:view event here - it causes duplicate document loads
+                // The documentSource will be set below, which handles the initial load
               }
             } catch {}
             
