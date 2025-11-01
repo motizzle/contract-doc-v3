@@ -258,11 +258,16 @@ async function getStats(options = {}) {
       };
       
       // Get time-series data (visits per day) - ALL TIME
+      // Use Pacific Time (America/Los_Angeles) for date grouping
       const timeSeriesAgg = await eventsCollection.aggregate([
         {
           $group: {
             _id: {
-              $dateToString: { format: '%Y-%m-%d', date: '$timestamp' }
+              $dateToString: { 
+                format: '%Y-%m-%d', 
+                date: '$timestamp',
+                timezone: 'America/Los_Angeles'
+              }
             },
             visits: { $sum: 1 },
             uniqueSessions: { $addToSet: '$sessionId' }
