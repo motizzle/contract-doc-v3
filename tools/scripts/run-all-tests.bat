@@ -75,11 +75,12 @@ if %UI_RESULT% EQU 0 (
 echo ========================================
 echo.
 
+:: Always pause to show results before cleanup
+echo Press any key to cleanup and exit...
+pause >nul
+
 :CLEANUP
+echo.
 echo Cleaning up...
 taskkill /F /IM node.exe >nul 2>&1
-echo.
-echo ========================================
-echo Done! Press any key to close...
-echo ========================================
-pause >nul
+echo Done!
