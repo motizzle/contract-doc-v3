@@ -1,4 +1,10 @@
 @echo off
+:: FORCE window to stay open by starting in a new persistent cmd window
+if "%PERSISTENT_WINDOW%"=="" (
+    start "Test Results - DO NOT CLOSE" cmd /k "%~f0" PERSISTENT_WINDOW
+    exit
+)
+
 setlocal enabledelayedexpansion
 
 echo ========================================
@@ -83,6 +89,7 @@ echo.
 :END
 echo.
 echo ========================================
-echo Press any key to close this window...
+echo Window will stay open - you can scroll back to review results
+echo Close this window when done
 echo ========================================
-pause >nul
+echo.
