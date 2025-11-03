@@ -48,13 +48,13 @@ echo.
 
 :: Run API tests
 echo [1/2] Running API tests (Jest)...
-npm test
+call npm test
 set API_RESULT=%ERRORLEVEL%
 echo.
 
 :: Run UI tests
 echo [2/2] Running UI tests (Playwright)...
-npm run test:ui
+call npm run test:ui
 set UI_RESULT=%ERRORLEVEL%
 echo.
 
