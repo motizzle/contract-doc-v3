@@ -86,4 +86,3 @@ echo ========================================
 echo Press any key to close this window...
 echo ========================================
 pause >nul
-exit /b
