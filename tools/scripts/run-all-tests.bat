@@ -12,10 +12,10 @@ taskkill /F /IM node.exe >nul 2>&1
 timeout /t 2 /nobreak >nul
 echo.
 
-:: Start backend server in background
-echo Starting backend server (port 4001)...
+:: Start backend server in background (TEST MODE)
+echo Starting backend server (port 4001) in test mode...
 cd "%~dp0..\..\server"
-start /MIN cmd /c "npm start"
+start /MIN cmd /c "set NODE_ENV=test&& npm start"
 echo.
 
 :: Wait for server to be ready (check health endpoint)
@@ -34,6 +34,9 @@ if %RETRY% LSS 15 (
     goto WAIT_LOOP
 )
 echo ERROR: Server failed to start after 30 seconds
+echo.
+echo Press any key to exit...
+pause >nul
 goto CLEANUP
 
 :SERVER_READY
@@ -76,5 +79,7 @@ echo.
 echo Cleaning up...
 taskkill /F /IM node.exe >nul 2>&1
 echo.
-echo Done!
-pause
+echo ========================================
+echo Done! Press any key to close...
+echo ========================================
+pause >nul
