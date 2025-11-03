@@ -1465,6 +1465,22 @@ function sendToUser(userId, platform, event) {
   }
 }
 
+// Broadcast announcement to all connected clients
+function broadcastAnnouncement(message) {
+  if (!message) return;
+  
+  const announcementId = Date.now().toString();
+  console.log(`📢 Broadcasting announcement (ID: ${announcementId}) to ${sseClients.size} clients`);
+  
+  broadcast({ 
+    type: 'announcement', 
+    message: message,
+    id: announcementId
+  });
+  
+  return { id: announcementId, recipients: sseClients.size };
+}
+
 // Express app
 const app = express();
 app.use(compression());
@@ -2037,11 +2053,21 @@ analyticsDb.initialize(MONGODB_URI, dataAppDir)
 
 // Helper: Get client IP address (works with proxies/load balancers)
 function getClientIp(req) {
-  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-         req.headers['x-real-ip'] ||
-         req.connection?.remoteAddress ||
-         req.socket?.remoteAddress ||
+  const xForwardedFor = req.headers['x-forwarded-for'];
+  const xRealIp = req.headers['x-real-ip'];
+  const remoteAddr = req.connection?.remoteAddress || req.socket?.remoteAddress;
+  
+  // Debug log all IP sources
+  console.log(`🔍 [IP DEBUG] x-forwarded-for: ${xForwardedFor}, x-real-ip: ${xRealIp}, remoteAddress: ${remoteAddr}`);
+  
+  const finalIp = xForwardedFor?.split(',')[0]?.trim() ||
+         xRealIp ||
+         remoteAddr ||
          'unknown';
+  
+  console.log(`🔍 [IP DEBUG] Final IP used: ${finalIp}`);
+  
+  return finalIp;
 }
 
 // Helper: Parse user agent for device info
@@ -2086,14 +2112,21 @@ function generateSessionFingerprint(req) {
   const userAgent = req.headers['user-agent'] || '';
   const language = req.headers['accept-language'] || '';
   
+  console.log(`🔍 [FINGERPRINT] IP: ${ip.substring(0, 20)}...`);
+  console.log(`🔍 [FINGERPRINT] User-Agent: ${userAgent.substring(0, 50)}...`);
+  console.log(`🔍 [FINGERPRINT] Language: ${language}`);
+  
   // Hash it to create anonymous identifier
   const hash = crypto
     .createHash('sha256')
     .update(`${ip}|${userAgent}|${language}`)
     .digest('hex');
   
+  const sessionId = `fp_${hash.substring(0, 16)}`;
+  console.log(`🔍 [FINGERPRINT] Generated Session ID: ${sessionId}`);
+  
   // Use first 16 chars as session ID (sufficient uniqueness)
-  return `fp_${hash.substring(0, 16)}`;
+  return sessionId;
 }
 
 // Track page visit middleware with rich analytics (cookie-free!)
@@ -4146,6 +4179,40 @@ app.post('/api/v1/test-mode', (req, res) => {
   } catch (err) {
     console.error('❌ Test mode toggle failed:', err);
     res.status(500).json({ error: 'Failed to toggle test mode' });
+  }
+});
+
+// Broadcast announcement to all connected users
+// Protected by BROADCAST_SECRET environment variable
+app.post('/api/v1/broadcast-announcement', (req, res) => {
+  try {
+    const { message, secret } = req.body;
+    
+    // Require secret for authentication
+    const BROADCAST_SECRET = process.env.BROADCAST_SECRET || 'change-me-in-production';
+    
+    if (!secret || secret !== BROADCAST_SECRET) {
+      console.warn('⚠️ Broadcast announcement rejected: invalid secret');
+      return res.status(403).json({ error: 'Invalid secret' });
+    }
+    
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({ error: 'Message is required and must be a string' });
+    }
+    
+    // Broadcast to all connected clients
+    const result = broadcastAnnouncement(message);
+    
+    console.log(`✅ Announcement broadcasted to ${result.recipients} clients`);
+    res.json({ 
+      ok: true, 
+      announcementId: result.id,
+      recipients: result.recipients,
+      message: 'Announcement broadcasted successfully'
+    });
+  } catch (err) {
+    console.error('❌ Broadcast announcement failed:', err);
+    res.status(500).json({ error: 'Failed to broadcast announcement', detail: err.message });
   }
 });
 
