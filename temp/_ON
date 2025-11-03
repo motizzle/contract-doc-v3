@@ -1,0 +1,4 @@
+ = require('fs');
+    const path = require('path');
+
+    // Try working directory first (more recent), then app direc

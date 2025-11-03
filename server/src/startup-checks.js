@@ -72,7 +72,6 @@ function checkDataDirectories(rootDir) {
   ];
   
   const errors = [];
-  const isProduction = process.env.NODE_ENV === 'production';
   
   for (const dir of requiredDirs) {
     const fullPath = path.join(rootDir, dir);
@@ -86,13 +85,7 @@ function checkDataDirectories(rootDir) {
       fs.writeFileSync(testFile, 'test');
       fs.unlinkSync(testFile);
     } catch (err) {
-      // In production (e.g. Render free tier), filesystem may be read-only
-      // This is expected and OK - we'll use MongoDB for persistence
-      if (isProduction) {
-        console.warn(`⚠️  ${dir}: ${err.message} (read-only filesystem - using MongoDB for persistence)`);
-      } else {
-        errors.push(`${dir}: ${err.message}`);
-      }
+      errors.push(`${dir}: ${err.message}`);
     }
   }
   
