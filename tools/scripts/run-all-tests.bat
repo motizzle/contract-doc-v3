@@ -1,9 +1,4 @@
 @echo off
-:: Keep window open no matter what happens
-if not defined NO_PAUSE (
-  cmd /k "%~f0" NO_PAUSE & exit /b
-)
-
 setlocal enabledelayedexpansion
 
 echo ========================================
@@ -39,10 +34,7 @@ if %RETRY% LSS 15 (
     goto WAIT_LOOP
 )
 echo ERROR: Server failed to start after 30 seconds
-echo.
-echo Press any key to exit...
-pause >nul
-goto CLEANUP
+goto END
 
 :SERVER_READY
 echo.
@@ -80,9 +72,7 @@ if %UI_RESULT% EQU 0 (
 echo ========================================
 echo.
 
-:: Always pause to show results before cleanup
-echo Press any key to cleanup and exit...
-pause >nul
+goto CLEANUP
 
 :CLEANUP
 echo.
@@ -90,4 +80,10 @@ echo Cleaning up...
 taskkill /F /IM node.exe >nul 2>&1
 echo Done!
 echo.
-pause
+:END
+echo.
+echo ========================================
+echo Press any key to close this window...
+echo ========================================
+pause >nul
+exit /b
