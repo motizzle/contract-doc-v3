@@ -1,10 +1,4 @@
 @echo off
-:: FORCE window to stay open by starting in a new persistent cmd window
-if "%PERSISTENT_WINDOW%"=="" (
-    start "Test Results - DO NOT CLOSE" cmd /k "%~f0" PERSISTENT_WINDOW
-    exit
-)
-
 setlocal enabledelayedexpansion
 
 echo ========================================
@@ -40,7 +34,10 @@ if %RETRY% LSS 15 (
     goto WAIT_LOOP
 )
 echo ERROR: Server failed to start after 30 seconds
-goto END
+echo.
+echo Press any key to exit...
+pause >nul
+goto CLEANUP
 
 :SERVER_READY
 echo.
@@ -78,18 +75,12 @@ if %UI_RESULT% EQU 0 (
 echo ========================================
 echo.
 
-goto CLEANUP
-
 :CLEANUP
-echo.
 echo Cleaning up...
 taskkill /F /IM node.exe >nul 2>&1
 echo Done!
 echo.
-:END
-echo.
-echo ========================================
-echo Window will stay open - you can scroll back to review results
-echo Close this window when done
-echo ========================================
-echo.
+echo (Press any key to close this window)
+pause >nul
+
+
