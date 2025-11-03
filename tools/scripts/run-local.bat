@@ -17,30 +17,49 @@ if %ERRORLEVEL% EQU 0 (
 )
 echo.
 
-REM Check if deployed add-in is installed
-echo [2/8] Checking for deployed add-in...
+REM Clean up any existing add-ins (deployed + old local installs)
+echo [2/8] Cleaning up existing add-ins...
+
+REM Check for deployed add-in (prod GUID)
 reg query "HKCU\Software\Microsoft\Office\16.0\WEF\Developer" /v "wordftw-addin-prod" >nul 2>&1
 if %ERRORLEVEL% EQU 0 (
   echo   - Deployed add-in found. Removing...
-  
-  REM Close Word
-  tasklist /FI "IMAGENAME eq WINWORD.EXE" 2>NUL | find /I /N "WINWORD.EXE">NUL
-  if %ERRORLEVEL% EQU 0 (
-    echo   - Closing Word...
-    taskkill /F /IM WINWORD.EXE >nul 2>&1
-    timeout /t 2 /nobreak >nul
-  )
-  
-  REM Remove registry
   reg delete "HKCU\Software\Microsoft\Office\16.0\WEF\Developer" /v "wordftw-addin-prod" /f >nul 2>&1
-  
-  REM Clear cache
-  powershell -Command "Remove-Item -Path '$env:LOCALAPPDATA\Microsoft\Office\16.0\Wef\*' -Recurse -Force -ErrorAction SilentlyContinue" >nul 2>&1
-  
-  echo   - Deployed add-in removed
+  echo   - Deployed add-in registry removed
 ) else (
   echo   - No deployed add-in found
 )
+
+REM Check for old local add-in (dev GUID: 7a514d73-03c9-4a9f-a5f3-c246ac785751)
+reg query "HKCU\Software\Microsoft\Office\16.0\WEF\Developer" /v "7a514d73-03c9-4a9f-a5f3-c246ac785751" >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+  echo   - Old local add-in found. Removing...
+  reg delete "HKCU\Software\Microsoft\Office\16.0\WEF\Developer" /v "7a514d73-03c9-4a9f-a5f3-c246ac785751" /f >nul 2>&1
+  echo   - Old local add-in registry removed
+) else (
+  echo   - No old local add-in found
+)
+
+REM Clear add-in cache (always do this for clean slate)
+echo   - Clearing Word add-in cache...
+REM Close Edge/browser processes that might lock cache files
+taskkill /F /IM msedge.exe >nul 2>&1
+taskkill /F /IM msedgewebview2.exe >nul 2>&1
+timeout /t 1 /nobreak >nul
+powershell -Command "Remove-Item -Path '$env:LOCALAPPDATA\Microsoft\Office\16.0\Wef\*' -Recurse -Force -ErrorAction SilentlyContinue" >nul 2>&1
+echo   - Cache cleared
+
+REM Remove temp manifest files
+set TEMP_DIR=%TEMP%\wordftw-addin
+if exist "%TEMP_DIR%\manifest.xml" (
+  del "%TEMP_DIR%\manifest.xml" >nul 2>&1
+  echo   - Temp manifest removed
+)
+if exist "%TEMP_DIR%" (
+  rmdir "%TEMP_DIR%" >nul 2>&1
+)
+
+echo   - Cleanup complete
 echo.
 
 REM Stop any existing sideloads
