@@ -1,4 +1,9 @@
 @echo off
+:: Keep window open no matter what happens
+if not defined NO_PAUSE (
+  cmd /k "%~f0" NO_PAUSE & exit /b
+)
+
 setlocal enabledelayedexpansion
 
 echo ========================================
