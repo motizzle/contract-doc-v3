@@ -17,19 +17,18 @@ BROADCAST_SECRET=your-secret-here-min-32-chars
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-### 2. Update the Script
+### 2. Create the Secret File
 
-Edit `tools/scripts/broadcast-announcement.bat`:
+Create `tools/scripts/broadcast-secret.txt` with your secret on the first line:
 
-Replace this line:
-```batch
-secret = 'REPLACE_WITH_YOUR_SECRET'
+```
+abc123def456your-64-char-secret-here
 ```
 
-With your actual secret:
-```batch
-secret = 'abc123def456...'
-```
+**Important:**
+- No quotes, no spaces, just the raw secret
+- This file is in `.gitignore` so it won't be committed
+- Keep it secure on your local machine only
 
 ### 3. Update the URL (if needed)
 

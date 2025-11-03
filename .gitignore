@@ -53,6 +53,9 @@ server/test-results/
 # Local setup scripts not needed in repo root
 /setup-env.ps1
 
+# Broadcast announcement secret (DO NOT COMMIT)
+tools/scripts/broadcast-secret.txt
+
 # Generated manifest files (auto-created by build script)
 addin/manifest-deploy.xml
 addin/manifest.production.xml

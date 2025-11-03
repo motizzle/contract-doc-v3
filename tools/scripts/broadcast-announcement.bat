@@ -64,7 +64,25 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
     "Write-Host ''; " ^
     "Write-Host 'Sending...' -ForegroundColor Yellow; " ^
     "try { " ^
-    "    $body = @{ message = $message; secret = 'REPLACE_WITH_YOUR_SECRET' } | ConvertTo-Json; " ^
+    "    $secretFile = Join-Path $PSScriptRoot 'broadcast-secret.txt'; " ^
+    "    if (-not (Test-Path $secretFile)) { " ^
+    "        Write-Host ''; " ^
+    "        Write-Host '❌ ERROR: Secret file not found!' -ForegroundColor Red; " ^
+    "        Write-Host ''; " ^
+    "        Write-Host 'Please create: tools/scripts/broadcast-secret.txt' -ForegroundColor Yellow; " ^
+    "        Write-Host 'Put your BROADCAST_SECRET on the first line (no quotes)' -ForegroundColor Yellow; " ^
+    "        Write-Host ''; " ^
+    "        pause; " ^
+    "        exit; " ^
+    "    }; " ^
+    "    $secret = (Get-Content $secretFile -TotalCount 1).Trim(); " ^
+    "    if ([string]::IsNullOrWhiteSpace($secret)) { " ^
+    "        Write-Host ''; " ^
+    "        Write-Host '❌ ERROR: Secret file is empty!' -ForegroundColor Red; " ^
+    "        pause; " ^
+    "        exit; " ^
+    "    }; " ^
+    "    $body = @{ message = $message; secret = $secret } | ConvertTo-Json; " ^
     "    $response = Invoke-RestMethod -Uri 'https://wordftw.onrender.com/api/v1/broadcast-announcement' -Method Post -Body $body -ContentType 'application/json'; " ^
     "    Write-Host ''; " ^
     "    Write-Host '✅ SUCCESS! Message broadcasted to all users!' -ForegroundColor Green; " ^

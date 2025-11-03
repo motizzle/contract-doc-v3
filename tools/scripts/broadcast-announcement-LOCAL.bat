@@ -64,7 +64,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
     "Write-Host ''; " ^
     "Write-Host 'Sending to https://localhost:4001...' -ForegroundColor Yellow; " ^
     "try { " ^
-    "    $body = @{ message = $message; secret = 'dev-secret-change-in-production-min-32-chars' } | ConvertTo-Json; " ^
+    "    $secretFile = Join-Path $PSScriptRoot 'broadcast-secret.txt'; " ^
+    "    if (-not (Test-Path $secretFile)) { " ^
+    "        Write-Host 'No secret file found, using dev default secret...' -ForegroundColor Yellow; " ^
+    "        $secret = 'dev-secret-change-in-production-min-32-chars'; " ^
+    "    } else { " ^
+    "        $secret = (Get-Content $secretFile -TotalCount 1).Trim(); " ^
+    "    }; " ^
+    "    $body = @{ message = $message; secret = $secret } | ConvertTo-Json; " ^
     "    $response = Invoke-RestMethod -Uri 'https://localhost:4001/api/v1/broadcast-announcement' -Method Post -Body $body -ContentType 'application/json' -SkipCertificateCheck; " ^
     "    Write-Host ''; " ^
     "    Write-Host '✅ SUCCESS! Message broadcasted to LOCAL server!' -ForegroundColor Green; " ^
