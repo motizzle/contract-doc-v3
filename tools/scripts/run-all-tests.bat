@@ -84,3 +84,5 @@ echo.
 echo Cleaning up...
 taskkill /F /IM node.exe >nul 2>&1
 echo Done!
+echo.
+pause
