@@ -1794,18 +1794,43 @@ app.post('/api/v1/session/start', (req, res) => {
     const { fingerprint } = req.body || {};
     console.log(`🔍 [session/start] Request body:`, { hasBody: !!req.body, fingerprint: fingerprint ? fingerprint.substring(0, 12) + '...' : 'MISSING' });
     
-    // Check for permanent link first
-    if (fingerprint) {
-      const linkedSession = getLinkedSession(fingerprint);
-      if (linkedSession) {
-        console.log(`🔗 Returning linked session for fingerprint: ${fingerprint.substring(0, 12)}...`);
-        return res.json({
+  // Check for permanent link first
+  if (fingerprint) {
+    const linkedSession = getLinkedSession(fingerprint);
+    if (linkedSession) {
+      console.log(`🔗 Returning linked session for fingerprint: ${fingerprint.substring(0, 12)}...`);
+      
+      // Generate a fresh link code even for linked sessions
+      // This allows linking additional devices or getting a new code
+      let linkCode = null;
+      for (const [code, data] of activeLinkCodes.entries()) {
+        if (data.fingerprint === fingerprint && Date.now() < data.expires) {
+          linkCode = code;
+          break;
+        }
+      }
+      
+      if (!linkCode) {
+        linkCode = generateLinkCode();
+        activeLinkCodes.set(linkCode, {
+          fingerprint,
           token: linkedSession.token,
           sessionId: linkedSession.sessionId,
-          expiresIn: JWT_EXPIRATION,
-          linked: true
+          expires: Date.now() + (15 * 60 * 1000) // 15 minutes
         });
+        console.log(`🔗 Generated fresh link code: ${linkCode} for linked session ${linkedSession.sessionId}`);
+      } else {
+        console.log(`🔗 Reusing valid link code: ${linkCode} for linked session`);
       }
+      
+      return res.json({
+        token: linkedSession.token,
+        sessionId: linkedSession.sessionId,
+        expiresIn: JWT_EXPIRATION,
+        linkCode: linkCode,
+        linked: true
+      });
+    }
       
       // Check if we already have a session for this fingerprint
       if (fingerprintSessions.has(fingerprint)) {
