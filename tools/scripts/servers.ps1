@@ -75,18 +75,18 @@ function Start-Collab() {
 
 function Start-AddinSideload() {
   $root = Split-Path -Parent $PSCommandPath | Split-Path -Parent | Split-Path -Parent
-  # Launch Office sideload (opens Word and loads the add-in)
+  
+  # Close Word if running to ensure clean sideload
   $word = Get-Process -Name WINWORD -ErrorAction SilentlyContinue
-  if (-not $word) {
-    # Fallback in case WINWORD is running in another session
-    $tasklistOut = & cmd /c "tasklist /FI \"IMAGENAME eq WINWORD.EXE\" | findstr /I WINWORD.EXE" 2>$null
+  if ($word) {
+    Write-Host "Closing existing Word instances..." -ForegroundColor Yellow
+    Stop-Process -Name WINWORD -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
   }
-  if (-not $word -and -not $tasklistOut) {
-    Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","cd '$root\addin'; npm start" -WindowStyle Normal -PassThru
-  } else {
-    $pids = if ($word) { $word.Id -join ', ' } else { 'unknown' }
-    Write-Host "Detected Word already running (PID(s): $pids). Skipping launch; refresh the add-in in the existing document."
-  }
+  
+  # Launch Office sideload (opens Word and loads the add-in)
+  Write-Host "Launching Word with dev add-in..." -ForegroundColor Cyan
+  Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","cd '$root\addin'; npm start" -WindowStyle Normal -PassThru
 }
 
 function Show-Status() {
