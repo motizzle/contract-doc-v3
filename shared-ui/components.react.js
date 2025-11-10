@@ -7803,13 +7803,13 @@
         }
       }, [config?.internalMode]);
       
-      const SALES_CONFIG = {
-        showMessagesTab: false,        // Hide Messages tab for sales demo
-        // Add more features here as needed:
-        // showScenarioLoader: false,
-        // showFactoryReset: false,
-        // showDebugInfo: false,
-      };
+const SALES_CONFIG = {
+  showMessagesTab: true,        // Show Messages tab always
+  // Add more features here as needed:
+  // showScenarioLoader: false,
+  // showFactoryReset: false,
+  // showDebugInfo: false,
+};
       
       // Apply config (internal mode enables everything)
       // Use React.useMemo to recalculate when internalMode changes
