@@ -109,8 +109,16 @@
   async function requestNewToken() {
     try {
       const API_BASE = getApiBase();
-      // Get fingerprint from localStorage (already generated in getAuthToken)
-      const fingerprint = localStorage.getItem('wordftw_fingerprint');
+      // Get fingerprint from localStorage (should be generated in initializeAuth, but be defensive)
+      let fingerprint = localStorage.getItem('wordftw_fingerprint');
+      
+      // If fingerprint doesn't exist, generate it now (defensive coding)
+      if (!fingerprint) {
+        console.warn('⚠️ Fingerprint not found in requestNewToken, generating now...');
+        fingerprint = generateFingerprint();
+        localStorage.setItem('wordftw_fingerprint', fingerprint);
+      }
+      
       console.log(`🔑 Machine fingerprint: ${fingerprint}`);
       
       // Use original fetch to avoid infinite recursion
@@ -151,7 +159,14 @@
   async function submitLinkCode(linkCode) {
     try {
       const API_BASE = getApiBase();
-      const fingerprint = localStorage.getItem('wordftw_fingerprint');
+      let fingerprint = localStorage.getItem('wordftw_fingerprint');
+      
+      // If fingerprint doesn't exist, generate it now (defensive coding)
+      if (!fingerprint) {
+        console.warn('⚠️ Fingerprint not found, generating now...');
+        fingerprint = generateFingerprint();
+        localStorage.setItem('wordftw_fingerprint', fingerprint);
+      }
       
       const response = await window._originalFetch(`${API_BASE}/api/v1/session/link`, {
         method: 'POST',
@@ -5133,7 +5148,15 @@
           if (!isWordHost) {
             console.log('[LinkCodeBanner] Generating fresh link code from server...');
             try {
-              const fingerprint = localStorage.getItem('wordftw_fingerprint');
+              let fingerprint = localStorage.getItem('wordftw_fingerprint');
+              
+              // If fingerprint doesn't exist, generate it now (defensive coding)
+              if (!fingerprint) {
+                console.warn('⚠️ Fingerprint not found in LinkCodeBanner, generating now...');
+                fingerprint = generateFingerprint();
+                localStorage.setItem('wordftw_fingerprint', fingerprint);
+              }
+              
               const API_BASE = getApiBase();
               
               // Clear old token and request new session with fresh link code
