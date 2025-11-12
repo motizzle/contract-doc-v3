@@ -5173,6 +5173,7 @@
       const [isLoading, setIsLoading] = React.useState(false);
       const [copied, setCopied] = React.useState(false);
       const [error, setError] = React.useState(null);
+      const [showMacInstructions, setShowMacInstructions] = React.useState(false);
       
       const generateLinkCode = async () => {
         setIsLoading(true);
@@ -5255,8 +5256,14 @@
         a.download = filename;
         a.click();
         
-        // Generate and show link code
-        await generateLinkCode();
+        // For Mac, show instructions screen instead of immediately generating code
+        if (isMac) {
+          setShowMacInstructions(true);
+          await generateLinkCode();
+        } else {
+          // For Windows, generate and show link code immediately
+          await generateLinkCode();
+        }
       };
       
       const handleGenerateCodeOnly = async () => {
@@ -5271,8 +5278,82 @@
         }
       };
       
-      // Show code if generated, otherwise show options
-      const content = linkCode ? [
+      // Show Mac instructions if Mac and code generated
+      const content = (showMacInstructions && linkCode) ? [
+        React.createElement('div', { key: 'mac-instructions', style: { maxHeight: '70vh', overflowY: 'auto' } }, [
+          React.createElement('h2', { key: 'title', style: { margin: '0 0 16px 0', fontSize: '20px', fontWeight: 600, color: '#111827', textAlign: 'center' } }, ' Mac Installation Guide'),
+          
+          // Step 1: Security Settings
+          React.createElement('div', { key: 'step1', style: { marginBottom: '24px', padding: '16px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' } }, [
+            React.createElement('h3', { key: 'step1-title', style: { margin: '0 0 12px 0', fontSize: '16px', fontWeight: 600, color: '#1f2937' } }, 'Step 1: Approve the Installer'),
+            React.createElement('p', { key: 'step1-desc', style: { margin: '0 0 12px 0', fontSize: '14px', color: '#6b7280', lineHeight: '1.5' } }, 'macOS will show a security warning because this package is from an unidentified developer. This is normal for downloaded installers.'),
+            React.createElement('p', { key: 'step1-action', style: { margin: '0 0 12px 0', fontSize: '14px', color: '#374151', fontWeight: 500 } }, 'You\'ll see this dialog:'),
+            React.createElement('img', { key: 'step1-img1', src: '/error-if-no-security.png', alt: 'Security warning', style: { width: '100%', borderRadius: '6px', border: '1px solid #d1d5db', marginBottom: '12px' } }),
+            React.createElement('p', { key: 'step1-action2', style: { margin: '0 0 8px 0', fontSize: '14px', color: '#374151', fontWeight: 500 } }, 'Click "Open Anyway" in System Settings:'),
+            React.createElement('img', { key: 'step1-img2', src: '/security-settings-mac.png', alt: 'Security settings', style: { width: '100%', borderRadius: '6px', border: '1px solid #d1d5db' } })
+          ]),
+          
+          // Step 2: Confirm Installation
+          React.createElement('div', { key: 'step2', style: { marginBottom: '24px', padding: '16px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' } }, [
+            React.createElement('h3', { key: 'step2-title', style: { margin: '0 0 12px 0', fontSize: '16px', fontWeight: 600, color: '#1f2937' } }, 'Step 2: Click "Open" to Continue'),
+            React.createElement('p', { key: 'step2-desc', style: { margin: '0 0 12px 0', fontSize: '14px', color: '#6b7280', lineHeight: '1.5' } }, 'After approving in System Settings, macOS will ask you to confirm:'),
+            React.createElement('img', { key: 'step2-img', src: '/security-confirmation-mac.png', alt: 'Open confirmation', style: { width: '100%', borderRadius: '6px', border: '1px solid #d1d5db', marginBottom: '12px' } }),
+            React.createElement('p', { key: 'step2-action', style: { margin: '0', fontSize: '14px', color: '#374151', fontWeight: 500 } }, 'Click "Open Anyway" to start the installation.')
+          ]),
+          
+          // Step 3: Link Code
+          React.createElement('div', { key: 'step3', style: { marginBottom: '24px', padding: '16px', background: '#eff6ff', borderRadius: '8px', border: '2px solid #3b82f6' } }, [
+            React.createElement('h3', { key: 'step3-title', style: { margin: '0 0 12px 0', fontSize: '16px', fontWeight: 600, color: '#1e40af' } }, 'Step 3: Copy Your Link Code'),
+            React.createElement('p', { key: 'step3-desc', style: { margin: '0 0 12px 0', fontSize: '14px', color: '#1e40af', lineHeight: '1.5' } }, 'After the package installs, Word will open automatically. Use this code to link with your browser:'),
+            React.createElement('div', { key: 'code-display', style: { background: 'white', border: '2px solid #3b82f6', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '12px' } }, [
+              React.createElement('div', { key: 'code', style: { fontSize: '28px', fontWeight: 700, color: '#1e40af', letterSpacing: '4px', fontFamily: 'monospace' } }, linkCode)
+            ]),
+            React.createElement('button', {
+              key: 'copy-btn',
+              onClick: handleCopy,
+              style: {
+                width: '100%',
+                padding: '10px',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '14px'
+              }
+            }, copied ? '✓ Copied!' : '📋 Copy Code')
+          ]),
+          
+          // Step 4: Link Instructions
+          React.createElement('div', { key: 'step4', style: { marginBottom: '16px', padding: '16px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #86efac' } }, [
+            React.createElement('h3', { key: 'step4-title', style: { margin: '0 0 12px 0', fontSize: '16px', fontWeight: 600, color: '#15803d' } }, 'Step 4: Enter Link Code in Word'),
+            React.createElement('p', { key: 'step4-desc', style: { margin: '0 0 12px 0', fontSize: '14px', color: '#166534', lineHeight: '1.5' } }, 'Once Word opens with the add-in panel on the right:'),
+            React.createElement('ol', { key: 'step4-list', style: { margin: '0', paddingLeft: '20px', fontSize: '14px', color: '#166534', lineHeight: '1.8' } }, [
+              React.createElement('li', { key: 'li1' }, 'Click the 3 dots menu (⋮) at the top of the panel'),
+              React.createElement('li', { key: 'li2' }, 'Select "Enter Link Code"'),
+              React.createElement('li', { key: 'li3' }, 'Paste the code and click "Submit"'),
+              React.createElement('li', { key: 'li4' }, 'The add-in will connect to your browser session')
+            ])
+          ])
+        ]),
+        
+        React.createElement('button', {
+          key: 'close-btn',
+          onClick: onClose,
+          style: {
+            width: '100%',
+            padding: '12px',
+            background: '#4B3FFF',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: 600,
+            fontSize: '14px'
+          }
+        }, 'Done')
+      ] : linkCode ? [
         React.createElement('div', { key: 'header', style: { marginBottom: '20px' } }, [
           React.createElement('h2', { key: 'title', style: { margin: 0, fontSize: '20px', fontWeight: 600, color: '#111827' } }, '✅ Link Code Generated'),
           React.createElement('p', { key: 'desc', style: { margin: '8px 0 0 0', fontSize: '14px', color: '#6b7280' } }, 'Open Word add-in and enter this code to sync:')
@@ -5389,7 +5470,8 @@
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 10000
+          zIndex: 10000,
+          padding: '20px'
         },
         onClick: onClose
       }, 
@@ -5398,9 +5480,11 @@
             background: 'white',
             borderRadius: '12px',
             padding: '24px',
-            maxWidth: '480px',
+            maxWidth: showMacInstructions ? '700px' : '480px',
             width: '90%',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            maxHeight: '90vh',
+            overflowY: 'auto'
           },
           onClick: (e) => e.stopPropagation()
         }, content)
