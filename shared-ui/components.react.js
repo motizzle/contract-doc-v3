@@ -710,7 +710,18 @@
               const j = await r.json();
               console.log('🔄 [refresh] Received config from API:', { title: j?.config?.title, status: j?.config?.status, revision: j?.revision });
               setConfig(j.config || null);
-              if (typeof j.revision === 'number') setRevision(j.revision);
+              // Only update revision if it's newer (prevent going backwards from stale API responses)
+              if (typeof j.revision === 'number') {
+                setRevision(prevRev => {
+                  if (j.revision > prevRev) {
+                    console.log(`🔄 [refresh] Updating revision: ${prevRev} → ${j.revision}`);
+                    return j.revision;
+                  } else {
+                    console.log(`⏭️ [refresh] Skipping stale revision: ${j.revision} (current: ${prevRev})`);
+                    return prevRev;
+                  }
+                });
+              }
               try { const sum = j?.config?.approvals?.summary || null; setApprovalsSummary(sum); } catch {}
             }
         } catch {}
@@ -824,7 +835,18 @@
               
               if (p && p.ts) setLastTs(p.ts);
               const nextRev = (typeof p.revision === 'number') ? p.revision : null;
-              if (nextRev !== null) setRevision(nextRev);
+              // Only update revision if it's newer (prevent going backwards from delayed SSE events)
+              if (nextRev !== null) {
+                setRevision(prevRev => {
+                  if (nextRev > prevRev) {
+                    console.log(`🔄 [SSE] Updating revision: ${prevRev} → ${nextRev}`);
+                    return nextRev;
+                  } else {
+                    console.log(`⏭️ [SSE] Skipping stale revision: ${nextRev} (current: ${prevRev})`);
+                    return prevRev;
+                  }
+                });
+              }
               if (p && p.type === 'approvals:update') {
                 if (typeof p.revision === 'number') setApprovalsRevision(p.revision);
                 if (p.summary) setApprovalsSummary(p.summary);
@@ -1475,7 +1497,18 @@
                   const j = await r.json();
                    
                   setConfig(j.config || null);
-                  if (typeof j.revision === 'number') setRevision(j.revision);
+                  // Only update revision if it's newer (prevent going backwards)
+                  if (typeof j.revision === 'number') {
+                    setRevision(prevRev => {
+                      if (j.revision > prevRev) {
+                        console.log(`🔄 [UserSwitch] Updating revision: ${prevRev} → ${j.revision}`);
+                        return j.revision;
+                      } else {
+                        console.log(`⏭️ [UserSwitch] Keeping current revision: ${prevRev} (API returned: ${j.revision})`);
+                        return prevRev;
+                      }
+                    });
+                  }
                   // Update both viewingVersion and loadedVersion to the newest ACCESSIBLE version for this user
                   try {
                     // Use latestAccessibleVersion for vendors, documentVersion for others
