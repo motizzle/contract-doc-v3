@@ -1186,6 +1186,31 @@
                     console.log(`📄 [INITIAL LOAD] context.sync() completed`);
                 });
                   
+                  // Apply document protection based on user role (SuperDoc approach)
+                  try {
+                    await Word.run(async (context) => {
+                      const currentRole = role || 'editor'; // Use current role from state
+                      console.log(`🔒 [INITIAL LOAD] Applying document protection for role: ${currentRole}`);
+                      
+                      if (currentRole === 'viewer') {
+                        context.document.protect("AllowOnlyReading");
+                        console.log(`🔒 [INITIAL LOAD] Applied: AllowOnlyReading`);
+                      } else if (currentRole === 'suggester' || currentRole === 'vendor') {
+                        context.document.protect("AllowOnlyRevisions");
+                        console.log(`🔒 [INITIAL LOAD] Applied: AllowOnlyRevisions`);
+                      } else {
+                        context.document.protect("NoProtection");
+                        console.log(`🔒 [INITIAL LOAD] Applied: NoProtection (full edit)`);
+                      }
+                      
+                      await context.sync();
+                      console.log(`✅ [INITIAL LOAD] Document protection applied successfully`);
+                    });
+                  } catch (protErr) {
+                    console.warn(`⚠️ [INITIAL LOAD] Document protection failed:`, protErr);
+                    console.warn(`⚠️ [INITIAL LOAD] Error details:`, protErr.message);
+                  }
+                  
                   console.log(`✅ [INITIAL LOAD] Document loaded successfully into Word`);
                 addLog(`Document loaded (version ${initialVersion})`, 'document');
                 } else {
@@ -1472,6 +1497,30 @@
                         const buf = await res.arrayBuffer();
                         const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
                         await Word.run(async (context) => { context.document.body.clear(); await context.sync(); context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
+                        
+                        // Apply document protection for new user role (SuperDoc approach)
+                        try {
+                          await Word.run(async (context) => {
+                            console.log(`🔒 [USER SWITCH] Applying document protection for role: ${nextRole}`);
+                            
+                            if (nextRole === 'viewer') {
+                              context.document.protect("AllowOnlyReading");
+                              console.log(`🔒 [USER SWITCH] Applied: AllowOnlyReading`);
+                            } else if (nextRole === 'suggester' || nextRole === 'vendor') {
+                              context.document.protect("AllowOnlyRevisions");
+                              console.log(`🔒 [USER SWITCH] Applied: AllowOnlyRevisions`);
+                            } else {
+                              context.document.protect("NoProtection");
+                              console.log(`🔒 [USER SWITCH] Applied: NoProtection (full edit)`);
+                            }
+                            
+                            await context.sync();
+                            console.log(`✅ [USER SWITCH] Document protection applied successfully`);
+                          });
+                        } catch (protErr) {
+                          console.warn(`⚠️ [USER SWITCH] Document protection failed:`, protErr);
+                          console.warn(`⚠️ [USER SWITCH] Error details:`, protErr.message);
+                        }
                       }
                     } else {
                       // Load latest document in Web
@@ -5193,8 +5242,8 @@
         let filename = 'manifest.xml';
         
         if (isMac) {
-          downloadUrl = '/install-addin.command';
-          filename = 'install-addin.command';
+          downloadUrl = '/WordFTW-Add-in-Installer.pkg';
+          filename = 'WordFTW-Add-in-Installer.pkg';
         } else if (isWindows) {
           downloadUrl = '/install-addin.bat';
           filename = 'install-addin.bat';
