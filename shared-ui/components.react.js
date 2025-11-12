@@ -969,13 +969,18 @@
                           const buf = await res.arrayBuffer();
                           const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
                           
-                          // Unprotect first, then load document
+                          // Unprotect AND turn off track changes, then load document
                           await Word.run(async (context) => { 
                             try {
                               context.document.unprotect();
                               await context.sync();
                               console.log(`🔓 [Factory Reset] Document unprotected`);
                             } catch {} // Ignore if no protection exists
+                            
+                            // Turn OFF track changes to prevent clear/insert being tracked
+                            context.document.changeTrackingMode = Word.ChangeTrackingMode.off;
+                            await context.sync();
+                            console.log(`📝 [Factory Reset] Track changes disabled`);
                             
                             context.document.body.clear(); 
                             await context.sync(); 
@@ -1149,6 +1154,12 @@
                 console.log(`📄 [Global] Base64 length: ${b64.length}, calling Word.run...`);
                 await Word.run(async (context) => {
                   console.log(`📄 [Global] Inside Word.run, clearing document first...`);
+                  
+                  // Turn OFF track changes to prevent clear/insert being tracked
+                  context.document.changeTrackingMode = Word.ChangeTrackingMode.off;
+                  await context.sync();
+                  console.log(`📝 [Global] Track changes disabled`);
+                  
                   context.document.body.clear();
                   await context.sync();
                   console.log(`📄 [Global] Document cleared, now replacing document body...`);
@@ -1233,6 +1244,12 @@
                   console.log(`📄 [INITIAL LOAD] Calling Word.run()...`);
                 await Word.run(async (context) => { 
                     console.log(`📄 [INITIAL LOAD] Inside Word.run, clearing document first...`);
+                  
+                  // Turn OFF track changes to prevent clear/insert being tracked
+                  context.document.changeTrackingMode = Word.ChangeTrackingMode.off;
+                  await context.sync();
+                  console.log(`📝 [INITIAL LOAD] Track changes disabled`);
+                  
                   context.document.body.clear();
                   await context.sync();
                     console.log(`📄 [INITIAL LOAD] Document cleared, now calling insertFileFromBase64...`);
@@ -1569,7 +1586,25 @@
                       if (res && res.ok) {
                         const buf = await res.arrayBuffer();
                         const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
-                        await Word.run(async (context) => { context.document.body.clear(); await context.sync(); context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
+                        
+                        // Unprotect AND turn off track changes before loading
+                        await Word.run(async (context) => { 
+                          try {
+                            context.document.unprotect();
+                            await context.sync();
+                            console.log(`🔓 [USER SWITCH] Unprotected`);
+                          } catch {}
+                          
+                          // Turn OFF track changes to prevent clear/insert being tracked
+                          context.document.changeTrackingMode = Word.ChangeTrackingMode.off;
+                          await context.sync();
+                          console.log(`📝 [USER SWITCH] Track changes disabled`);
+                          
+                          context.document.body.clear(); 
+                          await context.sync(); 
+                          context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); 
+                          await context.sync(); 
+                        });
                         
                         // Apply document protection for new user role (SuperDoc approach)
                         try {
