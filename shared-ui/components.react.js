@@ -1568,7 +1568,7 @@
                       console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: userSwitch (latestAccessible)`);
                       setViewingVersion(v);
                       setLoadedVersion(v); // Reset loadedVersion to current document version for new user
-                      try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { messagePlatform: plat } } })); } catch {}
+                      // NOTE: Do NOT dispatch version:view event - we load the document directly below to avoid double-loading
                     }
                   } catch {}
                   
