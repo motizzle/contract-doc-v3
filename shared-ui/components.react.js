@@ -968,7 +968,41 @@
                         if (res && res.ok) {
                           const buf = await res.arrayBuffer();
                           const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
-                          await Word.run(async (context) => { context.document.body.clear(); await context.sync(); context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
+                          
+                          // Unprotect first, then load document
+                          await Word.run(async (context) => { 
+                            try {
+                              context.document.unprotect();
+                              await context.sync();
+                              console.log(`🔓 [Factory Reset] Document unprotected`);
+                            } catch {} // Ignore if no protection exists
+                            
+                            context.document.body.clear(); 
+                            await context.sync(); 
+                            context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); 
+                            await context.sync(); 
+                          });
+                          
+                          // Reapply protection for current role
+                          try {
+                            await Word.run(async (context) => {
+                              const currentRole = String(role || 'editor').toLowerCase();
+                              console.log(`🔒 [Factory Reset] Reapplying protection for role: ${currentRole}`);
+                              
+                              if (currentRole === 'viewer') {
+                                context.document.protect("AllowOnlyReading");
+                              } else if (currentRole === 'suggester' || currentRole === 'vendor') {
+                                context.document.protect("AllowOnlyRevisions");
+                              } else {
+                                context.document.protect("NoProtection");
+                              }
+                              
+                              await context.sync();
+                              console.log(`✅ [Factory Reset] Protection reapplied`);
+                            });
+                          } catch (protErr) {
+                            console.warn(`⚠️ [Factory Reset] Protection failed:`, protErr.message);
+                          }
                           
                               console.log(`[DEBUG] Setting viewingVersion to ${v} - Source: factoryReset (add-in)`);
                               setLoadedVersion(v); 
