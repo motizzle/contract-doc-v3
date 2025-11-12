@@ -1192,6 +1192,17 @@
                       const currentRole = role || 'editor'; // Use current role from state
                       console.log(`🔒 [INITIAL LOAD] Applying document protection for role: ${currentRole}`);
                       
+                      // First, remove any existing protection
+                      try {
+                        context.document.unprotect();
+                        await context.sync();
+                        console.log(`🔓 [INITIAL LOAD] Existing protection removed`);
+                      } catch (unprotectErr) {
+                        // If unprotect fails (e.g., no protection exists), that's fine - continue
+                        console.log(`🔓 [INITIAL LOAD] No existing protection to remove`);
+                      }
+                      
+                      // Now apply new protection based on role
                       if (currentRole === 'viewer') {
                         context.document.protect("AllowOnlyReading");
                         console.log(`🔒 [INITIAL LOAD] Applied: AllowOnlyReading`);
@@ -1503,6 +1514,17 @@
                           await Word.run(async (context) => {
                             console.log(`🔒 [USER SWITCH] Applying document protection for role: ${nextRole}`);
                             
+                            // First, remove any existing protection
+                            try {
+                              context.document.unprotect();
+                              await context.sync();
+                              console.log(`🔓 [USER SWITCH] Existing protection removed`);
+                            } catch (unprotectErr) {
+                              // If unprotect fails (e.g., no protection exists), that's fine - continue
+                              console.log(`🔓 [USER SWITCH] No existing protection to remove`);
+                            }
+                            
+                            // Now apply new protection based on role
                             if (nextRole === 'viewer') {
                               context.document.protect("AllowOnlyReading");
                               console.log(`🔒 [USER SWITCH] Applied: AllowOnlyReading`);
@@ -5167,6 +5189,69 @@
       return null;
     }
     
+    // Mac Installation Instructions Data
+    const macInstallInstructions = {
+      title: '🍎 Mac Installation Guide',
+      steps: [
+        {
+          id: 'step1',
+          title: 'Step 1: Locate the Downloaded Installer',
+          description: 'Find the WordFTW-Add-in-Installer.pkg file in your Downloads folder:',
+          image: '/1-download-folder.png',
+          imageAlt: 'Downloaded installer in Downloads folder'
+        },
+        {
+          id: 'step2',
+          title: 'Step 2: Security Warning',
+          description: 'When you double-click the installer, macOS will show a security warning because this package is from an unidentified developer. This is normal for downloaded installers.',
+          image: '/2-download-error.png',
+          imageAlt: 'Security warning dialog'
+        },
+        {
+          id: 'step3',
+          title: 'Step 3: Approve in System Settings',
+          description: 'Go to System Settings → Privacy & Security and click "Open Anyway" to approve the installer:',
+          image: '/3-security-approval.png',
+          imageAlt: 'Security approval in System Settings'
+        },
+        {
+          id: 'step4',
+          title: 'Step 4: Confirm Installation',
+          description: 'Click "Open" when macOS asks you to confirm:',
+          image: '/4-install-confirmation.png',
+          imageAlt: 'Installation confirmation dialog'
+        },
+        {
+          id: 'step5',
+          title: 'Step 5: Grant App Access',
+          description: 'The installer will ask for permission to access your files. Click "OK" to allow:',
+          image: '/5-app-access.png',
+          imageAlt: 'App access permission dialog'
+        },
+        {
+          id: 'step6',
+          title: 'Step 6: Word Opens Automatically',
+          description: 'After installation completes, Word will open automatically with a sample document:',
+          image: '/6-initial-doc.png',
+          imageAlt: 'Word opens with document'
+        },
+        {
+          id: 'step7',
+          title: 'Step 7: Open the Add-in',
+          description: 'Go to Insert → My Add-ins, look under "Shared Folder", and select "OpenGov Contracting":',
+          image: '/7-open-add-in.png',
+          imageAlt: 'Opening the add-in in Word',
+          isLast: true
+        }
+      ],
+      linkCodeInstructions: [
+        'Click the 3 dots menu (⋮) at the top of the add-in panel',
+        'Select "Enter Link Code"',
+        'Paste this code and click "Submit"',
+        'The add-in will connect to your browser'
+      ]
+    };
+    
     // Install Add-in Modal (for browser only)
     function InstallAddInModal({ onClose }) {
       const [linkCode, setLinkCode] = React.useState(null);
@@ -5281,32 +5366,94 @@
       // Show Mac instructions if Mac and code generated
       const content = (showMacInstructions && linkCode) ? [
         React.createElement('div', { key: 'mac-instructions', style: { maxHeight: '70vh', overflowY: 'auto' } }, [
-          React.createElement('h2', { key: 'title', style: { margin: '0 0 16px 0', fontSize: '20px', fontWeight: 600, color: '#111827', textAlign: 'center' } }, ' Mac Installation Guide'),
+          React.createElement('h2', { key: 'title', style: { margin: '0 0 16px 0', fontSize: '20px', fontWeight: 600, color: '#111827', textAlign: 'center' } }, macInstallInstructions.title),
           
-          // Step 1: Security Settings
-          React.createElement('div', { key: 'step1', style: { marginBottom: '24px', padding: '16px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' } }, [
-            React.createElement('h3', { key: 'step1-title', style: { margin: '0 0 12px 0', fontSize: '16px', fontWeight: 600, color: '#1f2937' } }, 'Step 1: Approve the Installer'),
-            React.createElement('p', { key: 'step1-desc', style: { margin: '0 0 12px 0', fontSize: '14px', color: '#6b7280', lineHeight: '1.5' } }, 'macOS will show a security warning because this package is from an unidentified developer. This is normal for downloaded installers.'),
-            React.createElement('p', { key: 'step1-action', style: { margin: '0 0 12px 0', fontSize: '14px', color: '#374151', fontWeight: 500 } }, 'You\'ll see this dialog:'),
-            React.createElement('img', { key: 'step1-img1', src: '/error-if-no-security.png', alt: 'Security warning', style: { width: '100%', borderRadius: '6px', border: '1px solid #d1d5db', marginBottom: '12px' } }),
-            React.createElement('p', { key: 'step1-action2', style: { margin: '0 0 8px 0', fontSize: '14px', color: '#374151', fontWeight: 500 } }, 'Click "Open Anyway" in System Settings:'),
-            React.createElement('img', { key: 'step1-img2', src: '/security-settings-mac.png', alt: 'Security settings', style: { width: '100%', borderRadius: '6px', border: '1px solid #d1d5db' } })
-          ]),
+          // Render all instruction steps
+          ...macInstallInstructions.steps.map((step, index) => {
+            const isLinkCodeStep = step.isLast;
+            return React.createElement('div', {
+              key: step.id,
+              style: {
+                marginBottom: isLinkCodeStep ? '16px' : '24px',
+                padding: '16px',
+                background: isLinkCodeStep ? '#f0fdf4' : '#f9fafb',
+                borderRadius: '8px',
+                border: isLinkCodeStep ? '1px solid #86efac' : '1px solid #e5e7eb'
+              }
+            }, [
+              React.createElement('h3', {
+                key: 'title',
+                style: {
+                  margin: '0 0 12px 0',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  color: isLinkCodeStep ? '#15803d' : '#1f2937'
+                }
+              }, step.title),
+              React.createElement('p', {
+                key: 'desc',
+                style: {
+                  margin: '0 0 12px 0',
+                  fontSize: '14px',
+                  color: isLinkCodeStep ? '#166534' : '#6b7280',
+                  lineHeight: '1.5'
+                }
+              }, step.description),
+              React.createElement('img', {
+                key: 'img',
+                src: step.image,
+                alt: step.imageAlt,
+                style: {
+                  width: '100%',
+                  borderRadius: '6px',
+                  border: '1px solid #d1d5db',
+                  marginBottom: index === macInstallInstructions.steps.length - 1 ? '0' : '0'
+                }
+              })
+            ]);
+          }),
           
-          // Step 2: Confirm Installation
-          React.createElement('div', { key: 'step2', style: { marginBottom: '24px', padding: '16px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' } }, [
-            React.createElement('h3', { key: 'step2-title', style: { margin: '0 0 12px 0', fontSize: '16px', fontWeight: 600, color: '#1f2937' } }, 'Step 2: Click "Open" to Continue'),
-            React.createElement('p', { key: 'step2-desc', style: { margin: '0 0 12px 0', fontSize: '14px', color: '#6b7280', lineHeight: '1.5' } }, 'After approving in System Settings, macOS will ask you to confirm:'),
-            React.createElement('img', { key: 'step2-img', src: '/security-confirmation-mac.png', alt: 'Open confirmation', style: { width: '100%', borderRadius: '6px', border: '1px solid #d1d5db', marginBottom: '12px' } }),
-            React.createElement('p', { key: 'step2-action', style: { margin: '0', fontSize: '14px', color: '#374151', fontWeight: 500 } }, 'Click "Open Anyway" to start the installation.')
-          ]),
-          
-          // Step 3: Link Code
-          React.createElement('div', { key: 'step3', style: { marginBottom: '24px', padding: '16px', background: '#eff6ff', borderRadius: '8px', border: '2px solid #3b82f6' } }, [
-            React.createElement('h3', { key: 'step3-title', style: { margin: '0 0 12px 0', fontSize: '16px', fontWeight: 600, color: '#1e40af' } }, 'Step 3: Copy Your Link Code'),
-            React.createElement('p', { key: 'step3-desc', style: { margin: '0 0 12px 0', fontSize: '14px', color: '#1e40af', lineHeight: '1.5' } }, 'After the package installs, Word will open automatically. Use this code to link with your browser:'),
-            React.createElement('div', { key: 'code-display', style: { background: 'white', border: '2px solid #3b82f6', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '12px' } }, [
-              React.createElement('div', { key: 'code', style: { fontSize: '28px', fontWeight: 700, color: '#1e40af', letterSpacing: '4px', fontFamily: 'monospace' } }, linkCode)
+          // Link Code Section
+          React.createElement('div', {
+            key: 'link-code-section',
+            style: {
+              marginTop: '24px',
+              marginBottom: '24px',
+              padding: '16px',
+              background: '#eff6ff',
+              borderRadius: '8px',
+              border: '2px solid #3b82f6'
+            }
+          }, [
+            React.createElement('h3', {
+              key: 'link-title',
+              style: { margin: '0 0 12px 0', fontSize: '16px', fontWeight: 600, color: '#1e40af' }
+            }, 'Your Link Code'),
+            React.createElement('p', {
+              key: 'link-desc',
+              style: { margin: '0 0 12px 0', fontSize: '14px', color: '#1e40af', lineHeight: '1.5' }
+            }, 'Copy this code to link the add-in with your browser:'),
+            React.createElement('div', {
+              key: 'code-display',
+              style: {
+                background: 'white',
+                border: '2px solid #3b82f6',
+                borderRadius: '8px',
+                padding: '16px',
+                textAlign: 'center',
+                marginBottom: '12px'
+              }
+            }, [
+              React.createElement('div', {
+                key: 'code',
+                style: {
+                  fontSize: '28px',
+                  fontWeight: 700,
+                  color: '#1e40af',
+                  letterSpacing: '4px',
+                  fontFamily: 'monospace'
+                }
+              }, linkCode)
             ]),
             React.createElement('button', {
               key: 'copy-btn',
@@ -5320,21 +5467,20 @@
                 borderRadius: '6px',
                 cursor: 'pointer',
                 fontWeight: 600,
-                fontSize: '14px'
+                fontSize: '14px',
+                marginBottom: '12px'
               }
-            }, copied ? '✓ Copied!' : '📋 Copy Code')
-          ]),
-          
-          // Step 4: Link Instructions
-          React.createElement('div', { key: 'step4', style: { marginBottom: '16px', padding: '16px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #86efac' } }, [
-            React.createElement('h3', { key: 'step4-title', style: { margin: '0 0 12px 0', fontSize: '16px', fontWeight: 600, color: '#15803d' } }, 'Step 4: Enter Link Code in Word'),
-            React.createElement('p', { key: 'step4-desc', style: { margin: '0 0 12px 0', fontSize: '14px', color: '#166534', lineHeight: '1.5' } }, 'Once Word opens with the add-in panel on the right:'),
-            React.createElement('ol', { key: 'step4-list', style: { margin: '0', paddingLeft: '20px', fontSize: '14px', color: '#166534', lineHeight: '1.8' } }, [
-              React.createElement('li', { key: 'li1' }, 'Click the 3 dots menu (⋮) at the top of the panel'),
-              React.createElement('li', { key: 'li2' }, 'Select "Enter Link Code"'),
-              React.createElement('li', { key: 'li3' }, 'Paste the code and click "Submit"'),
-              React.createElement('li', { key: 'li4' }, 'The add-in will connect to your browser session')
-            ])
+            }, copied ? '✓ Copied!' : '📋 Copy Code'),
+            React.createElement('p', {
+              key: 'link-instructions-title',
+              style: { margin: '0 0 8px 0', fontSize: '14px', color: '#1e40af', fontWeight: 500 }
+            }, 'To link in Word:'),
+            React.createElement('ol', {
+              key: 'link-instructions-list',
+              style: { margin: '0', paddingLeft: '20px', fontSize: '14px', color: '#1e40af', lineHeight: '1.8' }
+            }, macInstallInstructions.linkCodeInstructions.map((instruction, i) => 
+              React.createElement('li', { key: `li-${i}` }, instruction)
+            ))
           ])
         ]),
         
