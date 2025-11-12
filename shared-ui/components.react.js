@@ -710,7 +710,18 @@
               const j = await r.json();
               console.log('🔄 [refresh] Received config from API:', { title: j?.config?.title, status: j?.config?.status, revision: j?.revision });
               setConfig(j.config || null);
-              if (typeof j.revision === 'number') setRevision(j.revision);
+              // Only update revision if it's newer (prevent going backwards from stale API responses)
+              if (typeof j.revision === 'number') {
+                setRevision(prevRev => {
+                  if (j.revision > prevRev) {
+                    console.log(`🔄 [refresh] Updating revision: ${prevRev} → ${j.revision}`);
+                    return j.revision;
+                  } else {
+                    console.log(`⏭️ [refresh] Skipping stale revision: ${j.revision} (current: ${prevRev})`);
+                    return prevRev;
+                  }
+                });
+              }
               try { const sum = j?.config?.approvals?.summary || null; setApprovalsSummary(sum); } catch {}
             }
         } catch {}
@@ -824,7 +835,18 @@
               
               if (p && p.ts) setLastTs(p.ts);
               const nextRev = (typeof p.revision === 'number') ? p.revision : null;
-              if (nextRev !== null) setRevision(nextRev);
+              // Only update revision if it's newer (prevent going backwards from delayed SSE events)
+              if (nextRev !== null) {
+                setRevision(prevRev => {
+                  if (nextRev > prevRev) {
+                    console.log(`🔄 [SSE] Updating revision: ${prevRev} → ${nextRev}`);
+                    return nextRev;
+                  } else {
+                    console.log(`⏭️ [SSE] Skipping stale revision: ${nextRev} (current: ${prevRev})`);
+                    return prevRev;
+                  }
+                });
+              }
               if (p && p.type === 'approvals:update') {
                 if (typeof p.revision === 'number') setApprovalsRevision(p.revision);
                 if (p.summary) setApprovalsSummary(p.summary);
@@ -1186,6 +1208,42 @@
                     console.log(`📄 [INITIAL LOAD] context.sync() completed`);
                 });
                   
+                  // Apply document protection based on user role (SuperDoc approach)
+                  try {
+                    await Word.run(async (context) => {
+                      const currentRole = role || 'editor'; // Use current role from state
+                      console.log(`🔒 [INITIAL LOAD] Applying document protection for role: ${currentRole}`);
+                      
+                      // First, remove any existing protection
+                      try {
+                        context.document.unprotect();
+                        await context.sync();
+                        console.log(`🔓 [INITIAL LOAD] Existing protection removed`);
+                      } catch (unprotectErr) {
+                        // If unprotect fails (e.g., no protection exists), that's fine - continue
+                        console.log(`🔓 [INITIAL LOAD] No existing protection to remove`);
+                      }
+                      
+                      // Now apply new protection based on role
+                      if (currentRole === 'viewer') {
+                        context.document.protect("AllowOnlyReading");
+                        console.log(`🔒 [INITIAL LOAD] Applied: AllowOnlyReading`);
+                      } else if (currentRole === 'suggester' || currentRole === 'vendor') {
+                        context.document.protect("AllowOnlyRevisions");
+                        console.log(`🔒 [INITIAL LOAD] Applied: AllowOnlyRevisions`);
+                      } else {
+                        context.document.protect("NoProtection");
+                        console.log(`🔒 [INITIAL LOAD] Applied: NoProtection (full edit)`);
+                      }
+                      
+                      await context.sync();
+                      console.log(`✅ [INITIAL LOAD] Document protection applied successfully`);
+                    });
+                  } catch (protErr) {
+                    console.warn(`⚠️ [INITIAL LOAD] Document protection failed:`, protErr);
+                    console.warn(`⚠️ [INITIAL LOAD] Error details:`, protErr.message);
+                  }
+                  
                   console.log(`✅ [INITIAL LOAD] Document loaded successfully into Word`);
                 addLog(`Document loaded (version ${initialVersion})`, 'document');
                 } else {
@@ -1439,7 +1497,18 @@
                   const j = await r.json();
                    
                   setConfig(j.config || null);
-                  if (typeof j.revision === 'number') setRevision(j.revision);
+                  // Only update revision if it's newer (prevent going backwards)
+                  if (typeof j.revision === 'number') {
+                    setRevision(prevRev => {
+                      if (j.revision > prevRev) {
+                        console.log(`🔄 [UserSwitch] Updating revision: ${prevRev} → ${j.revision}`);
+                        return j.revision;
+                      } else {
+                        console.log(`⏭️ [UserSwitch] Keeping current revision: ${prevRev} (API returned: ${j.revision})`);
+                        return prevRev;
+                      }
+                    });
+                  }
                   // Update both viewingVersion and loadedVersion to the newest ACCESSIBLE version for this user
                   try {
                     // Use latestAccessibleVersion for vendors, documentVersion for others
@@ -1472,6 +1541,41 @@
                         const buf = await res.arrayBuffer();
                         const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
                         await Word.run(async (context) => { context.document.body.clear(); await context.sync(); context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
+                        
+                        // Apply document protection for new user role (SuperDoc approach)
+                        try {
+                          await Word.run(async (context) => {
+                            console.log(`🔒 [USER SWITCH] Applying document protection for role: ${nextRole}`);
+                            
+                            // First, remove any existing protection
+                            try {
+                              context.document.unprotect();
+                              await context.sync();
+                              console.log(`🔓 [USER SWITCH] Existing protection removed`);
+                            } catch (unprotectErr) {
+                              // If unprotect fails (e.g., no protection exists), that's fine - continue
+                              console.log(`🔓 [USER SWITCH] No existing protection to remove`);
+                            }
+                            
+                            // Now apply new protection based on role
+                            if (nextRole === 'viewer') {
+                              context.document.protect("AllowOnlyReading");
+                              console.log(`🔒 [USER SWITCH] Applied: AllowOnlyReading`);
+                            } else if (nextRole === 'suggester' || nextRole === 'vendor') {
+                              context.document.protect("AllowOnlyRevisions");
+                              console.log(`🔒 [USER SWITCH] Applied: AllowOnlyRevisions`);
+                            } else {
+                              context.document.protect("NoProtection");
+                              console.log(`🔒 [USER SWITCH] Applied: NoProtection (full edit)`);
+                            }
+                            
+                            await context.sync();
+                            console.log(`✅ [USER SWITCH] Document protection applied successfully`);
+                          });
+                        } catch (protErr) {
+                          console.warn(`⚠️ [USER SWITCH] Document protection failed:`, protErr);
+                          console.warn(`⚠️ [USER SWITCH] Error details:`, protErr.message);
+                        }
                       }
                     } else {
                       // Load latest document in Web
@@ -5118,12 +5222,76 @@
       return null;
     }
     
+    // Mac Installation Instructions Data
+    const macInstallInstructions = {
+      title: '🍎 Mac Installation Guide',
+      steps: [
+        {
+          id: 'step1',
+          title: 'Step 1: Locate the Downloaded Installer',
+          description: 'Find the WordFTW-Add-in-Installer.pkg file in your Downloads folder:',
+          image: '/1-download-folder.png',
+          imageAlt: 'Downloaded installer in Downloads folder'
+        },
+        {
+          id: 'step2',
+          title: 'Step 2: Security Warning',
+          description: 'When you double-click the installer, macOS will show a security warning because this package is from an unidentified developer. This is normal for downloaded installers.',
+          image: '/2-download-error.png',
+          imageAlt: 'Security warning dialog'
+        },
+        {
+          id: 'step3',
+          title: 'Step 3: Approve in System Settings',
+          description: 'Go to System Settings → Privacy & Security and click "Open Anyway" to approve the installer:',
+          image: '/3-security-approval.png',
+          imageAlt: 'Security approval in System Settings'
+        },
+        {
+          id: 'step4',
+          title: 'Step 4: Confirm Installation',
+          description: 'Click "Open" when macOS asks you to confirm:',
+          image: '/4-install-confirmation.png',
+          imageAlt: 'Installation confirmation dialog'
+        },
+        {
+          id: 'step5',
+          title: 'Step 5: Grant App Access',
+          description: 'The installer will ask for permission to access your files. Click "OK" to allow:',
+          image: '/5-app-access.png',
+          imageAlt: 'App access permission dialog'
+        },
+        {
+          id: 'step6',
+          title: 'Step 6: Word Opens Automatically',
+          description: 'After installation completes, Word will open automatically with a sample document:',
+          image: '/6-initial-doc.png',
+          imageAlt: 'Word opens with document'
+        },
+        {
+          id: 'step7',
+          title: 'Step 7: Open the Add-in',
+          description: 'Go to Insert → My Add-ins, look under "Shared Folder", and select "OpenGov Contracting":',
+          image: '/7-open-add-in.png',
+          imageAlt: 'Opening the add-in in Word',
+          isLast: true
+        }
+      ],
+      linkCodeInstructions: [
+        'Click the 3 dots menu (⋮) at the top of the add-in panel',
+        'Select "Enter Link Code"',
+        'Paste this code and click "Submit"',
+        'The add-in will connect to your browser'
+      ]
+    };
+    
     // Install Add-in Modal (for browser only)
     function InstallAddInModal({ onClose }) {
       const [linkCode, setLinkCode] = React.useState(null);
       const [isLoading, setIsLoading] = React.useState(false);
       const [copied, setCopied] = React.useState(false);
       const [error, setError] = React.useState(null);
+      const [showMacInstructions, setShowMacInstructions] = React.useState(false);
       
       const generateLinkCode = async () => {
         setIsLoading(true);
@@ -5193,8 +5361,8 @@
         let filename = 'manifest.xml';
         
         if (isMac) {
-          downloadUrl = '/install-addin.command';
-          filename = 'install-addin.command';
+          downloadUrl = '/WordFTW-Add-in-Installer.pkg';
+          filename = 'WordFTW-Add-in-Installer.pkg';
         } else if (isWindows) {
           downloadUrl = '/install-addin.bat';
           filename = 'install-addin.bat';
@@ -5206,8 +5374,14 @@
         a.download = filename;
         a.click();
         
-        // Generate and show link code
-        await generateLinkCode();
+        // For Mac, show instructions screen instead of immediately generating code
+        if (isMac) {
+          setShowMacInstructions(true);
+          await generateLinkCode();
+        } else {
+          // For Windows, generate and show link code immediately
+          await generateLinkCode();
+        }
       };
       
       const handleGenerateCodeOnly = async () => {
@@ -5222,8 +5396,143 @@
         }
       };
       
-      // Show code if generated, otherwise show options
-      const content = linkCode ? [
+      // Show Mac instructions if Mac and code generated
+      const content = (showMacInstructions && linkCode) ? [
+        React.createElement('div', { key: 'mac-instructions', style: { maxHeight: '70vh', overflowY: 'auto' } }, [
+          React.createElement('h2', { key: 'title', style: { margin: '0 0 16px 0', fontSize: '20px', fontWeight: 600, color: '#111827', textAlign: 'center' } }, macInstallInstructions.title),
+          
+          // Render all instruction steps
+          ...macInstallInstructions.steps.map((step, index) => {
+            const isLinkCodeStep = step.isLast;
+            return React.createElement('div', {
+              key: step.id,
+              style: {
+                marginBottom: isLinkCodeStep ? '16px' : '24px',
+                padding: '16px',
+                background: isLinkCodeStep ? '#f0fdf4' : '#f9fafb',
+                borderRadius: '8px',
+                border: isLinkCodeStep ? '1px solid #86efac' : '1px solid #e5e7eb'
+              }
+            }, [
+              React.createElement('h3', {
+                key: 'title',
+                style: {
+                  margin: '0 0 12px 0',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  color: isLinkCodeStep ? '#15803d' : '#1f2937'
+                }
+              }, step.title),
+              React.createElement('p', {
+                key: 'desc',
+                style: {
+                  margin: '0 0 12px 0',
+                  fontSize: '14px',
+                  color: isLinkCodeStep ? '#166534' : '#6b7280',
+                  lineHeight: '1.5'
+                }
+              }, step.description),
+              React.createElement('img', {
+                key: 'img',
+                src: step.image,
+                alt: step.imageAlt,
+                style: {
+                  width: '100%',
+                  borderRadius: '6px',
+                  border: '1px solid #d1d5db',
+                  marginBottom: index === macInstallInstructions.steps.length - 1 ? '0' : '0'
+                }
+              })
+            ]);
+          }),
+          
+          // Link Code Section
+          React.createElement('div', {
+            key: 'link-code-section',
+            style: {
+              marginTop: '24px',
+              marginBottom: '24px',
+              padding: '16px',
+              background: '#eff6ff',
+              borderRadius: '8px',
+              border: '2px solid #3b82f6'
+            }
+          }, [
+            React.createElement('h3', {
+              key: 'link-title',
+              style: { margin: '0 0 12px 0', fontSize: '16px', fontWeight: 600, color: '#1e40af' }
+            }, 'Your Link Code'),
+            React.createElement('p', {
+              key: 'link-desc',
+              style: { margin: '0 0 12px 0', fontSize: '14px', color: '#1e40af', lineHeight: '1.5' }
+            }, 'Copy this code to link the add-in with your browser:'),
+            React.createElement('div', {
+              key: 'code-display',
+              style: {
+                background: 'white',
+                border: '2px solid #3b82f6',
+                borderRadius: '8px',
+                padding: '16px',
+                textAlign: 'center',
+                marginBottom: '12px'
+              }
+            }, [
+              React.createElement('div', {
+                key: 'code',
+                style: {
+                  fontSize: '28px',
+                  fontWeight: 700,
+                  color: '#1e40af',
+                  letterSpacing: '4px',
+                  fontFamily: 'monospace'
+                }
+              }, linkCode)
+            ]),
+            React.createElement('button', {
+              key: 'copy-btn',
+              onClick: handleCopy,
+              style: {
+                width: '100%',
+                padding: '10px',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '14px',
+                marginBottom: '12px'
+              }
+            }, copied ? '✓ Copied!' : '📋 Copy Code'),
+            React.createElement('p', {
+              key: 'link-instructions-title',
+              style: { margin: '0 0 8px 0', fontSize: '14px', color: '#1e40af', fontWeight: 500 }
+            }, 'To link in Word:'),
+            React.createElement('ol', {
+              key: 'link-instructions-list',
+              style: { margin: '0', paddingLeft: '20px', fontSize: '14px', color: '#1e40af', lineHeight: '1.8' }
+            }, macInstallInstructions.linkCodeInstructions.map((instruction, i) => 
+              React.createElement('li', { key: `li-${i}` }, instruction)
+            ))
+          ])
+        ]),
+        
+        React.createElement('button', {
+          key: 'close-btn',
+          onClick: onClose,
+          style: {
+            width: '100%',
+            padding: '12px',
+            background: '#4B3FFF',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: 600,
+            fontSize: '14px'
+          }
+        }, 'Done')
+      ] : linkCode ? [
         React.createElement('div', { key: 'header', style: { marginBottom: '20px' } }, [
           React.createElement('h2', { key: 'title', style: { margin: 0, fontSize: '20px', fontWeight: 600, color: '#111827' } }, '✅ Link Code Generated'),
           React.createElement('p', { key: 'desc', style: { margin: '8px 0 0 0', fontSize: '14px', color: '#6b7280' } }, 'Open Word add-in and enter this code to sync:')
@@ -5340,7 +5649,8 @@
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 10000
+          zIndex: 10000,
+          padding: '20px'
         },
         onClick: onClose
       }, 
@@ -5349,9 +5659,11 @@
             background: 'white',
             borderRadius: '12px',
             padding: '24px',
-            maxWidth: '480px',
+            maxWidth: showMacInstructions ? '700px' : '480px',
             width: '90%',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            maxHeight: '90vh',
+            overflowY: 'auto'
           },
           onClick: (e) => e.stopPropagation()
         }, content)
