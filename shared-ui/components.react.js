@@ -1320,37 +1320,7 @@
       }, [API_BASE, addLog, addError]);
 
       // Do NOT auto-update document on revision changes. The banner/CTA controls refresh.
-
-      // Refresh the document ONLY when the user changes (explicit action)
-      const didInitUserRef = React.useRef(false);
-      React.useEffect(() => {
-        // Skip on initial mount; we already set initial document (web) or leave as-is (Word)
-        if (!didInitUserRef.current) { didInitUserRef.current = true; return; }
-        (async () => {
-          try {
-            const w = `${API_BASE}/documents/working/default.docx`;
-            const c = `${API_BASE}/documents/canonical/default.docx`;
-            let url = c;
-            try {
-              const h = await fetch(w, { method: 'HEAD' });
-              if (h.ok) {
-                const len = Number(h.headers.get('content-length') || '0');
-                if (Number.isFinite(len) && len > MIN_DOCX_SIZE) url = w;
-              }
-            } catch {}
-            const withRev = `${url}?rev=${Date.now()}`;
-            if (typeof Office !== 'undefined') {
-              const res = await fetch(withRev, { cache: 'no-store' }); if (!res.ok) throw new Error('download');
-              const buf = await res.arrayBuffer();
-              const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
-              await Word.run(async (context) => { context.document.body.clear(); await context.sync(); context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
-            } else {
-              setDocumentSource(withRev);
-              addLog(`doc src userSwitch -> ${withRev}`, 'document');
-            }
-          } catch {}
-        })();
-      }, [userId]);
+      // Note: User switch document loading is handled directly in the setUser action (server-driven via versions API)
 
       async function exportWordDocumentAsBase64() {
         function u8ToB64(u8) { let bin=''; for (let i=0;i<u8.length;i++) bin+=String.fromCharCode(u8[i]); return btoa(bin); }
