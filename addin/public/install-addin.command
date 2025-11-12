@@ -115,29 +115,44 @@ if ! head -n 1 "$TEMP_DIR/manifest.xml" | grep -q "<?xml"; then
   echo "[WARN] Manifest may not be valid XML, but continuing..."
 fi
 
-# Register manifest in Office preferences
+# Install manifest to Word's wef folder (official Mac method for sandboxed Word)
 echo ""
-echo "Registering add-in..."
-MANIFEST_ID="wordftw-addin-prod"
+echo "Installing add-in..."
 
-if ! defaults write com.microsoft.Word "wef.developer.manifests" -dict-add "$MANIFEST_ID" "$TEMP_DIR/manifest.xml" 2>/dev/null; then
-  log_error "Failed to register add-in.\n\nPossible causes:\n1. Permission denied (try with sudo)\n2. Word preferences file is locked\n3. Invalid manifest path"
+# Check if Word is sandboxed (has Containers directory)
+if [ -d "$HOME/Library/Containers/com.microsoft.Word" ]; then
+  WEF_DIR="$HOME/Library/Containers/com.microsoft.Word/Data/Documents/wef"
+  echo "- Detected sandboxed Word installation"
+else
+  WEF_DIR="$HOME/Library/Application Support/Microsoft/Office/16.0/wef"
+  echo "- Detected non-sandboxed Word installation"
 fi
 
-# Kill preferences daemon to ensure changes apply
-killall cfprefsd 2>/dev/null
+# Create wef directory if it doesn't exist
+if ! mkdir -p "$WEF_DIR" 2>/dev/null; then
+  log_error "Failed to create add-in directory at:\n$WEF_DIR\n\nThis may indicate permission issues."
+fi
 
-# Verify registration
-sleep 1
-if defaults read com.microsoft.Word "wef.developer.manifests.$MANIFEST_ID" &>/dev/null; then
-  echo "- Add-in registered successfully"
+# Copy manifest to wef folder
+if cp "$TEMP_DIR/manifest.xml" "$WEF_DIR/manifest.xml" 2>/dev/null; then
+  echo "- Add-in installed successfully"
+  echo "- Location: $WEF_DIR/manifest.xml"
 else
-  log_error "Registration verification failed. The add-in was not properly registered."
+  log_error "Failed to copy manifest to:\n$WEF_DIR/manifest.xml\n\nThis may indicate permission issues."
+fi
+
+# Verify installation
+sleep 1
+if [ -f "$WEF_DIR/manifest.xml" ]; then
+  FILE_SIZE=$(stat -f%z "$WEF_DIR/manifest.xml" 2>/dev/null || echo "0")
+  echo "- Installation verified ($FILE_SIZE bytes)"
+else
+  log_error "Installation verification failed. Manifest not found at:\n$WEF_DIR/manifest.xml"
 fi
 
 echo ""
 echo "========================================"
-echo " [SUCCESS] Installation Complete!"
+echo " Installation complete"
 echo "========================================"
 echo ""
 echo "Installation log saved to: $LOG_FILE"
@@ -154,19 +169,18 @@ if curl -f -s -o "$DOC_PATH" "https://wordftw.onrender.com/documents/working/def
     sleep 2
     echo ""
     echo "========================================"
-    echo " Next Steps: Activate the Add-in"
+    echo " How to activate the add-in"
     echo "========================================"
     echo ""
     echo "Word is now open with your document."
     echo ""
-    echo "TO ACTIVATE THE ADD-IN (first time only):"
-    echo "  1. In Word, click the 'Insert' tab"
-    echo "  2. Click 'Get Add-ins' or 'My Add-ins'"
-    echo "  3. Click 'Developer Add-ins' at the top"
-    echo "  4. Click 'Redlined & Signed'"
+    echo "To activate the add-in (first time only):"
+    echo "  1. In Word, go to Insert → My Add-ins"
+    echo "  2. Look under 'Shared Folder'"
+    echo "  3. Select 'OpenGov Contracting'"
     echo ""
     echo "The add-in panel will appear on the right side."
-    echo "After this first activation, it will remember your choice."
+    echo "After this first activation, Word will remember your choice."
     echo ""
   else
     echo "[WARN] Could not open Word with document"

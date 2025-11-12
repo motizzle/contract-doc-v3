@@ -99,87 +99,65 @@ else
 fi
 echo ""
 
-# Register manifest
-echo "[STEP 3/6] Registering add-in with Word..."
-MANIFEST_ID="wordftw-addin-prod"
-echo "Manifest ID: $MANIFEST_ID"
-echo "Manifest path: $MANIFEST_PATH"
-echo "Target preference domain: com.microsoft.Word"
-echo "Target preference key: wef.developer.manifests"
+# Register manifest by copying to Word's wef folder (official Mac method)
+echo "[STEP 3/6] Installing add-in manifest..."
+echo "Installing to Word's add-in folder for sandboxed Word..."
 echo ""
 
-echo "Command: defaults write com.microsoft.Word 'wef.developer.manifests' -dict-add '$MANIFEST_ID' '$MANIFEST_PATH'"
-DEFAULTS_OUTPUT=$(defaults write com.microsoft.Word "wef.developer.manifests" -dict-add "$MANIFEST_ID" "$MANIFEST_PATH" 2>&1)
-DEFAULTS_EXIT=$?
+# Check if Word is sandboxed (has Containers directory)
+WEF_DIR_SANDBOXED="$HOME/Library/Containers/com.microsoft.Word/Data/Documents/wef"
+WEF_DIR_NORMAL="$HOME/Library/Application Support/Microsoft/Office/16.0/wef"
 
-echo "defaults write exit code: $DEFAULTS_EXIT"
-if [ -n "$DEFAULTS_OUTPUT" ]; then
-  echo "defaults write output: $DEFAULTS_OUTPUT"
-fi
-
-if [ $DEFAULTS_EXIT -eq 0 ]; then
-  echo "✓ defaults write command succeeded"
+# Try sandboxed location first (most common for modern Mac Word)
+if [ -d "$HOME/Library/Containers/com.microsoft.Word" ]; then
+  WEF_DIR="$WEF_DIR_SANDBOXED"
+  echo "Detected sandboxed Word installation"
 else
-  echo "✗ defaults write command failed"
-  echo "  This may indicate permission issues or Word not installed"
+  WEF_DIR="$WEF_DIR_NORMAL"
+  echo "Detected non-sandboxed Word installation"
 fi
+
+echo "Target directory: $WEF_DIR"
 echo ""
 
-# Kill preferences daemon
-echo "[STEP 4/6] Refreshing preference cache..."
-echo "Command: killall cfprefsd"
-if killall cfprefsd 2>/dev/null; then
-  echo "✓ Preferences daemon restarted"
+# Create wef directory if it doesn't exist
+echo "Creating add-in directory..."
+if mkdir -p "$WEF_DIR" 2>/dev/null; then
+  echo "✓ Directory ready: $WEF_DIR"
 else
-  echo "✓ Preferences daemon not running (normal)"
+  echo "✗ Failed to create directory: $WEF_DIR"
+  echo "  This may indicate permission issues"
+  exit 1
 fi
-echo "Waiting 1 second for preferences to propagate..."
-sleep 1
+
+# Copy manifest to wef folder
 echo ""
+echo "Copying manifest to Word's add-in folder..."
+echo "Command: cp '$MANIFEST_PATH' '$WEF_DIR/manifest.xml'"
 
-# Verify registration
-echo "[STEP 5/6] Verifying registration..."
-echo "Command: defaults read com.microsoft.Word 'wef.developer.manifests.$MANIFEST_ID'"
-
-VERIFY_OUTPUT=$(defaults read com.microsoft.Word "wef.developer.manifests.$MANIFEST_ID" 2>&1)
-VERIFY_EXIT=$?
-
-echo "defaults read exit code: $VERIFY_EXIT"
-echo "defaults read output: $VERIFY_OUTPUT"
-
-if [ $VERIFY_EXIT -eq 0 ]; then
-  echo "✓ Add-in registered successfully"
-  echo "  Registered path: $VERIFY_OUTPUT"
-  
-  if [ "$VERIFY_OUTPUT" = "$MANIFEST_PATH" ]; then
-    echo "  Path verification: MATCH ✓"
-  else
-    echo "  Path verification: MISMATCH (but may still work)"
-  fi
+if cp "$MANIFEST_PATH" "$WEF_DIR/manifest.xml" 2>/dev/null; then
+  echo "✓ Manifest copied successfully"
 else
-  echo "⚠ Registration verification failed"
-  echo "  This is often NORMAL if:"
-  echo "  - Word hasn't been launched yet (no preference file)"
-  echo "  - Word is not licensed"
-  echo "  The add-in will still work once Word is properly set up"
-  
-  # Try to read the entire dictionary for debugging
-  echo ""
-  echo "Attempting to read entire wef.developer.manifests dictionary..."
-  FULL_DICT=$(defaults read com.microsoft.Word "wef.developer.manifests" 2>&1)
-  FULL_EXIT=$?
-  echo "Full dictionary exit code: $FULL_EXIT"
-  if [ $FULL_EXIT -eq 0 ]; then
-    echo "Full dictionary:"
-    echo "$FULL_DICT"
-  else
-    echo "Cannot read dictionary: $FULL_DICT"
-  fi
+  echo "✗ Failed to copy manifest"
+  exit 1
+fi
+
+# Verify the copy
+echo ""
+echo "[STEP 4/6] Verifying installation..."
+if [ -f "$WEF_DIR/manifest.xml" ]; then
+  FILE_SIZE=$(stat -f%z "$WEF_DIR/manifest.xml" 2>/dev/null || echo "0")
+  echo "✓ Manifest installed successfully"
+  echo "  Location: $WEF_DIR/manifest.xml"
+  echo "  Size: $FILE_SIZE bytes"
+else
+  echo "⚠ Manifest verification failed"
+  echo "  File not found at: $WEF_DIR/manifest.xml"
 fi
 echo ""
 
 # Download sample document
-echo "[STEP 6/6] Downloading sample document..."
+echo "[STEP 5/5] Downloading sample document..."
 DOC_PATH="$LOG_DIR/document.docx"
 DOC_URL="https://wordftw.onrender.com/documents/working/default.docx"
 echo "URL: $DOC_URL"
@@ -209,25 +187,22 @@ fi
 echo ""
 
 echo "========================================"
-echo " Installation Complete!"
+echo " Installation complete"
 echo "========================================"
 echo ""
-echo "✓ The WordFTW add-in has been installed successfully"
+echo "The WordFTW add-in has been installed successfully."
 echo ""
 echo "Installation summary:"
-echo "  - Manifest downloaded and registered"
-echo "  - Preference domain: com.microsoft.Word"
-echo "  - Manifest ID: $MANIFEST_ID"
-echo "  - Manifest location: $MANIFEST_PATH"
+echo "  - Manifest installed to: $WEF_DIR"
 echo "  - Installation log: $LOG_FILE"
 echo ""
-echo "Next steps:"
+echo "To activate the add-in:"
 echo "  1. Open Microsoft Word"
-echo "  2. Click Insert → My Add-ins"
-echo "  3. Click 'Developer Add-ins'"
-echo "  4. Click 'Redlined & Signed'"
+echo "  2. Go to Insert → My Add-ins"
+echo "  3. Look under 'Shared Folder'"
+echo "  4. Select 'OpenGov Contracting'"
 echo ""
-echo "The add-in panel will appear on the right side of Word."
+echo "The add-in will appear on the right side of Word."
 echo ""
 echo "Installation completed: $(date)"
 echo ""

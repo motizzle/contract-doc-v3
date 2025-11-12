@@ -10,17 +10,29 @@ echo "Closing Word if running..."
 osascript -e 'quit app "Microsoft Word"' 2>/dev/null
 sleep 2
 
-# Remove defaults entry
-echo "Removing registration..."
-MANIFEST_ID="wordftw-addin-prod"
-if defaults delete com.microsoft.Word wef.developer.manifests.$MANIFEST_ID 2>/dev/null; then
-  echo "Registration removed"
-else
-  echo "[WARNING] Registration not found or already removed"
+# Remove manifest from wef folder
+echo "Removing add-in..."
+
+# Check both possible locations
+WEF_DIR_SANDBOXED="$HOME/Library/Containers/com.microsoft.Word/Data/Documents/wef"
+WEF_DIR_NORMAL="$HOME/Library/Application Support/Microsoft/Office/16.0/wef"
+
+REMOVED=false
+if [ -f "$WEF_DIR_SANDBOXED/manifest.xml" ]; then
+  rm -f "$WEF_DIR_SANDBOXED/manifest.xml" 2>/dev/null
+  echo "- Removed from sandboxed location"
+  REMOVED=true
 fi
 
-# Kill preferences daemon to ensure changes apply
-killall cfprefsd 2>/dev/null
+if [ -f "$WEF_DIR_NORMAL/manifest.xml" ]; then
+  rm -f "$WEF_DIR_NORMAL/manifest.xml" 2>/dev/null
+  echo "- Removed from normal location"
+  REMOVED=true
+fi
+
+if [ "$REMOVED" = false ]; then
+  echo "[WARNING] Manifest not found in either location"
+fi
 
 # Clear cache
 echo "Clearing cache..."
@@ -49,10 +61,15 @@ if [ -d "$TEMP_DIR" ]; then
 fi
 
 # Verify uninstall
-if defaults read com.microsoft.Word wef.developer.manifests.$MANIFEST_ID &>/dev/null; then
+STILL_EXISTS=false
+if [ -f "$WEF_DIR_SANDBOXED/manifest.xml" ] || [ -f "$WEF_DIR_NORMAL/manifest.xml" ]; then
+  STILL_EXISTS=true
+fi
+
+if [ "$STILL_EXISTS" = true ]; then
   echo ""
   echo "[WARNING] Uninstall may be incomplete"
-  echo "Please manually remove the registration"
+  echo "Manifest file still exists. Please manually remove it."
 else
   echo ""
   echo "========================================"

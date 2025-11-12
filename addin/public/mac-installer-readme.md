@@ -12,13 +12,13 @@ This directory contains the **`.pkg` installer** for the WordFTW add-in on macOS
 
 ## Why .pkg?
 
-The `.pkg` format is the **standard macOS installer**:
-- ✅ **Download and double-click** - Just works, no building required
-- ✅ **Familiar UI** - Uses macOS Installer.app that users trust
-- ✅ **No terminal** - Runs in background, shows progress
-- ✅ **Professional** - Same format as Apple and major software vendors
-- ✅ **Code-signable** - Can be signed and notarized for Gatekeeper
-- ✅ **Automatic** - Installs everything without user intervention
+The `.pkg` format is the standard macOS installer:
+- Download and double-click - just works, no building required
+- Familiar UI - uses macOS Installer.app that users trust
+- No terminal - runs in background, shows progress
+- Professional - same format as Apple and major software vendors
+- Code-signable - can be signed and notarized for Gatekeeper
+- Automatic - installs everything without user intervention
 
 ## Building the Installer
 
@@ -36,11 +36,11 @@ This will create: **`WordFTW-Add-in-Installer.pkg`**
 
 After building, you can test it by:
 
-**Option 1: Double-click** (most realistic test)
+Option 1: Double-click (most realistic test)
 - Just double-click `WordFTW-Add-in-Installer.pkg` in Finder
 - macOS Installer.app will open and run the installation
 
-**Option 2: Command line**
+Option 2: Command line
 ```bash
 sudo installer -pkg WordFTW-Add-in-Installer.pkg -target /
 ```
@@ -138,13 +138,22 @@ When users double-click the .pkg file:
 3. **Background installation runs**:
    - Closes Word if running
    - Downloads latest manifest.xml from production server
-   - Registers add-in in Word preferences
+   - Installs manifest to Word's add-in folder (`~/Library/Containers/com.microsoft.Word/Data/Documents/wef/`)
    - Downloads sample document
    - Opens Word automatically with the document
 4. **Notification appears** - "Installation Complete" notification
 5. **Installation log created** at `~/.wordftw-addin/install.log`
 
 **User experience:** Click "Install" button, wait 10-15 seconds, Word opens with add-in ready to activate.
+
+**Important:** Modern Mac Word (sandboxed) requires manifests to be placed in the `wef` folder at:
+```
+~/Library/Containers/com.microsoft.Word/Data/Documents/wef/
+```
+
+This is different from Windows which uses registry keys. The installer automatically detects if Word is sandboxed and uses the correct location.
+
+After installation, users activate the add-in from **Insert → My Add-ins → Shared Folder**.
 
 ## Customization
 
