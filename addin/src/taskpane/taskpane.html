@@ -30,7 +30,7 @@
           window.__officeJsAttempts++;
           console.log(`🔄 Retrying office.js load (attempt ${window.__officeJsAttempts}/3)...`);
           var script = document.createElement('script');
-          script.src = 'https://appsforoffice.microsoft.com/lib/1/hosted/office.js';
+          script.src = 'https://appsforoffice.microsoft.com/lib/beta/hosted/office.js';
           script.onload = function() {
             window.__officeJsLoaded = true;
             clearTimeout(window.__officeJsTimeout);
@@ -44,7 +44,7 @@
         }
       };
     </script>
-    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js" 
+    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/beta/hosted/office.js" 
             onerror="console.error('❌ Failed to load office.js from CDN - will retry'); setTimeout(window.__retryOfficeJs, 2000);"
             onload="window.__officeJsLoaded = true; clearTimeout(window.__officeJsTimeout); console.log('✅ office.js loaded successfully');"></script>
 

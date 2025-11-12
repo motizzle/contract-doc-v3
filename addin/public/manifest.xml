@@ -17,6 +17,7 @@
   </Hosts>
   <DefaultSettings>
     <SourceLocation DefaultValue="https://wordftw.onrender.com/taskpane.html"/>
+    <RequestedWidth>640</RequestedWidth>
   </DefaultSettings>
   <Permissions>ReadWriteDocument</Permissions>
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
@@ -52,6 +53,7 @@
                   <Action xsi:type="ShowTaskpane">
                     <TaskpaneId>ButtonId1</TaskpaneId>
                     <SourceLocation resid="Taskpane.Url"/>
+                    <RequestedWidth>640</RequestedWidth>
                   </Action>
                 </Control>
               </Group>

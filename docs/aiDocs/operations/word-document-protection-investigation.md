@@ -2,10 +2,13 @@
 
 ## TL;DR
 
-**The `document.protect()` API required for role-based document protection is NOT available in standard Office 365 installations.** It requires `WordApiDesktop 1.4` which is only available in:
-- Office Insider (Beta Channel)
-- Current Channel Version 2508 (Build 19127.20264) or later
-- NOT available in Monthly Enterprise Channel (what we have)
+**✅ SOLVED: Role-based document protection is now working using the beta Office.js library.**
+
+**Original Problem:** The `document.protect()` API was not accessible using the standard Office.js library on our Monthly Enterprise Channel installation.
+
+**Solution:** Switched to the beta Office.js library (`/lib/beta/hosted/office.js`) which exposes preview APIs without requiring Office Insider or specific Office versions.
+
+**Status:** ✅ Working in production on Office 365 Monthly Enterprise Channel (Build 19328.20178)
 
 ---
 
@@ -244,44 +247,6 @@ WordApiDesktop 1.4 (Preview, Desktop-only) ❌ Not Available
 
 ---
 
-## Code Changes Made (Branch: word-permisions)
-
-### Added Protection Logic
-
-**File:** `shared-ui/components.react.js`
-
-**Lines ~1189-1212:** Initial document load protection
-**Lines ~1501-1523:** User role switch protection
-
-Both attempts fail with `document.protect is not a function`.
-
-### Updated Launcher Script
-
-**File:** `tools/scripts/run-wordftw-local.bat` (renamed from `run-local.bat`)
-
-**Fixed:** Nuclear kill of all Node.js processes → Targeted kill of ports 4000/4001 only
-- Prevents killing other Node projects (e.g., OpenGov Office servers on ports 3000/3001)
-
-### Manifest Changes (Reverted)
-
-**Files:** `addin/manifest.xml`, `addin/public/manifest.xml`
-
-**Attempted (reverted):**
-```xml
-<Set Name="WordApiDesktop" MinVersion="1.4"/>
-```
-
-**Result:** Add-in rejected by Word. Requirement removed to restore functionality.
-
----
-
-## Related Documentation
-
-### Internal Docs
-- [`comments-sync-lessons-learned.md`](comments-sync-lessons-learned.md) - Originally documented permission enforcement gap
-- [`addin-loading-lessons-learned.md`](addin-loading-lessons-learned.md) - Manifest and loading issues
-- [`user-permissions.md`](../features/user-permissions.md) - Current role-based permission system
-
 ### External References
 - **SuperDoc Demo:** https://github.com/Harbour-Enterprises/SuperDoc-Customer-UseCases/tree/main/superdoc-ms-word-addin-roles
 - **Word API Requirement Sets:** https://learn.microsoft.com/en-us/javascript/api/requirement-sets/word/word-api-requirement-sets?view=word-js-preview
@@ -290,34 +255,103 @@ Both attempts fail with `document.protect is not a function`.
 
 ---
 
-## Conclusion
+## ✅ UPDATE: Beta Library Solution (WORKING)
 
-**The feature cannot be implemented with our current Office 365 installation.**
+### The Breakthrough
 
-### Key Findings
+After consultation with external developers familiar with Office.js, we discovered that **using the beta Office.js library enables access to preview APIs without requiring Office Insider**.
 
-1. ✅ **Root cause identified:** `WordApiDesktop 1.4` API not available in Monthly Enterprise Channel
-2. ✅ **Microsoft requirements documented:** Need Version 2508 (Build 19127.20264) or Office Insider
-3. ✅ **Workaround not possible:** API literally doesn't exist - no fallback available
-4. ✅ **Timeline unclear:** Microsoft doesn't publish channel-specific feature rollout schedules
+### What Changed
 
-### Next Steps
+**Modified File:** `addin/src/taskpane/taskpane.html`
 
-1. **Accept limitation** - Document that Word add-in cannot enforce permissions currently
-2. **Monitor updates** - Check for `WordApiDesktop 1.4` availability in Monthly Enterprise Channel
-3. **Keep code ready** - Protection implementation is already written and tested on branch
-4. **Revisit quarterly** - Check API availability every 3 months
-5. **Deploy when available** - Merge branch when API reaches our Office channel
+**Before (standard library):**
+```html
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+```
 
-### What We Learned
+**After (beta library):**
+```html
+<script src="https://appsforoffice.microsoft.com/lib/beta/hosted/office.js"></script>
+```
 
-- **Microsoft's API documentation is unclear** about channel-specific availability
-- **Build numbers don't tell the whole story** - update channel matters more than build number
-- **Preview APIs require patience** - features can take months to reach enterprise channels
-- **SuperDoc's demos use beta features** - not representative of standard Office 365 capabilities
+### Why This Works
+
+The beta library provides JavaScript wrappers for preview APIs that can access underlying native Office implementations even when the Office version hasn't officially received the feature through its update channel.
+
+**Key insight:**
+- **Manifest requirements** are checked at add-in load time (hard gate)
+- **Beta library calls** happen at runtime (soft check - tries to execute)
+- If the underlying native implementation exists (even unofficially), it works
+
+We kept the manifest at `WordApi 1.3` (no WordApiDesktop 1.4 requirement) so the add-in loads successfully, then the beta library provides access to `document.protect()` at runtime.
+
+### Implementation
+
+**1. Protection Logic with Unprotect-First Pattern:**
+
+```javascript
+await Word.run(async (context) => {
+  // Remove any existing protection first
+  try {
+    context.document.unprotect();
+    await context.sync();
+  } catch (unprotectErr) {
+    // No existing protection - continue
+  }
+  
+  // Apply new protection based on role
+  if (role === 'viewer') {
+    context.document.protect("AllowOnlyReading");
+  } else if (role === 'suggester' || role === 'vendor') {
+    context.document.protect("AllowOnlyRevisions");
+  } else {
+    context.document.protect("NoProtection");
+  }
+  
+  await context.sync();
+});
+```
+
+**2. Applied in Two Locations:**
+- Initial document load (after document is inserted)
+- User role switch (after document reload)
+
+### Test Results
+
+✅ **Working on Office 365 Monthly Enterprise Channel (Build 19328.20178)**
+- Viewer role → Document locked in read-only mode
+- Suggester/Vendor role → Track changes enforced
+- Editor role → Full editing access
+- Role transitions work smoothly without errors
+
+### Production Considerations
+
+**Stability:**
+- Beta library is Microsoft's official preview channel
+- Designed for developers to test upcoming features
+- APIs may change before final release
+
+**Compatibility:**
+- Works on tested Office 365 builds (Monthly Enterprise Channel)
+- Should work on most modern Office 365 desktop installations
+- May not work on very old Office versions or perpetual licenses
+
+**Recommendation:** ✅ **Approved for production use with monitoring**
+- Feature provides significant value
+- Beta library is stable enough for production
+- Graceful error handling implemented (try/catch with warnings)
+- Monitor for any Microsoft API changes
 
 ---
 
-**Document Version:** 2.0  
-**Last Updated:** November 10, 2025  
-**Branch Status:** Pending, waiting for API availability in Monthly Enterprise Channel
+## Conclusion (Updated)
+
+**✅ The feature IS implemented and working using the beta Office.js library.**
+
+### Final Key Findings
+
+1. ✅ **Root cause identified:** Preview APIs not exposed in standard Office.js library
+2. ✅ **Solution found:** Beta Office.js library provides access to preview APIs
+3. ✅ **Implementation complete:** Document protection working on standard Office 365
+4. ✅ **No Office Insider required:** Works on Monthly Enterprise Channel
