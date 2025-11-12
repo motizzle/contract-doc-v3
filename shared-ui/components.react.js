@@ -1523,20 +1523,15 @@
                   
                   // Load the latest document for the new user (no banner needed)
                   try {
-                    const w = `${API_BASE}/documents/working/default.docx`;
-                    const c = `${API_BASE}/documents/canonical/default.docx`;
-                    let url = c;
-                    try {
-                      const h = await fetch(w, { method: 'HEAD' });
-                      if (h.ok) {
-                        const len = Number(h.headers.get('content-length') || '0');
-                        if (Number.isFinite(len) && len > 1024) url = w; // Use working if it exists and is valid
-                      }
-                    } catch {}
-                    const finalUrl = `${url}?rev=${Date.now()}`;
                     if (plat === 'word') {
-                      // Load latest document in Word
-                      const res = await fetch(finalUrl, { cache: 'no-store' });
+                      // Get the version number that was just set above
+                      const versionToLoad = Number(j?.config?.latestAccessibleVersion || j?.config?.documentVersion || 1);
+                      const versionUrl = `${API_BASE}/api/v1/versions/${versionToLoad}?rev=${Date.now()}`;
+                      
+                      console.log(`📄 [USER SWITCH] Loading version ${versionToLoad} for ${nextUserId} (${nextRole})`);
+                      
+                      // Load specific version in Word (not default.docx)
+                      const res = await fetch(versionUrl, { cache: 'no-store' });
                       if (res && res.ok) {
                         const buf = await res.arrayBuffer();
                         const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
@@ -1579,7 +1574,10 @@
                       }
                     } else {
                       // Load latest document in Web
-                      setDocumentSource(finalUrl);
+                      const versionToLoad = Number(j?.config?.latestAccessibleVersion || j?.config?.documentVersion || 1);
+                      const versionUrl = `${API_BASE}/api/v1/versions/${versionToLoad}?rev=${Date.now()}`;
+                      console.log(`📄 [USER SWITCH] Loading version ${versionToLoad} for ${nextUserId} (${nextRole}) in web`);
+                      setDocumentSource(versionUrl);
                     }
                     addLog(`Loaded latest document for user: ${nextUserId}`, 'success');
                   } catch {}
