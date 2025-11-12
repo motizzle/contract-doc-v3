@@ -1733,65 +1733,55 @@
         }
       };
       const viewLatest = async () => {
-        const w = `${API_BASE}/documents/working/default.docx`;
-        const c = `${API_BASE}/documents/canonical/default.docx`;
         if (isWord) {
           try {
-            let url = c;
-            try {
-              const h = await fetch(w, { method: 'HEAD' });
-              if (h.ok) {
-                const len = Number(h.headers.get('content-length') || '0');
-                if (Number.isFinite(len) && len > MIN_DOCX_SIZE) url = w;
-              }
-            } catch {}
-            const withRev = `${url}?rev=${Date.now()}`;
-            const res = await fetch(withRev, { cache: 'no-store' }); if (!res.ok) throw new Error('download');
+            // Get the correct version from state-matrix FIRST
+            const plat = 'word';
+            const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent(String(currentUser||'user1'))}`;
+            const r = await fetch(u);
+            const j = await r.json();
+            const v = Number(j?.config?.documentVersion || 1);
+            const latestVersion = Number.isFinite(v) && v > 0 ? v : 1;
+            
+            // Load the specific version from versions API (not default.docx)
+            const versionUrl = `${API_BASE}/api/v1/versions/${latestVersion}?rev=${Date.now()}`;
+            const res = await fetch(versionUrl, { cache: 'no-store' }); 
+            if (!res.ok) throw new Error('download');
+            
             const buf = await res.arrayBuffer();
             const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
             await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
+            
+            // Update state with the loaded version
+            setLoadedVersion(latestVersion);
+            try { setViewingVersion(latestVersion); } catch {}
+            try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: latestVersion, payload: { messagePlatform: plat } } })); } catch {}
+            
             // Note: Messaging is server-based now, AI chat persists until explicit reset
             // Only factory reset or AI reset button should clear chat history
-            try {
-              const plat = 'word';
-              const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent(String(currentUser||'user1'))}`;
-              const r = await fetch(u);
-              const j = await r.json();
-              const v = Number(j?.config?.documentVersion || 0);
-              if (v > 0) {
-                setLoadedVersion(v);
-                try { setViewingVersion(v); } catch {}
-                try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { messagePlatform: plat } } })); } catch {}
-              }
-            } catch {}
           } catch {}
         } else {
           try {
-            let url = c;
-            try {
-              const h = await fetch(w, { method: 'HEAD' });
-              if (h.ok) {
-                const len = Number(h.headers.get('content-length') || '0');
-                if (Number.isFinite(len) && len > MIN_DOCX_SIZE) url = w;
-              }
-            } catch {}
-            const finalUrl = `${url}?rev=${Date.now()}`;
-            setDocumentSource(finalUrl);
-            addLog(`doc src viewLatest -> ${finalUrl}`);
+            // Get the correct version from state-matrix FIRST
+            const plat = 'web';
+            const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent(String(currentUser||'user1'))}`;
+            const r = await fetch(u);
+            const j = await r.json();
+            const v = Number(j?.config?.documentVersion || 1);
+            const latestVersion = Number.isFinite(v) && v > 0 ? v : 1;
+            
+            // Load the specific version from versions API (not default.docx)
+            const versionUrl = `${API_BASE}/api/v1/versions/${latestVersion}?rev=${Date.now()}`;
+            setDocumentSource(versionUrl);
+            addLog(`doc src viewLatest -> version ${latestVersion}`);
+            
+            // Update state with the loaded version
+            setLoadedVersion(latestVersion);
+            try { setViewingVersion(latestVersion); } catch {}
+            try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: latestVersion, payload: { messagePlatform: plat } } })); } catch {}
+            
             // Note: Messaging is server-based now, AI chat persists until explicit reset
             // Only factory reset or AI reset button should clear chat history
-            try {
-              const plat = 'web';
-              const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent(String(currentUser||'user1'))}`;
-              const r = await fetch(u);
-              const j = await r.json();
-              const v = Number(j?.config?.documentVersion || 0);
-              if (v > 0) {
-                setLoadedVersion(v);
-                try { setViewingVersion(v); } catch {}
-                try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { messagePlatform: plat } } })); } catch {}
-              }
-            } catch {}
           } catch {}
         }
       };
@@ -5024,57 +5014,47 @@
         }
       };
       const viewLatest = async () => {
-        const w = `${API_BASE}/documents/working/default.docx`;
-        const c = `${API_BASE}/documents/canonical/default.docx`;
         if (isWord) {
           try {
-            let url = c;
-            try {
-              const h = await fetch(w, { method: 'HEAD' });
-              if (h.ok) {
-                const len = Number(h.headers.get('content-length') || '0');
-                if (Number.isFinite(len) && len > MIN_DOCX_SIZE) url = w;
-              }
-            } catch {}
-            const withRev = `${url}?rev=${revision || Date.now()}`;
-            const res = await fetch(withRev, { cache: 'no-store' }); if (!res.ok) throw new Error('download');
+            // Get the correct version from state-matrix FIRST
+            const plat = 'word';
+            const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent('user1')}`;
+            const r = await fetch(u);
+            const j = await r.json();
+            const v = Number(j?.config?.documentVersion || 1);
+            const latestVersion = Number.isFinite(v) && v > 0 ? v : 1;
+            
+            // Load the specific version from versions API (not default.docx)
+            const versionUrl = `${API_BASE}/api/v1/versions/${latestVersion}?rev=${revision || Date.now()}`;
+            const res = await fetch(versionUrl, { cache: 'no-store' }); 
+            if (!res.ok) throw new Error('download');
+            
             const buf = await res.arrayBuffer();
             const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
             await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
-            try {
-              const plat = 'word';
-              const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent('user1')}`;
-              const r = await fetch(u);
-              const j = await r.json();
-              const v = Number(j?.config?.documentVersion || 0);
-              if (v > 0) setLoadedVersion(v);
-            } catch {}
+            
+            // Update state with the loaded version
+            setLoadedVersion(latestVersion);
           } catch {}
         } else {
           try {
-            let url = c;
-            try {
-              const h = await fetch(w, { method: 'HEAD' });
-              if (h.ok) {
-                const len = Number(h.headers.get('content-length') || '0');
-                if (Number.isFinite(len) && len > MIN_DOCX_SIZE) url = w;
-              }
-            } catch {}
-            const finalUrl = `${url}?rev=${revision || Date.now()}`;
-            setDocumentSource(finalUrl);
-            addLog(`doc src viewLatest -> ${finalUrl}`);
-            try {
-              const plat = 'web';
-              const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent('user1')}`;
-              const r = await fetch(u);
-              const j = await r.json();
-              const v = Number(j?.config?.documentVersion || 0);
-              if (v > 0) {
-                setLoadedVersion(v);
-                try { setViewingVersion(v); } catch {}
-                try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: v, payload: { messagePlatform: plat } } })); } catch {}
-              }
-            } catch {}
+            // Get the correct version from state-matrix FIRST
+            const plat = 'web';
+            const u = `${API_BASE}/api/v1/state-matrix?platform=${plat}&clientVersion=0&userId=${encodeURIComponent('user1')}`;
+            const r = await fetch(u);
+            const j = await r.json();
+            const v = Number(j?.config?.documentVersion || 1);
+            const latestVersion = Number.isFinite(v) && v > 0 ? v : 1;
+            
+            // Load the specific version from versions API (not default.docx)
+            const versionUrl = `${API_BASE}/api/v1/versions/${latestVersion}?rev=${revision || Date.now()}`;
+            setDocumentSource(versionUrl);
+            addLog(`doc src viewLatest -> version ${latestVersion}`);
+            
+            // Update state with the loaded version
+            setLoadedVersion(latestVersion);
+            try { setViewingVersion(latestVersion); } catch {}
+            try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: latestVersion, payload: { messagePlatform: plat } } })); } catch {}
           } catch {}
         }
       };
