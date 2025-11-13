@@ -1168,7 +1168,16 @@
                 
                 console.log(`📄 [Global] Base64 length: ${b64.length}, calling Word.run...`);
                 await Word.run(async (context) => {
-                  console.log(`📄 [Global] Inside Word.run, clearing document first...`);
+                  console.log(`📄 [Global] Inside Word.run for version ${n}`);
+                  
+                  // FIRST: Remove any existing protection
+                  try {
+                    context.document.unprotect();
+                    await context.sync();
+                    console.log(`🔓 [Global] Document unprotected`);
+                  } catch (e) {
+                    console.log(`🔓 [Global] No protection to remove`);
+                  }
                   
                   // Turn OFF track changes to prevent clear/insert being tracked
                   context.document.changeTrackingMode = Word.ChangeTrackingMode.off;
@@ -1177,11 +1186,32 @@
                   
                   context.document.body.clear();
                   await context.sync();
-                  console.log(`📄 [Global] Document cleared, now replacing document body...`);
+                  console.log(`📄 [Global] Document cleared`);
                   context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace);
                   await context.sync();
-                  console.log(`📄 [Global] Word.run sync complete`);
+                  console.log(`📄 [Global] Document loaded`);
                 });
+                
+                // Reapply protection based on current role
+                try {
+                  await Word.run(async (context) => {
+                    const currentRole = String(role || 'editor').toLowerCase();
+                    console.log(`🔒 [Global] Reapplying protection for role: ${currentRole}`);
+                    
+                    if (currentRole === 'viewer') {
+                      context.document.protect("AllowOnlyReading");
+                    } else if (currentRole === 'suggester' || currentRole === 'vendor') {
+                      context.document.protect("AllowOnlyRevisions");
+                    } else {
+                      context.document.protect("NoProtection");
+                    }
+                    
+                    await context.sync();
+                    console.log(`✅ [Global] Protection reapplied`);
+                  });
+                } catch (protErr) {
+                  console.warn(`⚠️ [Global] Failed to reapply protection:`, protErr.message);
+                }
                 
                 console.log(`✅ [Global] Successfully loaded version ${n} into Word`);
                 addLog(`Loaded version ${n} into Word`, 'document');
