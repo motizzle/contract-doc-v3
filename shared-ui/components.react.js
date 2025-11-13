@@ -1206,30 +1206,13 @@
                   context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace);
                   await context.sync();
                   console.log(`📄 [Global] Document loaded`);
+                  
+                  // NOTE: We do NOT reapply protection here.
+                  // Protection should persist from the last user switch.
+                  // Reapplying AllowOnlyRevisions here causes the clear/insert operations
+                  // to be retroactively marked as tracked changes.
+                  console.log(`📄 [Global] Keeping existing protection state (not reapplying)`);
                 });
-                
-                // Reapply protection based on current role
-                try {
-                  await Word.run(async (context) => {
-                    // Look up role from users array based on current userId (using refs for current values)
-                    const currentUser = usersRef.current.find(u => u.id === userIdRef.current || u.label === userIdRef.current);
-                    const currentRole = String(currentUser?.role || roleRef.current || 'editor').toLowerCase();
-                    console.log(`🔒 [Global] User: ${userIdRef.current}, Lookup role: ${currentUser?.role}, Ref role: ${roleRef.current}, Final: ${currentRole}`);
-                    
-                    if (currentRole === 'viewer') {
-                      context.document.protect("AllowOnlyReading");
-                    } else if (currentRole === 'suggester' || currentRole === 'vendor') {
-                      context.document.protect("AllowOnlyRevisions");
-                    } else {
-                      context.document.protect("NoProtection");
-                    }
-                    
-                    await context.sync();
-                    console.log(`✅ [Global] Protection reapplied`);
-                  });
-                } catch (protErr) {
-                  console.warn(`⚠️ [Global] Failed to reapply protection:`, protErr.message);
-                }
                 
                 console.log(`✅ [Global] Successfully loaded version ${n} into Word`);
                 addLog(`Loaded version ${n} into Word`, 'document');
