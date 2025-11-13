@@ -1195,8 +1195,10 @@
                 // Reapply protection based on current role
                 try {
                   await Word.run(async (context) => {
-                    const currentRole = String(role || 'editor').toLowerCase();
-                    console.log(`🔒 [Global] Reapplying protection for role: ${currentRole}`);
+                    // Look up role from users array based on current userId
+                    const currentUser = users.find(u => u.id === userId || u.label === userId);
+                    const currentRole = String(currentUser?.role || role || 'editor').toLowerCase();
+                    console.log(`🔒 [Global] User: ${userId}, Lookup role: ${currentUser?.role}, State role: ${role}, Final: ${currentRole}`);
                     
                     if (currentRole === 'viewer') {
                       context.document.protect("AllowOnlyReading");
