@@ -367,9 +367,11 @@
       // Default user: Warren Peace (user1) for web, Kent Ucky (user2) for Word add-in
       const isWordAddin = typeof Office !== 'undefined' && Office.context && Office.context.host;
       const [userId, setUserId] = React.useState(isWordAddin ? 'user2' : 'user1');
+      const userIdRef = React.useRef(isWordAddin ? 'user2' : 'user1'); // Keep current userId accessible in closures
       const [role, setRole] = React.useState('editor');
       const roleRef = React.useRef('editor'); // Keep current role accessible in closures
       const [users, setUsers] = React.useState([]);
+      const usersRef = React.useRef([]); // Keep current users accessible in closures
       const [logs, setLogs] = React.useState([]);
       const [activities, setActivities] = React.useState([]);
       const [lastSeenActivityId, setLastSeenActivityId] = React.useState(
@@ -423,10 +425,18 @@
         } catch {}
       }, [userId, role, users]);
 
-      // Keep roleRef in sync with role state for use in closures
+      // Keep refs in sync with state for use in closures
+      React.useEffect(() => {
+        userIdRef.current = userId;
+      }, [userId]);
+
       React.useEffect(() => {
         roleRef.current = role;
       }, [role]);
+
+      React.useEffect(() => {
+        usersRef.current = users;
+      }, [users]);
 
       // Notification formatting system
       const NOTIFICATION_TYPES = {
@@ -1201,10 +1211,10 @@
                 // Reapply protection based on current role
                 try {
                   await Word.run(async (context) => {
-                    // Look up role from users array based on current userId
-                    const currentUser = users.find(u => u.id === userId || u.label === userId);
+                    // Look up role from users array based on current userId (using refs for current values)
+                    const currentUser = usersRef.current.find(u => u.id === userIdRef.current || u.label === userIdRef.current);
                     const currentRole = String(currentUser?.role || roleRef.current || 'editor').toLowerCase();
-                    console.log(`🔒 [Global] User: ${userId}, Lookup role: ${currentUser?.role}, Ref role: ${roleRef.current}, Final: ${currentRole}`);
+                    console.log(`🔒 [Global] User: ${userIdRef.current}, Lookup role: ${currentUser?.role}, Ref role: ${roleRef.current}, Final: ${currentRole}`);
                     
                     if (currentRole === 'viewer') {
                       context.document.protect("AllowOnlyReading");
@@ -1315,8 +1325,10 @@
                   // Apply document protection based on user role (SuperDoc approach)
                   try {
                     await Word.run(async (context) => {
-                      const currentRole = roleRef.current || 'editor'; // Use current role from ref
-                      console.log(`🔒 [INITIAL LOAD] Applying document protection for role: ${currentRole}`);
+                      // Look up role from users array based on current userId (using refs for current values)
+                      const currentUser = usersRef.current.find(u => u.id === userIdRef.current || u.label === userIdRef.current);
+                      const currentRole = String(currentUser?.role || roleRef.current || 'editor').toLowerCase();
+                      console.log(`🔒 [INITIAL LOAD] User: ${userIdRef.current}, Lookup role: ${currentUser?.role}, Ref role: ${roleRef.current}, Final: ${currentRole}`);
                       
                       // First, remove any existing protection
                       try {
@@ -1833,16 +1845,7 @@
             const v = Number(j?.config?.documentVersion || 1);
             const latestVersion = Number.isFinite(v) && v > 0 ? v : 1;
             
-            // Load the specific version from versions API (not default.docx)
-            const versionUrl = `${API_BASE}/api/v1/versions/${latestVersion}?rev=${Date.now()}`;
-            const res = await fetch(versionUrl, { cache: 'no-store' }); 
-            if (!res.ok) throw new Error('download');
-            
-            const buf = await res.arrayBuffer();
-            const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
-            await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
-            
-            // Update state with the loaded version
+            // Update state and dispatch event - let Global handler do the actual loading
             setLoadedVersion(latestVersion);
             try { setViewingVersion(latestVersion); } catch {}
             try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: latestVersion, payload: { messagePlatform: plat } } })); } catch {}
@@ -5114,17 +5117,10 @@
             const v = Number(j?.config?.documentVersion || 1);
             const latestVersion = Number.isFinite(v) && v > 0 ? v : 1;
             
-            // Load the specific version from versions API (not default.docx)
-            const versionUrl = `${API_BASE}/api/v1/versions/${latestVersion}?rev=${revision || Date.now()}`;
-            const res = await fetch(versionUrl, { cache: 'no-store' }); 
-            if (!res.ok) throw new Error('download');
-            
-            const buf = await res.arrayBuffer();
-            const b64 = (function(buf){ let bin=''; const bytes=new Uint8Array(buf); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); })(buf);
-            await Word.run(async (context) => { context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace); await context.sync(); });
-            
-            // Update state with the loaded version
+            // Update state and dispatch event - let Global handler do the actual loading
             setLoadedVersion(latestVersion);
+            try { setViewingVersion(latestVersion); } catch {}
+            try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: latestVersion, payload: { messagePlatform: plat } } })); } catch {}
           } catch {}
         } else {
           try {
@@ -5136,12 +5132,7 @@
             const v = Number(j?.config?.documentVersion || 1);
             const latestVersion = Number.isFinite(v) && v > 0 ? v : 1;
             
-            // Load the specific version from versions API (not default.docx)
-            const versionUrl = `${API_BASE}/api/v1/versions/${latestVersion}?rev=${revision || Date.now()}`;
-            setDocumentSource(versionUrl);
-            addLog(`doc src viewLatest -> version ${latestVersion}`);
-            
-            // Update state with the loaded version
+            // Update state and dispatch event for web
             setLoadedVersion(latestVersion);
             try { setViewingVersion(latestVersion); } catch {}
             try { window.dispatchEvent(new CustomEvent('version:view', { detail: { version: latestVersion, payload: { messagePlatform: plat } } })); } catch {}
