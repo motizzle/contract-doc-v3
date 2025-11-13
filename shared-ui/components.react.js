@@ -368,6 +368,7 @@
       const isWordAddin = typeof Office !== 'undefined' && Office.context && Office.context.host;
       const [userId, setUserId] = React.useState(isWordAddin ? 'user2' : 'user1');
       const [role, setRole] = React.useState('editor');
+      const roleRef = React.useRef('editor'); // Keep current role accessible in closures
       const [users, setUsers] = React.useState([]);
       const [logs, setLogs] = React.useState([]);
       const [activities, setActivities] = React.useState([]);
@@ -421,6 +422,11 @@
           }
         } catch {}
       }, [userId, role, users]);
+
+      // Keep roleRef in sync with role state for use in closures
+      React.useEffect(() => {
+        roleRef.current = role;
+      }, [role]);
 
       // Notification formatting system
       const NOTIFICATION_TYPES = {
@@ -1006,7 +1012,7 @@
                           // Reapply protection for current role
                           try {
                             await Word.run(async (context) => {
-                              const currentRole = String(role || 'editor').toLowerCase();
+                              const currentRole = String(roleRef.current || 'editor').toLowerCase();
                               console.log(`🔒 [Factory Reset] Reapplying protection for role: ${currentRole}`);
                               
                               if (currentRole === 'viewer') {
@@ -1197,8 +1203,8 @@
                   await Word.run(async (context) => {
                     // Look up role from users array based on current userId
                     const currentUser = users.find(u => u.id === userId || u.label === userId);
-                    const currentRole = String(currentUser?.role || role || 'editor').toLowerCase();
-                    console.log(`🔒 [Global] User: ${userId}, Lookup role: ${currentUser?.role}, State role: ${role}, Final: ${currentRole}`);
+                    const currentRole = String(currentUser?.role || roleRef.current || 'editor').toLowerCase();
+                    console.log(`🔒 [Global] User: ${userId}, Lookup role: ${currentUser?.role}, Ref role: ${roleRef.current}, Final: ${currentRole}`);
                     
                     if (currentRole === 'viewer') {
                       context.document.protect("AllowOnlyReading");
@@ -1309,7 +1315,7 @@
                   // Apply document protection based on user role (SuperDoc approach)
                   try {
                     await Word.run(async (context) => {
-                      const currentRole = role || 'editor'; // Use current role from state
+                      const currentRole = roleRef.current || 'editor'; // Use current role from ref
                       console.log(`🔒 [INITIAL LOAD] Applying document protection for role: ${currentRole}`);
                       
                       // First, remove any existing protection
