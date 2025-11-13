@@ -1308,6 +1308,15 @@
                 await Word.run(async (context) => { 
                     console.log(`📄 [INITIAL LOAD] Inside Word.run, clearing document first...`);
                   
+                  // FIRST: Remove any existing protection
+                  try {
+                    context.document.unprotect();
+                    await context.sync();
+                    console.log(`🔓 [INITIAL LOAD] Document unprotected`);
+                  } catch (e) {
+                    console.log(`🔓 [INITIAL LOAD] No protection to remove`);
+                  }
+                  
                   // Turn OFF track changes to prevent clear/insert being tracked
                   context.document.changeTrackingMode = Word.ChangeTrackingMode.off;
                   await context.sync();
